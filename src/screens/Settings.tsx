@@ -1,0 +1,268 @@
+import { C, mono } from '../theme';
+import { ALL_FUELS, FUEL_LABELS, type DataSourceId } from '../data/types';
+import { useApp } from '../state/store';
+
+const SECTION_LABEL: React.CSSProperties = {
+  fontSize: 12,
+  fontWeight: 700,
+  letterSpacing: '.1em',
+  textTransform: 'uppercase',
+  color: C.mut,
+  marginBottom: 10,
+};
+
+const SOURCES: { id: DataSourceId; title: string; sub: string }[] = [
+  {
+    id: 'gouv',
+    title: 'prix-carburants.gouv.fr',
+    sub: 'temps réel · mis à jour toutes les 10 min',
+  },
+  {
+    id: 'demo',
+    title: 'Données de démonstration',
+    sub: 'hors-ligne · jeu de données fictif',
+  },
+];
+
+export default function Settings() {
+  const app = useApp();
+  const { fuel, tank, alerts, bgloc, sourceId } = app;
+
+  const toggles: { label: string; sub: string; on: boolean; set: (v: boolean) => void }[] = [
+    {
+      label: 'Alerte prix bas',
+      sub: 'quand une station de vos trajets baisse son prix',
+      on: alerts,
+      set: app.setAlerts,
+    },
+    {
+      label: 'Localisation en arrière-plan',
+      sub: 'suggestions de plein pendant la conduite',
+      on: bgloc,
+      set: app.setBgloc,
+    },
+  ];
+
+  return (
+    <div
+      style={{
+        flex: 1,
+        minHeight: 0,
+        overflow: 'auto',
+        padding: '16px 20px 20px',
+        boxSizing: 'border-box',
+      }}
+    >
+      <div style={{ fontSize: 24, fontWeight: 800, color: C.ink }}>Réglages</div>
+
+      {/* Véhicule */}
+      <div style={{ marginTop: 18 }}>
+        <div style={SECTION_LABEL}>Véhicule</div>
+        <div
+          style={{
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            borderRadius: 16,
+            padding: 16,
+          }}
+        >
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 10 }}>
+            Carburant par défaut
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {ALL_FUELS.map((f) => {
+              const active = f === fuel;
+              return (
+                <button
+                  key={f}
+                  onClick={() => app.setFuel(f)}
+                  style={{
+                    background: active ? C.accent : 'transparent',
+                    color: active ? C.onAccent : C.body,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    padding: '8px 14px',
+                    borderRadius: 16,
+                    border: active ? `1px solid ${C.accent}` : `1px solid ${C.border12}`,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {FUEL_LABELS[f]}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', marginTop: 18, marginBottom: 6 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.ink, flex: 1 }}>Réservoir</span>
+            <span style={{ font: mono(700, 15), color: C.accent }}>{tank} L</span>
+          </div>
+          <input
+            type="range"
+            min={30}
+            max={80}
+            step={5}
+            value={tank}
+            onChange={(e) => app.setTank(+e.target.value)}
+            style={{ width: '100%', cursor: 'pointer' }}
+          />
+          <div style={{ fontSize: 11.5, color: C.faint, marginTop: 6 }}>
+            sert au calcul des économies par plein
+          </div>
+        </div>
+      </div>
+
+      {/* Notifications */}
+      <div style={{ marginTop: 18 }}>
+        <div style={SECTION_LABEL}>Notifications</div>
+        <div
+          style={{
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            borderRadius: 16,
+            overflow: 'hidden',
+          }}
+        >
+          {toggles.map((t) => (
+            <button
+              key={t.label}
+              onClick={() => t.set(!t.on)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: '14px 16px',
+                borderBottom: '1px solid rgba(255,255,255,.06)',
+                cursor: 'pointer',
+                width: '100%',
+                textAlign: 'left',
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>{t.label}</div>
+                <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>{t.sub}</div>
+              </div>
+              <div
+                style={{
+                  width: 44,
+                  height: 26,
+                  borderRadius: 13,
+                  background: t.on ? C.accent : C.toggleOff,
+                  flexShrink: 0,
+                  position: 'relative',
+                  transition: 'background .15s',
+                }}
+              >
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 3,
+                    left: t.on ? 21 : 3,
+                    width: 20,
+                    height: 20,
+                    borderRadius: '50%',
+                    background: C.ink,
+                    transition: 'left .15s',
+                  }}
+                />
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Données */}
+      <div style={{ marginTop: 18 }}>
+        <div style={SECTION_LABEL}>Données</div>
+        <div
+          style={{
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            borderRadius: 16,
+            overflow: 'hidden',
+          }}
+        >
+          {SOURCES.map((src) => {
+            const selected = sourceId === src.id;
+            return (
+              <button
+                key={src.id}
+                onClick={() => app.setSourceId(src.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '14px 16px',
+                  borderBottom: '1px solid rgba(255,255,255,.06)',
+                  cursor: 'pointer',
+                  width: '100%',
+                  textAlign: 'left',
+                }}
+              >
+                <div
+                  style={{
+                    width: 18,
+                    height: 18,
+                    borderRadius: '50%',
+                    border: `2px solid ${selected ? C.accent : 'rgba(255,255,255,.25)'}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  {selected && (
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.accent }} />
+                  )}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>{src.title}</div>
+                  <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>{src.sub}</div>
+                </div>
+              </button>
+            );
+          })}
+
+          {app.stations.fellBack && (
+            <div
+              style={{
+                fontSize: 11.5,
+                fontWeight: 600,
+                color: C.warn,
+                padding: '10px 16px',
+                borderBottom: '1px solid rgba(255,255,255,.06)',
+                lineHeight: 1.4,
+              }}
+            >
+              Source temps réel indisponible actuellement — bascule automatique sur la démo.
+            </div>
+          )}
+
+          <button
+            onClick={() => app.notify('Merci ! Le signalement arrive bientôt.')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '14px 16px',
+              cursor: 'pointer',
+              width: '100%',
+              textAlign: 'left',
+            }}
+          >
+            <span style={{ flex: 1, fontSize: 14.5, fontWeight: 600, color: C.ink }}>
+              Signaler un prix erroné
+            </span>
+            <span style={{ color: C.faint }}>›</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div style={{ textAlign: 'center', fontSize: 11.5, color: C.ghost, marginTop: 20 }}>
+        Plein. · v1 · juillet 2026
+      </div>
+    </div>
+  );
+}

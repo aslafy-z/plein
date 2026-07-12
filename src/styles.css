@@ -1,0 +1,160 @@
+/* Plein. global styles */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #0d0f11;
+  color: #e8eaed;
+  font-family: Archivo, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+a {
+  color: #3ddc84;
+}
+a:hover {
+  color: #7ce9ac;
+}
+
+input[type='range'] {
+  accent-color: #3ddc84;
+}
+input[type='text'],
+input[type='search'] {
+  outline: none;
+}
+input::placeholder {
+  color: #5c666c;
+}
+
+button {
+  font-family: inherit;
+  border: none;
+  background: none;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+  text-align: inherit;
+}
+
+/* Subtle scrollbars on desktop */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ── Responsive app shell ─────────────────────────────────────────────
+   Mobile: the app fills the viewport.
+   Desktop (≥720px): centered phone-like column on the dark backdrop. */
+.app-viewport {
+  height: 100dvh;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.app-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #101214;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+@media (min-width: 720px) {
+  .app-viewport {
+    align-items: center;
+    padding: 28px 20px;
+  }
+  .app-shell {
+    width: 428px;
+    max-height: 900px;
+    border-radius: 26px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+  }
+}
+
+/* Leaflet map must inherit the dark look */
+.leaflet-container {
+  background: #14181a;
+  font-family: Archivo, system-ui, sans-serif;
+}
+.leaflet-control-attribution {
+  background: rgba(16, 18, 20, 0.75) !important;
+  color: #5c666c !important;
+  font-size: 9px !important;
+}
+.leaflet-control-attribution a {
+  color: #8a949a !important;
+}
+
+/* Price pin markers (Leaflet divIcon) */
+.pin-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+}
+.pin-bubble {
+  font-family: 'Spline Sans Mono', ui-monospace, monospace;
+  white-space: nowrap;
+  border-radius: 9px;
+}
+.pin-tip {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+}
+
+/* Simple fade/slide for sheets and toast */
+@keyframes sheet-up {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.anim-sheet {
+  animation: sheet-up 0.22s ease-out;
+}
+.anim-fade {
+  animation: fade-in 0.18s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-sheet,
+  .anim-fade {
+    animation: none;
+  }
+}

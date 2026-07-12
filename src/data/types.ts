@@ -1,0 +1,116 @@
+// Data contracts — every provider (real or demo) speaks these types.
+import type { GeoPoint } from '../lib/geo';
+
+// ── Fuels ────────────────────────────────────────────────────────────────────
+export type FuelId = 'gazole' | 'e10' | 'sp98' | 'sp95' | 'e85' | 'gplc';
+
+export const FUEL_LABELS: Record<FuelId, string> = {
+  gazole: 'Gazole',
+  e10: 'SP95-E10',
+  sp98: 'SP98',
+  sp95: 'SP95',
+  e85: 'E85',
+  gplc: 'GPLc',
+};
+
+/** The three quick-switch fuels (map chip cycle + list tabs) */
+export const MAIN_FUELS: FuelId[] = ['gazole', 'e10', 'e85'];
+/** Every selectable fuel (filter sheet + settings) */
+export const ALL_FUELS: FuelId[] = ['gazole', 'e10', 'sp98', 'sp95', 'e85', 'gplc'];
+
+// ── Stations ─────────────────────────────────────────────────────────────────
+/** Brand category used by the « Marques » filter */
+export type BrandCat = 'gs' | 'ind' | 'pet' | 'unknown';
+
+/** Normalized, filterable service tags (raw services kept for the detail screen) */
+export type ServiceTag = '24/24' | 'Lavage' | 'Boutique' | 'Gonflage';
+export const SERVICE_TAGS: ServiceTag[] = ['24/24', 'Lavage', 'Boutique', 'Gonflage'];
+
+export interface FuelPrice {
+  value: number; // €/L
+  updatedAt?: string; // ISO timestamp
+}
+
+export interface Station {
+  id: string;
+  /** Display name, e.g. "Station U · Croix-Blanche" or "Station · Roanne" (gouv flux has no names) */
+  name: string;
+  /** Short initials for the avatar, e.g. "SU" */
+  init: string;
+  brand?: string; // "Système U", "TotalEnergies"… undefined when the source doesn't know
+  cat: BrandCat;
+  lat: number;
+  lng: number;
+  address: string;
+  city: string;
+  cp?: string;
+  prices: Partial<Record<FuelId, FuelPrice>>;
+  /** Normalized filterable tags */
+  tags: ServiceTag[];
+  /** Raw service labels for the detail screen */
+  services: string[];
+  /** true when on a motorway (gouv `pop === 'A'`) */
+  highway: boolean;
+  /** community confirmations (demo source only) */
+  confirmations?: number;
+}
+
+/** A station enriched with position-relative info */
+export interface NearbyStation extends Station {
+  distKm: number;
+  driveMin: number;
+}
+
+/** A station enriched with route-relative info */
+export interface RouteStation extends Station {
+  kmAlong: number; // km from departure along the route
+  detourMin: number; // extra minutes to reach it and come back
+}
+
+// ── Providers ────────────────────────────────────────────────────────────────
+export interface SourceCapabilities {
+  /** Does this source know station brands? (gouv flux does not) */
+  brands: boolean;
+  /** Human label shown in Réglages, e.g. "prix-carburants.gouv.fr" */
+  label: string;
+  /** Sub label, e.g. "temps réel · mis à jour toutes les 10 min" */
+  sublabel: string;
+}
+
+export interface StationsProvider {
+  readonly id: DataSourceId;
+  readonly capabilities: SourceCapabilities;
+  /** Stations within radiusKm of a point (any fuel). */
+  getStationsNear(center: GeoPoint, radiusKm: number): Promise<Station[]>;
+  /** Stations within corridorKm of a route polyline. */
+  getStationsAlong(polyline: GeoPoint[], corridorKm: number): Promise<Station[]>;
+}
+
+export interface GeocodeResult {
+  label: string; // "Bordeaux centre"
+  sublabel: string; // "Gironde"
+  point: GeoPoint;
+}
+
+export interface GeocodeProvider {
+  search(query: string): Promise<GeocodeResult[]>;
+}
+
+export interface Route {
+  distanceKm: number;
+  durationMin: number;
+  polyline: GeoPoint[];
+}
+
+export interface RouteProvider {
+  getRoute(from: GeoPoint, to: GeoPoint): Promise<Route>;
+}
+
+// ── Source selection ─────────────────────────────────────────────────────────
+export type DataSourceId = 'gouv' | 'demo';
+
+export interface ProviderBundle {
+  stations: StationsProvider;
+  geocode: GeocodeProvider;
+  route: RouteProvider;
+}
