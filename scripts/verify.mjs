@@ -135,9 +135,48 @@ async function run(label, contextOpts, { demo = true } = {}) {
   await browser.close();
 }
 
+// When the gouv APIs are unreachable (offline/sandbox), the app must fall back
+// to demo data with a visible banner. Online, the real source must load without
+// the banner. Either outcome is a pass; a broken map/list is the failure.
+async function runSourceCheck() {
+  const browser = await chromium.launch({ executablePath });
+  const page = await (
+    await browser.newContext({ ...devices['Pixel 7'], locale: 'fr-FR' })
+  ).newPage();
+  await page.addInitScript(() => {
+    localStorage.clear();
+    localStorage.setItem(
+      'plein.settings.v1',
+      JSON.stringify({ sourceId: 'gouv', onboarded: true }),
+    );
+  });
+  await page.goto(BASE, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(4000); // gouv attempt + possible fallback
+  const banner = await page
+    .getByText('Source temps réel indisponible', { exact: false })
+    .isVisible()
+    .catch(() => false);
+  const sheet = await page
+    .getByText('La moins chère près de vous')
+    .isVisible()
+    .catch(() => false);
+  const emptyBar = await page
+    .getByText('Aucune station ne correspond', { exact: false })
+    .isVisible()
+    .catch(() => false);
+  ok(
+    'gouv source: usable map (live data, or demo fallback with banner)',
+    sheet || emptyBar,
+    banner ? 'fell back to demo (banner shown)' : 'live gouv data',
+  );
+  await page.screenshot({ path: `${OUT}/mobile-11-gouv-source.png` });
+  await browser.close();
+}
+
 const mobile = devices['Pixel 7'];
 await run('mobile', { ...mobile, locale: 'fr-FR' });
 await run('desktop', { viewport: { width: 1440, height: 900 }, locale: 'fr-FR' });
+await runSourceCheck();
 
 const failed = results.filter((r) => !r.pass);
 console.log(`\n${results.length - failed.length}/${results.length} checks passed`);

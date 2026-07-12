@@ -243,6 +243,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  // Returning users skipped onboarding → ask for the real position on mount
+  useEffect(() => {
+    if (persisted.onboarded) requestGeolocation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Stations near me (fetch at MAX radius, filter client-side) ─────────────
   const stationsReq = useRef(0);
   const loadStations = useCallback(async () => {

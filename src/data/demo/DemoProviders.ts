@@ -1,7 +1,7 @@
 // Demo providers — offline, deterministic, with a small fake latency so the
 // loading states of the app get exercised.
 import type { GeoPoint } from '../../lib/geo';
-import { haversineKm, lerpPoint, nearestOnPolyline } from '../../lib/geo';
+import { haversineKm, lerpPoint, nearestOnPolyline, polylineLengthKm } from '../../lib/geo';
 import type {
   GeocodeProvider,
   GeocodeResult,
@@ -14,6 +14,64 @@ import type {
 import { DEMO_PLACES, DEMO_ROUTE_STATIONS, DEMO_STATIONS } from './demoData';
 
 const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/** Anchor of the fictional dataset (Lyon Confluence) */
+const LYON: GeoPoint = { lat: 45.7406, lng: 4.8156 };
+
+/**
+ * Synthetic corridor stops used when a demo route doesn't follow one of the
+ * pre-built axes (or when the user is geolocated far from Lyon): fictional
+ * motorway-area names that claim no real geography, placed deterministically
+ * along the polyline. detourMin is encoded via a perpendicular offset
+ * (the store estimates ~2 min per km off-route).
+ */
+const SYNTH_TEMPLATES: ReadonlyArray<{
+  frac: number;
+  name: string;
+  init: string;
+  brand: string;
+  cat: Station['cat'];
+  gazole: number;
+  detourMin: number;
+  highway: boolean;
+  services: string[];
+}> = [
+  { frac: 0.14, name: 'Intermarché · Aire des Chênes', init: 'IN', brand: 'Intermarché', cat: 'gs', gazole: 1.71, detourMin: 4, highway: false, services: ['Ouvert 24/24', 'Lavage'] },
+  { frac: 0.3, name: 'Total Relais · Aire du Val', init: 'TR', brand: 'TotalEnergies', cat: 'pet', gazole: 1.84, detourMin: 0, highway: true, services: ['Ouvert 24/24', 'Boutique', 'Gonflage'] },
+  { frac: 0.46, name: 'Leclerc · Les Quatre Vents', init: 'LE', brand: 'E.Leclerc', cat: 'gs', gazole: 1.66, detourMin: 2, highway: false, services: ['Ouvert 24/24', 'Lavage', 'Boutique'] },
+  { frac: 0.6, name: 'Carrefour · Porte du Sud', init: 'CA', brand: 'Carrefour', cat: 'gs', gazole: 1.63, detourMin: 9, highway: false, services: ['Boutique'] },
+  { frac: 0.74, name: 'Avia · Relais des Bruyères', init: 'AV', brand: 'Avia', cat: 'ind', gazole: 1.68, detourMin: 7, highway: false, services: ['Gonflage'] },
+  { frac: 0.88, name: 'Super U · La Croisée', init: 'SU', brand: 'Système U', cat: 'gs', gazole: 1.73, detourMin: 4, highway: false, services: ['Ouvert 24/24', 'Lavage', 'Boutique'] },
+];
+
+function synthCorridorStations(polyline: GeoPoint[]): Station[] {
+  const updatedAt = new Date(Date.now() - 2 * 3600_000).toISOString();
+  return SYNTH_TEMPLATES.map((t, i) => {
+    const at = polyline[Math.min(polyline.length - 1, Math.round(t.frac * (polyline.length - 1)))];
+    // ~2 min of detour per km off-route (see store), 1° lat ≈ 111 km
+    const off = t.detourMin / 2 / 111;
+    return {
+      id: `synth-${i}`,
+      name: t.name,
+      init: t.init,
+      brand: t.brand,
+      cat: t.cat,
+      lat: at.lat + (i % 2 === 0 ? off : -off),
+      lng: at.lng,
+      address: 'Aire de service',
+      city: '',
+      prices: {
+        gazole: { value: t.gazole, updatedAt },
+        e10: { value: +(t.gazole + 0.11).toFixed(2), updatedAt },
+        e85: { value: +(t.gazole - 0.82).toFixed(2), updatedAt },
+      },
+      tags: t.services.map((s) => (s === 'Ouvert 24/24' ? '24/24' : s)) as Station['tags'],
+      services: t.services,
+      highway: t.highway,
+      confirmations: 4 + i,
+    };
+  });
+}
 
 /** Strip accents + lowercase for forgiving text matching */
 function norm(s: string): string {
@@ -31,7 +89,15 @@ export class DemoStationsProvider implements StationsProvider {
 
   async getStationsNear(center: GeoPoint, radiusKm: number): Promise<Station[]> {
     await delay(250);
-    return DEMO_STATIONS.filter(
+    // The fictional set surrounds Lyon; for users geolocated elsewhere,
+    // translate it around them so the demo works anywhere in France.
+    const dLat = center.lat - LYON.lat;
+    const dLng = center.lng - LYON.lng;
+    const shift = haversineKm(center, LYON) > 30;
+    const pool = shift
+      ? DEMO_STATIONS.map((s) => ({ ...s, lat: s.lat + dLat, lng: s.lng + dLng }))
+      : DEMO_STATIONS;
+    return pool.filter(
       (s) => haversineKm(center, { lat: s.lat, lng: s.lng }) <= radiusKm,
     );
   }
@@ -40,10 +106,20 @@ export class DemoStationsProvider implements StationsProvider {
     await delay(250);
     // Demo coordinates are approximate → allow a little extra slack.
     const tol = corridorKm + 3;
+    const totalKm = polylineLengthKm(polyline);
     const pool = [...DEMO_STATIONS, ...DEMO_ROUTE_STATIONS];
-    return pool.filter(
-      (s) => nearestOnPolyline({ lat: s.lat, lng: s.lng }, polyline).distKm <= tol,
-    );
+    const found: { station: Station; alongKm: number }[] = [];
+    for (const s of pool) {
+      const near = nearestOnPolyline({ lat: s.lat, lng: s.lng }, polyline);
+      if (near.distKm <= tol) found.push({ station: s, alongKm: near.alongKm });
+    }
+    // The pre-built axes only cover a few destinations. If the matches don't
+    // actually spread along the route (e.g. all clustered near the departure),
+    // add fictional corridor stops so the Trajet screen works from anywhere.
+    const deep = found.filter((f) => f.alongKm > totalKm * 0.25).length;
+    const stations = found.map((f) => f.station);
+    if (deep < 3) return [...stations, ...synthCorridorStations(polyline)];
+    return stations;
   }
 }
 

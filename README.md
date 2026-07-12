@@ -1,25 +1,50 @@
-# CODING AGENTS: READ THIS FIRST
+# Plein. — le plein au juste prix
 
-This is a **handoff bundle** from Claude Design (claude.ai/design).
+Application web (mobile-first, responsive desktop) pour trouver les stations-service
+les moins chères **autour de vous** et **le long de vos trajets**, en France.
 
-A user mocked up designs in HTML/CSS/JS using an AI design tool, then exported this bundle so a coding agent can implement the designs for real.
+Implémentation du prototype Claude Design « Plein - Prototype » (voir `project/` et `chats/`).
 
-## What you should do — IMPORTANT
+## Lancer
 
-**Read the chat transcripts first.** There are 1 chat transcript(s) in `chats/`. The transcripts show the full back-and-forth between the user and the design assistant — they tell you **what the user actually wants** and **where they landed** after iterating. Don't skip them. The final HTML files are the output, but the chat is where the intent lives.
+```bash
+npm install
+npm run dev        # http://localhost:5173
+npm run build      # production build (dist/)
+npm run verify     # E2E : parcourt tous les écrans + screenshots (nécessite le dev server)
+```
 
-**Read `project/Plein - Prototype.dc.html` in full.** The user had this file open when they triggered the handoff, so it's almost certainly the primary design they want built. Read it top to bottom — don't skim. Then **follow its imports**: open every file it pulls in (shared components, CSS, scripts) so you understand how the pieces fit together before you start implementing.
+## Écrans
 
-**If anything is ambiguous, ask the user to confirm before you start implementing.** It's much cheaper to clarify scope up front than to build the wrong thing.
+Onboarding → **Carte** (pins de prix Leaflet, meilleure station en bottom-sheet) →
+**Liste** (économie possible, tri prix/distance) → **Trajet** (saisie départ/destination
+avec autocomplétion, puis ruban vertical avec arrêt conseillé selon 3 stratégies) →
+**Fiche station** → **Filtres** (carburant, rayon, marques, services) → **Réglages**.
 
-## About the design files
+Action principale partout : **Ouvrir dans Google Maps** (deep link réel).
+La « tournée » multi-arrêts est secondaire (petit « + » sur chaque arrêt).
 
-The design medium is **HTML/CSS/JS** — these are prototypes, not production code. Your job is to **recreate them pixel-perfectly** in whatever technology makes sense for the target codebase (React, Vue, native, whatever fits). Match the visual output; don't copy the prototype's internal structure unless it happens to fit.
+## Sources de données — architecture pluggable
 
-**Don't render these files in a browser or take screenshots unless the user asks you to.** Everything you need — dimensions, colors, layout rules — is spelled out in the source. Read the HTML and CSS directly; a screenshot won't tell you anything they don't.
+Tout passe par trois interfaces (`src/data/types.ts`) :
 
-## Bundle contents
+| Interface          | Réel (défaut)                                            | Démo (hors-ligne)              |
+| ------------------ | -------------------------------------------------------- | ------------------------------ |
+| `StationsProvider` | data.economie.gouv.fr — flux instantané v2 (ODS Explore) | jeu fictif Lyon + corridors    |
+| `GeocodeProvider`  | api-adresse.data.gouv.fr (BAN)                           | dictionnaire de villes         |
+| `RouteProvider`    | router.project-osrm.org (OSRM démo)                      | interpolation grande-cercle    |
 
-- `README.md` — this file
-- `chats/` — conversation transcripts (read these!)
-- `project/` — the `Application de stations services` project files (HTML prototypes, assets, components)
+- Sélection dans **Réglages → Données** (persistée en localStorage).
+- Si la source réelle échoue, bascule automatique sur la démo avec bannière visible.
+- Le flux gouvernemental ne fournit **ni enseigne ni nom de station** : les providers
+  déclarent `capabilities.brands` et l'UI s'adapte (le filtre « Marques » n'apparaît
+  que si la source connaît les enseignes).
+
+Pour ajouter une source : implémenter les interfaces et l'enregistrer dans
+`src/data/providers.ts`.
+
+## Stack
+
+Vite · React 18 · TypeScript strict · Leaflet (tuiles CARTO dark) · aucune autre dépendance.
+State: contexte React unique (`src/state/store.tsx`) + sélecteurs purs partagés par
+tous les écrans (une seule définition de « station visible », « moins chère », etc.).
