@@ -1,0 +1,10 @@
+# Workers Assets defaults every response to `max-age=0, must-revalidate`, which
+# is right for the HTML shell but wasteful for the content-hashed bundles: a new
+# build emits new filenames, so the old ones can never go stale.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The update check compares this against the running bundle's version; a cached
+# copy would defeat the whole point.
+/version.json
+  Cache-Control: no-store

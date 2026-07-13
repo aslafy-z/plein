@@ -10,6 +10,7 @@ import FiltersSheet from './screens/FiltersSheet';
 import NavBar from './components/NavBar';
 import Toast from './components/Toast';
 import FallbackBanner from './components/FallbackBanner';
+import UpdatePrompt from './components/UpdatePrompt';
 
 export default function App() {
   const app = useApp();
@@ -19,6 +20,7 @@ export default function App() {
   return (
     <div className="app-viewport">
       <div className="app-shell">
+        <UpdatePrompt />
         <FallbackBanner />
         {screen === 'onboarding' && <Onboarding />}
         {screen === 'map' && <MapScreen />}

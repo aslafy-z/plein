@@ -1,9 +1,39 @@
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
-import { execFile } from 'node:child_process'
+import { execFile, execFileSync } from 'node:child_process'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
 import { cloudflare } from "@cloudflare/vite-plugin";
+
+// ── Build version ─────────────────────────────────────────────────────────────
+// Stamped into the bundle (`__APP_VERSION__`) and into `/version.json`, which the
+// running app polls to notice it is outdated (see src/lib/appUpdate.ts). A dirty
+// tree gets a timestamp too: two deploys from uncommitted work must not collide
+// on the same commit hash, or the second one would look like no change at all.
+function buildVersion(): string {
+  const git = (args: string[]) =>
+    execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()
+  try {
+    const sha = git(['rev-parse', '--short', 'HEAD'])
+    return git(['status', '--porcelain']) ? `${sha}+${Date.now().toString(36)}` : sha
+  } catch {
+    return Date.now().toString(36)
+  }
+}
+
+function versionStamp(version: string): Plugin {
+  return {
+    name: 'plein-version-stamp',
+    apply: 'build',
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'version.json',
+        source: JSON.stringify({ version }),
+      })
+    },
+  }
+}
 
 // ── Dev/preview tile proxy ────────────────────────────────────────────────────
 // Sandboxed / firewalled environments often let the dev server reach the
@@ -134,8 +164,13 @@ function devProxies(): Plugin {
 }
 
 // https://vite.dev/config/
+const APP_VERSION = buildVersion()
+
 export default defineConfig({
-  plugins: [react(), devProxies(), cloudflare()],
+  plugins: [react(), devProxies(), versionStamp(APP_VERSION), cloudflare()],
+  define: {
+    __APP_VERSION__: JSON.stringify(APP_VERSION),
+  },
   server: {
     host: true,
     port: 5173,
