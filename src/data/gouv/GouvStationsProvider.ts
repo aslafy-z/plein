@@ -4,6 +4,7 @@
 // and raw coordinates are sometimes scaled by 1e5. We parse very defensively and
 // throw on transport failure so the store can fall back to demo data.
 import { IS_DEV } from '../../lib/env';
+import { enrichWithBrands, fuelPoisAlong, fuelPoisNear } from './osmBrands';
 import type { GeoPoint } from '../../lib/geo';
 import { nearestOnPolyline, polylineLengthKm, samplePolyline } from '../../lib/geo';
 import type { DayHours, StationHours } from '../../lib/hours';
@@ -327,12 +328,14 @@ async function fetchPage(url: string): Promise<unknown[]> {
 export class GouvStationsProvider implements StationsProvider {
   readonly id = 'gouv' as const;
   readonly capabilities: SourceCapabilities = {
-    brands: false,
+    brands: true, // enriched from OpenStreetMap by proximity
     label: 'prix-carburants.gouv.fr',
-    sublabel: 'temps réel · mis à jour toutes les 10 min',
+    sublabel: 'temps réel · enseignes via OpenStreetMap',
   };
 
   async getStationsNear(center: GeoPoint, radiusKm: number): Promise<Station[]> {
+    // OSM brand POIs fetch concurrently with the price pages
+    const poisPromise = fuelPoisNear(center, radiusKm).catch(() => []);
     const stations: Station[] = [];
     for (let offset = 0; offset < NEAR_CAP; offset += PAGE) {
       const results = await fetchPage(buildUrl(center, radiusKm, PAGE, offset));
@@ -344,7 +347,7 @@ export class GouvStationsProvider implements StationsProvider {
       }
       if (results.length < PAGE) break;
     }
-    return stations.slice(0, NEAR_CAP);
+    return enrichWithBrands(stations.slice(0, NEAR_CAP), await poisPromise);
   }
 
   async getStationsAlong(polyline: GeoPoint[], corridorKm: number): Promise<Station[]> {
@@ -380,9 +383,11 @@ export class GouvStationsProvider implements StationsProvider {
       }
     };
 
+    const poisPromise = fuelPoisAlong(polyline, corridorKm).catch(() => []);
     await Promise.all(lanes.map(runLane));
-    return [...byId.values()].filter(
+    const inCorridor = [...byId.values()].filter(
       (st) => nearestOnPolyline({ lat: st.lat, lng: st.lng }, polyline).distKm <= corridorKm,
     );
+    return enrichWithBrands(inCorridor, await poisPromise);
   }
 }

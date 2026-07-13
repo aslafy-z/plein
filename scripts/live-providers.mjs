@@ -18,7 +18,7 @@ const pexec = promisify(execFile);
 globalThis.fetch = async (url) => {
   const { stdout } = await pexec(
     'curl',
-    ['-sS', '--max-time', '25', '-w', '\n__STATUS__%{http_code}', String(url)],
+    ['-sS', '--max-time', '25', '-A', 'plein-live-check/1', '-w', '\n__STATUS__%{http_code}', String(url)],
     { maxBuffer: 64e6 },
   );
   const idx = stdout.lastIndexOf('\n__STATUS__');
@@ -36,7 +36,7 @@ globalThis.fetch = async (url) => {
 const entry = `
 export { GouvStationsProvider } from './src/data/gouv/GouvStationsProvider';
 export { BanGeocodeProvider } from './src/data/gouv/BanGeocodeProvider';
-export { OsrmRouteProvider } from './src/data/gouv/OsrmRouteProvider';
+export { RealRouteProvider } from './src/data/gouv/OsrmRouteProvider';
 export { nearestOnPolyline, polylineLengthKm } from './src/lib/geo';
 export { openStatus } from './src/lib/hours';
 `;
@@ -76,6 +76,9 @@ const cheapest = [...near]
   .sort((a, b) => a.prices.gazole.value - b.prices.gazole.value)[0];
 ok('gouv: plausible gazole price', cheapest && cheapest.prices.gazole.value > 1 && cheapest.prices.gazole.value < 3,
   cheapest ? `${cheapest.prices.gazole.value} €/L (${cheapest.name})` : 'none');
+const branded = near.filter((s) => s.brand);
+ok('gouv: brands enriched from OSM', branded.length >= near.length * 0.4,
+  `${branded.length}/${near.length} · ex: ${branded.slice(0, 3).map((s) => s.name).join(' / ')}`);
 const withHours = near.filter((s) => s.hours);
 ok('gouv: opening hours parsed', withHours.length > 0, `${withHours.length}/${near.length} with hours`);
 const statuses = withHours.map((s) => P.openStatus(s.hours)).filter(Boolean);
@@ -90,7 +93,7 @@ ok('BAN: plausible coordinates',
   places[0] && Math.abs(places[0].point.lat - 44.84) < 1 && Math.abs(places[0].point.lng + 0.58) < 1);
 
 // 3 — OSRM routing
-const osrm = new P.OsrmRouteProvider();
+const osrm = new P.RealRouteProvider();
 const route = await osrm.getRoute(LYON, BORDEAUX);
 ok('OSRM: Lyon → Bordeaux distance', route.distanceKm > 450 && route.distanceKm < 700,
   `${Math.round(route.distanceKm)} km · ${Math.round(route.durationMin)} min`);
