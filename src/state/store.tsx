@@ -13,6 +13,8 @@ import {
 import type { GeoPoint } from '../lib/geo';
 import { cumulativeKm, haversineKm, nearestOnPolyline } from '../lib/geo';
 import {
+  ALL_FUELS,
+  type VehicleId,
   type DataSourceId,
   type FuelId,
   type GeocodeResult,
@@ -33,8 +35,12 @@ export const DEFAULT_FROM_LABEL = 'Ma position';
 /** Recent-trip history kept in Réglages persistence */
 const MAX_RECENTS = 4;
 export const MAX_RADIUS_KM = 25;
-/** Average consumption used for autonomy estimates (L/100 km) */
-const CONSUMPTION_L_100KM = 6.5;
+/** Vehicle profile presets (tank L, consumption L/100 km) — adjustable in Réglages */
+export const VEHICLE_PRESETS: Record<VehicleId, { tank: number; conso: number }> = {
+  car: { tank: 50, conso: 6.5 },
+  moto: { tank: 15, conso: 5 },
+};
+const DEFAULT_CONSO = VEHICLE_PRESETS.car.conso;
 /** Narrative: you leave with ~70 % tank */
 const START_TANK_PCT = 0.7;
 /** € value of one minute of detour, for the « compromis » strategy */
@@ -80,7 +86,11 @@ const LS_KEY = 'plein.settings.v1';
 
 interface PersistedSettings {
   fuel: FuelId;
+  vehicle: VehicleId;
   tank: number;
+  conso: number;
+  avoidMotorway: boolean;
+  avoidToll: boolean;
   radius: number;
   sourceId: DataSourceId;
   onboarded: boolean;
@@ -168,13 +178,23 @@ export interface AppStore {
   editRoute(): void;
   routeMode: RouteMode;
   setRouteMode(m: RouteMode): void;
+  avoidMotorway: boolean;
+  avoidToll: boolean;
+  setAvoidMotorway(v: boolean): void;
+  setAvoidToll(v: boolean): void;
   routeState: RouteState;
   tour: Record<string, boolean>;
   toggleTour(id: string): void;
 
   // settings
+  vehicle: VehicleId;
+  /** Switch profile and apply its tank/conso presets */
+  setVehicle(v: VehicleId): void;
   tank: number;
   setTank(t: number): void;
+  /** Average consumption, L/100 km — feeds autonomy + trip cost */
+  conso: number;
+  setConso(v: number): void;
   alerts: boolean;
   setAlerts(v: boolean): void;
   bgloc: boolean;
@@ -217,7 +237,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [fromPoint, setFromPoint] = useState<GeoPoint | null>(null);
   const [toPoint, setToPoint] = useState<GeoPoint | null>(null);
   const [routeReady, setRouteReady] = useState(false);
-  const [tank, setTankState] = useState<number>(persisted.tank ?? 50);
+  const [vehicle, setVehicleState] = useState<VehicleId>(persisted.vehicle ?? 'car');
+  const [tank, setTankState] = useState<number>(persisted.tank ?? VEHICLE_PRESETS.car.tank);
+  const [conso, setConsoState] = useState<number>(persisted.conso ?? DEFAULT_CONSO);
+  const [avoidMotorway, setAvoidMotorwayState] = useState<boolean>(persisted.avoidMotorway ?? false);
+  const [avoidToll, setAvoidTollState] = useState<boolean>(persisted.avoidToll ?? false);
   const [alerts, setAlertsState] = useState<boolean>(persisted.alerts ?? true);
   const [bgloc, setBglocState] = useState<boolean>(persisted.bgloc ?? false);
   const [sourceId, setSourceIdState] = useState<DataSourceId>(persisted.sourceId ?? 'gouv');
@@ -284,6 +308,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (persisted.onboarded) requestGeolocation();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Browser-history navigation (Android back navigates the app) ───────────
+  // Every nav change pushes a history entry; popstate restores it, so the
+  // system back button walks screens instead of leaving the app.
+  const popNavRef = useRef(false);
+  const lastNavScreenRef = useRef<Screen | null>(null);
+
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      const st = e.state as
+        | { plein?: boolean; screen?: Screen; detailId?: string | null; filtersOpen?: boolean }
+        | null;
+      if (!st?.plein || !st.screen) return;
+      popNavRef.current = true;
+      setScreen(st.screen);
+      setDetailId(st.detailId ?? null);
+      setFiltersOpen(!!st.filtersOpen);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  useEffect(() => {
+    const state = { plein: true, screen, detailId, filtersOpen };
+    const fromPop = popNavRef.current;
+    popNavRef.current = false;
+    const cameFrom = lastNavScreenRef.current;
+    lastNavScreenRef.current = screen;
+    if (fromPop) return;
+    const cur = window.history.state as typeof state | null;
+    if (
+      cur?.plein &&
+      cur.screen === screen &&
+      (cur.detailId ?? null) === detailId &&
+      !!cur.filtersOpen === filtersOpen
+    )
+      return;
+    // First entry — and leaving onboarding must not be back-navigable
+    if (!cur?.plein || cameFrom === 'onboarding') window.history.replaceState(state, '');
+    else window.history.pushState(state, '');
+  }, [screen, detailId, filtersOpen]);
 
   // ── Stations near me (fetch at MAX radius, filter client-side) ─────────────
   // Stale-while-revalidate: a cached area paints instantly (refreshing: true)
@@ -388,7 +453,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setRouteState((s) => ({ ...s, status: 'loading' }));
       const run = async (src: DataSourceId) => {
         const bundle = getProviders(src);
-        const route = await bundle.route.getRoute(from, to);
+        const route = await bundle.route.getRoute(from, to, { avoidMotorway, avoidToll, vehicle });
         const raw = await bundle.stations.getStationsAlong(route.polyline, 5);
         const cum = cumulativeKm(route.polyline);
         const enriched: RouteStation[] = raw
@@ -441,7 +506,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
       }
     },
-    [sourceId, fuel, pushRecent],
+    [sourceId, fuel, pushRecent, avoidMotorway, avoidToll, vehicle],
   );
 
   // ── Actions ────────────────────────────────────────────────────────────────
@@ -460,7 +525,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [go],
   );
 
-  const back = useCallback(() => setScreen(prevScreen), [prevScreen]);
+  const back = useCallback(() => {
+    const cur = window.history.state as { plein?: boolean; screen?: Screen } | null;
+    if (cur?.plein && cur.screen === 'detail') window.history.back();
+    else setScreen(prevScreen);
+  }, [prevScreen]);
+
+  // Closing the filters sheet from the UI pops the entry its opening pushed,
+  // so a later back press doesn't re-close an already-closed sheet.
+  const setFiltersOpenNav = useCallback((open: boolean) => {
+    const cur = window.history.state as { plein?: boolean; filtersOpen?: boolean } | null;
+    if (!open && cur?.plein && cur.filtersOpen) window.history.back();
+    else setFiltersOpen(open);
+  }, []);
 
   const setFuel = useCallback((f: FuelId) => {
     setFuelState(f);
@@ -469,12 +546,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const cycleFuel = useCallback(() => {
     setFuelState((cur) => {
-      // Quick-cycle the three main fuels; a non-main fuel (SP98, GPLc…)
-      // stays in the loop instead of being silently dropped.
-      const main: FuelId[] = ['gazole', 'e10', 'e85'];
-      const order: FuelId[] = main.includes(cur) ? main : [...main, cur];
-      const idx = order.indexOf(cur);
-      const next = order[(idx + 1) % order.length];
+      const idx = ALL_FUELS.indexOf(cur);
+      const next = ALL_FUELS[(idx + 1) % ALL_FUELS.length];
       savePersisted({ fuel: next });
       return next;
     });
@@ -488,6 +561,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setTank = useCallback((t: number) => {
     setTankState(t);
     savePersisted({ tank: t });
+  }, []);
+
+  const setConso = useCallback((v: number) => {
+    setConsoState(v);
+    savePersisted({ conso: v });
+  }, []);
+
+  const setVehicle = useCallback((v: VehicleId) => {
+    setVehicleState(v);
+    const preset = VEHICLE_PRESETS[v];
+    setTankState(preset.tank);
+    setConsoState(preset.conso);
+    savePersisted({ vehicle: v, tank: preset.tank, conso: preset.conso });
+  }, []);
+
+  const setAvoidMotorway = useCallback((v: boolean) => {
+    setAvoidMotorwayState(v);
+    savePersisted({ avoidMotorway: v });
+  }, []);
+
+  const setAvoidToll = useCallback((v: boolean) => {
+    setAvoidTollState(v);
+    savePersisted({ avoidToll: v });
   }, []);
 
   const setAlerts = useCallback((v: boolean) => {
@@ -576,6 +672,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const openInMaps = useCallback(
     (target: Station) => {
+      // On Android, a geo: URI opens the native maps app chooser (Google Maps,
+      // Waze, Organic Maps…) instead of the website.
+      if (/android/i.test(navigator.userAgent)) {
+        showToast("Ouverture de l'app GPS…");
+        const label = encodeURIComponent(target.name);
+        window.location.href = `geo:${target.lat},${target.lng}?q=${target.lat},${target.lng}(${label})`;
+        return;
+      }
       showToast('Ouverture de Google Maps…');
       const url = `https://www.google.com/maps/dir/?api=1&destination=${target.lat},${target.lng}&travelmode=driving`;
       window.open(url, '_blank', 'noopener');
@@ -622,7 +726,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       serviceTags,
       toggleServiceTag: (t) => setServiceTags((s) => ({ ...s, [t]: !s[t] })),
       filtersOpen,
-      setFiltersOpen,
+      setFiltersOpen: setFiltersOpenNav,
       resetFilters,
       userPos,
       geoStatus,
@@ -647,11 +751,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       editRoute,
       routeMode,
       setRouteMode,
+      avoidMotorway,
+      avoidToll,
+      setAvoidMotorway,
+      setAvoidToll,
       routeState,
       tour,
       toggleTour,
+      vehicle,
+      setVehicle,
       tank,
       setTank,
+      conso,
+      setConso,
       alerts,
       setAlerts,
       bgloc,
@@ -671,7 +783,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       requestGeolocation, searchPos, setSearchArea, resetSearchToUser,
       stations, loadStations, fromText, toText, fromPoint, toPoint,
       setFrom, setTo, searchPlaces, recents, hasTripHistory, routeReady, startRoute, editRoute,
-      routeMode, routeState, tour, toggleTour, tank, setTank, alerts, setAlerts,
+      routeMode, routeState, tour, toggleTour, vehicle, setVehicle, tank, setTank, conso, setConso,
+      avoidMotorway, avoidToll, setAvoidMotorway, setAvoidToll, setFiltersOpenNav, alerts, setAlerts,
       bgloc, setBgloc, sourceId, setSourceId, detailId, toast, showToast,
       openInMaps, openTourInMaps, finishOnboarding,
     ],
@@ -742,7 +855,7 @@ export function selectPriceRange(app: AppStore): { min: number; max: number } | 
 
 /** Autonomy narrative for the route ribbon (depends on tank setting) */
 export function selectAutonomy(app: AppStore): { autonomyKm: number; limitKm: number } {
-  const autonomyKm = Math.round(((app.tank * START_TANK_PCT) / CONSUMPTION_L_100KM) * 100);
+  const autonomyKm = Math.round(((app.tank * START_TANK_PCT) / app.conso) * 100);
   // Keep a ~20 % reserve before the "you must stop" line
   const limitKm = Math.round((autonomyKm * 0.8) / 10) * 10;
   return { autonomyKm, limitKm };
@@ -757,6 +870,10 @@ export interface RouteAnalysis {
   needsStop: boolean;
   arrivalLabel: string;
   tourStops: RouteStation[];
+  /** Fuel needed for the whole trip at the configured consumption */
+  tripLitres: number | null;
+  /** Trip fuel cost at the recommended stop's price (fallback: cheapest on route) */
+  tripCost: number | null;
 }
 
 /** Everything the route ribbon needs, computed from real data */
@@ -809,6 +926,19 @@ export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
 
   const tourStops = stops.filter((s) => tour[s.id]);
 
+  // Trip fuel volume + cost, from the configured average consumption
+  let tripLitres: number | null = null;
+  let tripCost: number | null = null;
+  if (route) {
+    tripLitres = (route.distanceKm * app.conso) / 100;
+    const refPrice = reco
+      ? priceOf(reco)
+      : withPrice.length
+        ? Math.min(...withPrice.map(priceOf))
+        : Infinity;
+    if (isFinite(refPrice)) tripCost = tripLitres * refPrice;
+  }
+
   let arrivalLabel = '';
   if (route) {
     const base = route.durationMin;
@@ -834,5 +964,7 @@ export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
     needsStop,
     arrivalLabel,
     tourStops,
+    tripLitres,
+    tripCost,
   };
 }

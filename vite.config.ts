@@ -74,6 +74,7 @@ const API_UPSTREAMS: Record<string, string> = {
   gouv: 'https://data.economie.gouv.fr',
   ban: 'https://api-adresse.data.gouv.fr',
   osrm: 'https://router.project-osrm.org',
+  valhalla: 'https://valhalla1.openstreetmap.de',
 }
 
 function fetchJson(url: string): Promise<{ status: number; body: string }> {
@@ -98,7 +99,7 @@ function fetchJson(url: string): Promise<{ status: number; body: string }> {
 }
 
 function apiHandler(req: IncomingMessage, res: ServerResponse): void {
-  const m = (req.url ?? '').match(/^\/(gouv|ban|osrm)(\/.*)$/)
+  const m = (req.url ?? '').match(/^\/(gouv|ban|osrm|valhalla)(\/.*)$/)
   if (!m) {
     res.statusCode = 404
     res.end()

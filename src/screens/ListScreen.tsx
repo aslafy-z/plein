@@ -2,7 +2,7 @@ import { C, mono } from '../theme';
 import { fmtPrice, distLabel, plural } from '../lib/format';
 import { openStatus } from '../lib/hours';
 import Freshness from '../components/Freshness';
-import { MAIN_FUELS, FUEL_LABELS } from '../data/types';
+import { ALL_FUELS, FUEL_LABELS } from '../data/types';
 import {
   useApp,
   selectSorted,
@@ -50,23 +50,24 @@ export default function ListScreen() {
             padding: 4,
             marginTop: 14,
             border: `1px solid ${C.border}`,
+            overflowX: 'auto',
           }}
         >
-          {MAIN_FUELS.map((f) => {
+          {ALL_FUELS.map((f) => {
             const active = f === fuel;
             return (
               <button
                 key={f}
                 onClick={() => app.setFuel(f)}
                 style={{
-                  flex: 1,
+                  flex: '1 0 auto',
+                  padding: '9px 12px',
                   textAlign: 'center',
                   background: active ? C.accent : 'transparent',
                   color: active ? C.onAccent : C.body,
-                  fontSize: 13.5,
+                  fontSize: 13,
                   fontWeight: 700,
                   borderRadius: 18,
-                  padding: '9px 0',
                   cursor: 'pointer',
                   whiteSpace: 'nowrap',
                 }}

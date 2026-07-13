@@ -206,6 +206,35 @@ export default function RouteSetup() {
         </div>
       </div>
 
+      {/* Route preferences */}
+      <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
+        {(
+          [
+            ['Éviter les autoroutes', app.avoidMotorway, app.setAvoidMotorway],
+            ['Éviter les péages', app.avoidToll, app.setAvoidToll],
+          ] as const
+        ).map(([label, on, set]) => (
+          <button
+            key={label}
+            onClick={() => set(!on)}
+            style={{
+              background: on ? C.accent : 'transparent',
+              color: on ? C.onAccent : C.body,
+              fontSize: 12.5,
+              fontWeight: 700,
+              padding: '8px 14px',
+              borderRadius: 16,
+              border: on ? `1px solid ${C.accent}` : '1px solid rgba(255,255,255,.15)',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {on ? '✓ ' : ''}
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* Info card */}
       <div
         style={{

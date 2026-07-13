@@ -1,6 +1,6 @@
 import { C, mono } from '../theme';
 import { ALL_FUELS, FUEL_LABELS, type DataSourceId } from '../data/types';
-import { useApp } from '../state/store';
+import { useApp, VEHICLE_PRESETS } from '../state/store';
 
 const SECTION_LABEL: React.CSSProperties = {
   fontSize: 12,
@@ -26,7 +26,9 @@ const SOURCES: { id: DataSourceId; title: string; sub: string }[] = [
 
 export default function Settings() {
   const app = useApp();
-  const { fuel, tank, alerts, bgloc, sourceId } = app;
+  const { fuel, vehicle, tank, conso, alerts, bgloc, sourceId } = app;
+  // Slider ranges follow the profile (a moto tank is far smaller than a car's)
+  const tankRange = vehicle === 'moto' ? { min: 5, max: 30, step: 1 } : { min: 30, max: 80, step: 5 };
 
   const toggles: { label: string; sub: string; on: boolean; set: (v: boolean) => void }[] = [
     {
@@ -67,6 +69,37 @@ export default function Settings() {
           }}
         >
           <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 10 }}>
+            Profil
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            {([['car', 'Voiture'], ['moto', 'Moto']] as const).map(([v, label]) => {
+              const active = vehicle === v;
+              return (
+                <button
+                  key={v}
+                  onClick={() => app.setVehicle(v)}
+                  style={{
+                    flex: 1,
+                    background: active ? C.accent : 'transparent',
+                    color: active ? C.onAccent : C.body,
+                    fontSize: 13.5,
+                    fontWeight: 700,
+                    padding: '10px 0',
+                    borderRadius: 16,
+                    border: active ? `1px solid ${C.accent}` : `1px solid ${C.border12}`,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: 11.5, color: C.faint, marginTop: -10, marginBottom: 14 }}>
+            changer de profil applique réservoir {VEHICLE_PRESETS[vehicle === 'car' ? 'moto' : 'car'].tank} L
+            · {VEHICLE_PRESETS[vehicle === 'car' ? 'moto' : 'car'].conso.toFixed(1).replace('.', ',')} L/100 km
+          </div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 10 }}>
             Carburant par défaut
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -99,15 +132,35 @@ export default function Settings() {
           </div>
           <input
             type="range"
-            min={30}
-            max={80}
-            step={5}
+            min={tankRange.min}
+            max={tankRange.max}
+            step={tankRange.step}
             value={tank}
             onChange={(e) => app.setTank(+e.target.value)}
             style={{ width: '100%', cursor: 'pointer' }}
           />
           <div style={{ fontSize: 11.5, color: C.faint, marginTop: 6 }}>
             sert au calcul des économies par plein
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', marginTop: 18, marginBottom: 6 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.ink, flex: 1 }}>
+              Consommation moyenne
+            </span>
+            <span style={{ font: mono(700, 15), color: C.accent }}>
+              {conso.toFixed(1).replace('.', ',')} L/100 km
+            </span>
+          </div>
+          <input
+            type="range"
+            min={3}
+            max={12}
+            step={0.5}
+            value={conso}
+            onChange={(e) => app.setConso(+e.target.value)}
+            style={{ width: '100%', cursor: 'pointer' }}
+          />
+          <div style={{ fontSize: 11.5, color: C.faint, marginTop: 6 }}>
+            sert au calcul de l'autonomie et du coût carburant du trajet
           </div>
         </div>
       </div>

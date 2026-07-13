@@ -415,6 +415,15 @@ export default function RouteRibbon() {
             <span>
               {FUEL_LABELS[fuel]} · réservoir {tank} L
             </span>
+            {analysis.tripCost != null && analysis.tripLitres != null && (
+              <>
+                <span>·</span>
+                <span>
+                  ≈ {Math.round(analysis.tripLitres)} L · {fmtPrice(analysis.tripCost)} € de
+                  carburant
+                </span>
+              </>
+            )}
           </div>
         )}
         <div

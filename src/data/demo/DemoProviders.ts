@@ -6,6 +6,7 @@ import type {
   GeocodeProvider,
   GeocodeResult,
   Route,
+  RouteOptions,
   RouteProvider,
   SourceCapabilities,
   Station,
@@ -138,13 +139,15 @@ export class DemoGeocodeProvider implements GeocodeProvider {
 
 // ── Route ────────────────────────────────────────────────────────────────────
 export class DemoRouteProvider implements RouteProvider {
-  async getRoute(from: GeoPoint, to: GeoPoint): Promise<Route> {
+  async getRoute(from: GeoPoint, to: GeoPoint, options: RouteOptions = {}): Promise<Route> {
     await delay(250);
     const steps = 80;
     const polyline: GeoPoint[] = [];
     for (let i = 0; i <= steps; i++) polyline.push(lerpPoint(from, to, i / steps));
     const distanceKm = haversineKm(from, to) * 1.25;
-    const durationMin = (distanceKm / 110) * 60 + 15;
+    // Avoiding motorways → slower average speed in the fictional model
+    const avgKmh = options.avoidMotorway ? 75 : 110;
+    const durationMin = (distanceKm / avgKmh) * 60 + 15;
     return { distanceKm, durationMin, polyline };
   }
 }

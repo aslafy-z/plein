@@ -2,7 +2,7 @@
 import type { DataSourceId, ProviderBundle } from './types';
 import { GouvStationsProvider } from './gouv/GouvStationsProvider';
 import { BanGeocodeProvider } from './gouv/BanGeocodeProvider';
-import { OsrmRouteProvider } from './gouv/OsrmRouteProvider';
+import { RealRouteProvider } from './gouv/OsrmRouteProvider';
 import {
   DemoGeocodeProvider,
   DemoRouteProvider,
@@ -16,7 +16,7 @@ function createBundle(id: DataSourceId): ProviderBundle {
     return {
       stations: new GouvStationsProvider(),
       geocode: new BanGeocodeProvider(),
-      route: new OsrmRouteProvider(),
+      route: new RealRouteProvider(),
     };
   }
   return {

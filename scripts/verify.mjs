@@ -54,11 +54,14 @@ async function run(label, contextOpts, { demo = true } = {}) {
   ok(`${label}: cheapest bottom sheet`, cheapSheet);
   await shot('02-map');
 
-  // fuel cycle chip
+  // fuel cycle chip — now cycles all six fuels (incl. SP98/SP95)
   await page.getByText('Gazole ↻').click();
   ok(`${label}: fuel cycled to SP95-E10`, await page.getByText('SP95-E10 ↻').isVisible());
-  await page.getByText('SP95-E10 ↻').click();
-  await page.getByText('E85 ↻').click(); // back to Gazole
+  for (const f of ['SP95-E10', 'SP98', 'SP95', 'E85', 'GPLc']) {
+    await page.getByText(`${f} ↻`).click();
+    await page.waitForTimeout(120);
+  }
+  ok(`${label}: full fuel cycle returns to Gazole`, await page.getByText('Gazole ↻').isVisible());
 
   // ── Filters ──
   await page.getByText(/^Filtres · \d+$/).click();
@@ -100,6 +103,7 @@ async function run(label, contextOpts, { demo = true } = {}) {
   await page.waitForTimeout(300);
   ok(`${label}: route setup`, await page.getByText('Comparez les prix le long de votre trajet').isVisible());
   ok(`${label}: suggestions until real history`, await page.getByText('Suggestions').isVisible());
+  ok(`${label}: avoid motorway/toll toggles`, await page.getByText('Éviter les péages').isVisible());
   await shot('06-route-setup');
   await page.getByText('Bordeaux centre').click(); // suggestion
   await page.waitForTimeout(200);
@@ -112,6 +116,10 @@ async function run(label, contextOpts, { demo = true } = {}) {
   ok(
     `${label}: route map with corridor pins`,
     await page.locator('[aria-label="Carte du trajet"]').isVisible().catch(() => false),
+  );
+  ok(
+    `${label}: trip fuel cost from consumption`,
+    await page.getByText(/de carburant/).isVisible().catch(() => false),
   );
   await shot('07-route-ribbon');
   if (ribbonOk) {
@@ -139,6 +147,8 @@ async function run(label, contextOpts, { demo = true } = {}) {
   await page.getByText('Réglages', { exact: true }).click();
   await page.waitForTimeout(300);
   ok(`${label}: settings`, await page.getByText('Carburant par défaut').isVisible());
+  ok(`${label}: vehicle profiles (moto)`, await page.getByText('Moto', { exact: true }).isVisible());
+  ok(`${label}: consumption setting`, await page.getByText('Consommation moyenne').isVisible());
   ok(`${label}: source selector`, await page.getByText('prix-carburants.gouv.fr').isVisible());
   await shot('10-settings');
 
@@ -148,6 +158,16 @@ async function run(label, contextOpts, { demo = true } = {}) {
   await page.getByText('Liste', { exact: true }).click();
   await page.waitForTimeout(300);
   ok(`${label}: hero shows 80 L`, await page.getByText('sur un plein de 80 L').isVisible());
+
+  // ── Browser back navigates the app instead of leaving it ──
+  await page.goBack();
+  await page.waitForTimeout(400);
+  ok(
+    `${label}: browser back returns to previous screen`,
+    await page.getByText('Carburant par défaut').isVisible().catch(() => false),
+  );
+  await page.goForward();
+  await page.waitForTimeout(300);
 
   // ── Auto search on move: pan the map away → stations of the new area load ──
   await page.getByText('Carte', { exact: true }).click();

@@ -108,8 +108,16 @@ export interface Route {
   polyline: GeoPoint[];
 }
 
+export type VehicleId = 'car' | 'moto';
+
+export interface RouteOptions {
+  avoidMotorway?: boolean;
+  avoidToll?: boolean;
+  vehicle?: VehicleId;
+}
+
 export interface RouteProvider {
-  getRoute(from: GeoPoint, to: GeoPoint): Promise<Route>;
+  getRoute(from: GeoPoint, to: GeoPoint, options?: RouteOptions): Promise<Route>;
 }
 
 // ── Source selection ─────────────────────────────────────────────────────────

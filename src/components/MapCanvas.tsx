@@ -49,7 +49,8 @@ export default function MapCanvas() {
       const c = map.getCenter();
       const cur = appRef.current;
       const drift = haversineKm({ lat: c.lat, lng: c.lng }, cur.searchPos);
-      if (drift <= Math.max(1, cur.radius * 0.25)) return;
+      // Track the screen center closely so shown pumps match the visible area
+      if (drift <= Math.max(0.4, cur.radius * 0.1)) return;
       clearTimeout(moveTimer.current);
       moveTimer.current = setTimeout(() => {
         keepViewRef.current = true; // don't yank the map back after reload
@@ -86,6 +87,17 @@ export default function MapCanvas() {
     if (!map || !layer) return;
 
     layer.clearLayers();
+
+    // Materialize the searched zone: a faint circle of `radius` km around searchPos
+    L.circle([app.searchPos.lat, app.searchPos.lng], {
+      radius: app.radius * 1000,
+      color: '#3ddc84',
+      weight: 1,
+      opacity: 0.35,
+      fillColor: '#3ddc84',
+      fillOpacity: 0.04,
+      interactive: false,
+    }).addTo(layer);
 
     const visible = selectVisible(app);
     const cheapest = selectCheapest(app);
