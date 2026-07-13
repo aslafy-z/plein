@@ -1,16 +1,19 @@
 import { useEffect } from 'react';
 import { C, mono } from '../theme';
 import { ALL_FUELS, MAIN_FUELS, FUEL_LABELS, type FuelId } from '../data/types';
-import { useApp } from '../state/store';
+import { useApp, selectVisibleForFuel } from '../state/store';
 import { fmtPrice, distLabel, agoLabel } from '../lib/format';
 import { haversineKm } from '../lib/geo';
 
 export default function StationDetail() {
   const app = useApp();
 
-  const s =
-    app.stations.data.find((x) => x.id === app.detailId) ??
-    app.routeState.stations.find((x) => x.id === app.detailId);
+  const nearby = app.stations.data.find((x) => x.id === app.detailId);
+  const routeSt = app.routeState.stations.find((x) => x.id === app.detailId);
+  // Opened from the route ribbon (or only known along the route) → all
+  // comparisons are route-relative, not home-radius-relative.
+  const isRoute = routeSt != null && (app.prevScreen === 'route' || !nearby);
+  const s = isRoute ? routeSt : (nearby ?? routeSt);
 
   useEffect(() => {
     if (!s) app.back();
@@ -21,25 +24,32 @@ export default function StationDetail() {
 
   const distKm = haversineKm(app.userPos, { lat: s.lat, lng: s.lng });
   const driveMin = Math.max(1, Math.round(distKm * 2));
+  const placeChip = isRoute
+    ? `KM ${routeSt!.kmAlong} · ${routeSt!.detourMin === 0 ? 'sans détour' : `détour +${routeSt!.detourMin} min`}`
+    : `${distLabel(distKm)} · ${driveMin} min`;
 
   // Fuels to display: any priced fuel + always the main fuels
   const shownFuels = ALL_FUELS.filter((f) => s.prices[f] != null || MAIN_FUELS.includes(f));
 
-  const minInRadius = (f: FuelId): number | null => {
-    const priced = app.stations.data.filter(
-      (x) =>
-        haversineKm(app.userPos, { lat: x.lat, lng: x.lng }) <= app.radius && x.prices[f] != null,
-    );
-    return priced.length ? Math.min(...priced.map((x) => x.prices[f]!.value)) : null;
+  // Comparison set per fuel: stations along the route, or the stations
+  // passing the current filters around the user — the SAME set the list
+  // and map derive their numbers from.
+  const comparables = (f: FuelId) =>
+    (isRoute ? app.routeState.stations : selectVisibleForFuel(app, f))
+      .filter((x) => x.prices[f] != null)
+      .map((x) => x.prices[f]!.value);
+
+  const minFor = (f: FuelId): number | null => {
+    const values = comparables(f);
+    return values.length ? Math.min(...values) : null;
   };
 
+  const scopeLow = isRoute ? '▼ le + bas du trajet' : '▼ le + bas dans le rayon';
+  const scopeSave = isRoute ? 'vs le + cher du trajet' : 'vs la plus chère dans le rayon';
+
   const maxForCurrentFuel = (() => {
-    const priced = app.stations.data.filter(
-      (x) =>
-        haversineKm(app.userPos, { lat: x.lat, lng: x.lng }) <= app.radius &&
-        x.prices[app.fuel] != null,
-    );
-    return priced.length ? Math.max(...priced.map((x) => x.prices[app.fuel]!.value)) : null;
+    const values = comparables(app.fuel);
+    return values.length ? Math.max(...values) : null;
   })();
 
   const cur = s.prices[app.fuel]?.value;
@@ -55,10 +65,15 @@ export default function StationDetail() {
       ? updatedTimes.reduce((a, b) => (new Date(a).getTime() >= new Date(b).getTime() ? a : b))
       : undefined;
 
+  const activeSource = isRoute
+    ? (app.routeState.fellBack ? 'demo' : app.sourceId)
+    : app.stations.activeSource;
   const footerText =
     s.confirmations != null
       ? `Mis à jour ${agoLabel(mostRecent)} · confirmé par ${s.confirmations} conducteurs`
-      : `Mis à jour ${agoLabel(mostRecent)} · source : prix-carburants.gouv.fr`;
+      : activeSource === 'gouv'
+        ? `Mis à jour ${agoLabel(mostRecent)} · source : prix-carburants.gouv.fr`
+        : `Mis à jour ${agoLabel(mostRecent)} · données de démonstration`;
 
   const thirdChip = s.brand ?? s.city;
 
@@ -140,7 +155,7 @@ export default function StationDetail() {
                 whiteSpace: 'nowrap',
               }}
             >
-              {distLabel(distKm)} · {driveMin} min
+              {placeChip}
             </span>
             <span
               style={{
@@ -170,13 +185,13 @@ export default function StationDetail() {
         >
           {shownFuels.map((f) => {
             const price = s.prices[f]?.value;
-            const min = minInRadius(f);
+            const min = minFor(f);
             let note = '';
             let noteColor: string = C.mut;
             if (price == null) {
               note = 'non distribué';
             } else if (min != null && price <= min + 0.0001) {
-              note = '▼ le + bas dans le rayon';
+              note = scopeLow;
               noteColor = C.accent;
             } else if (min != null) {
               note = `+${fmtPrice(price - min)} vs le + bas`;
@@ -268,7 +283,7 @@ export default function StationDetail() {
             {dSaveStr} €
           </div>
           <div style={{ color: '#aab2b7', fontSize: 12.5, lineHeight: 1.45 }}>
-            sur un plein de {app.tank} L vs la plus chère dans le rayon
+            sur un plein de {app.tank} L {scopeSave}
           </div>
         </div>
 

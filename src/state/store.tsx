@@ -109,6 +109,8 @@ export const DEFAULT_RECENTS: PersistedSettings['recents'] = [
 export interface AppStore {
   // navigation
   screen: Screen;
+  /** Screen the station detail was opened from (route context vs nearby context) */
+  prevScreen: Screen;
   go(screen: Screen): void;
   back(): void;
   openStation(id: string): void;
@@ -368,7 +370,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const cycleFuel = useCallback(() => {
     setFuelState((cur) => {
-      const order: FuelId[] = ['gazole', 'e10', 'e85'];
+      // Quick-cycle the three main fuels; a non-main fuel (SP98, GPLc…)
+      // stays in the loop instead of being silently dropped.
+      const main: FuelId[] = ['gazole', 'e10', 'e85'];
+      const order: FuelId[] = main.includes(cur) ? main : [...main, cur];
       const idx = order.indexOf(cur);
       const next = order[(idx + 1) % order.length];
       savePersisted({ fuel: next });
@@ -402,11 +407,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const resetFilters = useCallback(() => {
-    setRadiusState(5);
+    setRadius(5);
     setBrandCats({ gs: true, ind: true, pet: true });
     setServiceTags({});
-    setFuelState('gazole');
-  }, []);
+    setFuel('gazole');
+  }, [setFuel, setRadius]);
 
   const searchPlaces = useCallback(
     (q: string) => getProviders(sourceId).geocode.search(q),
@@ -498,6 +503,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const store = useMemo<AppStore>(
     () => ({
       screen,
+      prevScreen,
       go,
       back,
       openStation,
@@ -552,7 +558,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       finishOnboarding,
     }),
     [
-      screen, go, back, openStation, fuel, setFuel, cycleFuel, sort, radius, setRadius,
+      screen, prevScreen, go, back, openStation, fuel, setFuel, cycleFuel, sort, radius, setRadius,
       brandCats, serviceTags, filtersOpen, resetFilters, userPos, geoStatus,
       requestGeolocation, stations, loadStations, fromText, toText, fromPoint, toPoint,
       setFrom, setTo, searchPlaces, recents, routeReady, startRoute, editRoute,
@@ -573,9 +579,9 @@ export function useApp(): AppStore {
 
 // ── Derived selectors (pure — shared by every screen) ────────────────────────
 
-/** Stations passing the current filters, enriched with distance, for the current fuel */
-export function selectVisible(app: AppStore): NearbyStation[] {
-  const { stations, userPos, radius, brandCats, serviceTags, fuel } = app;
+/** Stations passing the current filters, enriched with distance, for a given fuel */
+export function selectVisibleForFuel(app: AppStore, fuel: FuelId): NearbyStation[] {
+  const { stations, userPos, radius, brandCats, serviceTags } = app;
   const wantedTags = (Object.keys(serviceTags) as ServiceTag[]).filter((t) => serviceTags[t]);
   const brandFilterActive = app.stations.data.some((s) => s.cat !== 'unknown');
   return stations.data
@@ -590,6 +596,11 @@ export function selectVisible(app: AppStore): NearbyStation[] {
         (!brandFilterActive || s.cat === 'unknown' || brandCats[s.cat as 'gs' | 'ind' | 'pet']) &&
         wantedTags.every((t) => s.tags.includes(t)),
     );
+}
+
+/** Stations passing the current filters, for the currently selected fuel */
+export function selectVisible(app: AppStore): NearbyStation[] {
+  return selectVisibleForFuel(app, app.fuel);
 }
 
 export function selectByPrice(app: AppStore): NearbyStation[] {
@@ -696,7 +707,7 @@ export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
       const n = tourStops.length;
       arrivalLabel = `avec ${n} arrêt${n > 1 ? 's' : ''} : ${arr.getHours()} h ${String(arr.getMinutes()).padStart(2, '0')} (+${extra} min pleins compris)`;
     } else if (needsStop) {
-      arrivalLabel = `sans arrêt : autonomie insuffisante (limite ≈ km ${limitKm})`;
+      arrivalLabel = `sans arrêt : autonomie insuffisante (limite ≈ KM ${limitKm})`;
     } else {
       const arr = new Date(Date.now() + base * 60000);
       arrivalLabel = `arrivée estimée ${arr.getHours()} h ${String(arr.getMinutes()).padStart(2, '0')} · autonomie OK`;
