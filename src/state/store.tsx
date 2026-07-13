@@ -233,13 +233,43 @@ export interface AppStore {
   finishOnboarding(withGeoloc: boolean): void;
 }
 
+// ── URL routing (tabs survive a refresh) ────────────────────────────────────
+function pathFor(screen: Screen, detailId: string | null): string {
+  switch (screen) {
+    case 'list':
+      return '/liste';
+    case 'routeSetup':
+    case 'route':
+      return '/trajet';
+    case 'settings':
+      return '/reglages';
+    case 'detail':
+      return detailId ? `/station/${encodeURIComponent(detailId)}` : '/';
+    default:
+      return '/';
+  }
+}
+
+function navFromPath(path: string): { screen: Screen; detailId: string | null } {
+  if (path.startsWith('/liste')) return { screen: 'list', detailId: null };
+  if (path.startsWith('/trajet')) return { screen: 'routeSetup', detailId: null };
+  if (path.startsWith('/reglages')) return { screen: 'settings', detailId: null };
+  if (path.startsWith('/station/')) {
+    return { screen: 'detail', detailId: decodeURIComponent(path.slice('/station/'.length)) };
+  }
+  return { screen: 'map', detailId: null };
+}
+
 const Ctx = createContext<AppStore | null>(null);
 
 // ── Provider component ───────────────────────────────────────────────────────
 export function AppProvider({ children }: { children: ReactNode }) {
   const persisted = useRef(loadPersisted()).current;
 
-  const [screen, setScreen] = useState<Screen>(persisted.onboarded ? 'map' : 'onboarding');
+  const initialNav = navFromPath(window.location.pathname);
+  const [screen, setScreen] = useState<Screen>(
+    persisted.onboarded ? initialNav.screen : 'onboarding',
+  );
   const [prevScreen, setPrevScreen] = useState<Screen>('map');
   const [fuel, setFuelState] = useState<FuelId>(persisted.fuel ?? 'gazole');
   const [sort, setSort] = useState<SortMode>('prix');
@@ -249,7 +279,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [routeMode, setRouteMode] = useState<RouteMode>('compromis');
   const [tour, setTour] = useState<Record<string, boolean>>({});
-  const [detailId, setDetailId] = useState<string | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(
+    persisted.onboarded ? initialNav.detailId : null,
+  );
   const [fromText, setFromText] = useState(DEFAULT_FROM_LABEL);
   const [toText, setToText] = useState('');
   const [fromPoint, setFromPoint] = useState<GeoPoint | null>(null);
@@ -344,11 +376,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const st = e.state as
         | { plein?: boolean; screen?: Screen; detailId?: string | null; filtersOpen?: boolean }
         | null;
-      if (!st?.plein || !st.screen) return;
       popNavRef.current = true;
-      setScreen(st.screen);
-      setDetailId(st.detailId ?? null);
-      setFiltersOpen(!!st.filtersOpen);
+      if (st?.plein && st.screen) {
+        setScreen(st.screen);
+        setDetailId(st.detailId ?? null);
+        setFiltersOpen(!!st.filtersOpen);
+      } else {
+        const nav = navFromPath(window.location.pathname);
+        setScreen(nav.screen);
+        setDetailId(nav.detailId);
+        setFiltersOpen(false);
+      }
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
@@ -369,9 +407,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       !!cur.filtersOpen === filtersOpen
     )
       return;
+    const path = pathFor(screen, detailId);
     // First entry — and leaving onboarding must not be back-navigable
-    if (!cur?.plein || cameFrom === 'onboarding') window.history.replaceState(state, '');
-    else window.history.pushState(state, '');
+    if (!cur?.plein || cameFrom === 'onboarding') window.history.replaceState(state, '', path);
+    else window.history.pushState(state, '', path);
   }, [screen, detailId, filtersOpen]);
 
   // ── Stations near me (fetch at MAX radius, filter client-side) ─────────────

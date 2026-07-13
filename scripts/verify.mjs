@@ -30,8 +30,11 @@ async function run(label, contextOpts, { demo = true } = {}) {
   const shot = (name) =>
     page.screenshot({ path: `${OUT}/${label}-${name}.png`, fullPage: false });
 
-  // Fresh profile; optionally force demo source for deterministic offline runs
+  // Fresh profile on first load only (reloads must keep app state);
+  // optionally force demo source for deterministic offline runs
   await page.addInitScript((useDemo) => {
+    if (sessionStorage.getItem('verify-init')) return;
+    sessionStorage.setItem('verify-init', '1');
     localStorage.clear();
     if (useDemo)
       localStorage.setItem(
@@ -159,6 +162,18 @@ async function run(label, contextOpts, { demo = true } = {}) {
   await page.getByText('Liste', { exact: true }).click();
   await page.waitForTimeout(300);
   ok(`${label}: hero shows 80 L`, await page.getByText('sur un plein de 80 L').isVisible());
+
+  // ── Tabs are routed: refresh keeps the screen ──
+  await page.getByText('Réglages', { exact: true }).click();
+  await page.waitForTimeout(200);
+  await page.reload({ waitUntil: 'networkidle' });
+  ok(
+    `${label}: refresh stays on Réglages (/reglages)`,
+    (await page.getByText('Carburant par défaut').isVisible().catch(() => false)) &&
+      (await page.evaluate(() => location.pathname)) === '/reglages',
+  );
+  await page.getByText('Liste', { exact: true }).click();
+  await page.waitForTimeout(300);
 
   // ── Browser back navigates the app instead of leaving it ──
   await page.goBack();
