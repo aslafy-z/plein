@@ -50,7 +50,7 @@ export default function MapScreen() {
           }}
         >
           <button
-            onClick={() => app.go(app.routeReady ? 'route' : 'routeSetup')}
+            onClick={() => app.openRouteSearch()}
             style={{
               display: 'flex',
               alignItems: 'center',

@@ -13,8 +13,18 @@ export default function RouteSetup() {
   const [suggestions, setSuggestions] = useState<GeocodeResult[]>([]);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const reqId = useRef(0);
+  const toInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => () => clearTimeout(timer.current), []);
+
+  // « Où allez-vous ? » on the map focuses the destination (opens the keyboard)
+  useEffect(() => {
+    if (app.focusDestination) {
+      toInputRef.current?.focus();
+      app.consumeFocusDestination();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [app.focusDestination]);
 
   const runSearch = (text: string) => {
     clearTimeout(timer.current);
@@ -142,6 +152,7 @@ export default function RouteSetup() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0' }}>
           <div style={{ width: 12, height: 12, borderRadius: 3, background: C.warn, flexShrink: 0 }} />
           <input
+            ref={toInputRef}
             type="text"
             value={toText}
             placeholder="Destination"

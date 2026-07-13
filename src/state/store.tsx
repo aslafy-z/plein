@@ -188,6 +188,11 @@ export interface AppStore {
   routeReady: boolean;
   startRoute(): void;
   editRoute(): void;
+  /** « Où allez-vous ? » → route setup with the destination field focused */
+  openRouteSearch(): void;
+  /** true while the destination field should grab focus (open the keyboard) */
+  focusDestination: boolean;
+  consumeFocusDestination(): void;
   routeMode: RouteMode;
   setRouteMode(m: RouteMode): void;
   avoidMotorway: boolean;
@@ -746,6 +751,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const editRoute = useCallback(() => setScreen('routeSetup'), []);
 
+  const [focusDestination, setFocusDestination] = useState(false);
+  const openRouteSearch = useCallback(() => {
+    setFocusDestination(true);
+    setScreen('routeSetup');
+  }, []);
+  const consumeFocusDestination = useCallback(() => setFocusDestination(false), []);
+
   const toggleTour = useCallback((id: string) => {
     setTour((t) => ({ ...t, [id]: !t[id] }));
   }, []);
@@ -830,6 +842,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       routeReady,
       startRoute: () => void startRoute(),
       editRoute,
+      openRouteSearch,
+      focusDestination,
+      consumeFocusDestination,
       routeMode,
       setRouteMode,
       avoidMotorway,
@@ -868,6 +883,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       requestGeolocation, searchPos, setSearchArea, resetSearchToUser,
       stations, loadStations, fromText, toText, fromPoint, toPoint,
       setFrom, setTo, searchPlaces, recents, hasTripHistory, routeReady, startRoute, editRoute,
+      openRouteSearch, focusDestination, consumeFocusDestination,
       routeMode, routeState, tour, toggleTour, vehicle, setVehicle, tank, setTank, conso, setConso,
       avoidMotorway, avoidToll, setAvoidMotorway, setAvoidToll, setFiltersOpenNav, alerts, setAlerts,
       bgloc, setBgloc, sourceId, setSourceId, detailId, toast, showToast,
