@@ -150,7 +150,39 @@ export default function MapScreen() {
                   textAlign: 'left',
                 }}
               >
-                Position par défaut : Lyon — activer la localisation
+                {app.hasKnownPos
+                  ? 'Dernière position connue — réactiver la localisation'
+                  : 'Position par défaut : Lyon — activer la localisation'}
+              </button>
+            </div>
+          )}
+
+          {/* PWA install banner → native Android dialog */}
+          {app.installBannerVisible && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button
+                onClick={() => app.promptInstall()}
+                style={{
+                  ...chipBase,
+                  fontWeight: 700,
+                  background: C.accent,
+                  color: C.onAccent,
+                }}
+              >
+                Installer l'application
+              </button>
+              <button
+                onClick={() => app.dismissInstallBanner()}
+                aria-label="Ne plus proposer l'installation"
+                style={{
+                  ...chipBase,
+                  fontWeight: 700,
+                  background: C.surface2,
+                  color: C.mut,
+                  border: `1px solid ${C.border09}`,
+                }}
+              >
+                ✕
               </button>
             </div>
           )}

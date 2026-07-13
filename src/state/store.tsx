@@ -26,6 +26,12 @@ import {
 } from '../data/types';
 import { getProviders } from '../data/providers';
 import { readStationsCache, writeStationsCache } from '../data/stationsCache';
+import {
+  installReady,
+  isStandalone,
+  promptInstall as nativeInstallPrompt,
+  subscribeInstall,
+} from '../lib/installPrompt';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 /** Lyon Confluence — default position when geolocation is unavailable */
@@ -95,6 +101,10 @@ interface PersistedSettings {
   sourceId: DataSourceId;
   onboarded: boolean;
   alerts: boolean;
+  /** Last position the app was centered on — restored on reload so the
+      station cache hits instantly instead of flashing Lyon/demo data */
+  lastPos: GeoPoint;
+  installDismissed: boolean;
   bgloc: boolean;
   recents: { label: string; sublabel: string; point: GeoPoint }[];
 }
@@ -152,6 +162,8 @@ export interface AppStore {
   // stations around me
   userPos: GeoPoint;
   geoStatus: 'pending' | 'granted' | 'denied' | 'unavailable';
+  /** true when a real position was known before (persisted across reloads) */
+  hasKnownPos: boolean;
   requestGeolocation(): void;
   /** Center of the stations search (follows userPos until the user searches elsewhere on the map) */
   searchPos: GeoPoint;
@@ -211,6 +223,12 @@ export interface AppStore {
   openInMaps(target: Station | RouteStation): void;
   openTourInMaps(): void;
 
+  // PWA install
+  installReady: boolean;
+  installBannerVisible: boolean;
+  promptInstall(): void;
+  dismissInstallBanner(): void;
+
   // onboarding
   finishOnboarding(withGeoloc: boolean): void;
 }
@@ -246,13 +264,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [bgloc, setBglocState] = useState<boolean>(persisted.bgloc ?? false);
   const [sourceId, setSourceIdState] = useState<DataSourceId>(persisted.sourceId ?? 'gouv');
   const [toast, setToast] = useState<string | null>(null);
-  const [userPos, setUserPos] = useState<GeoPoint>(DEFAULT_POS);
+  // Start from the last known position so the per-area cache hits instantly
+  const initialPos = persisted.lastPos ?? DEFAULT_POS;
+  const [userPos, setUserPos] = useState<GeoPoint>(initialPos);
   const [geoStatus, setGeoStatus] = useState<AppStore['geoStatus']>('pending');
   // Search area: follows the user's position until they search elsewhere on the map
-  const [searchPos, setSearchPos] = useState<GeoPoint>(DEFAULT_POS);
+  const [searchPos, setSearchPos] = useState<GeoPoint>(initialPos);
   const searchMovedRef = useRef(false);
   const [recents, setRecents] = useState(persisted.recents ?? DEFAULT_RECENTS);
   const [hasTripHistory, setHasTripHistory] = useState(persisted.recents != null);
+  const [canInstall, setCanInstall] = useState(installReady());
+  const [installDismissed, setInstallDismissed] = useState(persisted.installDismissed ?? false);
   const [stations, setStations] = useState<StationsState>({
     status: 'idle',
     data: [],
@@ -286,15 +308,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setUserPos(p);
         if (!searchMovedRef.current) setSearchPos(p);
         setGeoStatus('granted');
+        savePersisted({ lastPos: p });
       },
       () => setGeoStatus('denied'),
-      { timeout: 8000, maximumAge: 120000 },
+      { timeout: 10000, maximumAge: 300000 },
     );
   }, []);
 
   const setSearchArea = useCallback((p: GeoPoint) => {
     searchMovedRef.current = true;
     setSearchPos(p);
+    savePersisted({ lastPos: p });
   }, []);
 
   const resetSearchToUser = useCallback(() => {
@@ -422,6 +446,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void loadStations();
   }, [loadStations]);
+
+  // ── PWA install ────────────────────────────────────────────────────────────
+  useEffect(() => subscribeInstall(() => setCanInstall(installReady())), []);
+
+  const promptInstall = useCallback(() => {
+    void nativeInstallPrompt().then((outcome) => {
+      if (outcome === 'dismissed') {
+        setInstallDismissed(true);
+        savePersisted({ installDismissed: true });
+      }
+    });
+  }, []);
+
+  const dismissInstallBanner = useCallback(() => {
+    setInstallDismissed(true);
+    savePersisted({ installDismissed: true });
+  }, []);
 
   // ── Route computation ──────────────────────────────────────────────────────
   /** Record a real trip in the « Récents » history (replaces the default suggestions) */
@@ -730,6 +771,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       resetFilters,
       userPos,
       geoStatus,
+      hasKnownPos: persisted.lastPos != null || geoStatus === 'granted',
       requestGeolocation,
       searchPos,
       searchedAway: haversineKm(searchPos, userPos) > 0.5,
@@ -771,6 +813,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       sourceId,
       setSourceId,
       detailId,
+      installReady: canInstall && !isStandalone(),
+      installBannerVisible: canInstall && !isStandalone() && !installDismissed,
+      promptInstall,
+      dismissInstallBanner,
       toast,
       notify: showToast,
       openInMaps,
@@ -786,6 +832,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       routeMode, routeState, tour, toggleTour, vehicle, setVehicle, tank, setTank, conso, setConso,
       avoidMotorway, avoidToll, setAvoidMotorway, setAvoidToll, setFiltersOpenNav, alerts, setAlerts,
       bgloc, setBgloc, sourceId, setSourceId, detailId, toast, showToast,
+      canInstall, installDismissed, promptInstall, dismissInstallBanner, persisted.lastPos,
       openInMaps, openTourInMaps, finishOnboarding,
     ],
   );

@@ -50,7 +50,13 @@ Tout passe par trois interfaces (`src/data/types.ts`) :
   zones cherchées sont conservées en localStorage ; l'app affiche le cache
   instantanément et rafraîchit en arrière-plan (flèche qui tourne pendant la
   mise à jour, pictogramme horloge ambre quand les prix affichés datent de
-  plus de 10 min — p. ex. hors-ligne).
+  plus de 10 min — p. ex. hors-ligne). La **dernière position** est également
+  persistée : au rechargement, l'app repart de là (cache instantané, pas de
+  flash Lyon/démo en attendant la géolocalisation).
+- **PWA installable** : manifest + service worker minimal (`public/sw.js`,
+  assets en cache-first, navigation en network-first) ; l'app capte
+  `beforeinstallprompt` et propose le dialogue d'installation natif Android
+  (bannière sur la carte + entrée dans Réglages → Application).
 - Si la source réelle échoue sans cache disponible, bascule automatique sur la
   démo avec bannière visible ; avec cache, les prix en cache restent affichés.
 - Le flux gouvernemental ne fournit **ni enseigne ni nom de station** : les providers

@@ -313,6 +313,44 @@ export default function Settings() {
         </div>
       </div>
 
+      {/* Application */}
+      {app.installReady && (
+        <div style={{ marginTop: 18 }}>
+          <div style={SECTION_LABEL}>Application</div>
+          <div
+            style={{
+              background: C.surface,
+              border: `1px solid ${C.border}`,
+              borderRadius: 16,
+              overflow: 'hidden',
+            }}
+          >
+            <button
+              onClick={() => app.promptInstall()}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: '14px 16px',
+                cursor: 'pointer',
+                width: '100%',
+                textAlign: 'left',
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>
+                  Installer l'application
+                </div>
+                <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>
+                  sur l'écran d'accueil, en plein écran
+                </div>
+              </div>
+              <span style={{ color: C.accent, fontWeight: 700 }}>›</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Footer — credits, kept compact */}
       <div
         style={{
