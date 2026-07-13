@@ -7,6 +7,7 @@ html,
 body,
 #root {
   height: 100%;
+  overflow: hidden;
 }
 
 body {
@@ -64,6 +65,9 @@ button {
    Desktop (≥720px): centered phone-like column on the dark backdrop. */
 .app-viewport {
   height: 100dvh;
+  /* Kept in sync from JS: Android PWAs can resume with a stale dvh, leaving
+     the tab bar below the fold (src/lib/viewport.ts) */
+  height: var(--app-height, 100dvh);
   display: flex;
   align-items: stretch;
   justify-content: center;

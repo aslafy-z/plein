@@ -246,6 +246,38 @@ export default function RouteSetup() {
         ))}
       </div>
 
+      {/* Departure tank level — drives the autonomy line on the ribbon */}
+      <div
+        style={{
+          background: C.surface,
+          border: `1px solid ${C.border08}`,
+          borderRadius: 14,
+          padding: '12px 16px',
+          marginTop: 12,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 6 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: C.ink, flex: 1 }}>
+            Réservoir au départ
+          </span>
+          <span style={{ fontFamily: "'Spline Sans Mono', monospace", fontWeight: 700, fontSize: 14, color: C.accent }}>
+            {app.startTankPct} %
+          </span>
+        </div>
+        <input
+          type="range"
+          min={10}
+          max={100}
+          step={5}
+          value={app.startTankPct}
+          onChange={(e) => app.setStartTankPct(+e.target.value)}
+          style={{ width: '100%', cursor: 'pointer' }}
+        />
+        <div style={{ fontSize: 11.5, color: C.faint, marginTop: 4 }}>
+          sert au calcul de l'autonomie et de la limite « où s'arrêter »
+        </div>
+      </div>
+
       {/* Info card */}
       <div
         style={{

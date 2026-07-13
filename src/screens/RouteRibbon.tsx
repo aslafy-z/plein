@@ -300,7 +300,7 @@ export default function RouteRibbon() {
           </div>
           <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>Départ · {fromText}</div>
           <div style={{ fontSize: 12, color: C.mut, marginTop: 1 }}>
-            Réservoir 70 % · autonomie ≈ {analysis.autonomyKm} km
+            Réservoir {app.startTankPct} % · autonomie ≈ {analysis.autonomyKm} km
           </div>
         </div>
 

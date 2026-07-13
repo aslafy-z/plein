@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import 'leaflet/dist/leaflet.css';
 import './styles.css';
 import './lib/installPrompt'; // capture beforeinstallprompt as early as possible
+import './lib/viewport'; // keep --app-height in sync (Android PWA resume)
 import App from './App';
 import { AppProvider } from './state/store';
 

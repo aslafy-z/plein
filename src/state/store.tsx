@@ -47,8 +47,8 @@ export const VEHICLE_PRESETS: Record<VehicleId, { tank: number; conso: number }>
   moto: { tank: 15, conso: 5 },
 };
 const DEFAULT_CONSO = VEHICLE_PRESETS.car.conso;
-/** Narrative: you leave with ~70 % tank */
-const START_TANK_PCT = 0.7;
+/** Default departure tank level (%) — adjustable on the route setup */
+const DEFAULT_START_TANK_PCT = 70;
 /** € value of one minute of detour, for the « compromis » strategy */
 const EUR_PER_DETOUR_MIN = 0.35;
 /** Minutes spent actually refuelling at a stop */
@@ -97,6 +97,7 @@ interface PersistedSettings {
   conso: number;
   avoidMotorway: boolean;
   avoidToll: boolean;
+  startTankPct: number;
   radius: number;
   sourceId: DataSourceId;
   onboarded: boolean;
@@ -199,6 +200,9 @@ export interface AppStore {
   avoidToll: boolean;
   setAvoidMotorway(v: boolean): void;
   setAvoidToll(v: boolean): void;
+  /** Tank level at departure (%), drives the autonomy math */
+  startTankPct: number;
+  setStartTankPct(v: number): void;
   routeState: RouteState;
   tour: Record<string, boolean>;
   toggleTour(id: string): void;
@@ -297,6 +301,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [conso, setConsoState] = useState<number>(persisted.conso ?? DEFAULT_CONSO);
   const [avoidMotorway, setAvoidMotorwayState] = useState<boolean>(persisted.avoidMotorway ?? false);
   const [avoidToll, setAvoidTollState] = useState<boolean>(persisted.avoidToll ?? false);
+  const [startTankPct, setStartTankPctState] = useState<number>(
+    persisted.startTankPct ?? DEFAULT_START_TANK_PCT,
+  );
   const [alerts, setAlertsState] = useState<boolean>(persisted.alerts ?? true);
   const [bgloc, setBglocState] = useState<boolean>(persisted.bgloc ?? false);
   const [sourceId, setSourceIdState] = useState<DataSourceId>(persisted.sourceId ?? 'gouv');
@@ -671,6 +678,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     savePersisted({ avoidToll: v });
   }, []);
 
+  const setStartTankPct = useCallback((v: number) => {
+    setStartTankPctState(v);
+    savePersisted({ startTankPct: v });
+  }, []);
+
   const setAlerts = useCallback((v: boolean) => {
     setAlertsState(v);
     savePersisted({ alerts: v });
@@ -851,6 +863,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       avoidToll,
       setAvoidMotorway,
       setAvoidToll,
+      startTankPct,
+      setStartTankPct,
       routeState,
       tour,
       toggleTour,
@@ -885,7 +899,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setFrom, setTo, searchPlaces, recents, hasTripHistory, routeReady, startRoute, editRoute,
       openRouteSearch, focusDestination, consumeFocusDestination,
       routeMode, routeState, tour, toggleTour, vehicle, setVehicle, tank, setTank, conso, setConso,
-      avoidMotorway, avoidToll, setAvoidMotorway, setAvoidToll, setFiltersOpenNav, alerts, setAlerts,
+      avoidMotorway, avoidToll, setAvoidMotorway, setAvoidToll, startTankPct, setStartTankPct,
+      setFiltersOpenNav, alerts, setAlerts,
       bgloc, setBgloc, sourceId, setSourceId, detailId, toast, showToast,
       canInstall, installDismissed, promptInstall, dismissInstallBanner, persisted.lastPos,
       openInMaps, openTourInMaps, finishOnboarding,
@@ -957,7 +972,7 @@ export function selectPriceRange(app: AppStore): { min: number; max: number } | 
 
 /** Autonomy narrative for the route ribbon (depends on tank setting) */
 export function selectAutonomy(app: AppStore): { autonomyKm: number; limitKm: number } {
-  const autonomyKm = Math.round(((app.tank * START_TANK_PCT) / app.conso) * 100);
+  const autonomyKm = Math.round(((app.tank * (app.startTankPct / 100)) / app.conso) * 100);
   // Keep a ~20 % reserve before the "you must stop" line
   const limitKm = Math.round((autonomyKm * 0.8) / 10) * 10;
   return { autonomyKm, limitKm };
