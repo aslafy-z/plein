@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react'
 import { execFile } from 'node:child_process'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
+import { cloudflare } from "@cloudflare/vite-plugin";
+
 // ── Dev/preview tile proxy ────────────────────────────────────────────────────
 // Sandboxed / firewalled environments often let the dev server reach the
 // internet (via HTTPS_PROXY) while the browser itself cannot. The app first
@@ -132,7 +134,7 @@ function devProxies(): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), devProxies()],
+  plugins: [react(), devProxies(), cloudflare()],
   server: {
     host: true,
     port: 5173,
