@@ -1,9 +1,60 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import L from 'leaflet';
 import { C, mono } from '../theme';
-import { ALL_FUELS, MAIN_FUELS, FUEL_LABELS, type FuelId } from '../data/types';
+import { ALL_FUELS, MAIN_FUELS, FUEL_LABELS, type FuelId, type Station } from '../data/types';
 import { useApp, selectVisibleForFuel } from '../state/store';
 import { fmtPrice, distLabel, agoLabel } from '../lib/format';
 import { haversineKm } from '../lib/geo';
+import { openStatus } from '../lib/hours';
+
+/** Static mini-map centred on the station (replaces the prototype's photo slot) */
+function StationMiniMap({ station }: { station: Station }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current) return;
+    const map = L.map(containerRef.current, {
+      zoomControl: false,
+      attributionControl: true,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      boxZoom: false,
+      keyboard: false,
+      touchZoom: false,
+    });
+    map.setView([station.lat, station.lng], 15);
+    L.tileLayer('https://{s}.basemap.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '© OpenStreetMap · © CARTO',
+      maxZoom: 19,
+    }).addTo(map);
+    const html =
+      `<div style="transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center">` +
+      `<div class="pin-bubble" style="background:#3ddc84;color:#08120c;` +
+      `font:700 13px 'Spline Sans Mono',monospace;padding:5px 9px;border:1px solid #3ddc84">` +
+      `${station.init}</div>` +
+      `<div class="pin-tip" style="border-top:6px solid #3ddc84"></div></div>`;
+    L.marker([station.lat, station.lng], {
+      icon: L.divIcon({ className: '', html, iconSize: [0, 0], iconAnchor: [0, 0] }),
+      interactive: false,
+    }).addTo(map);
+    mapRef.current = map;
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [station.id]);
+
+  return (
+    <div
+      ref={containerRef}
+      aria-label="Carte de la station"
+      style={{ position: 'absolute', inset: 0, background: C.mapBg }}
+    />
+  );
+}
 
 export default function StationDetail() {
   const app = useApp();
@@ -75,34 +126,17 @@ export default function StationDetail() {
         ? `Mis à jour ${agoLabel(mostRecent)} · source : prix-carburants.gouv.fr`
         : `Mis à jour ${agoLabel(mostRecent)} · données de démonstration`;
 
-  const thirdChip = s.brand ?? s.city;
+  // Address line already shows the city; the third chip adds brand or context
+  const thirdChip = s.brand ?? (s.highway ? 'Autoroute' : s.address ? null : s.city);
+  const status = openStatus(s.hours);
 
   return (
     <div
       style={{ position: 'absolute', inset: 0, background: '#101214', zIndex: 1200, overflow: 'auto' }}
     >
-      {/* Header photo placeholder */}
-      <div
-        style={{
-          position: 'relative',
-          height: 160,
-          background: 'repeating-linear-gradient(45deg,#1a1f22 0 10px,#15191c 10px 20px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <span
-          style={{
-            font: "500 11px ui-monospace,monospace",
-            color: C.faint,
-            background: '#101214cc',
-            padding: '4px 8px',
-            borderRadius: 6,
-          }}
-        >
-          photo de la station
-        </span>
+      {/* Header mini-map */}
+      <div style={{ position: 'relative', height: 160, background: C.mapBg }}>
+        <StationMiniMap station={s} />
         <button
           onClick={() => app.back()}
           aria-label="Retour"
@@ -119,6 +153,7 @@ export default function StationDetail() {
             justifyContent: 'center',
             color: C.ink,
             fontSize: 18,
+            zIndex: 1000,
           }}
         >
           ←
@@ -129,20 +164,28 @@ export default function StationDetail() {
         {/* Title + chips */}
         <div>
           <div style={{ color: C.ink, fontSize: 21, fontWeight: 700 }}>{s.name}</div>
+          {s.address && (
+            <div style={{ color: C.mut, fontSize: 13, marginTop: 4 }}>
+              {s.address}
+              {s.cp || s.city ? ` · ${[s.cp, s.city].filter(Boolean).join(' ')}` : ''}
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-            <span
-              style={{
-                background: C.accentSoft14,
-                color: C.accent,
-                fontSize: 12,
-                fontWeight: 700,
-                padding: '5px 10px',
-                borderRadius: 14,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              Ouvert
-            </span>
+            {status && (
+              <span
+                style={{
+                  background: status.open ? C.accentSoft14 : 'rgba(224,122,95,.14)',
+                  color: status.open ? C.accent : C.warn,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  padding: '5px 10px',
+                  borderRadius: 14,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {status.label}
+              </span>
+            )}
             <span
               style={{
                 background: C.surface2,
@@ -157,20 +200,22 @@ export default function StationDetail() {
             >
               {placeChip}
             </span>
-            <span
-              style={{
-                background: C.surface2,
-                color: C.body,
-                fontSize: 12,
-                fontWeight: 500,
-                padding: '5px 10px',
-                borderRadius: 14,
-                border: `1px solid ${C.border09}`,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {thirdChip}
-            </span>
+            {thirdChip && (
+              <span
+                style={{
+                  background: C.surface2,
+                  color: C.body,
+                  fontSize: 12,
+                  fontWeight: 500,
+                  padding: '5px 10px',
+                  borderRadius: 14,
+                  border: `1px solid ${C.border09}`,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {thirdChip}
+              </span>
+            )}
           </div>
         </div>
 

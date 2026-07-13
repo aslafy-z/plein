@@ -70,10 +70,17 @@ async function run(label, contextOpts, { demo = true } = {}) {
 
   // ── Detail from map sheet ──
   if (cheapSheet) {
-    await page.getByText(/^MàJ|· ouvert ·/).first().click().catch(() => {});
-    await page.waitForTimeout(400);
-    const detailVisible = await page.getByText('photo de la station').isVisible().catch(() => false);
-    ok(`${label}: station detail opens`, detailVisible);
+    await page.getByText(/MàJ /).first().click().catch(() => {});
+    await page.waitForTimeout(500);
+    const detailVisible = await page
+      .locator('[aria-label="Carte de la station"]')
+      .isVisible()
+      .catch(() => false);
+    ok(`${label}: station detail opens (mini-map)`, detailVisible);
+    ok(
+      `${label}: open status shown honestly`,
+      await page.getByText(/Ouvert|Fermé/).first().isVisible().catch(() => false),
+    );
     await shot('04-detail');
     if (detailVisible) await page.getByRole('button', { name: /retour|←/i }).first().click().catch(() => page.getByText('←').click());
     await page.waitForTimeout(300);
@@ -92,8 +99,9 @@ async function run(label, contextOpts, { demo = true } = {}) {
   await page.getByText('Trajet', { exact: true }).click();
   await page.waitForTimeout(300);
   ok(`${label}: route setup`, await page.getByText('Comparez les prix le long de votre trajet').isVisible());
+  ok(`${label}: suggestions until real history`, await page.getByText('Suggestions').isVisible());
   await shot('06-route-setup');
-  await page.getByText('Bordeaux centre').click(); // recent
+  await page.getByText('Bordeaux centre').click(); // suggestion
   await page.waitForTimeout(200);
   await page.getByText('Comparer les stations sur le trajet').click();
   await page.waitForTimeout(2500); // route + stations along
@@ -101,6 +109,10 @@ async function run(label, contextOpts, { demo = true } = {}) {
   // ── Route ribbon ──
   const ribbonOk = await page.getByText('Arrêt conseillé', { exact: false }).isVisible().catch(() => false);
   ok(`${label}: route ribbon reco`, ribbonOk);
+  ok(
+    `${label}: route map with corridor pins`,
+    await page.locator('[aria-label="Carte du trajet"]').isVisible().catch(() => false),
+  );
   await shot('07-route-ribbon');
   if (ribbonOk) {
     // strategy switch
@@ -117,6 +129,12 @@ async function run(label, contextOpts, { demo = true } = {}) {
     await shot('09-route-tour');
   }
 
+  // ── Real trip history ──
+  await page.getByText('Modifier').click();
+  await page.waitForTimeout(300);
+  ok(`${label}: trip saved to Récents`, await page.getByText(/fait le/).first().isVisible().catch(() => false));
+  ok(`${label}: Récents header once history exists`, await page.getByText('Récents', { exact: true }).isVisible().catch(() => false));
+
   // ── Settings ──
   await page.getByText('Réglages', { exact: true }).click();
   await page.waitForTimeout(300);
@@ -130,6 +148,34 @@ async function run(label, contextOpts, { demo = true } = {}) {
   await page.getByText('Liste', { exact: true }).click();
   await page.waitForTimeout(300);
   ok(`${label}: hero shows 80 L`, await page.getByText('sur un plein de 80 L').isVisible());
+
+  // ── Search this area: pan the map away, re-search around the new center ──
+  await page.getByText('Carte', { exact: true }).click();
+  await page.waitForTimeout(500);
+  const mapBox = await page.locator('.leaflet-container').first().boundingBox();
+  if (mapBox) {
+    const cx = mapBox.x + mapBox.width / 2;
+    const cy = mapBox.y + mapBox.height / 2;
+    for (let i = 0; i < 3; i++) {
+      await page.mouse.move(cx + 130, cy + 100);
+      await page.mouse.down();
+      await page.mouse.move(cx - 140, cy - 110, { steps: 8 });
+      await page.mouse.up();
+      await page.waitForTimeout(250);
+    }
+  }
+  const searchBtn = page.getByText('Rechercher dans cette zone');
+  const searchBtnVisible = await searchBtn.isVisible().catch(() => false);
+  ok(`${label}: search-this-area appears after panning`, searchBtnVisible);
+  if (searchBtnVisible) {
+    await searchBtn.click();
+    await page.waitForTimeout(1000);
+    ok(
+      `${label}: stations reload around the new area`,
+      await page.getByText('La moins chère dans cette zone').isVisible().catch(() => false),
+    );
+    await shot('11-search-area');
+  }
 
   ok(`${label}: no page errors`, errors.length === 0, errors.slice(0, 3).join(' | '));
   await browser.close();

@@ -1,5 +1,6 @@
 import { C, mono } from '../theme';
 import { fmtPrice, distLabel, plural } from '../lib/format';
+import { openStatus } from '../lib/hours';
 import { MAIN_FUELS, FUEL_LABELS } from '../data/types';
 import {
   useApp,
@@ -244,7 +245,9 @@ export default function ListScreen() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 15.5, fontWeight: 700, color: C.ink }}>{s.name}</div>
                     <div style={{ fontSize: 12.5, color: C.mut, marginTop: 1 }}>
-                      {distLabel(s.distKm)} · à {s.driveMin} min
+                      {[`${distLabel(s.distKm)} · à ${s.driveMin} min`, openStatus(s.hours)?.short]
+                        .filter(Boolean)
+                        .join(' · ')}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>

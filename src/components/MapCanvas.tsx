@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { C } from '../theme';
+import { haversineKm } from '../lib/geo';
 import { useApp, selectVisible, selectCheapest } from '../state/store';
 
 export default function MapCanvas() {
@@ -11,6 +12,11 @@ export default function MapCanvas() {
   const layerRef = useRef<L.LayerGroup | null>(null);
   const userInteractedRef = useRef(false);
   const programmaticUntil = useRef(0);
+  const [awayFromSearch, setAwayFromSearch] = useState(false);
+
+  // moveend closures read the latest search state through this ref
+  const searchRef = useRef({ pos: app.searchPos, radius: app.radius });
+  searchRef.current = { pos: app.searchPos, radius: app.radius };
 
   // ── Create the map once (StrictMode-safe: only if no map yet) ───────────────
   useEffect(() => {
@@ -20,7 +26,7 @@ export default function MapCanvas() {
       zoomControl: false,
       attributionControl: true,
     });
-    map.setView([app.userPos.lat, app.userPos.lng], 13);
+    map.setView([app.searchPos.lat, app.searchPos.lng], 13);
 
     L.tileLayer('https://{s}.basemap.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       attribution: '© OpenStreetMap · © CARTO',
@@ -35,6 +41,14 @@ export default function MapCanvas() {
     };
     map.on('dragstart', markInteract);
     map.on('zoomstart', markInteract);
+
+    // Offer « rechercher dans cette zone » once the view leaves the search area
+    map.on('moveend', () => {
+      const c = map.getCenter();
+      const { pos, radius } = searchRef.current;
+      const drift = haversineKm({ lat: c.lat, lng: c.lng }, pos);
+      setAwayFromSearch(drift > Math.max(1.5, radius * 0.5));
+    });
 
     const ro = new ResizeObserver(() => map.invalidateSize());
     ro.observe(containerRef.current);
@@ -51,7 +65,8 @@ export default function MapCanvas() {
   // ── Reset auto-fit when the frame of reference changes ──────────────────────
   useEffect(() => {
     userInteractedRef.current = false;
-  }, [app.userPos, app.radius]);
+    setAwayFromSearch(false);
+  }, [app.searchPos, app.radius]);
 
   // ── Rebuild markers + user dot, then auto-fit ───────────────────────────────
   useEffect(() => {
@@ -63,7 +78,7 @@ export default function MapCanvas() {
 
     const visible = selectVisible(app);
     const cheapest = selectCheapest(app);
-    const coords: L.LatLngExpression[] = [[app.userPos.lat, app.userPos.lng]];
+    const coords: L.LatLngExpression[] = [[app.searchPos.lat, app.searchPos.lng]];
 
     // User position dot
     const userHtml =
@@ -112,11 +127,99 @@ export default function MapCanvas() {
       if (coords.length > 1) {
         map.fitBounds(L.latLngBounds(coords), { padding: [40, 40], maxZoom: 15 });
       } else {
-        map.setView([app.userPos.lat, app.userPos.lng], 13, { animate: false });
+        map.setView([app.searchPos.lat, app.searchPos.lng], 13, { animate: false });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [app.stations.data, app.fuel, app.radius, app.brandCats, app.serviceTags, app.userPos]);
+  }, [app.stations.data, app.fuel, app.radius, app.brandCats, app.serviceTags, app.userPos, app.searchPos]);
 
-  return <div ref={containerRef} style={{ position: 'absolute', inset: 0, background: C.mapBg }} />;
+  const searchHere = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    const c = map.getCenter();
+    setAwayFromSearch(false);
+    app.setSearchArea({ lat: c.lat, lng: c.lng });
+  };
+
+  return (
+    <div style={{ position: 'absolute', inset: 0, background: C.mapBg }}>
+      <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
+
+      {/* « Search this area » — appears when the view drifts from the search center */}
+      {awayFromSearch && (
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 26,
+            display: 'flex',
+            justifyContent: 'center',
+            zIndex: 1000,
+            pointerEvents: 'none',
+          }}
+        >
+          <button
+            onClick={searchHere}
+            style={{
+              pointerEvents: 'auto',
+              background: C.surface2,
+              color: C.accent,
+              fontSize: 13.5,
+              fontWeight: 700,
+              padding: '10px 18px',
+              borderRadius: 22,
+              border: `1px solid ${C.accentBorderStrong}`,
+              boxShadow: '0 8px 24px rgba(0,0,0,.5)',
+            }}
+          >
+            Rechercher dans cette zone
+          </button>
+        </div>
+      )}
+
+      {/* Recenter on the user */}
+      <button
+        onClick={() => app.resetSearchToUser()}
+        aria-label="Recentrer sur ma position"
+        title="Ma position"
+        style={{
+          position: 'absolute',
+          right: 14,
+          bottom: 26,
+          width: 44,
+          height: 44,
+          borderRadius: '50%',
+          background: C.surface2,
+          border: `1px solid ${app.searchedAway ? C.accentBorderStrong : C.border09}`,
+          boxShadow: '0 6px 18px rgba(0,0,0,.45)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+        }}
+      >
+        <div
+          style={{
+            width: 16,
+            height: 16,
+            borderRadius: '50%',
+            border: `2.5px solid ${app.searchedAway ? C.accent : C.mut}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <div
+            style={{
+              width: 5,
+              height: 5,
+              borderRadius: '50%',
+              background: app.searchedAway ? C.accent : C.mut,
+            }}
+          />
+        </div>
+      </button>
+    </div>
+  );
 }

@@ -4,6 +4,7 @@
 // generous tolerance in DemoStationsProvider) rather than at exact city points.
 import type { GeoPoint } from '../../lib/geo';
 import { lerpPoint } from '../../lib/geo';
+import type { DayHours, StationHours } from '../../lib/hours';
 import type { BrandCat, FuelId, FuelPrice, ServiceTag, Station } from '../types';
 
 // ── Shared helpers ───────────────────────────────────────────────────────────
@@ -43,6 +44,29 @@ interface StationSpec {
   highway?: boolean;
   services: string[];
   prices: Partial<Record<FuelId, number>>;
+  /** Staffed opening range "HH:MM-HH:MM" (24/24 derived from services); Sunday closed when `sundayOff` */
+  open?: string;
+  sundayOff?: boolean;
+}
+
+function clockMin(s: string): number {
+  const [h, m] = s.split(':').map(Number);
+  return h * 60 + m;
+}
+
+/** 24/24 stations from their services; otherwise a staffed daily range */
+function hoursFromSpec(spec: StationSpec): StationHours | undefined {
+  const auto24 = /24.?\/?.?24|24.24/.test(spec.services.join(' '));
+  if (auto24) return { auto24: true, days: {} };
+  if (!spec.open) return undefined;
+  const [o, c] = spec.open.split('-');
+  const range = { open: clockMin(o), close: clockMin(c) };
+  const days: Partial<Record<number, DayHours>> = {};
+  for (let d = 1; d <= 7; d++) {
+    days[d] =
+      d === 7 && spec.sundayOff ? { closed: true, ranges: [] } : { closed: false, ranges: [range] };
+  }
+  return { auto24: false, days };
 }
 
 function build(spec: StationSpec): Station {
@@ -67,6 +91,7 @@ function build(spec: StationSpec): Station {
     tags: tagsFromServices(spec.services),
     services: spec.services,
     highway: spec.highway ?? false,
+    hours: hoursFromSpec(spec),
     confirmations: spec.conf,
   };
 }
@@ -87,13 +112,13 @@ export const DEMO_STATIONS: Station[] = [
     prices: { gazole: 1.69, e10: 1.79, e85: 0.86, sp95: 1.83, sp98: 1.89 },
   }),
   build({
-    id: 'ca', name: 'Carrefour Market', init: 'CA', brand: 'Carrefour', cat: 'gs',
+    id: 'ca', open: '07:00-21:30', name: 'Carrefour Market', init: 'CA', brand: 'Carrefour', cat: 'gs',
     lat: 45.7250, lng: 4.7950, address: '2 rue du Marché', city: 'Lyon', cp: '69007',
     h: 26, conf: 5, services: ['Boutique'],
     prices: { gazole: 1.74, e10: 1.84, e85: 0.88, sp95: 1.88, sp98: 1.94 },
   }),
   build({
-    id: 'mo', name: 'Garage Morel', init: 'GM', brand: 'Indépendant', cat: 'ind',
+    id: 'mo', open: '08:00-19:00', sundayOff: true, name: 'Garage Morel', init: 'GM', brand: 'Indépendant', cat: 'ind',
     lat: 45.7180, lng: 4.8400, address: '8 rue Morel', city: 'Bron', cp: '69500',
     h: 28, conf: 3, services: ['Gonflage'],
     prices: { gazole: 1.72, e10: 1.83 },
@@ -118,13 +143,13 @@ export const DEMO_STATIONS: Station[] = [
     prices: { gazole: 1.79, e10: 1.85, sp95: 1.89, sp98: 1.95, e85: 0.87, gplc: 1.02 },
   }),
   build({
-    id: 'le', name: 'E.Leclerc · Vénissieux', init: 'EL', brand: 'Leclerc', cat: 'gs',
+    id: 'le', open: '06:30-22:00', name: 'E.Leclerc · Vénissieux', init: 'EL', brand: 'Leclerc', cat: 'gs',
     lat: 45.6970, lng: 4.8850, address: '5 boulevard Ambroise-Croizat', city: 'Vénissieux', cp: '69200',
     h: 2, conf: 20, services: ['Lavage', 'Boutique', 'Gonflage'],
     prices: { gazole: 1.65, e10: 1.75, sp95: 1.79, sp98: 1.85, e85: 0.83, gplc: 0.99 },
   }),
   build({
-    id: 'au', name: 'Auchan · Caluire', init: 'AU', brand: 'Auchan', cat: 'gs',
+    id: 'au', open: '07:00-21:00', name: 'Auchan · Caluire', init: 'AU', brand: 'Auchan', cat: 'gs',
     lat: 45.7950, lng: 4.8400, address: '2 rue Pasteur', city: 'Caluire-et-Cuire', cp: '69300',
     h: 6, conf: 11, services: ['Lavage', 'Boutique'],
     prices: { gazole: 1.66, e10: 1.76, sp95: 1.80, sp98: 1.86, e85: 0.84 },
@@ -154,7 +179,7 @@ export const DEMO_STATIONS: Station[] = [
     prices: { gazole: 1.68, e10: 1.78, sp95: 1.82, sp98: 1.88, e85: 0.85, gplc: 1.00 },
   }),
   build({
-    id: 'cg', name: 'Carrefour · Givors', init: 'CG', brand: 'Carrefour', cat: 'gs',
+    id: 'cg', open: '07:30-21:00', name: 'Carrefour · Givors', init: 'CG', brand: 'Carrefour', cat: 'gs',
     lat: 45.5700, lng: 4.7700, address: 'ZAC des Vernes', city: 'Givors', cp: '69700',
     h: 7, conf: 6, services: ['Lavage', 'Boutique'],
     prices: { gazole: 1.70, e10: 1.80, sp95: 1.84, sp98: 1.90, e85: 0.86 },
@@ -190,7 +215,7 @@ function buildRoute(spec: RouteSpec): Station {
 export const DEMO_ROUTE_STATIONS: Station[] = [
   // Lyon → Bordeaux (the five design stops)
   buildRoute({
-    id: 'r-roanne', name: 'Intermarché · Roanne', init: 'IN', brand: 'Intermarché', cat: 'gs',
+    id: 'r-roanne', open: '07:00-21:00', name: 'Intermarché · Roanne', init: 'IN', brand: 'Intermarché', cat: 'gs',
     dest: DEST.bordeaux, f: 0.155, off: 0.6, address: 'RN7', city: 'Roanne', cp: '42300',
     h: 2, services: ['Boutique'], prices: { gazole: 1.71, e10: 1.81, e85: 0.86 },
   }),
@@ -200,22 +225,22 @@ export const DEMO_ROUTE_STATIONS: Station[] = [
     h: 3, services: ['Ouvert 24/24', 'Boutique'], prices: { gazole: 1.84, e10: 1.96, e85: 0.90 },
   }),
   buildRoute({
-    id: 'r-clermont', name: 'Leclerc · Clermont-Sud', init: 'LE', brand: 'Leclerc', cat: 'gs',
+    id: 'r-clermont', open: '06:30-22:00', name: 'Leclerc · Clermont-Sud', init: 'LE', brand: 'Leclerc', cat: 'gs',
     dest: DEST.bordeaux, f: 0.401, off: -1.0, address: 'ZAC du Brézet', city: 'Clermont-Ferrand', cp: '63000',
     h: 1, services: ['Lavage', 'Boutique'], prices: { gazole: 1.66, e10: 1.76, e85: 0.84 },
   }),
   buildRoute({
-    id: 'r-brive', name: 'Carrefour · Brive Ouest', init: 'CA', brand: 'Carrefour', cat: 'gs',
+    id: 'r-brive', open: '07:00-21:00', name: 'Carrefour · Brive Ouest', init: 'CA', brand: 'Carrefour', cat: 'gs',
     dest: DEST.bordeaux, f: 0.562, off: -4.5, address: 'Avenue du Teinchurier', city: 'Brive-la-Gaillarde', cp: '19100',
     h: 4, services: ['Lavage', 'Boutique'], prices: { gazole: 1.63, e10: 1.73, e85: 0.83 },
   }),
   buildRoute({
-    id: 'r-libourne', name: 'Super U · Libourne', init: 'SU', brand: 'Système U', cat: 'gs',
+    id: 'r-libourne', open: '07:00-21:30', name: 'Super U · Libourne', init: 'SU', brand: 'Système U', cat: 'gs',
     dest: DEST.bordeaux, f: 0.851, off: 2.0, address: 'Route de Bordeaux', city: 'Libourne', cp: '33500',
     h: 2, services: ['Boutique', 'Gonflage'], prices: { gazole: 1.73, e10: 1.83, e85: 0.87 },
   }),
   buildRoute({
-    id: 'r-perigueux', name: 'Avia · Périgueux Est', init: 'AV', brand: 'Avia', cat: 'ind',
+    id: 'r-perigueux', open: '08:00-19:30', sundayOff: true, name: 'Avia · Périgueux Est', init: 'AV', brand: 'Avia', cat: 'ind',
     dest: DEST.bordeaux, f: 0.720, off: -3.0, address: 'RN21', city: 'Périgueux', cp: '24000',
     h: 6, services: ['Gonflage'], prices: { gazole: 1.68, e10: 1.78 },
   }),

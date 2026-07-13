@@ -1,5 +1,6 @@
 // Data contracts — every provider (real or demo) speaks these types.
 import type { GeoPoint } from '../lib/geo';
+import type { StationHours } from '../lib/hours';
 
 // ── Fuels ────────────────────────────────────────────────────────────────────
 export type FuelId = 'gazole' | 'e10' | 'sp98' | 'sp95' | 'e85' | 'gplc';
@@ -51,13 +52,18 @@ export interface Station {
   services: string[];
   /** true when on a motorway (gouv `pop === 'A'`) */
   highway: boolean;
+  /** Opening hours when the source provides them (undefined = unknown) */
+  hours?: StationHours;
   /** community confirmations (demo source only) */
   confirmations?: number;
 }
 
 /** A station enriched with position-relative info */
 export interface NearbyStation extends Station {
+  /** km from the user's position (displayed) */
   distKm: number;
+  /** km from the search area center (drives the radius filter) */
+  searchKm: number;
   driveMin: number;
 }
 

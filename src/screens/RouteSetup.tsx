@@ -153,7 +153,7 @@ export default function RouteSetup() {
         {dropdown('to')}
       </div>
 
-      {/* Récents */}
+      {/* Récents (real trip history) — until then, destination suggestions */}
       <div style={{ marginTop: 16 }}>
         <div
           style={{
@@ -165,7 +165,7 @@ export default function RouteSetup() {
             marginBottom: 10,
           }}
         >
-          Récents
+          {app.hasTripHistory ? 'Récents' : 'Suggestions'}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {app.recents.map((r, i) => (

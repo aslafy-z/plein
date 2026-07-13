@@ -9,17 +9,27 @@ Implémentation du prototype Claude Design « Plein - Prototype » (voir `projec
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173
-npm run build      # production build (dist/)
-npm run verify     # E2E : parcourt tous les écrans + screenshots (nécessite le dev server)
+npm run dev          # http://localhost:5173
+npm run build        # production build (dist/)
+npm run verify       # E2E : parcourt tous les écrans + screenshots (nécessite le dev server)
+npm run verify:live  # vérifie les providers réels (gouv/BAN/OSRM) contre les vrais endpoints
 ```
 
 ## Écrans
 
-Onboarding → **Carte** (pins de prix Leaflet, meilleure station en bottom-sheet) →
-**Liste** (économie possible, tri prix/distance) → **Trajet** (saisie départ/destination
-avec autocomplétion, puis ruban vertical avec arrêt conseillé selon 3 stratégies) →
-**Fiche station** → **Filtres** (carburant, rayon, marques, services) → **Réglages**.
+Onboarding → **Carte** (pins de prix Leaflet, meilleure station en bottom-sheet,
+« Rechercher dans cette zone » quand on déplace la carte, bouton de recentrage) →
+**Liste** (économie possible, tri prix/distance) → **Trajet** (départ « Ma position »,
+autocomplétion, carte du trajet avec pins des stations du corridor + limite d'autonomie,
+ruban vertical avec arrêt conseillé selon 3 stratégies) →
+**Fiche station** (mini-carte, adresse, statut d'ouverture réel) →
+**Filtres** (carburant, rayon, marques, services) → **Réglages**.
+
+- Le **statut d'ouverture** (« Ouvert 24/24 », « Fermé · ouvre à 6 h 30 »…) vient des
+  horaires réels du flux gouvernemental ; quand la source ne les fournit pas, l'app
+  n'affiche rien plutôt que de prétendre « ouvert ».
+- Les **Récents** du Trajet sont l'historique réel des trajets calculés (distance +
+  date persistées) ; tant qu'il est vide, des suggestions neutres s'affichent.
 
 Action principale partout : **Ouvrir dans Google Maps** (deep link réel).
 La « tournée » multi-arrêts est secondaire (petit « + » sur chaque arrêt).
@@ -38,7 +48,12 @@ Tout passe par trois interfaces (`src/data/types.ts`) :
 - Si la source réelle échoue, bascule automatique sur la démo avec bannière visible.
 - Le flux gouvernemental ne fournit **ni enseigne ni nom de station** : les providers
   déclarent `capabilities.brands` et l'UI s'adapte (le filtre « Marques » n'apparaît
-  que si la source connaît les enseignes).
+  que si la source connaît les enseignes). Il fournit en revanche les **horaires**
+  (parsés vers `Station.hours`, statut calculé dans `src/lib/hours.ts`).
+- La recherche le long d'un trajet interroge des cercles qui **couvrent tout le
+  corridor** (rayon = ½ espacement des échantillons + corridor), puis filtre par
+  distance réelle à la polyline — `npm run verify:live` vérifie que les stations
+  s'étalent sur toute la longueur du trajet.
 
 Pour ajouter une source : implémenter les interfaces et l'enregistrer dans
 `src/data/providers.ts`.

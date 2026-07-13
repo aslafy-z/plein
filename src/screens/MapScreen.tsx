@@ -2,6 +2,7 @@ import { C, mono } from '../theme';
 import { FUEL_LABELS, SERVICE_TAGS } from '../data/types';
 import { useApp, selectVisible, selectCheapest, selectPriceRange } from '../state/store';
 import { fmtPrice, distLabel, agoLabel } from '../lib/format';
+import { openStatus } from '../lib/hours';
 import MapCanvas from '../components/MapCanvas';
 
 export default function MapScreen() {
@@ -185,7 +186,7 @@ export default function MapScreen() {
               marginBottom: 10,
             }}
           >
-            La moins chère près de vous
+            {app.searchedAway ? 'La moins chère dans cette zone' : 'La moins chère près de vous'}
           </div>
 
           <button
@@ -212,8 +213,13 @@ export default function MapScreen() {
             <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
               <div style={{ color: C.ink, fontSize: 16, fontWeight: 600 }}>{cheapest.name}</div>
               <div style={{ color: C.mut, fontSize: 13, marginTop: 2 }}>
-                {distLabel(cheapest.distKm)} · ouvert · MàJ{' '}
-                {agoLabel(cheapest.prices[app.fuel]?.updatedAt)}
+                {[
+                  distLabel(cheapest.distKm),
+                  openStatus(cheapest.hours)?.short,
+                  `MàJ ${agoLabel(cheapest.prices[app.fuel]?.updatedAt)}`,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
               </div>
             </div>
             <div style={{ textAlign: 'right', flexShrink: 0 }}>

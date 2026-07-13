@@ -4,7 +4,8 @@
 // and raw coordinates are sometimes scaled by 1e5. We parse very defensively and
 // throw on transport failure so the store can fall back to demo data.
 import type { GeoPoint } from '../../lib/geo';
-import { samplePolyline } from '../../lib/geo';
+import { nearestOnPolyline, polylineLengthKm, samplePolyline } from '../../lib/geo';
+import type { DayHours, StationHours } from '../../lib/hours';
 import type {
   FuelId,
   FuelPrice,
@@ -20,7 +21,8 @@ const ENDPOINT =
 
 const PAGE = 100;
 const NEAR_CAP = 300;
-const ALONG_LIMIT = 40;
+const ALONG_LIMIT = 100;
+const SAMPLE_KM = 40;
 const MAX_SAMPLES = 10;
 const CONCURRENCY = 4;
 const TIMEOUT_MS = 9000;
@@ -178,6 +180,72 @@ function parseServices(rec: Raw): string[] {
   return arr.map((x) => String(x).trim()).filter(Boolean);
 }
 
+// ── Opening hours ────────────────────────────────────────────────────────────
+/** "08.00" / "8:30" → minutes from midnight */
+function parseClock(v: unknown): number | null {
+  const s = toStr(v);
+  if (!s) return null;
+  const m = s.match(/^(\d{1,2})[.:h](\d{2})$/i);
+  if (!m) return null;
+  const h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  if (h > 24 || min > 59) return null;
+  return h * 60 + min;
+}
+
+/**
+ * `horaires` is a JSON string (or object):
+ * {"@automate-24-24":"1"|"","jour":[{"@id":"1","@nom":"Lundi","@ferme":"1"|"",
+ *   "horaire":{"@ouverture":"08.00","@fermeture":"19.30"} | [...]}]}
+ * Days flagged open but without time ranges stay absent (= unknown).
+ */
+function parseHoraires(rec: Raw): StationHours | undefined {
+  const autoField = rec.horaires_automate_24_24;
+  let auto24 = typeof autoField === 'string' && /oui/i.test(autoField);
+
+  let data: unknown = rec.horaires;
+  if (typeof data === 'string') {
+    const s = data.trim();
+    if (s) {
+      try {
+        data = JSON.parse(s);
+      } catch {
+        data = null;
+      }
+    } else data = null;
+  }
+
+  const days: Partial<Record<number, DayHours>> = {};
+  if (data && typeof data === 'object') {
+    const o = data as Raw;
+    if (o['@automate-24-24'] === '1') auto24 = true;
+    const jours = Array.isArray(o.jour) ? o.jour : o.jour ? [o.jour] : [];
+    for (const j of jours) {
+      if (!j || typeof j !== 'object') continue;
+      const jr = j as Raw;
+      const id = toNum(jr['@id'] ?? jr.id);
+      if (id == null || id < 1 || id > 7) continue;
+      const closed = jr['@ferme'] === '1' || jr.ferme === '1';
+      const rawRanges = Array.isArray(jr.horaire) ? jr.horaire : jr.horaire ? [jr.horaire] : [];
+      const ranges: DayHours['ranges'] = [];
+      for (const r of rawRanges) {
+        if (!r || typeof r !== 'object') continue;
+        const rr = r as Raw;
+        const open = parseClock(rr['@ouverture'] ?? rr.ouverture);
+        const close = parseClock(rr['@fermeture'] ?? rr.fermeture);
+        // "01.00 → 01.00" placeholders carry no information
+        if (open == null || close == null || open === close) continue;
+        ranges.push({ open, close });
+      }
+      if (closed) days[id] = { closed: true, ranges: [] };
+      else if (ranges.length) days[id] = { closed: false, ranges };
+    }
+  }
+
+  if (!auto24 && Object.keys(days).length === 0) return undefined;
+  return { auto24, days };
+}
+
 function deriveTags(services: string[], rec: Raw): ServiceTag[] {
   const joined = services.join(' ');
   const tags: ServiceTag[] = [];
@@ -230,6 +298,7 @@ function parseRecord(rec: Raw): Station | null {
     tags: deriveTags(services, rec),
     services,
     highway: isHighway(rec),
+    hours: parseHoraires(rec),
   };
 }
 
@@ -276,13 +345,20 @@ export class GouvStationsProvider implements StationsProvider {
   }
 
   async getStationsAlong(polyline: GeoPoint[], corridorKm: number): Promise<Station[]> {
-    let samples = samplePolyline(polyline, 40);
+    let samples = samplePolyline(polyline, SAMPLE_KM);
     if (samples.length > MAX_SAMPLES) {
       const step = samples.length / MAX_SAMPLES;
       const picked: GeoPoint[] = [];
       for (let i = 0; i < MAX_SAMPLES; i++) picked.push(samples[Math.floor(i * step)]);
       samples = picked;
     }
+
+    // Sample circles must overlap enough to cover the whole corridor: query
+    // half the effective spacing plus the corridor width, then keep only the
+    // stations truly within corridorKm of the route.
+    const totalKm = polylineLengthKm(polyline);
+    const spacingKm = samples.length > 1 ? totalKm / (samples.length - 1) : SAMPLE_KM;
+    const queryKm = Math.ceil(spacingKm / 2 + corridorKm + 1);
 
     const byId = new Map<string, Station>();
     // Split the sample points across a few concurrent lanes (concurrency ≤ 4).
@@ -291,7 +367,7 @@ export class GouvStationsProvider implements StationsProvider {
 
     const runLane = async (pts: GeoPoint[]) => {
       for (const pt of pts) {
-        const results = await fetchPage(buildUrl(pt, corridorKm, ALONG_LIMIT, 0));
+        const results = await fetchPage(buildUrl(pt, queryKm, ALONG_LIMIT, 0));
         for (const r of results) {
           if (r && typeof r === 'object') {
             const st = parseRecord(r as Raw);
@@ -302,6 +378,8 @@ export class GouvStationsProvider implements StationsProvider {
     };
 
     await Promise.all(lanes.map(runLane));
-    return [...byId.values()];
+    return [...byId.values()].filter(
+      (st) => nearestOnPolyline({ lat: st.lat, lng: st.lng }, polyline).distKm <= corridorKm,
+    );
   }
 }

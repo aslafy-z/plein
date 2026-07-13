@@ -3,6 +3,7 @@ import { C, mono } from '../theme';
 import { fmtPrice, durationLabel, plural } from '../lib/format';
 import { FUEL_LABELS, type RouteStation } from '../data/types';
 import { useApp, selectRouteAnalysis } from '../state/store';
+import RouteMap from '../components/RouteMap';
 
 const STRATEGIES = [
   ['compromis', 'Meilleur compromis'],
@@ -360,16 +361,18 @@ export default function RouteRibbon() {
   }
 
   return (
-    <div
-      style={{
-        flex: 1,
-        minHeight: 0,
-        overflow: 'auto',
-        padding: '16px 0 20px',
-        boxSizing: 'border-box',
-      }}
-    >
-      {/* Header */}
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      {routeState.status === 'ready' && route && <RouteMap />}
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflow: 'auto',
+          padding: '16px 0 20px',
+          boxSizing: 'border-box',
+        }}
+      >
+        {/* Header */}
       <div style={{ padding: '0 22px' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
           <span
@@ -448,7 +451,8 @@ export default function RouteRibbon() {
         </div>
       </div>
 
-      {body}
+        {body}
+      </div>
     </div>
   );
 }

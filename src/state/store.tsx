@@ -27,7 +27,10 @@ import { getProviders } from '../data/providers';
 // ── Constants ────────────────────────────────────────────────────────────────
 /** Lyon Confluence — default position when geolocation is unavailable */
 export const DEFAULT_POS: GeoPoint = { lat: 45.7406, lng: 4.8156 };
-export const DEFAULT_FROM_LABEL = 'Lyon Confluence';
+/** Route departure placeholder — resolves to the user's current position */
+export const DEFAULT_FROM_LABEL = 'Ma position';
+/** Recent-trip history kept in Réglages persistence */
+const MAX_RECENTS = 4;
 export const MAX_RADIUS_KM = 25;
 /** Average consumption used for autonomy estimates (L/100 km) */
 const CONSUMPTION_L_100KM = 6.5;
@@ -98,11 +101,11 @@ function savePersisted(p: Partial<PersistedSettings>) {
   }
 }
 
-/** Default recent destinations (also serve as demo route targets) */
+/** Destination suggestions shown until the user has real trip history */
 export const DEFAULT_RECENTS: PersistedSettings['recents'] = [
-  { label: 'Bordeaux centre', sublabel: '543 km · fait le 2 juil.', point: { lat: 44.8378, lng: -0.5792 } },
-  { label: 'Paris 15e', sublabel: '465 km · fait le 18 juin', point: { lat: 48.8412, lng: 2.3003 } },
-  { label: 'Annecy', sublabel: '142 km · fait le 5 juin', point: { lat: 45.8992, lng: 6.1294 } },
+  { label: 'Bordeaux centre', sublabel: 'Gironde', point: { lat: 44.8378, lng: -0.5792 } },
+  { label: 'Paris 15e', sublabel: 'Paris', point: { lat: 48.8412, lng: 2.3003 } },
+  { label: 'Annecy', sublabel: 'Haute-Savoie', point: { lat: 45.8992, lng: 6.1294 } },
 ];
 
 // ── Store shape ──────────────────────────────────────────────────────────────
@@ -135,6 +138,12 @@ export interface AppStore {
   userPos: GeoPoint;
   geoStatus: 'pending' | 'granted' | 'denied' | 'unavailable';
   requestGeolocation(): void;
+  /** Center of the stations search (follows userPos until the user searches elsewhere on the map) */
+  searchPos: GeoPoint;
+  /** true when searchPos was moved away from the user's position */
+  searchedAway: boolean;
+  setSearchArea(p: GeoPoint): void;
+  resetSearchToUser(): void;
   stations: StationsState;
   reloadStations(): void;
 
@@ -147,6 +156,8 @@ export interface AppStore {
   setTo(text: string, point?: GeoPoint | null): void;
   searchPlaces(q: string): Promise<GeocodeResult[]>;
   recents: PersistedSettings['recents'];
+  /** false while `recents` still shows the default suggestions */
+  hasTripHistory: boolean;
   routeReady: boolean;
   startRoute(): void;
   editRoute(): void;
@@ -198,7 +209,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [fromText, setFromText] = useState(DEFAULT_FROM_LABEL);
   const [toText, setToText] = useState('');
-  const [fromPoint, setFromPoint] = useState<GeoPoint | null>(DEFAULT_POS);
+  const [fromPoint, setFromPoint] = useState<GeoPoint | null>(null);
   const [toPoint, setToPoint] = useState<GeoPoint | null>(null);
   const [routeReady, setRouteReady] = useState(false);
   const [tank, setTankState] = useState<number>(persisted.tank ?? 50);
@@ -208,7 +219,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<string | null>(null);
   const [userPos, setUserPos] = useState<GeoPoint>(DEFAULT_POS);
   const [geoStatus, setGeoStatus] = useState<AppStore['geoStatus']>('pending');
-  const [recents] = useState(persisted.recents ?? DEFAULT_RECENTS);
+  // Search area: follows the user's position until they search elsewhere on the map
+  const [searchPos, setSearchPos] = useState<GeoPoint>(DEFAULT_POS);
+  const searchMovedRef = useRef(false);
+  const [recents, setRecents] = useState(persisted.recents ?? DEFAULT_RECENTS);
+  const [hasTripHistory, setHasTripHistory] = useState(persisted.recents != null);
   const [stations, setStations] = useState<StationsState>({
     status: 'idle',
     data: [],
@@ -237,13 +252,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserPos(p);
+        if (!searchMovedRef.current) setSearchPos(p);
         setGeoStatus('granted');
       },
       () => setGeoStatus('denied'),
       { timeout: 8000, maximumAge: 120000 },
     );
   }, []);
+
+  const setSearchArea = useCallback((p: GeoPoint) => {
+    searchMovedRef.current = true;
+    setSearchPos(p);
+  }, []);
+
+  const resetSearchToUser = useCallback(() => {
+    searchMovedRef.current = false;
+    setSearchPos(userPos);
+    requestGeolocation();
+  }, [requestGeolocation, userPos]);
 
   // Returning users skipped onboarding → ask for the real position on mount
   useEffect(() => {
@@ -258,7 +286,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setStations((s) => ({ ...s, status: 'loading' }));
     const bundle = getProviders(sourceId);
     try {
-      const data = await bundle.stations.getStationsNear(userPos, MAX_RADIUS_KM);
+      const data = await bundle.stations.getStationsNear(searchPos, MAX_RADIUS_KM);
       if (reqId !== stationsReq.current) return;
       setStations({ status: 'ready', data, activeSource: sourceId, fellBack: false });
     } catch {
@@ -266,7 +294,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (reqId !== stationsReq.current) return;
       if (sourceId !== 'demo') {
         try {
-          const demo = await getProviders('demo').stations.getStationsNear(userPos, MAX_RADIUS_KM);
+          const demo = await getProviders('demo').stations.getStationsNear(searchPos, MAX_RADIUS_KM);
           if (reqId !== stationsReq.current) return;
           setStations({ status: 'ready', data: demo, activeSource: 'demo', fellBack: true });
           return;
@@ -277,16 +305,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (reqId !== stationsReq.current) return;
       setStations({ status: 'error', data: [], activeSource: sourceId, fellBack: false });
     }
-  }, [sourceId, userPos]);
+  }, [sourceId, searchPos]);
 
   useEffect(() => {
     void loadStations();
   }, [loadStations]);
 
   // ── Route computation ──────────────────────────────────────────────────────
+  /** Record a real trip in the « Récents » history (replaces the default suggestions) */
+  const pushRecent = useCallback(
+    (label: string, point: GeoPoint, distanceKm: number) => {
+      const date = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' }).format(
+        new Date(),
+      );
+      const entry = {
+        label,
+        sublabel: `${Math.round(distanceKm)} km · fait le ${date}`,
+        point,
+      };
+      setRecents((prev) => {
+        const base = hasTripHistory ? prev : [];
+        const next = [entry, ...base.filter((r) => r.label !== label)].slice(0, MAX_RECENTS);
+        savePersisted({ recents: next });
+        return next;
+      });
+      setHasTripHistory(true);
+    },
+    [hasTripHistory],
+  );
+
   const routeReq = useRef(0);
   const computeRoute = useCallback(
-    async (from: GeoPoint, to: GeoPoint) => {
+    async (from: GeoPoint, to: GeoPoint, toLabel: string) => {
       const reqId = ++routeReq.current;
       setRouteState((s) => ({ ...s, status: 'loading' }));
       const run = async (src: DataSourceId) => {
@@ -320,6 +370,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const res = await run(sourceId);
         if (reqId !== routeReq.current) return;
         setRouteState({ status: 'ready', ...res, fellBack: false });
+        pushRecent(toLabel, to, res.route.distanceKm);
       } catch {
         if (reqId !== routeReq.current) return;
         if (sourceId !== 'demo') {
@@ -327,6 +378,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const res = await run('demo');
             if (reqId !== routeReq.current) return;
             setRouteState({ status: 'ready', ...res, fellBack: true });
+            pushRecent(toLabel, to, res.route.distanceKm);
             return;
           } catch {
             /* fall through */
@@ -342,7 +394,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
       }
     },
-    [sourceId, fuel],
+    [sourceId, fuel, pushRecent],
   );
 
   // ── Actions ────────────────────────────────────────────────────────────────
@@ -434,6 +486,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!toText.trim()) return;
     let from = fromPoint;
     let to = toPoint;
+    let toLabel = toText.trim();
     const geocode = getProviders(sourceId).geocode;
     try {
       if (!from) {
@@ -448,7 +501,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!to) {
         const r = await geocode.search(toText);
         to = r[0]?.point ?? null;
-        if (r[0]) setToText(r[0].label);
+        if (r[0]) {
+          setToText(r[0].label);
+          toLabel = r[0].label;
+        }
       }
     } catch {
       /* geocode failure handled below */
@@ -462,7 +518,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setTour({});
     setRouteReady(true);
     setScreen('route');
-    void computeRoute(from, to);
+    void computeRoute(from, to, toLabel);
   }, [computeRoute, fromPoint, fromText, showToast, sourceId, toPoint, toText, userPos]);
 
   const editRoute = useCallback(() => setScreen('routeSetup'), []);
@@ -524,6 +580,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       userPos,
       geoStatus,
       requestGeolocation,
+      searchPos,
+      searchedAway: haversineKm(searchPos, userPos) > 0.5,
+      setSearchArea,
+      resetSearchToUser,
       stations,
       reloadStations: () => void loadStations(),
       fromText,
@@ -534,6 +594,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setTo,
       searchPlaces,
       recents,
+      hasTripHistory,
       routeReady,
       startRoute: () => void startRoute(),
       editRoute,
@@ -560,8 +621,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [
       screen, prevScreen, go, back, openStation, fuel, setFuel, cycleFuel, sort, radius, setRadius,
       brandCats, serviceTags, filtersOpen, resetFilters, userPos, geoStatus,
-      requestGeolocation, stations, loadStations, fromText, toText, fromPoint, toPoint,
-      setFrom, setTo, searchPlaces, recents, routeReady, startRoute, editRoute,
+      requestGeolocation, searchPos, setSearchArea, resetSearchToUser,
+      stations, loadStations, fromText, toText, fromPoint, toPoint,
+      setFrom, setTo, searchPlaces, recents, hasTripHistory, routeReady, startRoute, editRoute,
       routeMode, routeState, tour, toggleTour, tank, setTank, alerts, setAlerts,
       bgloc, setBgloc, sourceId, setSourceId, detailId, toast, showToast,
       openInMaps, openTourInMaps, finishOnboarding,
@@ -581,17 +643,19 @@ export function useApp(): AppStore {
 
 /** Stations passing the current filters, enriched with distance, for a given fuel */
 export function selectVisibleForFuel(app: AppStore, fuel: FuelId): NearbyStation[] {
-  const { stations, userPos, radius, brandCats, serviceTags } = app;
+  const { stations, userPos, searchPos, radius, brandCats, serviceTags } = app;
   const wantedTags = (Object.keys(serviceTags) as ServiceTag[]).filter((t) => serviceTags[t]);
   const brandFilterActive = app.stations.data.some((s) => s.cat !== 'unknown');
   return stations.data
     .map((s) => {
+      // Displayed distance is from the user; the radius applies to the search area
       const distKm = haversineKm(userPos, { lat: s.lat, lng: s.lng });
-      return { ...s, distKm, driveMin: Math.max(1, Math.round(distKm * 2)) };
+      const searchKm = haversineKm(searchPos, { lat: s.lat, lng: s.lng });
+      return { ...s, distKm, searchKm, driveMin: Math.max(1, Math.round(distKm * 2)) };
     })
     .filter(
       (s) =>
-        s.distKm <= radius &&
+        s.searchKm <= radius &&
         s.prices[fuel] != null &&
         (!brandFilterActive || s.cat === 'unknown' || brandCats[s.cat as 'gs' | 'ind' | 'pet']) &&
         wantedTags.every((t) => s.tags.includes(t)),
