@@ -13,6 +13,7 @@ export function addDarkBasemap(map: L.Map): void {
     attribution: '© OpenStreetMap · © CARTO',
     subdomains: 'abcd',
     maxZoom: 19,
+    className: 'tiles-carto',
   });
 
   let loaded = 0;

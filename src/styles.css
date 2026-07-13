@@ -106,9 +106,13 @@ button {
 .leaflet-control-attribution a {
   color: #8a949a !important;
 }
-/* OSM fallback tiles, darkened to keep the « Cap nuit » look */
+/* CARTO dark tiles, lifted for daylight readability */
+.tiles-carto {
+  filter: brightness(1.45) contrast(0.95) saturate(1.15);
+}
+/* OSM fallback tiles, darkened to keep the « Cap nuit » look (kept readable) */
 .tiles-dark {
-  filter: invert(1) hue-rotate(180deg) brightness(0.72) contrast(1.05) saturate(0.5);
+  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9) saturate(0.6);
 }
 
 /* Background-refresh indicator */
