@@ -1,7 +1,8 @@
 // Base Adresse Nationale geocoder — https://api-adresse.data.gouv.fr
+import { IS_DEV } from '../../lib/env';
 import type { GeocodeProvider, GeocodeResult } from '../types';
 
-const ENDPOINT = 'https://api-adresse.data.gouv.fr/search/';
+const ENDPOINT = (IS_DEV ? '/proxy/ban' : 'https://api-adresse.data.gouv.fr') + '/search/';
 const TIMEOUT_MS = 6000;
 const MIN_QUERY = 3;
 

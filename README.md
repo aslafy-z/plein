@@ -18,7 +18,8 @@ npm run verify:live  # vérifie les providers réels (gouv/BAN/OSRM) contre les 
 ## Écrans
 
 Onboarding → **Carte** (pins de prix Leaflet, meilleure station en bottom-sheet,
-« Rechercher dans cette zone » quand on déplace la carte, bouton de recentrage) →
+déplacement de la carte = chargement automatique des stations de la zone,
+bouton de recentrage) →
 **Liste** (économie possible, tri prix/distance) → **Trajet** (départ « Ma position »,
 autocomplétion, carte du trajet avec pins des stations du corridor + limite d'autonomie,
 ruban vertical avec arrêt conseillé selon 3 stratégies) →
@@ -57,6 +58,15 @@ Tout passe par trois interfaces (`src/data/types.ts`) :
 
 Pour ajouter une source : implémenter les interfaces et l'enregistrer dans
 `src/data/providers.ts`.
+
+### Environnements sans accès internet direct (sandboxes, proxys)
+
+En dev, les appels APIs passent par `/proxy/*` et les tuiles de secours par
+`/tiles/*`, servis par le dev server Vite (voir `vite.config.ts`), qui respecte
+`HTTPS_PROXY`. Les tuiles CARTO sombres restent la source principale ; si le CDN
+est injoignable depuis le navigateur, la carte bascule automatiquement sur des
+tuiles OpenStreetMap proxifiées et assombries en CSS (`.tiles-dark`). En build
+de production, les URLs directes sont utilisées.
 
 ## Stack
 

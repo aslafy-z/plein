@@ -1,8 +1,10 @@
 // OSRM public routing — https://router.project-osrm.org
+import { IS_DEV } from '../../lib/env';
 import type { GeoPoint } from '../../lib/geo';
 import type { Route, RouteProvider } from '../types';
 
-const BASE = 'https://router.project-osrm.org/route/v1/driving';
+const BASE =
+  (IS_DEV ? '/proxy/osrm' : 'https://router.project-osrm.org') + '/route/v1/driving';
 const TIMEOUT_MS = 9000;
 
 interface OsrmResponse {

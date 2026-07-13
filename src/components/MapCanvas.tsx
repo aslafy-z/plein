@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { C } from '../theme';
 import { haversineKm } from '../lib/geo';
+import { addDarkBasemap } from '../lib/tiles';
 import { useApp, selectVisible, selectCheapest } from '../state/store';
 
 export default function MapCanvas() {
@@ -12,11 +13,13 @@ export default function MapCanvas() {
   const layerRef = useRef<L.LayerGroup | null>(null);
   const userInteractedRef = useRef(false);
   const programmaticUntil = useRef(0);
-  const [awayFromSearch, setAwayFromSearch] = useState(false);
+  /** Skip the next auto-fit: the search area moved because the USER moved the map */
+  const keepViewRef = useRef(false);
+  const moveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  // moveend closures read the latest search state through this ref
-  const searchRef = useRef({ pos: app.searchPos, radius: app.radius });
-  searchRef.current = { pos: app.searchPos, radius: app.radius };
+  // moveend closures read the latest app state through this ref
+  const appRef = useRef(app);
+  appRef.current = app;
 
   // ── Create the map once (StrictMode-safe: only if no map yet) ───────────────
   useEffect(() => {
@@ -28,10 +31,7 @@ export default function MapCanvas() {
     });
     map.setView([app.searchPos.lat, app.searchPos.lng], 13);
 
-    L.tileLayer('https://{s}.basemap.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '© OpenStreetMap · © CARTO',
-      maxZoom: 19,
-    }).addTo(map);
+    addDarkBasemap(map);
 
     layerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
@@ -42,18 +42,26 @@ export default function MapCanvas() {
     map.on('dragstart', markInteract);
     map.on('zoomstart', markInteract);
 
-    // Offer « rechercher dans cette zone » once the view leaves the search area
+    // Moving the map away loads the stations of the new area automatically
+    // (debounced; only for user-initiated moves, never programmatic fits)
     map.on('moveend', () => {
+      if (!userInteractedRef.current) return;
       const c = map.getCenter();
-      const { pos, radius } = searchRef.current;
-      const drift = haversineKm({ lat: c.lat, lng: c.lng }, pos);
-      setAwayFromSearch(drift > Math.max(1.5, radius * 0.5));
+      const cur = appRef.current;
+      const drift = haversineKm({ lat: c.lat, lng: c.lng }, cur.searchPos);
+      if (drift <= Math.max(1, cur.radius * 0.25)) return;
+      clearTimeout(moveTimer.current);
+      moveTimer.current = setTimeout(() => {
+        keepViewRef.current = true; // don't yank the map back after reload
+        appRef.current.setSearchArea({ lat: c.lat, lng: c.lng });
+      }, 650);
     });
 
     const ro = new ResizeObserver(() => map.invalidateSize());
     ro.observe(containerRef.current);
 
     return () => {
+      clearTimeout(moveTimer.current);
       ro.disconnect();
       map.remove();
       mapRef.current = null;
@@ -64,8 +72,11 @@ export default function MapCanvas() {
 
   // ── Reset auto-fit when the frame of reference changes ──────────────────────
   useEffect(() => {
+    if (keepViewRef.current) {
+      keepViewRef.current = false;
+      return;
+    }
     userInteractedRef.current = false;
-    setAwayFromSearch(false);
   }, [app.searchPos, app.radius]);
 
   // ── Rebuild markers + user dot, then auto-fit ───────────────────────────────
@@ -133,20 +144,12 @@ export default function MapCanvas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [app.stations.data, app.fuel, app.radius, app.brandCats, app.serviceTags, app.userPos, app.searchPos]);
 
-  const searchHere = () => {
-    const map = mapRef.current;
-    if (!map) return;
-    const c = map.getCenter();
-    setAwayFromSearch(false);
-    app.setSearchArea({ lat: c.lat, lng: c.lng });
-  };
-
   return (
     <div style={{ position: 'absolute', inset: 0, background: C.mapBg }}>
       <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
 
-      {/* « Search this area » — appears when the view drifts from the search center */}
-      {awayFromSearch && (
+      {/* Loading indicator while the moved area fetches its stations */}
+      {app.stations.status === 'loading' && (
         <div
           style={{
             position: 'absolute',
@@ -159,22 +162,20 @@ export default function MapCanvas() {
             pointerEvents: 'none',
           }}
         >
-          <button
-            onClick={searchHere}
+          <span
             style={{
-              pointerEvents: 'auto',
               background: C.surface2,
-              color: C.accent,
-              fontSize: 13.5,
-              fontWeight: 700,
-              padding: '10px 18px',
-              borderRadius: 22,
-              border: `1px solid ${C.accentBorderStrong}`,
+              color: C.body,
+              fontSize: 12.5,
+              fontWeight: 600,
+              padding: '8px 16px',
+              borderRadius: 18,
+              border: `1px solid ${C.border09}`,
               boxShadow: '0 8px 24px rgba(0,0,0,.5)',
             }}
           >
-            Rechercher dans cette zone
-          </button>
+            Recherche des stations…
+          </span>
         </div>
       )}
 

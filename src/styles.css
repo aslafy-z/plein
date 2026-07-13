@@ -106,6 +106,10 @@ button {
 .leaflet-control-attribution a {
   color: #8a949a !important;
 }
+/* OSM fallback tiles, darkened to keep the « Cap nuit » look */
+.tiles-dark {
+  filter: invert(1) hue-rotate(180deg) brightness(0.72) contrast(1.05) saturate(0.5);
+}
 
 /* Price pin markers (Leaflet divIcon) */
 .pin-wrap {

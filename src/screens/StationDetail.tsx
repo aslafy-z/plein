@@ -6,6 +6,7 @@ import { useApp, selectVisibleForFuel } from '../state/store';
 import { fmtPrice, distLabel, agoLabel } from '../lib/format';
 import { haversineKm } from '../lib/geo';
 import { openStatus } from '../lib/hours';
+import { addDarkBasemap } from '../lib/tiles';
 
 /** Static mini-map centred on the station (replaces the prototype's photo slot) */
 function StationMiniMap({ station }: { station: Station }) {
@@ -25,10 +26,7 @@ function StationMiniMap({ station }: { station: Station }) {
       touchZoom: false,
     });
     map.setView([station.lat, station.lng], 15);
-    L.tileLayer('https://{s}.basemap.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '© OpenStreetMap · © CARTO',
-      maxZoom: 19,
-    }).addTo(map);
+    addDarkBasemap(map);
     const html =
       `<div style="transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center">` +
       `<div class="pin-bubble" style="background:#3ddc84;color:#08120c;` +

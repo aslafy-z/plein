@@ -3,6 +3,7 @@
 // The flux is messy: fields arrive as numbers, strings, JSON strings, or absent,
 // and raw coordinates are sometimes scaled by 1e5. We parse very defensively and
 // throw on transport failure so the store can fall back to demo data.
+import { IS_DEV } from '../../lib/env';
 import type { GeoPoint } from '../../lib/geo';
 import { nearestOnPolyline, polylineLengthKm, samplePolyline } from '../../lib/geo';
 import type { DayHours, StationHours } from '../../lib/hours';
@@ -15,9 +16,11 @@ import type {
   StationsProvider,
 } from '../types';
 
+// In dev the call goes through the Vite proxy (see vite.config.ts) so the app
+// gets live data even when the browser has no direct internet access.
 const ENDPOINT =
-  'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/' +
-  'prix-des-carburants-en-france-flux-instantane-v2/records';
+  (IS_DEV ? '/proxy/gouv' : 'https://data.economie.gouv.fr') +
+  '/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records';
 
 const PAGE = 100;
 const NEAR_CAP = 300;

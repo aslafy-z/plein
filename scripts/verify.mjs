@@ -149,7 +149,7 @@ async function run(label, contextOpts, { demo = true } = {}) {
   await page.waitForTimeout(300);
   ok(`${label}: hero shows 80 L`, await page.getByText('sur un plein de 80 L').isVisible());
 
-  // ── Search this area: pan the map away, re-search around the new center ──
+  // ── Auto search on move: pan the map away → stations of the new area load ──
   await page.getByText('Carte', { exact: true }).click();
   await page.waitForTimeout(500);
   const mapBox = await page.locator('.leaflet-container').first().boundingBox();
@@ -164,18 +164,12 @@ async function run(label, contextOpts, { demo = true } = {}) {
       await page.waitForTimeout(250);
     }
   }
-  const searchBtn = page.getByText('Rechercher dans cette zone');
-  const searchBtnVisible = await searchBtn.isVisible().catch(() => false);
-  ok(`${label}: search-this-area appears after panning`, searchBtnVisible);
-  if (searchBtnVisible) {
-    await searchBtn.click();
-    await page.waitForTimeout(1000);
-    ok(
-      `${label}: stations reload around the new area`,
-      await page.getByText('La moins chère dans cette zone').isVisible().catch(() => false),
-    );
-    await shot('11-search-area');
-  }
+  await page.waitForTimeout(2200); // debounce + reload
+  ok(
+    `${label}: panning auto-loads stations of the new area`,
+    await page.getByText('La moins chère dans cette zone').isVisible().catch(() => false),
+  );
+  await shot('11-search-area');
 
   ok(`${label}: no page errors`, errors.length === 0, errors.slice(0, 3).join(' | '));
   await browser.close();

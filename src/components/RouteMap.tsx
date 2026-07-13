@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { C } from '../theme';
 import { cumulativeKm, type GeoPoint } from '../lib/geo';
+import { addDarkBasemap } from '../lib/tiles';
 import { useApp, selectRouteAnalysis } from '../state/store';
 
 /** Vertex at a given km along the polyline (vertex precision is plenty here) */
@@ -32,10 +33,7 @@ export default function RouteMap() {
       attributionControl: true,
     });
     map.setView([46.6, 2.4], 6);
-    L.tileLayer('https://{s}.basemap.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '© OpenStreetMap · © CARTO',
-      maxZoom: 19,
-    }).addTo(map);
+    addDarkBasemap(map);
     layerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
 
