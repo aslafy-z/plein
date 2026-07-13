@@ -168,9 +168,9 @@ async function run(label, contextOpts, { demo = true } = {}) {
   await page.waitForTimeout(200);
   await page.reload({ waitUntil: 'networkidle' });
   ok(
-    `${label}: refresh stays on Réglages (/reglages)`,
+    `${label}: refresh stays on Réglages (/settings)`,
     (await page.getByText('Carburant par défaut').isVisible().catch(() => false)) &&
-      (await page.evaluate(() => location.pathname)) === '/reglages',
+      (await page.evaluate(() => location.pathname)) === '/settings',
   );
   await page.getByText('Liste', { exact: true }).click();
   await page.waitForTimeout(300);

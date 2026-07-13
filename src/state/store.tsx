@@ -237,12 +237,12 @@ export interface AppStore {
 function pathFor(screen: Screen, detailId: string | null): string {
   switch (screen) {
     case 'list':
-      return '/liste';
+      return '/list';
     case 'routeSetup':
     case 'route':
-      return '/trajet';
+      return '/route';
     case 'settings':
-      return '/reglages';
+      return '/settings';
     case 'detail':
       return detailId ? `/station/${encodeURIComponent(detailId)}` : '/';
     default:
@@ -251,9 +251,9 @@ function pathFor(screen: Screen, detailId: string | null): string {
 }
 
 function navFromPath(path: string): { screen: Screen; detailId: string | null } {
-  if (path.startsWith('/liste')) return { screen: 'list', detailId: null };
-  if (path.startsWith('/trajet')) return { screen: 'routeSetup', detailId: null };
-  if (path.startsWith('/reglages')) return { screen: 'settings', detailId: null };
+  if (path.startsWith('/list')) return { screen: 'list', detailId: null };
+  if (path.startsWith('/route')) return { screen: 'routeSetup', detailId: null };
+  if (path.startsWith('/settings')) return { screen: 'settings', detailId: null };
   if (path.startsWith('/station/')) {
     return { screen: 'detail', detailId: decodeURIComponent(path.slice('/station/'.length)) };
   }
