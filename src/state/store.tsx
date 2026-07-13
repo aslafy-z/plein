@@ -560,15 +560,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
           })
           .filter((st) => st.kmAlong > 5 && st.kmAlong < route.distanceKm - 5)
           .sort((a, b) => a.kmAlong - b.kmAlong);
-        // Keep the ribbon readable: at most 6 stops, best-priced first when trimming
-        const trimmed =
-          enriched.length <= 6
+        // Keep the full corridor (bounded for perf) — WHICH stops are shown is
+        // decided per strategy in selectRouteAnalysis, so the chips act on the
+        // whole ribbon, not just the recommendation.
+        const capped =
+          enriched.length <= 30
             ? enriched
             : [...enriched]
                 .sort((a, b) => (a.prices[fuel]?.value ?? 9) - (b.prices[fuel]?.value ?? 9))
-                .slice(0, 6)
+                .slice(0, 30)
                 .sort((a, b) => a.kmAlong - b.kmAlong);
-        return { route, stations: trimmed };
+        return { route, stations: capped };
       };
       try {
         const res = await run(sourceId);
@@ -1021,31 +1023,41 @@ export interface RouteAnalysis {
 export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
   const { routeState, routeMode, fuel, tank, tour } = app;
   const { limitKm, autonomyKm } = selectAutonomy(app);
-  const stops = routeState.stations;
   const route = routeState.route;
   const needsStop = !!route && route.distanceKm > limitKm;
 
   const priceOf = (s: RouteStation) => s.prices[fuel]?.value ?? Infinity;
-  const withPrice = stops.filter((s) => s.prices[fuel] != null);
-  const reachable = withPrice.filter((s) => s.kmAlong <= limitKm);
-  const pool = reachable.length ? reachable : withPrice;
+  // Strategy score — the SAME ranking picks the shown stops and the reco,
+  // so the strategy chips act on the whole ribbon.
+  const scoreOf = (s: RouteStation): number => {
+    if (routeMode === 'prix') return priceOf(s);
+    if (routeMode === 'detour') return s.detourMin * 1000 + priceOf(s);
+    return priceOf(s) * tank + s.detourMin * EUR_PER_DETOUR_MIN;
+  };
 
-  let reco: RouteStation | null = null;
-  if (pool.length) {
-    if (routeMode === 'prix') {
-      reco = [...pool].sort((a, b) => priceOf(a) - priceOf(b))[0];
-    } else if (routeMode === 'detour') {
-      reco = [...pool].sort(
-        (a, b) => a.detourMin - b.detourMin || priceOf(a) - priceOf(b),
-      )[0];
-    } else {
-      reco = [...pool].sort(
-        (a, b) =>
-          priceOf(a) * tank + a.detourMin * EUR_PER_DETOUR_MIN -
-          (priceOf(b) * tank + b.detourMin * EUR_PER_DETOUR_MIN),
-      )[0];
+  const all = routeState.stations.filter((s) => s.prices[fuel] != null);
+  const byScore = [...all].sort((a, b) => scoreOf(a) - scoreOf(b));
+  const reachableByScore = byScore.filter((s) => s.kmAlong <= limitKm);
+
+  // Show the 6 best stops for the strategy — but when a stop is mandatory,
+  // guarantee the best reachable ones are among them (a list of stations past
+  // the autonomy limit would be useless).
+  const MAX_SHOWN = 6;
+  const chosen = new Set<RouteStation>(byScore.slice(0, MAX_SHOWN));
+  if (needsStop) {
+    for (const s of reachableByScore.slice(0, 2)) {
+      if (chosen.has(s)) continue;
+      const worstDroppable = [...chosen]
+        .filter((c) => c.kmAlong > limitKm)
+        .sort((a, b) => scoreOf(b) - scoreOf(a))[0];
+      if (worstDroppable) chosen.delete(worstDroppable);
+      chosen.add(s);
     }
   }
+  const stops = [...chosen].sort((a, b) => a.kmAlong - b.kmAlong);
+
+  const withPrice = all;
+  const reco: RouteStation | null = reachableByScore[0] ?? byScore[0] ?? null;
 
   let recoSub = '';
   if (reco && withPrice.length > 1) {
@@ -1065,7 +1077,8 @@ export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
     recoSub = 'Seule station trouvée sur le trajet';
   }
 
-  const tourStops = stops.filter((s) => tour[s.id]);
+  // Tour selections survive strategy switches even if the stop leaves the top-6
+  const tourStops = all.filter((s) => tour[s.id]);
 
   // Trip fuel volume + cost, from the configured average consumption
   let tripLitres: number | null = null;
