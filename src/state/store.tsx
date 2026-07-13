@@ -25,7 +25,7 @@ import {
   type Station,
 } from '../data/types';
 import { getProviders } from '../data/providers';
-import { readStationsCache, writeStationsCache } from '../data/stationsCache';
+import { readStationsCache, writeStationsCache, STALE_MS } from '../data/stationsCache';
 import {
   installReady,
   isStandalone,
@@ -496,6 +496,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void loadStations();
+  }, [loadStations]);
+
+  // ── Auto-refresh: keep prices fresh while the app is open and online ───────
+  const stationsRef = useRef(stations);
+  stationsRef.current = stations;
+  useEffect(() => {
+    const tick = () => {
+      if (document.hidden || navigator.onLine === false) return;
+      const st = stationsRef.current;
+      if (st.status !== 'ready' || st.refreshing) return;
+      if (!st.fetchedAt || Date.now() - st.fetchedAt < STALE_MS) return;
+      void loadStations();
+    };
+    const iv = setInterval(tick, 60_000);
+    const onVisible = () => {
+      if (!document.hidden) tick();
+    };
+    window.addEventListener('online', tick);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(iv);
+      window.removeEventListener('online', tick);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [loadStations]);
 
   // ── PWA install ────────────────────────────────────────────────────────────

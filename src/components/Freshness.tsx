@@ -1,6 +1,7 @@
 // Data-freshness indicator for the station cache:
 // – spinning arrow while cached data refreshes in the background
 // – amber clock pictogram when the shown prices are outdated
+import { useEffect, useReducer } from 'react';
 import { C } from '../theme';
 import { STALE_MS } from '../data/stationsCache';
 import { useApp } from '../state/store';
@@ -13,6 +14,12 @@ function ageLabel(ms: number): string {
 
 export default function Freshness() {
   const app = useApp();
+  // Re-render periodically so the age label (and staleness) stay truthful
+  const [, tick] = useReducer((x: number) => x + 1, 0);
+  useEffect(() => {
+    const iv = setInterval(tick, 30_000);
+    return () => clearInterval(iv);
+  }, []);
   const { status, refreshing, fetchedAt } = app.stations;
   if (status !== 'ready') return null;
 
@@ -41,8 +48,10 @@ export default function Freshness() {
   if (!fetchedAt || age <= STALE_MS) return null;
 
   return (
-    <span
-      title="Dernière actualisation des prix"
+    <button
+      onClick={() => app.reloadStations()}
+      title="Prix non actualisés — toucher pour recharger"
+      aria-label="Recharger les prix"
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -51,6 +60,10 @@ export default function Freshness() {
         fontWeight: 600,
         color: C.warn,
         whiteSpace: 'nowrap',
+        cursor: 'pointer',
+        background: 'rgba(224,122,95,.12)',
+        padding: '3px 8px',
+        borderRadius: 10,
       }}
     >
       <span
@@ -87,7 +100,7 @@ export default function Freshness() {
           }}
         />
       </span>
-      {ageLabel(age)}
-    </span>
+      {ageLabel(age)} · ↻
+    </button>
   );
 }
