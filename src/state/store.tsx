@@ -944,6 +944,30 @@ export function selectVisible(app: AppStore): NearbyStation[] {
   return selectVisibleForFuel(app, app.fuel);
 }
 
+/**
+ * Stations drawn on the map: every loaded station passing the fuel/brand/
+ * service filters, NOT limited to the radius circle. Restricting pins to the
+ * radius makes them pop in and out while panning; the circle stays a visual
+ * indicator of the « cheapest near you » zone.
+ */
+export function selectMapStations(app: AppStore): NearbyStation[] {
+  const { stations, userPos, searchPos, brandCats, serviceTags, fuel } = app;
+  const wantedTags = (Object.keys(serviceTags) as ServiceTag[]).filter((t) => serviceTags[t]);
+  const brandFilterActive = stations.data.some((s) => s.cat !== 'unknown');
+  return stations.data
+    .map((s) => {
+      const distKm = haversineKm(userPos, { lat: s.lat, lng: s.lng });
+      const searchKm = haversineKm(searchPos, { lat: s.lat, lng: s.lng });
+      return { ...s, distKm, searchKm, driveMin: Math.max(1, Math.round(distKm * 2)) };
+    })
+    .filter(
+      (s) =>
+        s.prices[fuel] != null &&
+        (!brandFilterActive || s.cat === 'unknown' || brandCats[s.cat as 'gs' | 'ind' | 'pet']) &&
+        wantedTags.every((t) => s.tags.includes(t)),
+    );
+}
+
 export function selectByPrice(app: AppStore): NearbyStation[] {
   const f = app.fuel;
   return [...selectVisible(app)].sort(

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { C } from '../theme';
+import { C, mono } from '../theme';
 import { FUEL_LABELS, type GeocodeResult } from '../data/types';
 import { useApp } from '../state/store';
 
@@ -260,9 +260,7 @@ export default function RouteSetup() {
           <span style={{ fontSize: 13, fontWeight: 700, color: C.ink, flex: 1 }}>
             Réservoir au départ
           </span>
-          <span style={{ fontFamily: "'Spline Sans Mono', monospace", fontWeight: 700, fontSize: 14, color: C.accent }}>
-            {app.startTankPct} %
-          </span>
+          <span style={{ font: mono(700, 14), color: C.accent }}>{app.startTankPct} %</span>
         </div>
         <input
           type="range"

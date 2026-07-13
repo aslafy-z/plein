@@ -1,16 +1,63 @@
 import { C } from '../theme';
+import { LOGO_PATH } from './Logo';
 import { useApp, type Screen } from '../state/store';
 
-const ITEMS: { key: 'map' | 'list' | 'route' | 'settings'; label: string; iconR: string }[] = [
-  { key: 'map', label: 'Carte', iconR: '4px' },
-  { key: 'list', label: 'Liste', iconR: '2px' },
-  { key: 'route', label: 'Trajet', iconR: '50%' },
-  { key: 'settings', label: 'Réglages', iconR: '7px' },
+type TabKey = 'map' | 'list' | 'route' | 'settings';
+
+/** Minimal 16px stroke pictos, tinted by the active state */
+function Icon({ tab, color }: { tab: TabKey; color: string }) {
+  const stroke = {
+    stroke: color,
+    strokeWidth: 2,
+    strokeLinecap: 'round' as const,
+    fill: 'none',
+  };
+  switch (tab) {
+    case 'map':
+      // the brand drop-pin
+      return (
+        <svg viewBox="0 0 64 64" width="15" height="15" aria-hidden>
+          <path d={LOGO_PATH} fill={color} fillRule="evenodd" />
+        </svg>
+      );
+    case 'list':
+      return (
+        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden>
+          <circle cx="2.2" cy="3.2" r="1.3" fill={color} />
+          <circle cx="2.2" cy="8" r="1.3" fill={color} />
+          <circle cx="2.2" cy="12.8" r="1.3" fill={color} />
+          <path d="M6 3.2h8M6 8h8M6 12.8h8" {...stroke} />
+        </svg>
+      );
+    case 'route':
+      return (
+        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden>
+          <circle cx="3" cy="13" r="2" fill={color} />
+          <rect x="11" y="1" width="4" height="4" rx="1.2" fill={color} />
+          <path d="M4.5 11.5 C8 8, 8 8, 11.5 4.5" {...stroke} strokeDasharray="2.4 2.2" />
+        </svg>
+      );
+    case 'settings':
+      return (
+        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden>
+          <path d="M1.5 5h13M1.5 11h13" {...stroke} />
+          <circle cx="10.5" cy="5" r="2.1" fill="#15181b" stroke={color} strokeWidth="2" />
+          <circle cx="5.5" cy="11" r="2.1" fill="#15181b" stroke={color} strokeWidth="2" />
+        </svg>
+      );
+  }
+}
+
+const ITEMS: { key: TabKey; label: string }[] = [
+  { key: 'map', label: 'Carte' },
+  { key: 'list', label: 'Liste' },
+  { key: 'route', label: 'Trajet' },
+  { key: 'settings', label: 'Réglages' },
 ];
 
 export default function NavBar() {
   const app = useApp();
-  const target = (k: (typeof ITEMS)[number]['key']): Screen =>
+  const target = (k: TabKey): Screen =>
     k === 'route' ? (app.routeReady ? 'route' : 'routeSetup') : k;
 
   return (
@@ -46,14 +93,7 @@ export default function NavBar() {
                 justifyContent: 'center',
               }}
             >
-              <div
-                style={{
-                  width: 12,
-                  height: 12,
-                  borderRadius: it.iconR,
-                  border: `2.5px solid ${active ? C.accent : C.faint}`,
-                }}
-              />
+              <Icon tab={it.key} color={active ? C.accent : C.faint} />
             </div>
             <span
               style={{
