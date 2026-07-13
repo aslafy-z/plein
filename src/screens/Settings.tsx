@@ -88,6 +88,7 @@ export default function Settings() {
                     borderRadius: 16,
                     border: active ? `1px solid ${C.accent}` : `1px solid ${C.border12}`,
                     cursor: 'pointer',
+                    textAlign: 'center',
                   }}
                 >
                   {label}
@@ -312,9 +313,25 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* Footer */}
-      <div style={{ textAlign: 'center', fontSize: 11.5, color: C.ghost, marginTop: 20 }}>
-        Plein. · v1 · juillet 2026
+      {/* Footer — credits, kept compact */}
+      <div
+        style={{
+          textAlign: 'center',
+          fontSize: 11,
+          color: C.ghost,
+          marginTop: 20,
+          lineHeight: 1.7,
+        }}
+      >
+        <div style={{ color: C.faint }}>Made with ❤️ in Toulouse</div>
+        <div>
+          Prix : <a href="https://prix-carburants.gouv.fr" target="_blank" rel="noreferrer" style={{ color: C.ghost, textDecoration: 'underline' }}>prix-carburants.gouv.fr</a>
+          {' '}· adresses : BAN · itinéraires : OSRM / Valhalla
+        </div>
+        <div>
+          cartes : © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" style={{ color: C.ghost, textDecoration: 'underline' }}>OpenStreetMap</a> · © CARTO
+        </div>
+        <div>Plein. · v1 · juillet 2026</div>
       </div>
     </div>
   );

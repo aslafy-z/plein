@@ -1,5 +1,5 @@
 import { C, mono } from '../theme';
-import { fmtPrice, distLabel, plural } from '../lib/format';
+import { fmtPrice, distLabel, agoLabel, plural } from '../lib/format';
 import { openStatus } from '../lib/hours';
 import Freshness from '../components/Freshness';
 import { ALL_FUELS, FUEL_LABELS } from '../data/types';
@@ -249,7 +249,11 @@ export default function ListScreen() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 15.5, fontWeight: 700, color: C.ink }}>{s.name}</div>
                     <div style={{ fontSize: 12.5, color: C.mut, marginTop: 1 }}>
-                      {[`${distLabel(s.distKm)} · à ${s.driveMin} min`, openStatus(s.hours)?.short]
+                      {[
+                        `${distLabel(s.distKm)} · à ${s.driveMin} min`,
+                        openStatus(s.hours)?.short,
+                        s.prices[fuel]?.updatedAt && `MàJ ${agoLabel(s.prices[fuel]?.updatedAt)}`,
+                      ]
                         .filter(Boolean)
                         .join(' · ')}
                     </div>

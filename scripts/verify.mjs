@@ -149,7 +149,8 @@ async function run(label, contextOpts, { demo = true } = {}) {
   ok(`${label}: settings`, await page.getByText('Carburant par défaut').isVisible());
   ok(`${label}: vehicle profiles (moto)`, await page.getByText('Moto', { exact: true }).isVisible());
   ok(`${label}: consumption setting`, await page.getByText('Consommation moyenne').isVisible());
-  ok(`${label}: source selector`, await page.getByText('prix-carburants.gouv.fr').isVisible());
+  ok(`${label}: source selector`, await page.getByText('prix-carburants.gouv.fr').first().isVisible());
+  ok(`${label}: footer credits`, await page.getByText('Made with ❤️ in Toulouse').isVisible());
   await shot('10-settings');
 
   // tank slider affects savings — set to 80 and check list hero changes

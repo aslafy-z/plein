@@ -254,7 +254,16 @@ export default function StationDetail() {
                 <span style={{ flex: 1, color: C.ink, fontSize: 15, fontWeight: 600 }}>
                   {FUEL_LABELS[f]}
                 </span>
-                <span style={{ color: noteColor, fontSize: 11.5, fontWeight: 600 }}>{note}</span>
+                <span style={{ textAlign: 'right' }}>
+                  <span style={{ color: noteColor, fontSize: 11.5, fontWeight: 600, display: 'block' }}>
+                    {note}
+                  </span>
+                  {s.prices[f]?.updatedAt && (
+                    <span style={{ color: C.faint, fontSize: 10.5, display: 'block', marginTop: 1 }}>
+                      MàJ {agoLabel(s.prices[f]?.updatedAt)}
+                    </span>
+                  )}
+                </span>
                 <span
                   style={{
                     font: mono(700, 18),

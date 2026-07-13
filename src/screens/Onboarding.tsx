@@ -1,5 +1,6 @@
 import { useApp } from '../state/store';
 import { C, mono } from '../theme';
+import { LogoLockup } from '../components/Logo';
 
 const STEPS: { n: string; title: string; sub: string }[] = [
   { n: '01', title: 'Choisissez votre carburant', sub: 'Gazole, SP95-E10, E85…' },
@@ -21,24 +22,8 @@ export default function Onboarding() {
         overflow: 'auto',
       }}
     >
-      {/* Logo row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: 10,
-            background: C.surface2,
-            border: `1px solid ${C.border09}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <div style={{ width: 12, height: 12, borderRadius: '50%', background: C.accent }} />
-        </div>
-        <span style={{ fontSize: 17, fontWeight: 800, color: C.ink }}>Plein.</span>
-      </div>
+      {/* Logo row — « 2a Goutte-repère » */}
+      <LogoLockup />
 
       {/* Headline */}
       <div
