@@ -323,7 +323,17 @@ export default function Settings() {
           lineHeight: 1.7,
         }}
       >
-        <div style={{ color: C.faint }}>Made with ❤️ in Toulouse</div>
+        <div style={{ color: C.faint }}>
+          Made with ❤️ in Toulouse par{' '}
+          <a
+            href="https://zadkiel.fr"
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: C.mut, textDecoration: 'underline' }}
+          >
+            zadkiel.fr
+          </a>
+        </div>
         <div>
           Prix : <a href="https://prix-carburants.gouv.fr" target="_blank" rel="noreferrer" style={{ color: C.ghost, textDecoration: 'underline' }}>prix-carburants.gouv.fr</a>
           {' '}· adresses : BAN · itinéraires : OSRM / Valhalla
