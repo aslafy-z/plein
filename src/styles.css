@@ -106,13 +106,15 @@ button {
 .leaflet-control-attribution a {
   color: #8a949a !important;
 }
-/* CARTO dark tiles, lifted for daylight readability */
+/* Tiles are re-toned to the app palette (neutral cool grays, no loud hues):
+   readable in daylight, blending with the #101214 surfaces */
 .tiles-carto {
-  filter: brightness(1.45) contrast(0.95) saturate(1.15);
+  filter: grayscale(0.55) saturate(0.55) brightness(1.5) contrast(0.9);
 }
-/* OSM fallback tiles, darkened to keep the « Cap nuit » look (kept readable) */
+/* OSM fallback (inverted to dark), same neutral treatment */
 .tiles-dark {
-  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9) saturate(0.6);
+  filter: invert(1) hue-rotate(180deg) grayscale(0.45) saturate(0.45) brightness(0.95)
+    contrast(0.88);
 }
 
 /* Background-refresh indicator */

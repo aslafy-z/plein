@@ -39,7 +39,9 @@ function versionStamp(version: string): Plugin {
 // Sandboxed / firewalled environments often let the dev server reach the
 // internet (via HTTPS_PROXY) while the browser itself cannot. The app first
 // tries the CARTO dark CDN directly; when those tiles fail it falls back to
-// `/tiles/{z}/{x}/{y}.png`, which this middleware serves from OpenStreetMap.
+// `/tiles/{z}/{x}/{y}.png`, which this middleware serves from CARTO too (same
+// minimalist style as the design), with OSM as a last resort.
+const CARTO = 'https://a.basemaps.cartocdn.com/dark_all'
 const OSM = 'https://tile.openstreetmap.org'
 const UA = 'plein-dev-tile-proxy/1 (local development)'
 const CACHE_MAX = 600
@@ -81,7 +83,8 @@ function tileHandler(req: IncomingMessage, res: ServerResponse): void {
     send(cached)
     return
   }
-  fetchTile(`${OSM}/${key}.png`)
+  fetchTile(`${CARTO}/${key}.png`)
+    .catch(() => fetchTile(`${OSM}/${key}.png`))
     .then((buf) => {
       if (tileCache.size >= CACHE_MAX) {
         const first = tileCache.keys().next().value
