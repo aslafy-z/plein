@@ -23,6 +23,7 @@ import {
   type Station,
 } from '../data/types';
 import { getProviders } from '../data/providers';
+import { readStationsCache, writeStationsCache } from '../data/stationsCache';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 /** Lyon Confluence — default position when geolocation is unavailable */
@@ -60,6 +61,10 @@ interface StationsState {
   activeSource: DataSourceId;
   /** true when the real source failed and demo data was substituted */
   fellBack: boolean;
+  /** When the shown data was fetched from the source (cache or live) */
+  fetchedAt?: number;
+  /** true while cached data is shown and a background refresh is running */
+  refreshing: boolean;
 }
 
 interface RouteState {
@@ -229,6 +234,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     data: [],
     activeSource: sourceId,
     fellBack: false,
+    refreshing: false,
   });
   const [routeState, setRouteState] = useState<RouteState>({
     status: 'idle',
@@ -280,30 +286,71 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ── Stations near me (fetch at MAX radius, filter client-side) ─────────────
+  // Stale-while-revalidate: a cached area paints instantly (refreshing: true)
+  // while the live fetch runs; the UI flags outdated data via fetchedAt.
   const stationsReq = useRef(0);
   const loadStations = useCallback(async () => {
     const reqId = ++stationsReq.current;
-    setStations((s) => ({ ...s, status: 'loading' }));
+    const cached = readStationsCache(sourceId, searchPos);
+    if (cached) {
+      setStations({
+        status: 'ready',
+        data: cached.stations,
+        activeSource: sourceId,
+        fellBack: false,
+        fetchedAt: cached.fetchedAt,
+        refreshing: true,
+      });
+    } else {
+      setStations((s) => ({ ...s, status: 'loading', refreshing: false }));
+    }
     const bundle = getProviders(sourceId);
     try {
       const data = await bundle.stations.getStationsNear(searchPos, MAX_RADIUS_KM);
       if (reqId !== stationsReq.current) return;
-      setStations({ status: 'ready', data, activeSource: sourceId, fellBack: false });
+      const fetchedAt = Date.now();
+      writeStationsCache(sourceId, searchPos, data, fetchedAt);
+      setStations({
+        status: 'ready',
+        data,
+        activeSource: sourceId,
+        fellBack: false,
+        fetchedAt,
+        refreshing: false,
+      });
     } catch {
-      // Real source down → substitute demo data, visibly.
       if (reqId !== stationsReq.current) return;
+      // Refresh failed but the cache is on screen → keep it, flagged as outdated.
+      if (cached) {
+        setStations((s) => ({ ...s, refreshing: false }));
+        return;
+      }
+      // Real source down with nothing cached → substitute demo data, visibly.
       if (sourceId !== 'demo') {
         try {
           const demo = await getProviders('demo').stations.getStationsNear(searchPos, MAX_RADIUS_KM);
           if (reqId !== stationsReq.current) return;
-          setStations({ status: 'ready', data: demo, activeSource: 'demo', fellBack: true });
+          setStations({
+            status: 'ready',
+            data: demo,
+            activeSource: 'demo',
+            fellBack: true,
+            fetchedAt: Date.now(),
+            refreshing: false,
+          });
           return;
         } catch {
           /* fall through */
         }
       }
       if (reqId !== stationsReq.current) return;
-      setStations({ status: 'error', data: [], activeSource: sourceId, fellBack: false });
+      setStations({
+        status: 'error',
+        data: [],
+        activeSource: sourceId,
+        fellBack: false,
+        refreshing: false,
+      });
     }
   }, [sourceId, searchPos]);
 

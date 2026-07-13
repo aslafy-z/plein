@@ -4,6 +4,7 @@ import { useApp, selectVisible, selectCheapest, selectPriceRange } from '../stat
 import { fmtPrice, distLabel, agoLabel } from '../lib/format';
 import { openStatus } from '../lib/hours';
 import MapCanvas from '../components/MapCanvas';
+import Freshness from '../components/Freshness';
 
 export default function MapScreen() {
   const app = useApp();
@@ -178,15 +179,25 @@ export default function MapScreen() {
           />
           <div
             style={{
-              fontSize: 11.5,
-              fontWeight: 700,
-              letterSpacing: '.12em',
-              textTransform: 'uppercase',
-              color: C.accent,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
               marginBottom: 10,
             }}
           >
-            {app.searchedAway ? 'La moins chère dans cette zone' : 'La moins chère près de vous'}
+            <span
+              style={{
+                flex: 1,
+                fontSize: 11.5,
+                fontWeight: 700,
+                letterSpacing: '.12em',
+                textTransform: 'uppercase',
+                color: C.accent,
+              }}
+            >
+              {app.searchedAway ? 'La moins chère dans cette zone' : 'La moins chère près de vous'}
+            </span>
+            <Freshness />
           </div>
 
           <button

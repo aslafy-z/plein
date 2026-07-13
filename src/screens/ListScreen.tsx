@@ -1,6 +1,7 @@
 import { C, mono } from '../theme';
 import { fmtPrice, distLabel, plural } from '../lib/format';
 import { openStatus } from '../lib/hours';
+import Freshness from '../components/Freshness';
 import { MAIN_FUELS, FUEL_LABELS } from '../data/types';
 import {
   useApp,
@@ -126,10 +127,12 @@ export default function ListScreen() {
               letterSpacing: '.1em',
               textTransform: 'uppercase',
               color: C.mut,
-              flex: 1,
             }}
           >
             {plural(rows.length, 'station')}
+          </span>
+          <span style={{ flex: 1 }}>
+            <Freshness />
           </span>
           {([['prix', 'Prix'], ['dist', 'Distance']] as const).map(([k, label]) => {
             const active = sort === k;
