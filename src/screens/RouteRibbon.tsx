@@ -91,9 +91,21 @@ export default function RouteRibbon() {
               KM {st.kmAlong} · {detourLabel(st.detourMin)}
             </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
+          <button
+            onClick={() => app.openStation(st.id)}
+            aria-label={`Fiche de ${st.name}`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              marginTop: 8,
+              width: '100%',
+              cursor: 'pointer',
+              textAlign: 'left',
+            }}
+          >
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 16, fontWeight: 700 }}>{st.name}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: C.ink }}>{st.name}</div>
               <div style={{ fontSize: 12, color: C.mut, marginTop: 2 }}>{analysis.recoSub}</div>
             </div>
             <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -104,7 +116,7 @@ export default function RouteRibbon() {
                 {FUEL_LABELS[fuel]} / L
               </div>
             </div>
-          </div>
+          </button>
           <div style={{ display: 'flex', gap: 10, marginTop: 12, alignItems: 'center' }}>
             <button
               onClick={() => app.openInMaps(st)}

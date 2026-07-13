@@ -140,6 +140,20 @@ async function run(label, contextOpts, { demo = true } = {}) {
     await shot('09-route-tour');
   }
 
+  // ── Station detail from the recommended stop ──
+  await page.getByRole('button', { name: /Fiche de/ }).click().catch(() => {});
+  await page.waitForTimeout(600);
+  ok(
+    `${label}: reco card opens the station detail`,
+    await page.locator('[aria-label="Carte de la station"]').isVisible().catch(() => false),
+  );
+  ok(
+    `${label}: per-fuel update times shown`,
+    await page.getByText(/MàJ il y a/).first().isVisible().catch(() => false),
+  );
+  await page.goBack();
+  await page.waitForTimeout(400);
+
   // ── Real trip history ──
   await page.getByText('Modifier').click();
   await page.waitForTimeout(300);
