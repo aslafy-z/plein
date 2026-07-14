@@ -807,12 +807,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const openInMaps = useCallback(
     (target: Station) => {
-      // On Android, a geo: URI opens the native maps app chooser (Google Maps,
-      // Waze, Organic Maps…) instead of the website.
-      if (/android/i.test(navigator.userAgent)) {
+      const ua = navigator.userAgent;
+      // Android: geo: URI → the native maps-app chooser (Google Maps, Waze,
+      // Organic Maps…). iOS/iPadOS: Apple Plans universal link (modern iPads
+      // report as Macintosh, hence the touch check). Elsewhere: Google Maps.
+      const isAndroid = /android/i.test(ua);
+      const isIOS =
+        /iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+      if (isAndroid) {
         showToast("Ouverture de l'app GPS…");
         const label = encodeURIComponent(target.name);
         window.location.href = `geo:${target.lat},${target.lng}?q=${target.lat},${target.lng}(${label})`;
+        return;
+      }
+      if (isIOS) {
+        showToast('Ouverture de Plans…');
+        window.location.href = `https://maps.apple.com/?daddr=${target.lat},${target.lng}&dirflg=d`;
         return;
       }
       showToast('Ouverture de Google Maps…');
@@ -825,6 +835,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const openTourInMaps = useCallback(() => {
     const stops = routeState.stations.filter((s) => tour[s.id]);
     if (!stops.length || !toPoint) return;
+    // Multi-stop URLs are a Google Maps feature — used on every platform
+    // (Android/iOS open the Google Maps app via universal links when installed).
     showToast('Ouverture de Google Maps…');
     const waypoints = stops.map((s) => `${s.lat},${s.lng}`).join('|');
     const origin = fromPoint ? `&origin=${fromPoint.lat},${fromPoint.lng}` : '';

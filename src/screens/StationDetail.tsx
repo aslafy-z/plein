@@ -374,7 +374,7 @@ export default function StationDetail() {
             textAlign: 'center',
           }}
         >
-          Ouvrir dans Google Maps
+          Ouvrir dans Maps
         </button>
       </div>
     </div>
