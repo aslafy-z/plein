@@ -252,7 +252,7 @@ export default function MapScreen() {
                 textAlign: 'center',
               }}
             >
-              Ouvrir dans Maps · {cheapest.driveMin} min
+              Y aller · {cheapest.driveMin} min
             </button>
             <div
               style={{

@@ -374,7 +374,7 @@ export default function StationDetail() {
             textAlign: 'center',
           }}
         >
-          Ouvrir dans Maps
+          Y aller
         </button>
       </div>
     </div>

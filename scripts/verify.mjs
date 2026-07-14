@@ -160,7 +160,7 @@ async function run(label, contextOpts, { demo = true } = {}) {
       await page.getByText('+', { exact: true }).first().click();
     });
     await page.waitForTimeout(300);
-    const tourBar = await page.getByText('Ouvrir la tournée dans Maps ›').isVisible().catch(() => false);
+    const tourBar = await page.getByText('Lancer la tournée ›').isVisible().catch(() => false);
     ok(`${label}: tour bar appears`, tourBar);
     await shot('09-route-tour');
   }

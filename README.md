@@ -32,9 +32,9 @@ ruban vertical avec arrêt conseillé selon 3 stratégies) →
 - Les **Récents** du Trajet sont l'historique réel des trajets calculés (distance +
   date persistées) ; tant qu'il est vide, des suggestions neutres s'affichent.
 
-Action principale partout : **Ouvrir dans Maps** — `geo:` sur Android (choix de
+Action principale partout : **Y aller** — `geo:` sur Android (choix de
 l'app GPS installée), Plans sur iOS, Google Maps sur desktop ; la tournée
-multi-arrêts passe par Google Maps (seule URL multi-étapes).
+multi-arrêts (« Lancer la tournée ») passe par Google Maps (seule URL multi-étapes).
 La « tournée » multi-arrêts est secondaire (petit « + » sur chaque arrêt).
 
 ## Sources de données — architecture pluggable

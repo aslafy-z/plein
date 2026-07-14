@@ -132,7 +132,7 @@ export default function RouteRibbon() {
                 cursor: 'pointer',
               }}
             >
-              Ouvrir dans Maps
+              Y aller
             </button>
             <button
               onClick={() => app.toggleTour(st.id)}
@@ -346,7 +346,7 @@ export default function RouteRibbon() {
                 {plural(nTour, 'arrêt')} sélectionné{nTour > 1 ? 's' : ''}
               </span>
               <span style={{ fontSize: 12.5, fontWeight: 800, color: C.accent, whiteSpace: 'nowrap' }}>
-                Ouvrir la tournée dans Maps ›
+                Lancer la tournée ›
               </span>
             </button>
           </div>
