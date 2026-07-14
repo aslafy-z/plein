@@ -9,7 +9,9 @@
     }
   ],
   "workers_dev": false,
-  "preview_urls": false,
+  // Preview URLs (<alias>-plein.<subdomain>.workers.dev) for PR deploys via
+  // `wrangler versions upload` in CI; production stays on the custom domain only.
+  "preview_urls": true,
   "observability": {
     "enabled": true
   },

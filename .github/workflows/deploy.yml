@@ -1,0 +1,99 @@
+# Deploys the Worker with Wrangler:
+# - push on main  → production deploy (custom domain plein.zadkiel.fr)
+# - pull requests → preview version (URL pr-<n>-plein.<subdomain>.workers.dev,
+#   requires `preview_urls: true` in wrangler.jsonc), posted as a PR comment.
+#
+# Required repository secrets:
+#   CLOUDFLARE_API_TOKEN   — API token with the "Edit Cloudflare Workers" template
+#   CLOUDFLARE_ACCOUNT_ID  — Cloudflare account id (dashboard → Workers & Pages)
+#
+# Actions are pinned by commit SHA (tag in comment).
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.workflow }}-${{ github.ref }}
+  # Never cancel a production deploy mid-flight; superseded PR previews can be.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  deploy-production:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Deploy to production
+        uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
+
+  deploy-preview:
+    # Forked PRs don't get secrets — only same-repo PRs deploy a preview.
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Upload preview version
+        id: preview
+        uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Stable per-PR alias → pr-<n>-plein.<subdomain>.workers.dev
+          command: versions upload --preview-alias pr-${{ github.event.pull_request.number }}
+      - name: Comment the preview URL on the PR
+        uses: actions/github-script@d746ffe35508b1917358783b479e04febd2b8f71 # v9.0.0
+        env:
+          DEPLOYMENT_URL: ${{ steps.preview.outputs.deployment-url }}
+          COMMAND_OUTPUT: ${{ steps.preview.outputs.command-output }}
+        with:
+          script: |
+            const marker = '<!-- plein-preview-url -->';
+            let url = process.env.DEPLOYMENT_URL || '';
+            if (!url) {
+              // Fallback: wrangler prints the preview/alias URLs in its output
+              const m = (process.env.COMMAND_OUTPUT || '').match(/https:\/\/[^\s]*workers\.dev[^\s]*/g);
+              if (m) url = m[m.length - 1];
+            }
+            const body = url
+              ? `${marker}\n🚀 **Preview** : ${url}\n\n_Version alias \`pr-${context.issue.number}\` · commit ${context.payload.pull_request.head.sha.slice(0, 7)}_`
+              : `${marker}\n⚠️ Preview uploadée mais URL introuvable dans la sortie wrangler — voir les logs du job.`;
+            const { data: comments } = await github.rest.issues.listComments({
+              ...context.repo, issue_number: context.issue.number, per_page: 100,
+            });
+            const existing = comments.find(
+              (c) => c.user.type === 'Bot' && c.body.includes(marker),
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({ ...context.repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ ...context.repo, issue_number: context.issue.number, body });
+            }
