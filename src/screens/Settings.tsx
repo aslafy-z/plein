@@ -1,6 +1,7 @@
 import { C, mono } from '../theme';
 import { ALL_FUELS, FUEL_LABELS, type DataSourceId } from '../data/types';
 import { useApp, VEHICLE_PRESETS } from '../state/store';
+import { APP_VERSION } from '../lib/appUpdate';
 
 const SECTION_LABEL: React.CSSProperties = {
   fontSize: 12,
@@ -379,7 +380,22 @@ export default function Settings() {
         <div>
           cartes : © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" style={{ color: C.ghost, textDecoration: 'underline' }}>OpenStreetMap</a> · © CARTO
         </div>
-        <div>Plein. · v1 · juillet 2026</div>
+        <div>
+          Plein. · version{' '}
+          <a
+            href={`https://github.com/aslafy-z/plein/commit/${APP_VERSION.split('+')[0]}`}
+            target="_blank"
+            rel="noreferrer"
+            title="Voir le commit sur GitHub"
+            style={{
+              color: C.mut,
+              textDecoration: 'underline',
+              fontFamily: "'Spline Sans Mono', ui-monospace, monospace",
+            }}
+          >
+            {APP_VERSION}
+          </a>
+        </div>
       </div>
     </div>
   );
