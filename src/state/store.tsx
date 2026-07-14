@@ -170,7 +170,9 @@ export interface AppStore {
   searchPos: GeoPoint;
   /** true when searchPos was moved away from the user's position */
   searchedAway: boolean;
-  setSearchArea(p: GeoPoint): void;
+  /** Name of the searched place (null when following the user / free pan) */
+  searchLabel: string | null;
+  setSearchArea(p: GeoPoint, label?: string): void;
   resetSearchToUser(): void;
   stations: StationsState;
   reloadStations(): void;
@@ -314,6 +316,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [geoStatus, setGeoStatus] = useState<AppStore['geoStatus']>('pending');
   // Search area: follows the user's position until they search elsewhere on the map
   const [searchPos, setSearchPos] = useState<GeoPoint>(initialPos);
+  const [searchLabel, setSearchLabel] = useState<string | null>(null);
   const searchMovedRef = useRef(false);
   const [recents, setRecents] = useState(persisted.recents ?? DEFAULT_RECENTS);
   const [hasTripHistory, setHasTripHistory] = useState(persisted.recents != null);
@@ -359,15 +362,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  const setSearchArea = useCallback((p: GeoPoint) => {
+  const setSearchArea = useCallback((p: GeoPoint, label?: string) => {
     searchMovedRef.current = true;
     setSearchPos(p);
+    setSearchLabel(label ?? null);
     savePersisted({ lastPos: p });
   }, []);
 
   const resetSearchToUser = useCallback(() => {
     searchMovedRef.current = false;
     setSearchPos(userPos);
+    setSearchLabel(null);
     requestGeolocation();
   }, [requestGeolocation, userPos]);
 
@@ -864,6 +869,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       requestGeolocation,
       searchPos,
       searchedAway: haversineKm(searchPos, userPos) > 0.5,
+      searchLabel,
       setSearchArea,
       resetSearchToUser,
       stations,
@@ -920,7 +926,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [
       screen, prevScreen, go, back, openStation, fuel, setFuel, cycleFuel, sort, radius, setRadius,
       brandCats, serviceTags, filtersOpen, resetFilters, userPos, geoStatus,
-      requestGeolocation, searchPos, setSearchArea, resetSearchToUser,
+      requestGeolocation, searchPos, searchLabel, setSearchArea, resetSearchToUser,
       stations, loadStations, fromText, toText, fromPoint, toPoint,
       setFrom, setTo, searchPlaces, recents, hasTripHistory, routeReady, startRoute, editRoute,
       openRouteSearch, focusDestination, consumeFocusDestination,

@@ -136,6 +136,27 @@ export default function StationDetail() {
       <div style={{ position: 'relative', height: 160, background: C.mapBg }}>
         <StationMiniMap station={s} />
         <button
+          onClick={() => {
+            app.setSearchArea({ lat: s.lat, lng: s.lng }, s.name);
+            app.go('map');
+          }}
+          style={{
+            position: 'absolute',
+            right: 12,
+            bottom: 26,
+            zIndex: 1000,
+            background: '#101214d9',
+            color: C.accent,
+            fontSize: 12,
+            fontWeight: 700,
+            padding: '7px 12px',
+            borderRadius: 16,
+            border: `1px solid ${C.accentBorder}`,
+          }}
+        >
+          Voir sur la carte ›
+        </button>
+        <button
           onClick={() => app.back()}
           aria-label="Retour"
           style={{

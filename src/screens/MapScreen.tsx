@@ -5,6 +5,7 @@ import { fmtPrice, distLabel, agoLabel } from '../lib/format';
 import { openStatus } from '../lib/hours';
 import MapCanvas from '../components/MapCanvas';
 import Freshness from '../components/Freshness';
+import PlaceSearch from '../components/PlaceSearch';
 
 export default function MapScreen() {
   const app = useApp();
@@ -49,45 +50,7 @@ export default function MapScreen() {
             pointerEvents: 'none',
           }}
         >
-          <button
-            onClick={() => app.openRouteSearch()}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              background: C.surface2,
-              border: `1px solid ${C.border09}`,
-              borderRadius: 28,
-              padding: '14px 18px',
-              boxShadow: '0 8px 24px rgba(0,0,0,.4)',
-              pointerEvents: 'auto',
-            }}
-          >
-            <div
-              style={{
-                width: 18,
-                height: 18,
-                borderRadius: '50%',
-                border: `2.5px solid ${C.mut}`,
-                position: 'relative',
-                flexShrink: 0,
-              }}
-            >
-              <div
-                style={{
-                  position: 'absolute',
-                  right: -5,
-                  bottom: -4,
-                  width: 8,
-                  height: 2.5,
-                  background: C.mut,
-                  borderRadius: 2,
-                  transform: 'rotate(45deg)',
-                }}
-              />
-            </div>
-            <span style={{ color: C.mut, fontSize: 15 }}>Où allez-vous ?</span>
-          </button>
+          <PlaceSearch />
 
           <div style={{ display: 'flex', gap: 8 }}>
             <button

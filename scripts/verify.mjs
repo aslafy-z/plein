@@ -52,7 +52,7 @@ async function run(label, contextOpts, { demo = true } = {}) {
 
   // ── Map ──
   await page.waitForTimeout(1600); // stations load (+fallback if needed)
-  ok(`${label}: map search bar`, await page.getByText('Où allez-vous ?').isVisible());
+  ok(`${label}: map search bar`, await page.getByText('Chercher un lieu ou un trajet…').isVisible());
   const cheapSheet = await page.getByText('La moins chère près de vous').isVisible().catch(() => false);
   ok(`${label}: cheapest bottom sheet`, cheapSheet);
   await shot('02-map');
@@ -65,6 +65,24 @@ async function run(label, contextOpts, { demo = true } = {}) {
     await page.waitForTimeout(120);
   }
   ok(`${label}: full fuel cycle returns to Gazole`, await page.getByText('Gazole ↻').isVisible());
+
+  // ── Place search: move the circle to a searched place (no forced route) ──
+  await page.getByText('Chercher un lieu ou un trajet…').click();
+  await page.locator('input[placeholder="Ville, adresse…"]').fill('Marseille');
+  await page.waitForTimeout(900);
+  await page.getByText(/voir les stations ici/).first().click();
+  await page.waitForTimeout(1200);
+  ok(
+    `${label}: searched place moves the zone`,
+    (await page.getByText('La moins chère dans cette zone').isVisible().catch(() => false)) &&
+      (await page.getByText('Marseille').first().isVisible().catch(() => false)),
+  );
+  await page.getByRole('button', { name: 'Revenir à ma position' }).click();
+  await page.waitForTimeout(1200);
+  ok(
+    `${label}: reset returns to my position`,
+    await page.getByText('La moins chère près de vous').isVisible().catch(() => false),
+  );
 
   // ── Filters ──
   await page.getByText(/^Filtres · \d+$/).click();
@@ -88,8 +106,15 @@ async function run(label, contextOpts, { demo = true } = {}) {
       await page.getByText(/Ouvert|Fermé/).first().isVisible().catch(() => false),
     );
     await shot('04-detail');
-    if (detailVisible) await page.getByRole('button', { name: /retour|←/i }).first().click().catch(() => page.getByText('←').click());
-    await page.waitForTimeout(300);
+    // « Voir sur la carte » jumps to the map, centred on the station
+    await page.getByText('Voir sur la carte ›').click().catch(() => {});
+    await page.waitForTimeout(1200);
+    ok(
+      `${label}: detail jumps to the map`,
+      await page.getByText('La moins chère dans cette zone').isVisible().catch(() => false),
+    );
+    await page.getByRole('button', { name: 'Revenir à ma position' }).click().catch(() => {});
+    await page.waitForTimeout(1000);
   }
 
   // ── List ──
