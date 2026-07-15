@@ -84,6 +84,33 @@ async function run(label, contextOpts, { demo = true } = {}) {
     await page.getByText('La moins chère près de vous').isVisible().catch(() => false),
   );
 
+  // ── Map sheet: pull the handle up → station list, row selects on map ──
+  const handle = page.getByRole('button', { name: /liste des stations/ });
+  const hBefore = (await handle.boundingBox())?.y ?? 0;
+  await handle.click();
+  await page.waitForTimeout(500);
+  const hAfter = (await handle.boundingBox())?.y ?? 0;
+  ok(`${label}: pulling the handle expands the sheet to the list`, hAfter < hBefore - 100);
+  await shot('02b-map-list');
+  const row = page.locator('button[aria-label^="Voir "][aria-label$="sur la carte"]').nth(1);
+  const rowSelected = await row
+    .click({ timeout: 3000 })
+    .then(() => true)
+    .catch(() => false);
+  await page.waitForTimeout(800);
+  ok(
+    `${label}: list row selects the station on the map`,
+    rowSelected &&
+      (await page.getByText('Station sélectionnée').isVisible().catch(() => false)),
+  );
+  await shot('02c-map-selected');
+  await page.getByRole('button', { name: 'Désélectionner la station' }).click().catch(() => {});
+  await page.waitForTimeout(400);
+  ok(
+    `${label}: deselecting returns to the cheapest card`,
+    await page.getByText(/La moins chère/).first().isVisible().catch(() => false),
+  );
+
   // ── Filters ──
   await page.getByText(/^Filtres · \d+$/).click();
   await page.waitForTimeout(300);

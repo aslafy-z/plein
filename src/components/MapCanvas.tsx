@@ -60,6 +60,7 @@ export default function MapCanvas() {
     });
     map.on('move', () => {
       if (!userInteractedRef.current || zooming) return;
+      if (Date.now() < programmaticUntil.current) return; // pan-to-station, fits…
       circleRef.current?.setLatLng(map.getCenter());
     });
 
@@ -67,6 +68,7 @@ export default function MapCanvas() {
     // (debounced; only for user-initiated moves, never programmatic fits)
     map.on('moveend', () => {
       if (!userInteractedRef.current) return;
+      if (Date.now() < programmaticUntil.current) return;
       const c = map.getCenter();
       const cur = appRef.current;
       const drift = haversineKm({ lat: c.lat, lng: c.lng }, cur.searchPos);
@@ -159,20 +161,31 @@ export default function MapCanvas() {
 
     for (const s of pins) {
       const best = cheapest?.id === s.id;
+      const focused = app.focusStationId === s.id;
       const price = s.prices[app.fuel]!.value;
-      const sig = `${price}|${best}`;
+      const sig = `${price}|${best}|${focused}`;
       wanted.add(s.id);
       const existing = markers.get(s.id);
       if (existing && existing.sig === sig) continue;
 
       const bg = best ? '#3ddc84' : '#22282c';
       const fg = best ? '#08120c' : '#cfd6da';
-      const font = best
+      const big = best || focused;
+      const font = big
         ? "700 15px 'Spline Sans Mono',monospace"
         : "600 13px 'Spline Sans Mono',monospace";
-      const pad = best ? '7px 11px' : '5px 9px';
-      const border = best ? '1px solid #3ddc84' : '1px solid rgba(255,255,255,.08)';
-      const shadow = best ? 'drop-shadow(0 4px 12px rgba(61,220,132,.35))' : 'none';
+      const pad = big ? '7px 11px' : '5px 9px';
+      // The selected pin gets an accent halo so it stands out from the list
+      const border = focused
+        ? `2px solid ${best ? '#eafff3' : '#3ddc84'}`
+        : best
+          ? '1px solid #3ddc84'
+          : '1px solid rgba(255,255,255,.08)';
+      const shadow = focused
+        ? 'drop-shadow(0 6px 16px rgba(61,220,132,.55))'
+        : best
+          ? 'drop-shadow(0 4px 12px rgba(61,220,132,.35))'
+          : 'none';
       const label = price.toFixed(2).replace('.', ',');
       const html =
         `<div style="transform:translate(-50%,-100%);display:flex;flex-direction:column;` +
@@ -184,10 +197,13 @@ export default function MapCanvas() {
 
       if (existing) {
         existing.marker.setIcon(icon);
+        existing.marker.setZIndexOffset(focused ? 2000 : best ? 1000 : 0);
         existing.sig = sig;
       } else {
-        const marker = L.marker([s.lat, s.lng], { icon });
-        marker.on('click', () => appRef.current.openStation(s.id));
+        const marker = L.marker([s.lat, s.lng], { zIndexOffset: focused ? 2000 : best ? 1000 : 0, icon });
+        // Tapping a pin selects the station in the bottom-sheet card
+        // (the full detail opens from there) — Google-Maps-like flow
+        marker.on('click', () => appRef.current.setFocusStation(s.id));
         marker.addTo(layer);
         markers.set(s.id, { marker, sig });
       }
@@ -200,8 +216,9 @@ export default function MapCanvas() {
       }
     }
 
-    // Auto-fit (to the radius zone, not the whole fetched area) until the user takes over
-    if (!userInteractedRef.current) {
+    // Auto-fit (to the radius zone, not the whole fetched area) until the user
+    // takes over — and never while a station is selected (don't yank the view)
+    if (!userInteractedRef.current && !app.focusStationId) {
       programmaticUntil.current = Date.now() + 700;
       const zone = selectVisible(app);
       const coords: L.LatLngExpression[] = [[app.searchPos.lat, app.searchPos.lng]];
@@ -213,7 +230,18 @@ export default function MapCanvas() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [app.stations.data, app.fuel, app.radius, app.brandCats, app.serviceTags, app.userPos, app.searchPos]);
+  }, [app.stations.data, app.fuel, app.radius, app.brandCats, app.serviceTags, app.userPos, app.searchPos, app.focusStationId]);
+
+  // ── Selecting a station (pin tap or sheet-list tap) pans the map onto it ──
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !app.focusStationId) return;
+    const s = selectMapStations(app).find((x) => x.id === app.focusStationId);
+    if (!s) return;
+    programmaticUntil.current = Date.now() + 1200; // no auto-search, no circle glide
+    map.panTo([s.lat, s.lng]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [app.focusStationId]);
 
   return (
     <div style={{ position: 'absolute', inset: 0, background: C.mapBg }}>
