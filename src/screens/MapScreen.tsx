@@ -151,7 +151,7 @@ export default function MapScreen() {
               >
                 {app.hasKnownPos
                   ? 'Dernière position connue — réactiver la localisation'
-                  : 'Position par défaut : Lyon — activer la localisation'}
+                  : 'Position par défaut : Toulouse — activer la localisation'}
               </button>
             </div>
           )}

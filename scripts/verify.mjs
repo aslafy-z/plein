@@ -131,9 +131,17 @@ async function run(label, contextOpts, { demo = true } = {}) {
   await page.waitForTimeout(300);
   ok(`${label}: route setup`, await page.getByText('Comparez les prix le long de votre trajet').isVisible());
   ok(`${label}: suggestions until real history`, await page.getByText('Suggestions').isVisible());
+  ok(
+    `${label}: Toulouse is the only suggestion`,
+    await page.getByText('Toulouse', { exact: true }).isVisible(),
+  );
   ok(`${label}: avoid motorway/toll toggles`, await page.getByText('Éviter les péages').isVisible());
   await shot('06-route-setup');
-  await page.getByText('Bordeaux centre').click(); // suggestion
+  // The default position IS Toulouse, so type a real destination instead of
+  // tapping the (degenerate) Toulouse suggestion
+  await page.locator('input[placeholder="Destination"]').fill('Bordeaux');
+  await page.waitForTimeout(900); // debounce + geocoder
+  await page.getByText('Bordeaux centre').click(); // autocomplete result
   await page.waitForTimeout(200);
   await page.getByText('Comparer les stations sur le trajet').click();
   await page.waitForTimeout(2500); // route + stations along
