@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { C, mono } from '../theme';
 import { FUEL_LABELS } from '../data/types';
 import {
@@ -17,25 +17,36 @@ import Star from './Star';
 const EXPAND_RATIO = 0.75;
 /** Pointer must travel this far before a tap becomes a drag */
 const DRAG_SLOP_PX = 6;
+/** Release speed (px/ms) above which the sheet snaps in the fling direction */
+const FLING_VPS = 0.45;
+const TRANSITION = 'height .3s cubic-bezier(.4,0,.2,1)';
 
 /**
  * Bottom sheet over the map. Collapsed: the cheapest (or map-selected)
- * station card. Pulling the handle up reveals the list of the stations in
- * the radius; tapping a row selects the station on the map (highlighted pin,
+ * station card. Pulling it up reveals the list of the stations in the
+ * radius; tapping a row selects the station on the map (highlighted pin,
  * map pans onto it) — the map ↔ list link.
  *
- * Height changes are animated and the content cross-fades between the
- * card / loading / empty states, so panning over a station-less area
- * doesn't blink.
+ * Gestures: the whole sheet drags, not just the handle — swipe up/down
+ * anywhere on the station card, and swipe down on the list itself when it
+ * is scrolled to the top (native scroll otherwise). During a drag the
+ * height is written straight to the DOM (no React re-render per frame) and
+ * the release snaps in the fling direction when the gesture is fast, so a
+ * short flick opens or closes.
  */
 export default function MapSheet({
   stageH,
   onCollapsedHeight,
+  expanded,
+  onExpandedChange,
 }: {
   /** Height of the map stage the sheet lives in (drives the expanded size) */
   stageH: number;
   /** Reports the collapsed height so the map keeps that strip free */
   onCollapsedHeight: (h: number) => void;
+  /** Open state lives in MapScreen (the map overlay needs it too) */
+  expanded: boolean;
+  onExpandedChange: (open: boolean) => void;
 }) {
   const app = useApp();
   const cheapest = selectCheapest(app);
@@ -49,11 +60,10 @@ export default function MapSheet({
 
   const hasCard = shown != null;
 
-  const [expanded, setExpanded] = useState(false);
-  const [dragH, setDragH] = useState<number | null>(null);
-  const [collapsedH, setCollapsedH] = useState<number | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
-  const drag = useRef({ startY: 0, startH: 0, moved: false });
+  const listRef = useRef<HTMLDivElement>(null);
+  const [collapsedH, setCollapsedH] = useState<number | null>(null);
 
   // Measure the always-visible part; the map keeps that strip free below it
   useLayoutEffect(() => {
@@ -71,51 +81,229 @@ export default function MapSheet({
 
   // No station card → nothing to expand to
   useEffect(() => {
-    if (!hasCard) {
-      setExpanded(false);
-      setDragH(null);
-    }
-  }, [hasCard]);
+    if (!hasCard && expanded) onExpandedChange(false);
+  }, [hasCard, expanded, onExpandedChange]);
 
   const expandedH = Math.max(
     collapsedH ?? 0,
     Math.min(Math.round(stageH * EXPAND_RATIO), stageH - 64),
   );
 
-  const startDrag = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!hasCard || collapsedH == null || stageH <= 0) return;
-    drag.current = { startY: e.clientY, startH: expanded ? expandedH : collapsedH, moved: false };
-    e.currentTarget.setPointerCapture(e.pointerId);
+  // ── Gesture engine ─────────────────────────────────────────────────────────
+  // During a drag the height is written straight onto the DOM node inside a
+  // rAF (no React state per pointermove — a re-rendering list makes the drag
+  // stutter, which reads as "resistance"). React state only commits on
+  // release. `dims` mirrors the current render so the stable callbacks and
+  // the native touch listeners never see stale values.
+  const dims = useRef({ min: 0, max: 0, expanded: false, canDrag: false });
+  dims.current = {
+    min: collapsedH ?? 0,
+    max: expandedH,
+    expanded,
+    canDrag: hasCard && collapsedH != null && stageH > 0,
   };
-  const moveDrag = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
-    const dy = drag.current.startY - e.clientY;
-    if (!drag.current.moved && Math.abs(dy) < DRAG_SLOP_PX) return;
-    drag.current.moved = true;
-    setDragH(Math.min(expandedH, Math.max(collapsedH ?? 0, drag.current.startH + dy)));
-  };
-  const settle = (toggleOnTap: boolean) => {
-    if (!drag.current.moved) {
-      if (toggleOnTap) setExpanded((v) => !v);
-    } else {
-      const h = dragH ?? collapsedH ?? 0;
-      setExpanded(h > ((collapsedH ?? 0) + expandedH) / 2);
+  const openRef = useRef(onExpandedChange);
+  openRef.current = onExpandedChange;
+
+  const g = useRef({
+    active: false,
+    moved: false,
+    startY: 0,
+    startH: 0,
+    lastY: 0,
+    lastT: 0,
+    v: 0,
+    raf: 0,
+    pendingH: 0,
+  });
+
+  const dragEnd = useCallback((cancelled = false) => {
+    const el = rootRef.current;
+    const s = g.current;
+    if (!el || !s.active) return;
+    s.active = false;
+    if (s.raf) {
+      cancelAnimationFrame(s.raf);
+      s.raf = 0;
     }
-    setDragH(null);
+    const d = dims.current;
+    const h = el.getBoundingClientRect().height;
+    let open: boolean;
+    if (!cancelled && s.moved && Math.abs(s.v) > FLING_VPS) {
+      open = s.v > 0; // fling: follow the gesture direction, whatever the travel
+    } else {
+      open = h > (d.min + d.max) / 2;
+    }
+    el.style.transition = TRANSITION;
+    el.style.height = `${open ? d.max : d.min}px`;
+    openRef.current(open);
+    // keep `moved` up until the trailing click has been swallowed
+    setTimeout(() => {
+      g.current.moved = false;
+    }, 0);
+  }, []);
+
+  const dragBegin = useCallback(
+    (y: number) => {
+      const el = rootRef.current;
+      if (!el || !dims.current.canDrag || g.current.active) return;
+      g.current = {
+        ...g.current,
+        active: true,
+        moved: false,
+        startY: y,
+        startH: el.getBoundingClientRect().height,
+        lastY: y,
+        lastT: performance.now(),
+        v: 0,
+        pendingH: 0,
+      };
+      el.style.transition = 'none';
+      // The pointer may be released outside the sheet before any capture
+      const done = () => {
+        window.removeEventListener('pointerup', done);
+        window.removeEventListener('pointercancel', done);
+        dragEnd();
+      };
+      window.addEventListener('pointerup', done);
+      window.addEventListener('pointercancel', done);
+    },
+    [dragEnd],
+  );
+
+  const dragMove = useCallback((y: number) => {
+    const el = rootRef.current;
+    const s = g.current;
+    if (!el || !s.active) return;
+    if (!s.moved && Math.abs(y - s.startY) < DRAG_SLOP_PX) return;
+    s.moved = true;
+    const now = performance.now();
+    const dt = now - s.lastT;
+    if (dt > 0) {
+      const inst = (s.lastY - y) / dt; // > 0 = finger moving up (opening)
+      s.v = 0.7 * inst + 0.3 * s.v;
+    }
+    s.lastY = y;
+    s.lastT = now;
+    const d = dims.current;
+    s.pendingH = Math.min(d.max, Math.max(d.min, s.startH + (s.startY - y)));
+    if (!s.raf) {
+      s.raf = requestAnimationFrame(() => {
+        s.raf = 0;
+        if (s.active && rootRef.current) rootRef.current.style.height = `${s.pendingH}px`;
+      });
+    }
+  }, []);
+
+  // If React re-renders mid-drag (background refresh…), re-assert the
+  // gesture height it would otherwise overwrite.
+  useLayoutEffect(() => {
+    const el = rootRef.current;
+    if (el && g.current.active && g.current.pendingH) {
+      el.style.transition = 'none';
+      el.style.height = `${g.current.pendingH}px`;
+    }
+  });
+
+  // ── Card zone: drag from anywhere on the collapsed card ──
+  const cardPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    dragBegin(e.clientY);
   };
-  const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
-    e.currentTarget.releasePointerCapture(e.pointerId);
-    settle(true);
+  const cardPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!g.current.active) return;
+    const wasMoved = g.current.moved;
+    dragMove(e.clientY);
+    if (!wasMoved && g.current.moved) e.currentTarget.setPointerCapture(e.pointerId);
   };
-  const cancelDrag = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
-    e.currentTarget.releasePointerCapture(e.pointerId);
-    settle(false);
+  const cardPointerUp = () => dragEnd();
+  const cardPointerCancel = () => dragEnd(true);
+  // A drag must not leak a click into the card's buttons on release
+  const swallowClickAfterDrag = (e: React.MouseEvent) => {
+    if (g.current.moved) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
   };
 
+  // ── List zone (mouse): drag down from the top of the list closes ──
+  const listArm = useRef<{ y: number; top: number } | null>(null);
+  const listPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== 'mouse') return; // touch has its own path below
+    listArm.current = { y: e.clientY, top: listRef.current?.scrollTop ?? 0 };
+  };
+  const listPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (g.current.active) {
+      const wasMoved = g.current.moved;
+      dragMove(e.clientY);
+      if (!wasMoved && g.current.moved) e.currentTarget.setPointerCapture(e.pointerId);
+      return;
+    }
+    const arm = listArm.current;
+    if (!arm) return;
+    const dy = e.clientY - arm.y;
+    if (dy > DRAG_SLOP_PX && arm.top <= 0) {
+      dragBegin(arm.y);
+      dragMove(e.clientY);
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } else if (Math.abs(dy) > DRAG_SLOP_PX) {
+      listArm.current = null; // upward or scrolled: not a sheet gesture
+    }
+  };
+  const listPointerUp = () => {
+    if (g.current.active) dragEnd();
+    listArm.current = null;
+  };
+
+  // ── List zone (touch): native scroll physics, but a downward pull while
+  // already at the top takes the sheet with it (Google-Maps behaviour).
+  // touchmove must be non-passive to preventDefault, hence the listener.
+  const listAttached = hasCard && collapsedH != null;
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el || !listAttached) return;
+    let armY = 0;
+    let armTop = 0;
+    let armed = false;
+    const start = (e: TouchEvent) => {
+      armY = e.touches[0].clientY;
+      armTop = el.scrollTop;
+      armed = true;
+    };
+    const move = (e: TouchEvent) => {
+      const y = e.touches[0].clientY;
+      if (g.current.active) {
+        e.preventDefault();
+        dragMove(y);
+        return;
+      }
+      if (!armed) return;
+      const dy = y - armY;
+      if (dy > DRAG_SLOP_PX && armTop <= 0 && el.scrollTop <= 0) {
+        dragBegin(armY);
+        dragMove(y);
+        e.preventDefault();
+      } else if (Math.abs(dy) > DRAG_SLOP_PX) {
+        armed = false;
+      }
+    };
+    const end = () => {
+      if (g.current.active) dragEnd();
+      armed = false;
+    };
+    el.addEventListener('touchstart', start, { passive: true });
+    el.addEventListener('touchmove', move, { passive: false });
+    el.addEventListener('touchend', end);
+    el.addEventListener('touchcancel', end);
+    return () => {
+      el.removeEventListener('touchstart', start);
+      el.removeEventListener('touchmove', move);
+      el.removeEventListener('touchend', end);
+      el.removeEventListener('touchcancel', end);
+    };
+  }, [listAttached, dragBegin, dragMove, dragEnd]);
+
   const stateKey = hasCard ? 'card' : loading ? 'loading' : 'empty';
-  const height = dragH ?? (expanded && hasCard ? expandedH : (collapsedH ?? undefined));
+  const height = expanded && hasCard ? expandedH : (collapsedH ?? undefined);
 
   const isBest = shown != null && cheapest?.id === shown.id;
   const shownPrice = shown?.prices[app.fuel]?.value ?? 0;
@@ -123,6 +311,7 @@ export default function MapSheet({
 
   return (
     <div
+      ref={rootRef}
       style={{
         position: 'absolute',
         left: 0,
@@ -136,15 +325,23 @@ export default function MapSheet({
         borderRadius: '24px 24px 0 0',
         boxShadow: '0 -10px 30px rgba(0,0,0,.45)',
         height,
-        transition: dragH != null ? undefined : 'height .3s cubic-bezier(.4,0,.2,1)',
+        transition: TRANSITION,
       }}
     >
       {/* ── Collapsed part (measured — the map stops above it) ── */}
-      <div ref={headerRef} style={{ flexShrink: 0 }}>
+      <div
+        ref={headerRef}
+        style={{ flexShrink: 0, touchAction: 'none', cursor: hasCard ? 'grab' : undefined }}
+        onPointerDown={cardPointerDown}
+        onPointerMove={cardPointerMove}
+        onPointerUp={cardPointerUp}
+        onPointerCancel={cardPointerCancel}
+        onClickCapture={swallowClickAfterDrag}
+      >
         <div key={stateKey} className="sheet-swap">
           {shown ? (
             <div style={{ padding: '0 20px 18px' }}>
-              {/* Drag handle — pull up for the list, tap to toggle */}
+              {/* Drag handle — kept as the visible affordance + a11y toggle */}
               <div
                 role="button"
                 tabIndex={0}
@@ -154,22 +351,14 @@ export default function MapSheet({
                     ? 'Réduire la liste des stations'
                     : 'Voir la liste des stations de la zone'
                 }
-                onPointerDown={startDrag}
-                onPointerMove={moveDrag}
-                onPointerUp={endDrag}
-                onPointerCancel={cancelDrag}
+                onClick={() => onExpandedChange(!expanded)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    setExpanded((v) => !v);
+                    onExpandedChange(!expanded);
                   }
                 }}
-                style={{
-                  padding: '10px 0 8px',
-                  margin: '0 -20px',
-                  cursor: 'grab',
-                  touchAction: 'none',
-                }}
+                style={{ padding: '10px 0 8px', margin: '0 -20px' }}
               >
                 <div
                   style={{
@@ -336,8 +525,8 @@ export default function MapSheet({
         </div>
       </div>
 
-      {/* ── Station list revealed by pulling the handle up ── */}
-      {hasCard && collapsedH != null && (
+      {/* ── Station list revealed by pulling the sheet up ── */}
+      {listAttached && (
         <div
           style={{
             flex: 1,
@@ -383,11 +572,19 @@ export default function MapSheet({
           </div>
 
           <div
+            ref={listRef}
+            data-testid="zone-list"
+            onPointerDown={listPointerDown}
+            onPointerMove={listPointerMove}
+            onPointerUp={listPointerUp}
+            onPointerCancel={listPointerUp}
+            onClickCapture={swallowClickAfterDrag}
             style={{
               flex: 1,
               minHeight: 0,
               overflowY: 'auto',
               overscrollBehavior: 'contain',
+              touchAction: 'pan-y',
               padding: '0 16px 16px',
               display: 'flex',
               flexDirection: 'column',
@@ -410,7 +607,7 @@ export default function MapSheet({
                   onClick={() => {
                     // Locate on the map: highlighted pin + pan, card in the sheet
                     app.setFocusStation(s.id);
-                    setExpanded(false);
+                    onExpandedChange(false);
                   }}
                   aria-label={`Voir ${s.name} sur la carte`}
                   style={{
@@ -421,6 +618,7 @@ export default function MapSheet({
                     background: C.surface2,
                     borderRadius: 14,
                     padding: '11px 14px',
+                    flexShrink: 0,
                     border: isFocus
                       ? `1.5px solid ${C.accent}`
                       : `1px solid ${best ? C.accentBorder : C.border}`,

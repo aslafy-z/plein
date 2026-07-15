@@ -48,6 +48,66 @@ test('pull-up sheet lists the zone stations, a row selects on the map', async ({
   await expect(page.getByText(/La moins chère/).first()).toBeVisible()
 })
 
+test('swiping the list down from its top closes the sheet', async ({ page }) => {
+  const handle = page.getByRole('button', { name: /liste des stations/ })
+  await handle.click()
+  await expect(handle).toHaveAttribute('aria-expanded', 'true')
+  await page.waitForTimeout(400) // open animation
+
+  const box = await page.getByTestId('zone-list').boundingBox()
+  if (!box) throw new Error('zone list not visible')
+  await page.mouse.move(box.x + box.width / 2, box.y + 20)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width / 2, box.y + 320, { steps: 12 })
+  await page.mouse.up()
+
+  await expect(handle).toHaveAttribute('aria-expanded', 'false')
+})
+
+test('a quick upward flick on the station card opens the list', async ({ page }) => {
+  const handle = page.getByRole('button', { name: /liste des stations/ })
+  const box = await page.getByText('La moins chère près de vous').boundingBox()
+  if (!box) throw new Error('station card not visible')
+
+  // Short (way under half the travel) but fast → the fling rule must open
+  const x = box.x + box.width / 2
+  await page.mouse.move(x, box.y + 4)
+  await page.mouse.down()
+  await page.mouse.move(x, box.y - 110, { steps: 3 })
+  await page.mouse.up()
+
+  await expect(handle).toHaveAttribute('aria-expanded', 'true')
+})
+
+test('swiping down a scrolled list scrolls it instead of closing the sheet', async ({ page }) => {
+  const handle = page.getByRole('button', { name: /liste des stations/ })
+  await handle.click()
+  await page.waitForTimeout(400)
+
+  const list = page.getByTestId('zone-list')
+  const scrollable = await list.evaluate((el) => el.scrollHeight > el.clientHeight + 10)
+  test.skip(!scrollable, 'the demo list fits this viewport without scrolling')
+
+  await list.evaluate((el) => {
+    el.scrollTop = 50
+  })
+  const box = await list.boundingBox()
+  if (!box) throw new Error('zone list not visible')
+  await page.mouse.move(box.x + box.width / 2, box.y + 20)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width / 2, box.y + 250, { steps: 10 })
+  await page.mouse.up()
+
+  await expect(handle).toHaveAttribute('aria-expanded', 'true')
+})
+
+test('tapping the dimmed map closes the list', async ({ page }) => {
+  const handle = page.getByRole('button', { name: /liste des stations/ })
+  await handle.click()
+  await page.getByRole('button', { name: 'Fermer la liste' }).click()
+  await expect(handle).toHaveAttribute('aria-expanded', 'false')
+})
+
 test('station detail opens from the sheet and jumps back with the station selected', async ({ page }) => {
   await page.getByText(/MàJ /).first().click()
 
