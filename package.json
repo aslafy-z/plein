@@ -11,6 +11,7 @@
     "e2e": "playwright test",
     "verify:live": "node scripts/live-providers.mjs",
     "build:brands": "node scripts/build-brand-index.mjs",
+    "build:icons": "node scripts/build-brand-icons.mjs",
     "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {

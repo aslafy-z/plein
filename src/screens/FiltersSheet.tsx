@@ -1,18 +1,8 @@
 import { C, mono } from '../theme';
-import {
-  ALL_FUELS,
-  FUEL_LABELS,
-  SERVICE_TAGS,
-  type BrandCat,
-} from '../data/types';
+import { ALL_FUELS, FUEL_LABELS, SERVICE_TAGS } from '../data/types';
 import { useApp, selectVisible } from '../state/store';
 import { haversineKm } from '../lib/geo';
-
-const BRAND_LABELS: Record<'gs' | 'ind' | 'pet', string> = {
-  gs: 'Grandes surfaces',
-  ind: 'Indépendants',
-  pet: 'Pétroliers (Total, BP…)',
-};
+import { brandIconSrc } from '../lib/brandIcons';
 
 const sectionLabel = {
   fontSize: 12,
@@ -25,12 +15,19 @@ const sectionLabel = {
 export default function FiltersSheet() {
   const app = useApp();
   const nbVisible = selectVisible(app).length;
-  const knowsBrands = app.stations.data.some((s) => s.cat !== 'unknown');
+  const knowsBrands = app.stations.data.some((s) => s.brand != null);
 
-  const countInCat = (k: BrandCat) =>
-    app.stations.data.filter(
-      (s) => s.cat === k && haversineKm(app.userPos, { lat: s.lat, lng: s.lng }) <= app.radius,
-    ).length;
+  // Brands present in the zone with their station count, most frequent first —
+  // plus any selected brand that dropped out of the zone, so it stays
+  // uncheckable (the selection is persisted across areas and sessions).
+  const counts = new Map<string, number>();
+  for (const s of app.stations.data) {
+    if (s.brand && haversineKm(app.searchPos, { lat: s.lat, lng: s.lng }) <= app.radius) {
+      counts.set(s.brand, (counts.get(s.brand) ?? 0) + 1);
+    }
+  }
+  for (const b of app.brandSel) if (!counts.has(b)) counts.set(b, 0);
+  const brands = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 1100 }}>
@@ -137,49 +134,88 @@ export default function FiltersSheet() {
 
         {/* Marques */}
         <div>
-          <div style={{ ...sectionLabel, marginBottom: 6 }}>Marques</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 6 }}>
+            <span style={{ ...sectionLabel, flex: 1 }}>Marques</span>
+            {app.brandSel.length > 0 && (
+              <span style={{ fontSize: 12, color: C.faint }}>
+                {app.brandSel.length} sélectionnée{app.brandSel.length > 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
           {knowsBrands ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {(['gs', 'ind', 'pet'] as const).map((k) => {
-                const on = app.brandCats[k];
-                return (
-                  <button
-                    key={k}
-                    onClick={() => app.toggleBrandCat(k)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 12,
-                      padding: '9px 2px',
-                      width: '100%',
-                    }}
-                  >
-                    <div
+            <>
+              <div style={{ fontSize: 12, color: C.faint, marginBottom: 8 }}>
+                Aucune sélection = toutes les marques.
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {brands.map(([brand, count]) => {
+                  const on = app.brandSel.includes(brand);
+                  const icon = brandIconSrc(brand);
+                  return (
+                    <button
+                      key={brand}
+                      onClick={() => app.toggleBrand(brand)}
                       style={{
-                        width: 20,
-                        height: 20,
-                        borderRadius: 6,
-                        background: on ? C.accent : 'transparent',
-                        border: `2px solid ${on ? C.accent : 'rgba(255,255,255,.25)'}`,
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        color: C.onAccent,
-                        fontSize: 12,
-                        fontWeight: 800,
-                        flexShrink: 0,
+                        gap: 12,
+                        padding: '8px 2px',
+                        width: '100%',
                       }}
                     >
-                      {on ? '✓' : ''}
-                    </div>
-                    <span style={{ fontSize: 15, color: C.ink, fontWeight: 600, flex: 1, textAlign: 'left' }}>
-                      {BRAND_LABELS[k]}
-                    </span>
-                    <span style={{ fontSize: 12, color: C.faint }}>{countInCat(k)}</span>
-                  </button>
-                );
-              })}
-            </div>
+                      <div
+                        style={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: 6,
+                          background: on ? C.accent : 'transparent',
+                          border: `2px solid ${on ? C.accent : 'rgba(255,255,255,.25)'}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: C.onAccent,
+                          fontSize: 12,
+                          fontWeight: 800,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {on ? '✓' : ''}
+                      </div>
+                      {icon && (
+                        <img
+                          src={icon}
+                          alt=""
+                          width={18}
+                          height={18}
+                          style={{
+                            objectFit: 'contain',
+                            background: '#fff',
+                            borderRadius: 5,
+                            padding: 1,
+                            flexShrink: 0,
+                          }}
+                        />
+                      )}
+                      <span
+                        style={{
+                          fontSize: 15,
+                          color: C.ink,
+                          fontWeight: 600,
+                          flex: 1,
+                          textAlign: 'left',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {brand}
+                      </span>
+                      <span style={{ fontSize: 12, color: C.faint }}>{count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
           ) : (
             <div style={{ fontSize: 12, color: C.faint }}>
               La source publique ne fournit pas les enseignes des stations.

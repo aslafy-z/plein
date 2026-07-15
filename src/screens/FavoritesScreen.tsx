@@ -5,6 +5,7 @@ import { useApp, type FavoriteStation } from '../state/store';
 import { fmtPrice, distLabel, agoLabel, plural } from '../lib/format';
 import { openStatus } from '../lib/hours';
 import { haversineKm } from '../lib/geo';
+import BrandAvatar from '../components/BrandAvatar';
 import Star from '../components/Star';
 
 type FavSort = 'reco' | 'prix' | 'dist';
@@ -157,23 +158,7 @@ export default function FavoritesScreen() {
                     aria-label={`Voir ${f.name} sur la carte`}
                     style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}
                   >
-                    <div
-                      style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 12,
-                        background: C.surface3,
-                        color: C.mut,
-                        fontWeight: 800,
-                        fontSize: 13,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                      }}
-                    >
-                      {f.init}
-                    </div>
+                    <BrandAvatar label={f.name} init={f.init} size={40} fontSize={13} />
                     <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
                       <div
                         style={{

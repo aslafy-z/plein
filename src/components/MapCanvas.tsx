@@ -230,7 +230,7 @@ export default function MapCanvas() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [app.stations.data, app.fuel, app.radius, app.brandCats, app.serviceTags, app.userPos, app.searchPos, app.focusStationId]);
+  }, [app.stations.data, app.fuel, app.radius, app.brandSel, app.serviceTags, app.userPos, app.searchPos, app.focusStationId]);
 
   // ── Selecting a station (pin tap or sheet-list tap) pans the map onto it ──
   useEffect(() => {

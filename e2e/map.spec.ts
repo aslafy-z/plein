@@ -32,6 +32,26 @@ test('filters sheet opens and applies', async ({ page }) => {
   await expect(page.getByText('La moins chère près de vous')).toBeVisible()
 })
 
+test('selecting favorite brands keeps only their stations', async ({ page }) => {
+  await page.getByText(/^Filtres · \d+$/).click()
+  await page.getByText('Intermarché', { exact: true }).click()
+  await page.getByText(/^Voir \d+ stations?$/).click()
+
+  const handle = page.getByRole('button', { name: /liste des stations/ })
+  await handle.click()
+  await expect(page.getByText('Intermarché · Les Vignes').first()).toBeVisible()
+  await expect(page.getByText('TotalEnergies · Centre')).toHaveCount(0)
+
+  // The selection survives a reload (persisted with the settings)
+  await page.reload()
+  await expect(page.getByText(/^Filtres · \d+$/)).toBeVisible({ timeout: 15_000 })
+  await page.getByText(/^Filtres · \d+$/).click()
+  await expect(page.getByText('1 sélectionnée')).toBeVisible()
+  // …and clears with the filters
+  await page.getByText('Réinitialiser').click()
+  await expect(page.getByText('1 sélectionnée')).toHaveCount(0)
+})
+
 test('pull-up sheet lists the zone stations, a row selects on the map', async ({ page }) => {
   const handle = page.getByRole('button', { name: /liste des stations/ })
   const before = (await handle.boundingBox())?.y ?? 0
