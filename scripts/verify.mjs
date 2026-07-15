@@ -133,12 +133,12 @@ async function run(label, contextOpts, { demo = true } = {}) {
       await page.getByText(/Ouvert|Fermé/).first().isVisible().catch(() => false),
     );
     await shot('04-detail');
-    // « Voir sur la carte » jumps to the map, centred on the station
+    // « Voir sur la carte » jumps to the map with THIS station selected
     await page.getByText('Voir sur la carte ›').click().catch(() => {});
     await page.waitForTimeout(1200);
     ok(
-      `${label}: detail jumps to the map`,
-      await page.getByText('La moins chère dans cette zone').isVisible().catch(() => false),
+      `${label}: detail jumps to the map with the station selected`,
+      await page.getByText('Station sélectionnée').isVisible().catch(() => false),
     );
     await page.getByRole('button', { name: 'Revenir à ma position' }).click().catch(() => {});
     await page.waitForTimeout(1000);

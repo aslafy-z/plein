@@ -138,6 +138,8 @@ export default function StationDetail() {
         <button
           onClick={() => {
             app.setSearchArea({ lat: s.lat, lng: s.lng }, s.name);
+            // …with THIS station selected on the map (highlighted pin + card)
+            app.setFocusStation(s.id);
             app.go('map');
           }}
           style={{
