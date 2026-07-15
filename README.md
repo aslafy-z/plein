@@ -73,10 +73,12 @@ Tout passe par trois interfaces (`src/data/types.ts`) :
   (bannière sur la carte + entrée dans Réglages → Application).
 - Si la source réelle échoue sans cache disponible, bascule automatique sur la
   démo avec bannière visible ; avec cache, les prix en cache restent affichés.
-- Le flux gouvernemental ne fournit **ni enseigne ni nom de station** : les providers
-  déclarent `capabilities.brands` et l'UI s'adapte (le filtre « Marques » n'apparaît
-  que si la source connaît les enseignes). Il fournit en revanche les **horaires**
-  (parsés vers `Station.hours`, statut calculé dans `src/lib/hours.ts`).
+- Le flux gouvernemental ne fournit **ni enseigne ni nom de station** : les enseignes
+  viennent d'un **index statique OpenStreetMap** (`public/brands-fr.json`, ~110 ko gzip,
+  généré par `npm run build:brands` et servi avec l'app) apparié par proximité (≤ 150 m).
+  Les providers déclarent `capabilities.brands` et l'UI s'adapte (le filtre « Marques »
+  n'apparaît que si la source connaît les enseignes). Le flux fournit en revanche les
+  **horaires** (parsés vers `Station.hours`, statut calculé dans `src/lib/hours.ts`).
 - La recherche le long d'un trajet interroge des cercles qui **couvrent tout le
   corridor** (rayon = ½ espacement des échantillons + corridor), puis filtre par
   distance réelle à la polyline — `npm run verify:live` vérifie que les stations

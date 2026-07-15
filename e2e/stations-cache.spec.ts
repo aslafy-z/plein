@@ -33,7 +33,9 @@ test('a slight pan re-uses the fetched area instead of refetching', async ({ pag
     })
   })
   // Brand enrichment is irrelevant here — keep it deterministic and instant
-  await page.route('**/proxy/overpass/**', (route) => route.fulfill({ json: { elements: [] } }))
+  await page.route('**/brands-fr.json', (route) =>
+    route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
+  )
 
   await gotoMap(page)
   await page.waitForTimeout(1000) // let the initial load fully settle

@@ -1,153 +1,80 @@
 // Brand/name enrichment for the gouv flux (which ships neither).
-// OpenStreetMap knows fuel stations' brands: we fetch amenity=fuel POIs from
-// Overpass and match each gouv station to the nearest POI within ~150 m.
-// POIs are cached in localStorage for a week (brands rarely change).
-import { IS_DEV } from '../../lib/env';
+// Brands come from a static France-wide OpenStreetMap index generated at build
+// time (scripts/build-brand-index.mjs) and served with the app. Querying
+// Overpass at runtime proved hopeless — public instances rate-limit, block IPs
+// and time out, and every failure painted a whole zone « Station · Ville »
+// while making stations wait on a dead mirror. Brands change rarely; a bundled
+// snapshot is fresher in practice than an API that answers one time in three.
 import type { GeoPoint } from '../../lib/geo';
-import { haversineKm, samplePolyline } from '../../lib/geo';
+import { haversineKm } from '../../lib/geo';
 import type { BrandCat, Station } from '../types';
 
-// Public Overpass instances answer erratically (rate limits, IP blocks such as
-// Apache 406s, load shedding) — try each mirror in turn instead of giving up,
-// because a failed fetch means a whole zone of stations rendered brandless.
-const ENDPOINTS = (
-  IS_DEV
-    ? ['/proxy/overpass', '/proxy/overpass-mailru', '/proxy/overpass-kumi']
-    : [
-        'https://overpass-api.de',
-        'https://maps.mail.ru/osm/tools/overpass',
-        'https://overpass.kumi.systems',
-      ]
-).map((base) => `${base}/api/interpreter`);
-/** Per mirror — dead mirrors usually fail fast (4xx); only hung ones cost this much */
-const TIMEOUT_MS = 12000;
 /** A gouv station adopts a POI's brand only within this distance */
 const MATCH_KM = 0.15;
-
-const LS_KEY = 'plein.fuelpois.v1';
-const TTL_MS = 7 * 24 * 3600_000;
-const MAX_ENTRIES = 6;
 
 export interface FuelPoi {
   lat: number;
   lng: number;
-  brand?: string;
-  name?: string;
+  label: string;
 }
 
-// ── POI cache (7 days — Overpass etiquette + instant reloads) ────────────────
-interface CacheEntry {
-  key: string;
-  fetchedAt: number;
-  pois: FuelPoi[];
+// ── Static index (fetched once, memoized) ────────────────────────────────────
+/** Compact on-disk shape: label dictionary + [lat, lng, labelIndex] rows */
+interface BrandIndexFile {
+  labels: string[];
+  pois: [number, number, number][];
 }
 
-function cacheGet(key: string, maxAgeMs = TTL_MS): FuelPoi[] | null {
-  if (typeof localStorage === 'undefined') return null;
-  try {
-    const list = JSON.parse(localStorage.getItem(LS_KEY) ?? '[]') as CacheEntry[];
-    const hit = list.find((e) => e.key === key && Date.now() - e.fetchedAt < maxAgeMs);
-    return hit ? hit.pois : null;
-  } catch {
-    return null;
-  }
-}
+let indexPromise: Promise<FuelPoi[]> | null = null;
 
-function cachePut(key: string, pois: FuelPoi[]): void {
-  if (typeof localStorage === 'undefined') return;
-  try {
-    const list = (JSON.parse(localStorage.getItem(LS_KEY) ?? '[]') as CacheEntry[]).filter(
-      (e) => e.key !== key,
+function loadIndex(): Promise<FuelPoi[]> {
+  if (!indexPromise) {
+    indexPromise = fetch('/brands-fr.json', { signal: AbortSignal.timeout(15000) }).then(
+      async (res) => {
+        if (!res.ok) throw new Error(`brand index HTTP ${res.status}`);
+        const json = (await res.json()) as BrandIndexFile;
+        return json.pois.map(([lat, lng, i]) => ({ lat, lng, label: json.labels[i] ?? '' }));
+      },
     );
-    list.unshift({ key, fetchedAt: Date.now(), pois });
-    localStorage.setItem(LS_KEY, JSON.stringify(list.slice(0, MAX_ENTRIES)));
-  } catch {
-    /* quota — best effort */
+    // A failed load must retry on the next enrichment, not stick forever.
+    indexPromise.catch(() => {
+      indexPromise = null;
+    });
   }
+  return indexPromise;
 }
 
-// ── Overpass ─────────────────────────────────────────────────────────────────
-interface OverpassElement {
-  lat?: number;
-  lon?: number;
-  center?: { lat?: number; lon?: number };
-  tags?: { brand?: string; name?: string; operator?: string };
-}
-
-async function overpass(query: string): Promise<FuelPoi[]> {
-  let lastErr: unknown;
-  for (const endpoint of ENDPOINTS) {
-    try {
-      const res = await fetch(`${endpoint}?data=${encodeURIComponent(query)}`, {
-        signal: AbortSignal.timeout(TIMEOUT_MS),
-      });
-      if (!res.ok) throw new Error(`Overpass HTTP ${res.status}`);
-      const json = (await res.json()) as { elements?: OverpassElement[] };
-      const out: FuelPoi[] = [];
-      for (const el of json.elements ?? []) {
-        const lat = el.lat ?? el.center?.lat;
-        const lng = el.lon ?? el.center?.lon;
-        if (lat == null || lng == null) continue;
-        const brand = el.tags?.brand?.trim();
-        const name = (el.tags?.name ?? el.tags?.operator)?.trim();
-        if (!brand && !name) continue;
-        out.push({ lat, lng, brand: brand || undefined, name: name || undefined });
-      }
-      return out;
-    } catch (err) {
-      lastErr = err;
-    }
-  }
-  throw lastErr;
-}
-
+/** POIs around a point. Over-inclusion is harmless: matching is ≤ MATCH_KM. */
 export async function fuelPoisNear(center: GeoPoint, radiusKm: number): Promise<FuelPoi[]> {
-  const key = `n:${center.lat.toFixed(2)},${center.lng.toFixed(2)},${radiusKm}`;
-  const cached = cacheGet(key);
-  if (cached) return cached;
-  const q =
-    `[out:json][timeout:20];nwr["amenity"="fuel"]` +
-    `(around:${Math.round(radiusKm * 1000)},${center.lat.toFixed(5)},${center.lng.toFixed(5)});` +
-    `out center tags;`;
-  let pois: FuelPoi[];
-  try {
-    pois = await overpass(q);
-  } catch (err) {
-    // Expired cache beats no brands at all (brands rarely change).
-    const stale = cacheGet(key, Infinity);
-    if (stale) return stale;
-    throw err;
-  }
-  cachePut(key, pois);
-  return pois;
+  const pois = await loadIndex();
+  const r = radiusKm + 1;
+  return pois.filter((p) => haversineKm(center, p) <= r);
 }
 
+/** POIs in the route's bounding box (+ corridor margin) — cheap prefilter. */
 export async function fuelPoisAlong(polyline: GeoPoint[], corridorKm: number): Promise<FuelPoi[]> {
-  if (polyline.length < 2) return [];
-  const from = polyline[0];
-  const to = polyline[polyline.length - 1];
-  const key = `a:${from.lat.toFixed(2)},${from.lng.toFixed(2)}>${to.lat.toFixed(2)},${to.lng.toFixed(2)},${corridorKm}`;
-  const cached = cacheGet(key);
-  if (cached) return cached;
-  let samples = samplePolyline(polyline, 15);
-  if (samples.length > 60) {
-    const step = samples.length / 60;
-    samples = Array.from({ length: 60 }, (_, i) => samples[Math.floor(i * step)]);
+  if (polyline.length === 0) return [];
+  const pois = await loadIndex();
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+  let minLng = Infinity;
+  let maxLng = -Infinity;
+  for (const p of polyline) {
+    if (p.lat < minLat) minLat = p.lat;
+    if (p.lat > maxLat) maxLat = p.lat;
+    if (p.lng < minLng) minLng = p.lng;
+    if (p.lng > maxLng) maxLng = p.lng;
   }
-  const coords = samples.map((p) => `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`).join(',');
-  const q =
-    `[out:json][timeout:20];nwr["amenity"="fuel"]` +
-    `(around:${Math.round(corridorKm * 1000) + 500},${coords});out center tags;`;
-  let pois: FuelPoi[];
-  try {
-    pois = await overpass(q);
-  } catch (err) {
-    const stale = cacheGet(key, Infinity);
-    if (stale) return stale;
-    throw err;
-  }
-  cachePut(key, pois);
-  return pois;
+  const marginKm = corridorKm + 1;
+  const dLat = marginKm / 111;
+  const dLng = marginKm / (111 * Math.cos(((minLat + maxLat) / 2) * (Math.PI / 180)));
+  return pois.filter(
+    (p) =>
+      p.lat >= minLat - dLat &&
+      p.lat <= maxLat + dLat &&
+      p.lng >= minLng - dLng &&
+      p.lng <= maxLng + dLng,
+  );
 }
 
 // ── Brand → category (drives the « Marques » filter) ─────────────────────────
@@ -194,11 +121,8 @@ export function enrichWithBrands(stations: Station[], pois: FuelPoi[]): Station[
         best = p;
       }
     }
-    if (!best || bestKm > MATCH_KM) return s;
-    // Brand is the honest primary (OSM names are often stale, e.g. old Elf
-    // stations renamed Total Access); the city keeps locating the station.
-    const label = best.brand ?? best.name;
-    if (!label) return s;
+    if (!best || bestKm > MATCH_KM || !best.label) return s;
+    const label = best.label;
     const city = s.city ? s.name.split('·').pop()?.trim() : '';
     return {
       ...s,
