@@ -18,6 +18,9 @@ npm run verify:live  # vérifie les providers réels (gouv/BAN/OSRM) contre les 
 ## Écrans
 
 Onboarding → **Carte** (pins de prix Leaflet, meilleure station en bottom-sheet,
+tirette du bottom-sheet = liste des stations de la zone triable prix/distance,
+sélection liste ↔ carte : une ligne de la liste ou un pin sélectionne la station
+— pin mis en avant, carte centrée, fiche dans le bottom-sheet —,
 déplacement de la carte = chargement automatique des stations de la zone,
 bouton de recentrage) →
 **Liste** (économie possible, tri prix/distance) → **Trajet** (départ « Ma position »,

@@ -172,6 +172,9 @@ export interface AppStore {
   searchLabel: string | null;
   setSearchArea(p: GeoPoint, label?: string): void;
   resetSearchToUser(): void;
+  /** Station highlighted on the map & shown in the map bottom-sheet card */
+  focusStationId: string | null;
+  setFocusStation(id: string | null): void;
   stations: StationsState;
   reloadStations(): void;
 
@@ -315,6 +318,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Search area: follows the user's position until they search elsewhere on the map
   const [searchPos, setSearchPos] = useState<GeoPoint>(initialPos);
   const [searchLabel, setSearchLabel] = useState<string | null>(null);
+  const [focusStationId, setFocusStationId] = useState<string | null>(null);
   const searchMovedRef = useRef(false);
   const [recents, setRecents] = useState(persisted.recents ?? DEFAULT_RECENTS);
   const [hasTripHistory, setHasTripHistory] = useState(persisted.recents != null);
@@ -364,6 +368,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     searchMovedRef.current = true;
     setSearchPos(p);
     setSearchLabel(label ?? null);
+    // Picking a named place moves to a new context — drop the map selection
+    // (free pans keep it: the user may be locating their selected station)
+    if (label) setFocusStationId(null);
     savePersisted({ lastPos: p });
   }, []);
 
@@ -371,6 +378,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     searchMovedRef.current = false;
     setSearchPos(userPos);
     setSearchLabel(null);
+    setFocusStationId(null);
     requestGeolocation();
   }, [requestGeolocation, userPos]);
 
@@ -882,6 +890,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       searchLabel,
       setSearchArea,
       resetSearchToUser,
+      focusStationId,
+      setFocusStation: setFocusStationId,
       stations,
       reloadStations: () => void loadStations(),
       fromText,
@@ -937,7 +947,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       screen, prevScreen, go, back, openStation, fuel, setFuel, cycleFuel, sort, radius, setRadius,
       brandCats, serviceTags, filtersOpen, resetFilters, userPos, geoStatus,
       requestGeolocation, searchPos, searchLabel, setSearchArea, resetSearchToUser,
-      stations, loadStations, fromText, toText, fromPoint, toPoint,
+      focusStationId, stations, loadStations, fromText, toText, fromPoint, toPoint,
       setFrom, setTo, searchPlaces, recents, hasTripHistory, routeReady, startRoute, editRoute,
       openRouteSearch, focusDestination, consumeFocusDestination,
       routeMode, routeState, tour, toggleTour, vehicle, setVehicle, tank, setTank, conso, setConso,
@@ -1024,6 +1034,16 @@ export function selectSorted(app: AppStore): NearbyStation[] {
 
 export function selectCheapest(app: AppStore): NearbyStation | null {
   return selectByPrice(app)[0] ?? null;
+}
+
+/**
+ * Station currently selected on the map (pin tapped / list row tapped).
+ * Resolved against the map pins so a station outside the radius circle can
+ * still be selected; null when the selection no longer matches the filters.
+ */
+export function selectFocusStation(app: AppStore): NearbyStation | null {
+  if (!app.focusStationId) return null;
+  return selectMapStations(app).find((s) => s.id === app.focusStationId) ?? null;
 }
 
 export function selectPriceRange(app: AppStore): { min: number; max: number } | null {
