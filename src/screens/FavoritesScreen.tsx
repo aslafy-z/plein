@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { C, mono } from '../theme';
 import { FUEL_LABELS } from '../data/types';
 import { useApp, type FavoriteStation } from '../state/store';
@@ -5,6 +6,14 @@ import { fmtPrice, distLabel, agoLabel, plural } from '../lib/format';
 import { openStatus } from '../lib/hours';
 import { haversineKm } from '../lib/geo';
 import Star from '../components/Star';
+
+type FavSort = 'reco' | 'prix' | 'dist';
+
+const SORTS: [FavSort, string][] = [
+  ['reco', 'Recommandé'],
+  ['prix', 'Prix'],
+  ['dist', 'Distance'],
+];
 
 /**
  * Favoris — the user's pinned stations (★ on a station detail or on the map
@@ -14,10 +23,34 @@ import Star from '../components/Star';
  */
 export default function FavoritesScreen() {
   const app = useApp();
+  const [sort, setSort] = useState<FavSort>('reco');
 
-  const favs = [...app.favorites].sort(
-    (a, b) => haversineKm(app.userPos, a) - haversineKm(app.userPos, b),
-  );
+  // « Recommandé » : prix effectif au litre en comptant le carburant brûlé
+  // pour l'aller-retour (conso & réservoir des Réglages) — meilleur rapport
+  // prix / distance, pas juste le litre affiché le moins cher.
+  const effective = (price: number, distKm: number) =>
+    price * (1 + (distKm * 2 * app.conso) / 100 / app.tank);
+
+  const rows = app.favorites.map((f) => {
+    const live = app.stations.data.find((s) => s.id === f.id);
+    const price = live?.prices[app.fuel]?.value ?? null;
+    const distKm = haversineKm(app.userPos, f);
+    return { f, live, price, distKm };
+  });
+
+  const favs = [...rows].sort((a, b) => {
+    if (sort === 'dist') return a.distKm - b.distKm;
+    if (sort === 'prix') {
+      if (a.price == null && b.price == null) return a.distKm - b.distKm;
+      if (a.price == null) return 1;
+      if (b.price == null) return -1;
+      return a.price - b.price;
+    }
+    const ea = a.price != null ? effective(a.price, a.distKm) : Infinity;
+    const eb = b.price != null ? effective(b.price, b.distKm) : Infinity;
+    if (ea === eb) return a.distKm - b.distKm;
+    return ea - eb;
+  });
 
   const locate = (f: FavoriteStation) => {
     app.setSearchArea({ lat: f.lat, lng: f.lng }, f.name);
@@ -40,6 +73,32 @@ export default function FavoritesScreen() {
         <div style={{ fontSize: 13, color: C.mut, marginTop: 4 }}>
           Vos stations habituelles, au prix du jour.
         </div>
+
+        {/* Sort chips — « Recommandé » = meilleur rapport prix / distance */}
+        {favs.length > 0 && (
+          <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+            {SORTS.map(([k, label]) => {
+              const active = sort === k;
+              return (
+                <button
+                  key={k}
+                  onClick={() => setSort(k)}
+                  style={{
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                    color: active ? C.onAccent : C.mut,
+                    background: active ? C.accent : C.surface2,
+                    padding: '7px 13px',
+                    borderRadius: 15,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {favs.length === 0 ? (
           <div
@@ -76,13 +135,10 @@ export default function FavoritesScreen() {
             </button>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 18 }}>
-            {favs.map((f) => {
-              const live = app.stations.data.find((s) => s.id === f.id);
-              const price = live?.prices[app.fuel]?.value;
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 14 }}>
+            {favs.map(({ f, live, price, distKm }) => {
               const updated = live?.prices[app.fuel]?.updatedAt;
               const status = live ? openStatus(live.hours)?.short : undefined;
-              const distKm = haversineKm(app.userPos, f);
               return (
                 <div
                   key={f.id}
