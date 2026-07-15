@@ -34,8 +34,8 @@ import {
 } from '../lib/installPrompt';
 
 // ── Constants ────────────────────────────────────────────────────────────────
-/** Lyon Confluence — default position when geolocation is unavailable */
-export const DEFAULT_POS: GeoPoint = { lat: 45.7406, lng: 4.8156 };
+/** Toulouse Capitole — default position when geolocation is unavailable */
+export const DEFAULT_POS: GeoPoint = { lat: 43.6047, lng: 1.4442 };
 /** Route departure placeholder — resolves to the user's current position */
 export const DEFAULT_FROM_LABEL = 'Ma position';
 /** Recent-trip history kept in Réglages persistence */
@@ -103,7 +103,7 @@ interface PersistedSettings {
   onboarded: boolean;
   alerts: boolean;
   /** Last position the app was centered on — restored on reload so the
-      station cache hits instantly instead of flashing Lyon/demo data */
+      station cache hits instantly instead of flashing Toulouse/demo data */
   lastPos: GeoPoint;
   installDismissed: boolean;
   bgloc: boolean;
@@ -129,9 +129,7 @@ function savePersisted(p: Partial<PersistedSettings>) {
 
 /** Destination suggestions shown until the user has real trip history */
 export const DEFAULT_RECENTS: PersistedSettings['recents'] = [
-  { label: 'Bordeaux centre', sublabel: 'Gironde', point: { lat: 44.8378, lng: -0.5792 } },
-  { label: 'Paris 15e', sublabel: 'Paris', point: { lat: 48.8412, lng: 2.3003 } },
-  { label: 'Annecy', sublabel: 'Haute-Savoie', point: { lat: 45.8992, lng: 6.1294 } },
+  { label: 'Toulouse', sublabel: 'Haute-Garonne', point: { lat: 43.6047, lng: 1.4442 } },
 ];
 
 // ── Store shape ──────────────────────────────────────────────────────────────
