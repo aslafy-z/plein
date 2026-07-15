@@ -62,7 +62,9 @@ Tout passe par trois interfaces (`src/data/types.ts`) :
   persistée : au rechargement, l'app repart de là (cache instantané, pas de
   flash Toulouse/démo en attendant la géolocalisation).
 - **PWA installable** : manifest + service worker minimal (`public/sw.js`,
-  assets en cache-first, navigation en network-first) ; l'app capte
+  assets en cache-first, navigation en network-first, tuiles de carte en
+  cache-first paresseux et plafonné — un léger déplacement de la carte ne
+  recharge pas les tuiles déjà vues) ; l'app capte
   `beforeinstallprompt` et propose le dialogue d'installation natif Android
   (bannière sur la carte + entrée dans Réglages → Application).
 - Si la source réelle échoue sans cache disponible, bascule automatique sur la
