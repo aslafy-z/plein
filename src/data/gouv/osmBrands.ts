@@ -7,8 +7,20 @@ import type { GeoPoint } from '../../lib/geo';
 import { haversineKm, samplePolyline } from '../../lib/geo';
 import type { BrandCat, Station } from '../types';
 
-const BASE = (IS_DEV ? '/proxy/overpass' : 'https://overpass-api.de') + '/api/interpreter';
-const TIMEOUT_MS = 20000;
+// Public Overpass instances answer erratically (rate limits, IP blocks such as
+// Apache 406s, load shedding) — try each mirror in turn instead of giving up,
+// because a failed fetch means a whole zone of stations rendered brandless.
+const ENDPOINTS = (
+  IS_DEV
+    ? ['/proxy/overpass', '/proxy/overpass-mailru', '/proxy/overpass-kumi']
+    : [
+        'https://overpass-api.de',
+        'https://maps.mail.ru/osm/tools/overpass',
+        'https://overpass.kumi.systems',
+      ]
+).map((base) => `${base}/api/interpreter`);
+/** Per mirror — dead mirrors usually fail fast (4xx); only hung ones cost this much */
+const TIMEOUT_MS = 12000;
 /** A gouv station adopts a POI's brand only within this distance */
 const MATCH_KM = 0.15;
 
@@ -30,11 +42,11 @@ interface CacheEntry {
   pois: FuelPoi[];
 }
 
-function cacheGet(key: string): FuelPoi[] | null {
+function cacheGet(key: string, maxAgeMs = TTL_MS): FuelPoi[] | null {
   if (typeof localStorage === 'undefined') return null;
   try {
     const list = JSON.parse(localStorage.getItem(LS_KEY) ?? '[]') as CacheEntry[];
-    const hit = list.find((e) => e.key === key && Date.now() - e.fetchedAt < TTL_MS);
+    const hit = list.find((e) => e.key === key && Date.now() - e.fetchedAt < maxAgeMs);
     return hit ? hit.pois : null;
   } catch {
     return null;
@@ -63,22 +75,30 @@ interface OverpassElement {
 }
 
 async function overpass(query: string): Promise<FuelPoi[]> {
-  const res = await fetch(`${BASE}?data=${encodeURIComponent(query)}`, {
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  });
-  if (!res.ok) throw new Error(`Overpass HTTP ${res.status}`);
-  const json = (await res.json()) as { elements?: OverpassElement[] };
-  const out: FuelPoi[] = [];
-  for (const el of json.elements ?? []) {
-    const lat = el.lat ?? el.center?.lat;
-    const lng = el.lon ?? el.center?.lon;
-    if (lat == null || lng == null) continue;
-    const brand = el.tags?.brand?.trim();
-    const name = (el.tags?.name ?? el.tags?.operator)?.trim();
-    if (!brand && !name) continue;
-    out.push({ lat, lng, brand: brand || undefined, name: name || undefined });
+  let lastErr: unknown;
+  for (const endpoint of ENDPOINTS) {
+    try {
+      const res = await fetch(`${endpoint}?data=${encodeURIComponent(query)}`, {
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (!res.ok) throw new Error(`Overpass HTTP ${res.status}`);
+      const json = (await res.json()) as { elements?: OverpassElement[] };
+      const out: FuelPoi[] = [];
+      for (const el of json.elements ?? []) {
+        const lat = el.lat ?? el.center?.lat;
+        const lng = el.lon ?? el.center?.lon;
+        if (lat == null || lng == null) continue;
+        const brand = el.tags?.brand?.trim();
+        const name = (el.tags?.name ?? el.tags?.operator)?.trim();
+        if (!brand && !name) continue;
+        out.push({ lat, lng, brand: brand || undefined, name: name || undefined });
+      }
+      return out;
+    } catch (err) {
+      lastErr = err;
+    }
   }
-  return out;
+  throw lastErr;
 }
 
 export async function fuelPoisNear(center: GeoPoint, radiusKm: number): Promise<FuelPoi[]> {
@@ -89,7 +109,15 @@ export async function fuelPoisNear(center: GeoPoint, radiusKm: number): Promise<
     `[out:json][timeout:20];nwr["amenity"="fuel"]` +
     `(around:${Math.round(radiusKm * 1000)},${center.lat.toFixed(5)},${center.lng.toFixed(5)});` +
     `out center tags;`;
-  const pois = await overpass(q);
+  let pois: FuelPoi[];
+  try {
+    pois = await overpass(q);
+  } catch (err) {
+    // Expired cache beats no brands at all (brands rarely change).
+    const stale = cacheGet(key, Infinity);
+    if (stale) return stale;
+    throw err;
+  }
   cachePut(key, pois);
   return pois;
 }
@@ -110,7 +138,14 @@ export async function fuelPoisAlong(polyline: GeoPoint[], corridorKm: number): P
   const q =
     `[out:json][timeout:20];nwr["amenity"="fuel"]` +
     `(around:${Math.round(corridorKm * 1000) + 500},${coords});out center tags;`;
-  const pois = await overpass(q);
+  let pois: FuelPoi[];
+  try {
+    pois = await overpass(q);
+  } catch (err) {
+    const stale = cacheGet(key, Infinity);
+    if (stale) return stale;
+    throw err;
+  }
   cachePut(key, pois);
   return pois;
 }
