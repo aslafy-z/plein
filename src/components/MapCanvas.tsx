@@ -46,6 +46,13 @@ export default function MapCanvas() {
     map.on('dragstart', markInteract);
     map.on('zoomstart', markInteract);
 
+    // While the USER pans, the zone circle glides with the screen center —
+    // no more jumpy circle waiting for the debounce.
+    map.on('move', () => {
+      if (!userInteractedRef.current) return;
+      circleRef.current?.setLatLng(map.getCenter());
+    });
+
     // Moving the map away loads the stations of the new area automatically
     // (debounced; only for user-initiated moves, never programmatic fits)
     map.on('moveend', () => {
@@ -59,7 +66,7 @@ export default function MapCanvas() {
       moveTimer.current = setTimeout(() => {
         keepViewRef.current = true; // don't yank the map back after reload
         appRef.current.setSearchArea({ lat: c.lat, lng: c.lng });
-      }, 650);
+      }, 350);
     });
 
     const ro = new ResizeObserver(() => map.invalidateSize());
