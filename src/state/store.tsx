@@ -25,6 +25,7 @@ import {
   type Station,
 } from '../data/types';
 import { getProviders } from '../data/providers';
+import { brandGroup } from '../lib/brandIcons';
 import { readStationsCache, writeStationsCache, STALE_MS } from '../data/stationsCache';
 import {
   installReady,
@@ -1046,7 +1047,7 @@ export function selectVisibleForFuel(app: AppStore, fuel: FuelId): NearbyStation
       (s) =>
         s.searchKm <= radius &&
         s.prices[fuel] != null &&
-        (brandSel.length === 0 || (s.brand != null && brandSel.includes(s.brand))) &&
+        (brandSel.length === 0 || (s.brand != null && brandSel.includes(brandGroup(s.brand)))) &&
         wantedTags.every((t) => s.tags.includes(t)),
     );
 }
@@ -1074,7 +1075,7 @@ export function selectMapStations(app: AppStore): NearbyStation[] {
     .filter(
       (s) =>
         s.prices[fuel] != null &&
-        (brandSel.length === 0 || (s.brand != null && brandSel.includes(s.brand))) &&
+        (brandSel.length === 0 || (s.brand != null && brandSel.includes(brandGroup(s.brand)))) &&
         wantedTags.every((t) => s.tags.includes(t)),
     );
 }

@@ -7,35 +7,48 @@ import { test, expect, gotoMap } from './fixtures'
 test.use({ seed: { sourceId: 'gouv', onboarded: true } })
 
 test('stations take their brand from the static index', async ({ page }) => {
-  // Deterministic gouv flux: one station at the queried center.
+  // Deterministic gouv flux: two stations near the queried center.
   await page.route('**/proxy/gouv/**', async (route) => {
     const where = new URL(route.request().url()).searchParams.get('where') ?? ''
     const m = /POINT\(([-\d.]+) ([-\d.]+)\)/.exec(where)
     const lng = m ? parseFloat(m[1]) : 1.4442
     const lat = m ? parseFloat(m[2]) : 43.6047
+    const station = (i: number, dLat: number) => ({
+      id: `e2e-brand-${i}`,
+      ville: 'Testville',
+      adresse: `${i} rue du Test`,
+      geom: { lat: lat + dLat, lon: lng },
+      gazole_prix: `1.8${i}`,
+      e10_prix: `1.7${i}`,
+    })
     await route.fulfill({
-      json: {
-        total_count: 1,
-        results: [
-          {
-            id: 'e2e-brand-1',
-            ville: 'Testville',
-            adresse: '1 rue du Test',
-            geom: { lat, lon: lng },
-            gazole_prix: '1.80',
-            e10_prix: '1.70',
-          },
-        ],
-      },
+      json: { total_count: 2, results: [station(1, 0), station(2, 0.01)] },
     })
   })
 
-  // Deterministic index: one labeled POI ~30 m from the default position
-  // (Toulouse Capitole), where the station above lands.
+  // Deterministic index: two U-banner POIs ~30 m from each station, at the
+  // default position (Toulouse Capitole) where the stations above land.
   await page.route('**/brands-fr.json', (route) =>
-    route.fulfill({ json: { v: 1, labels: ['Super U'], pois: [[43.6050, 1.4442, 0]] } }),
+    route.fulfill({
+      json: {
+        v: 1,
+        labels: ['Super U', 'U Express'],
+        pois: [
+          [43.605, 1.4442, 0],
+          [43.6149, 1.4442, 1],
+        ],
+      },
+    }),
   )
 
   await gotoMap(page)
   await expect(page.getByText('Super U · Testville').first()).toBeVisible()
+
+  // Both U banners group as one « Enseignes U » filter entry…
+  await page.getByText(/^Filtres · \d+$/).click()
+  const uRow = page.getByRole('button', { name: /Enseignes U/ })
+  await expect(uRow).toContainText('2')
+  // …and selecting it keeps both stations
+  await uRow.click()
+  await expect(page.getByText('Voir 2 stations')).toBeVisible()
 })
