@@ -171,6 +171,10 @@ async function run(label, contextOpts, { demo = true } = {}) {
     (await page.locator('button[aria-label^="Retirer "][aria-label$="des favoris"]').first().isVisible().catch(() => false)) &&
       (await page.getByText('€').first().isVisible().catch(() => false)),
   );
+  ok(
+    `${label}: favorites sort chips (Recommandé par défaut)`,
+    await page.getByText('Recommandé', { exact: true }).isVisible().catch(() => false),
+  );
   await shot('05-favorites');
   // Row jumps to the map with the station selected
   await page.locator('button[aria-label^="Voir "][aria-label$="sur la carte"]').first().click();

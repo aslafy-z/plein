@@ -51,8 +51,8 @@ function Icon({ tab, color }: { tab: TabKey; color: string }) {
 
 const ITEMS: { key: TabKey; label: string }[] = [
   { key: 'map', label: 'Carte' },
-  { key: 'favs', label: 'Favoris' },
   { key: 'route', label: 'Trajet' },
+  { key: 'favs', label: 'Favoris' },
   { key: 'settings', label: 'Réglages' },
 ];
 
