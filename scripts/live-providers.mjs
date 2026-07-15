@@ -60,14 +60,14 @@ const ok = (name, cond, extra = '') => {
   console.log(`${cond ? '✅' : '❌'} ${name}${extra ? ` — ${extra}` : ''}`);
 };
 
-const LYON = { lat: 45.7406, lng: 4.8156 };
+const TOULOUSE = { lat: 43.6047, lng: 1.4442 };
 const BORDEAUX = { lat: 44.8378, lng: -0.5792 };
 const inFrance = (s) => s.lat > 41 && s.lat < 51.5 && s.lng > -5.5 && s.lng < 10;
 
-// 1 — stations near Lyon
+// 1 — stations near Toulouse
 const gouv = new P.GouvStationsProvider();
-const near = await gouv.getStationsNear(LYON, 5);
-ok('gouv: stations within 5 km of Lyon', near.length >= 10, `${near.length} stations`);
+const near = await gouv.getStationsNear(TOULOUSE, 5);
+ok('gouv: stations within 5 km of Toulouse', near.length >= 10, `${near.length} stations`);
 ok('gouv: coordinates all in France', near.every(inFrance));
 const priced = near.filter((s) => s.prices.gazole || s.prices.e10 || s.prices.sp98);
 ok('gouv: most stations carry prices', priced.length >= near.length * 0.7, `${priced.length}/${near.length} priced`);
@@ -94,8 +94,8 @@ ok('BAN: plausible coordinates',
 
 // 3 — OSRM routing
 const osrm = new P.RealRouteProvider();
-const route = await osrm.getRoute(LYON, BORDEAUX);
-ok('OSRM: Lyon → Bordeaux distance', route.distanceKm > 450 && route.distanceKm < 700,
+const route = await osrm.getRoute(TOULOUSE, BORDEAUX);
+ok('OSRM: Toulouse → Bordeaux distance', route.distanceKm > 200 && route.distanceKm < 350,
   `${Math.round(route.distanceKm)} km · ${Math.round(route.durationMin)} min`);
 ok('OSRM: dense polyline', route.polyline.length > 100, `${route.polyline.length} pts`);
 
