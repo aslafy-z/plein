@@ -1,7 +1,8 @@
 node_modules/
 dist/
 *.tsbuildinfo
-shots/
+test-results/
+playwright-report/
 
 # wrangler files
 .wrangler

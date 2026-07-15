@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "npm run build && wrangler dev",
     "typecheck": "tsc -b --noEmit",
-    "verify": "node scripts/verify.mjs",
+    "e2e": "playwright test",
     "verify:live": "node scripts/live-providers.mjs",
     "deploy": "npm run build && wrangler deploy"
   },
@@ -20,12 +20,12 @@
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.44.0",
+    "@playwright/test": "^1.61.1",
     "@types/node": "^26.1.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^6.0.3",
     "esbuild": "^0.28.1",
-    "playwright": "^1.61.1",
     "typescript": "^5.6.3",
     "vite": "^8.1.4",
     "wrangler": "^4.110.0"
