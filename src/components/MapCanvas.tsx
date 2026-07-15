@@ -47,9 +47,19 @@ export default function MapCanvas() {
     map.on('zoomstart', markInteract);
 
     // While the USER pans, the zone circle glides with the screen center —
-    // no more jumpy circle waiting for the debounce.
+    // no more jumpy circle waiting for the debounce. Never during a zoom
+    // (pinch included): reprojecting the circle mid-animation fights the CSS
+    // scale transform and draws it at the wrong size until release.
+    let zooming = false;
+    map.on('zoomstart', () => {
+      zooming = true;
+    });
+    map.on('zoomend', () => {
+      zooming = false;
+      if (userInteractedRef.current) circleRef.current?.setLatLng(map.getCenter());
+    });
     map.on('move', () => {
-      if (!userInteractedRef.current) return;
+      if (!userInteractedRef.current || zooming) return;
       circleRef.current?.setLatLng(map.getCenter());
     });
 
