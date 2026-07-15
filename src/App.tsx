@@ -1,7 +1,7 @@
 import { useApp } from './state/store';
 import Onboarding from './screens/Onboarding';
 import MapScreen from './screens/MapScreen';
-import ListScreen from './screens/ListScreen';
+import FavoritesScreen from './screens/FavoritesScreen';
 import RouteSetup from './screens/RouteSetup';
 import RouteRibbon from './screens/RouteRibbon';
 import Settings from './screens/Settings';
@@ -15,7 +15,7 @@ import UpdatePrompt from './components/UpdatePrompt';
 export default function App() {
   const app = useApp();
   const { screen } = app;
-  const showNav = ['map', 'list', 'route', 'routeSetup', 'settings'].includes(screen);
+  const showNav = ['map', 'favs', 'route', 'routeSetup', 'settings'].includes(screen);
 
   return (
     <div className="app-viewport">
@@ -24,7 +24,7 @@ export default function App() {
         <FallbackBanner />
         {screen === 'onboarding' && <Onboarding />}
         {screen === 'map' && <MapScreen />}
-        {screen === 'list' && <ListScreen />}
+        {screen === 'favs' && <FavoritesScreen />}
         {screen === 'routeSetup' && <RouteSetup />}
         {screen === 'route' && <RouteRibbon />}
         {screen === 'settings' && <Settings />}

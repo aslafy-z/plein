@@ -57,7 +57,7 @@ const REFUEL_MIN = 4;
 export type Screen =
   | 'onboarding'
   | 'map'
-  | 'list'
+  | 'favs'
   | 'routeSetup'
   | 'route'
   | 'settings'
@@ -108,6 +108,17 @@ interface PersistedSettings {
   installDismissed: boolean;
   bgloc: boolean;
   recents: { label: string; sublabel: string; point: GeoPoint }[];
+  /** Pinned stations — snapshot so they render even out of the loaded area */
+  favorites: FavoriteStation[];
+}
+
+export interface FavoriteStation {
+  id: string;
+  name: string;
+  init: string;
+  city?: string;
+  lat: number;
+  lng: number;
 }
 
 function loadPersisted(): Partial<PersistedSettings> {
@@ -177,6 +188,11 @@ export interface AppStore {
   setFocusStation(id: string | null): void;
   stations: StationsState;
   reloadStations(): void;
+
+  // favorites (Favoris tab)
+  favorites: FavoriteStation[];
+  isFavorite(id: string): boolean;
+  toggleFavorite(s: FavoriteStation): void;
 
   // route
   fromText: string;
@@ -248,8 +264,8 @@ export interface AppStore {
 // ── URL routing (tabs survive a refresh) ────────────────────────────────────
 function pathFor(screen: Screen, detailId: string | null): string {
   switch (screen) {
-    case 'list':
-      return '/list';
+    case 'favs':
+      return '/favorites';
     case 'routeSetup':
     case 'route':
       return '/route';
@@ -263,7 +279,9 @@ function pathFor(screen: Screen, detailId: string | null): string {
 }
 
 function navFromPath(path: string): { screen: Screen; detailId: string | null } {
-  if (path.startsWith('/list')) return { screen: 'list', detailId: null };
+  // /list is the pre-Favoris URL — keep old bookmarks working
+  if (path.startsWith('/favorites') || path.startsWith('/list'))
+    return { screen: 'favs', detailId: null };
   if (path.startsWith('/route')) return { screen: 'routeSetup', detailId: null };
   if (path.startsWith('/settings')) return { screen: 'settings', detailId: null };
   if (path.startsWith('/station/')) {
@@ -320,6 +338,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [searchLabel, setSearchLabel] = useState<string | null>(null);
   const [focusStationId, setFocusStationId] = useState<string | null>(null);
   const searchMovedRef = useRef(false);
+
+  const [favorites, setFavorites] = useState<FavoriteStation[]>(persisted.favorites ?? []);
+  const toggleFavorite = useCallback((s: FavoriteStation) => {
+    setFavorites((prev) => {
+      const next = prev.some((f) => f.id === s.id)
+        ? prev.filter((f) => f.id !== s.id)
+        : [...prev, s];
+      savePersisted({ favorites: next });
+      return next;
+    });
+  }, []);
   const [recents, setRecents] = useState(persisted.recents ?? DEFAULT_RECENTS);
   const [hasTripHistory, setHasTripHistory] = useState(persisted.recents != null);
   const [canInstall, setCanInstall] = useState(installReady());
@@ -892,6 +921,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       resetSearchToUser,
       focusStationId,
       setFocusStation: setFocusStationId,
+      favorites,
+      isFavorite: (id) => favorites.some((f) => f.id === id),
+      toggleFavorite,
       stations,
       reloadStations: () => void loadStations(),
       fromText,
@@ -947,7 +979,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       screen, prevScreen, go, back, openStation, fuel, setFuel, cycleFuel, sort, radius, setRadius,
       brandCats, serviceTags, filtersOpen, resetFilters, userPos, geoStatus,
       requestGeolocation, searchPos, searchLabel, setSearchArea, resetSearchToUser,
-      focusStationId, stations, loadStations, fromText, toText, fromPoint, toPoint,
+      focusStationId, favorites, toggleFavorite, stations, loadStations, fromText, toText, fromPoint, toPoint,
       setFrom, setTo, searchPlaces, recents, hasTripHistory, routeReady, startRoute, editRoute,
       openRouteSearch, focusDestination, consumeFocusDestination,
       routeMode, routeState, tour, toggleTour, vehicle, setVehicle, tank, setTank, conso, setConso,

@@ -23,7 +23,10 @@ sélection liste ↔ carte : une ligne de la liste ou un pin sélectionne la sta
 — pin mis en avant, carte centrée, fiche dans le bottom-sheet —,
 déplacement de la carte = chargement automatique des stations de la zone,
 bouton de recentrage) →
-**Liste** (économie possible, tri prix/distance) → **Trajet** (départ « Ma position »,
+**Favoris** (stations épinglées ⭐ depuis les fiches ou la carte — prix du jour,
+saut vers la carte avec sélection ; remplace l'ancien onglet Liste, la liste de
+zone vivant désormais dans le bottom-sheet de la carte) →
+**Trajet** (départ « Ma position »,
 autocomplétion, carte du trajet avec pins des stations du corridor + limite d'autonomie,
 ruban vertical avec arrêt conseillé selon 3 stratégies) →
 **Fiche station** (mini-carte, adresse, statut d'ouverture réel) →

@@ -11,6 +11,7 @@ import {
 import { fmtPrice, distLabel, agoLabel, plural } from '../lib/format';
 import { openStatus } from '../lib/hours';
 import Freshness from './Freshness';
+import Star from './Star';
 
 /** Share of the map stage the expanded sheet covers */
 const EXPAND_RATIO = 0.75;
@@ -207,6 +208,30 @@ export default function MapSheet({
                     ✕
                   </button>
                 )}
+                <button
+                  onClick={() =>
+                    app.toggleFavorite({
+                      id: shown.id,
+                      name: shown.name,
+                      init: shown.init,
+                      city: shown.city,
+                      lat: shown.lat,
+                      lng: shown.lng,
+                    })
+                  }
+                  aria-label={
+                    app.isFavorite(shown.id)
+                      ? `Retirer ${shown.name} des favoris`
+                      : `Ajouter ${shown.name} aux favoris`
+                  }
+                  style={{ padding: '0 2px', display: 'flex', alignItems: 'center' }}
+                >
+                  <Star
+                    filled={app.isFavorite(shown.id)}
+                    color={app.isFavorite(shown.id) ? C.accent : C.mut}
+                    size={16}
+                  />
+                </button>
                 <Freshness />
               </div>
 

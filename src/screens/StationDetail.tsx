@@ -7,6 +7,7 @@ import { fmtPrice, distLabel, agoLabel } from '../lib/format';
 import { haversineKm } from '../lib/geo';
 import { openStatus } from '../lib/hours';
 import { addDarkBasemap } from '../lib/tiles';
+import Star from '../components/Star';
 
 /** Static mini-map centred on the station (replaces the prototype's photo slot) */
 function StationMiniMap({ station }: { station: Station }) {
@@ -178,6 +179,35 @@ export default function StationDetail() {
           }}
         >
           ←
+        </button>
+        {/* Pin to Favoris */}
+        <button
+          onClick={() =>
+            app.toggleFavorite({
+              id: s.id,
+              name: s.name,
+              init: s.init,
+              city: s.city,
+              lat: s.lat,
+              lng: s.lng,
+            })
+          }
+          aria-label={app.isFavorite(s.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+          style={{
+            position: 'absolute',
+            right: 14,
+            top: 14,
+            width: 40,
+            height: 40,
+            borderRadius: '50%',
+            background: '#101214d9',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+        >
+          <Star filled={app.isFavorite(s.id)} color={app.isFavorite(s.id) ? C.accent : C.ink} size={19} />
         </button>
       </div>
 

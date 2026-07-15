@@ -2,7 +2,7 @@ import { C } from '../theme';
 import { LOGO_PATH } from './Logo';
 import { useApp, type Screen } from '../state/store';
 
-type TabKey = 'map' | 'list' | 'route' | 'settings';
+type TabKey = 'map' | 'favs' | 'route' | 'settings';
 
 /** Minimal 16px stroke pictos, tinted by the active state */
 function Icon({ tab, color }: { tab: TabKey; color: string }) {
@@ -20,13 +20,14 @@ function Icon({ tab, color }: { tab: TabKey; color: string }) {
           <path d={LOGO_PATH} fill={color} fillRule="evenodd" />
         </svg>
       );
-    case 'list':
+    case 'favs':
       return (
         <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden>
-          <circle cx="2.2" cy="3.2" r="1.3" fill={color} />
-          <circle cx="2.2" cy="8" r="1.3" fill={color} />
-          <circle cx="2.2" cy="12.8" r="1.3" fill={color} />
-          <path d="M6 3.2h8M6 8h8M6 12.8h8" {...stroke} />
+          <path
+            d="M8 1.7 L9.9 5.6 L14.2 6.2 L11.1 9.2 L11.8 13.5 L8 11.4 L4.2 13.5 L4.9 9.2 L1.8 6.2 L6.1 5.6 Z"
+            fill={color}
+            strokeLinejoin="round"
+          />
         </svg>
       );
     case 'route':
@@ -50,7 +51,7 @@ function Icon({ tab, color }: { tab: TabKey; color: string }) {
 
 const ITEMS: { key: TabKey; label: string }[] = [
   { key: 'map', label: 'Carte' },
-  { key: 'list', label: 'Liste' },
+  { key: 'favs', label: 'Favoris' },
   { key: 'route', label: 'Trajet' },
   { key: 'settings', label: 'Réglages' },
 ];
