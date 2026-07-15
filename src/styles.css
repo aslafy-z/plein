@@ -47,6 +47,19 @@ button {
   text-align: inherit;
 }
 
+/* Map bottom-sheet content swap (station card ↔ loading ↔ empty) */
+@keyframes sheet-swap {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.sheet-swap {
+  animation: sheet-swap 0.22s ease;
+}
+
 /* Subtle scrollbars on desktop */
 ::-webkit-scrollbar {
   width: 8px;

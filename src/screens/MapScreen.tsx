@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { C, mono } from '../theme';
 import { FUEL_LABELS, SERVICE_TAGS } from '../data/types';
 import { useApp, selectVisible, selectCheapest, selectPriceRange } from '../state/store';
@@ -6,6 +7,41 @@ import { openStatus } from '../lib/hours';
 import MapCanvas from '../components/MapCanvas';
 import Freshness from '../components/Freshness';
 import PlaceSearch from '../components/PlaceSearch';
+
+/**
+ * Bottom-sheet wrapper that animates height changes and cross-fades its
+ * content when the state flips (station card ↔ loading ↔ empty) — panning
+ * the zone over a station-less area no longer makes the sheet blink.
+ */
+function AnimatedSheet({ stateKey, children }: { stateKey: string; children: ReactNode }) {
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [h, setH] = useState<number | null>(null);
+
+  useLayoutEffect(() => {
+    const el = innerRef.current;
+    if (!el) return;
+    setH(el.offsetHeight);
+    const ro = new ResizeObserver(() => setH(el.offsetHeight));
+    ro.observe(el);
+    return () => ro.disconnect();
+    // key change remounts the inner div — re-observe the new node
+  }, [stateKey]);
+
+  return (
+    <div
+      style={{
+        flexShrink: 0,
+        overflow: 'hidden',
+        height: h ?? 'auto',
+        transition: 'height .28s cubic-bezier(.4,0,.2,1)',
+      }}
+    >
+      <div key={stateKey} ref={innerRef} className="sheet-swap">
+        {children}
+      </div>
+    </div>
+  );
+}
 
 export default function MapScreen() {
   const app = useApp();
@@ -152,7 +188,8 @@ export default function MapScreen() {
         </div>
       </div>
 
-      {/* Bottom sheet */}
+      {/* Bottom sheet — height animated between its three states */}
+      <AnimatedSheet stateKey={cheapest ? 'card' : loading ? 'loading' : 'empty'}>
       {cheapest ? (
         <div
           style={{
@@ -305,6 +342,7 @@ export default function MapScreen() {
           </button>
         </div>
       )}
+      </AnimatedSheet>
     </div>
   );
 }
