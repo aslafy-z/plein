@@ -110,6 +110,8 @@ interface PersistedSettings {
   recents: { label: string; sublabel: string; point: GeoPoint }[];
   /** Pinned stations — snapshot so they render even out of the loaded area */
   favorites: FavoriteStation[];
+  /** Selected brand labels in the filters (empty/absent = every brand) */
+  brandSel: string[];
 }
 
 export interface FavoriteStation {
@@ -161,8 +163,9 @@ export interface AppStore {
   setSort(s: SortMode): void;
   radius: number;
   setRadius(r: number): void;
-  brandCats: Record<'gs' | 'ind' | 'pet', boolean>;
-  toggleBrandCat(k: 'gs' | 'ind' | 'pet'): void;
+  /** Selected brand labels (persisted). Empty = every brand passes. */
+  brandSel: string[];
+  toggleBrand(label: string): void;
   serviceTags: Partial<Record<ServiceTag, boolean>>;
   toggleServiceTag(t: ServiceTag): void;
   filtersOpen: boolean;
@@ -304,7 +307,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [fuel, setFuelState] = useState<FuelId>(persisted.fuel ?? 'gazole');
   const [sort, setSort] = useState<SortMode>('prix');
   const [radius, setRadiusState] = useState<number>(persisted.radius ?? 5);
-  const [brandCats, setBrandCats] = useState({ gs: true, ind: true, pet: true });
+  const [brandSel, setBrandSelState] = useState<string[]>(persisted.brandSel ?? []);
   const [serviceTags, setServiceTags] = useState<Partial<Record<ServiceTag, boolean>>>({});
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [routeMode, setRouteMode] = useState<RouteMode>('compromis');
@@ -781,9 +784,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     savePersisted({ sourceId: s });
   }, []);
 
+  const toggleBrand = useCallback((label: string) => {
+    setBrandSelState((sel) => {
+      const next = sel.includes(label) ? sel.filter((b) => b !== label) : [...sel, label];
+      savePersisted({ brandSel: next });
+      return next;
+    });
+  }, []);
+
   const resetFilters = useCallback(() => {
     setRadius(5);
-    setBrandCats({ gs: true, ind: true, pet: true });
+    setBrandSelState([]);
+    savePersisted({ brandSel: [] });
     setServiceTags({});
     setFuel('gazole');
   }, [setFuel, setRadius]);
@@ -920,8 +932,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setSort,
       radius,
       setRadius,
-      brandCats,
-      toggleBrandCat: (k) => setBrandCats((b) => ({ ...b, [k]: !b[k] })),
+      brandSel,
+      toggleBrand,
       serviceTags,
       toggleServiceTag: (t) => setServiceTags((s) => ({ ...s, [t]: !s[t] })),
       filtersOpen,
@@ -994,7 +1006,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }),
     [
       screen, prevScreen, go, back, openStation, fuel, setFuel, cycleFuel, sort, radius, setRadius,
-      brandCats, serviceTags, filtersOpen, resetFilters, userPos, geoStatus,
+      brandSel, toggleBrand, serviceTags, filtersOpen, resetFilters, userPos, geoStatus,
       requestGeolocation, searchPos, searchLabel, setSearchArea, resetSearchToUser,
       focusStationId, favorites, toggleFavorite, stations, loadStations, fromText, toText, fromPoint, toPoint,
       setFrom, setTo, searchPlaces, recents, hasTripHistory, routeReady, startRoute, editRoute,
@@ -1021,9 +1033,8 @@ export function useApp(): AppStore {
 
 /** Stations passing the current filters, enriched with distance, for a given fuel */
 export function selectVisibleForFuel(app: AppStore, fuel: FuelId): NearbyStation[] {
-  const { stations, userPos, searchPos, radius, brandCats, serviceTags } = app;
+  const { stations, userPos, searchPos, radius, brandSel, serviceTags } = app;
   const wantedTags = (Object.keys(serviceTags) as ServiceTag[]).filter((t) => serviceTags[t]);
-  const brandFilterActive = app.stations.data.some((s) => s.cat !== 'unknown');
   return stations.data
     .map((s) => {
       // Displayed distance is from the user; the radius applies to the search area
@@ -1035,7 +1046,7 @@ export function selectVisibleForFuel(app: AppStore, fuel: FuelId): NearbyStation
       (s) =>
         s.searchKm <= radius &&
         s.prices[fuel] != null &&
-        (!brandFilterActive || s.cat === 'unknown' || brandCats[s.cat as 'gs' | 'ind' | 'pet']) &&
+        (brandSel.length === 0 || (s.brand != null && brandSel.includes(s.brand))) &&
         wantedTags.every((t) => s.tags.includes(t)),
     );
 }
@@ -1052,9 +1063,8 @@ export function selectVisible(app: AppStore): NearbyStation[] {
  * indicator of the « cheapest near you » zone.
  */
 export function selectMapStations(app: AppStore): NearbyStation[] {
-  const { stations, userPos, searchPos, brandCats, serviceTags, fuel } = app;
+  const { stations, userPos, searchPos, brandSel, serviceTags, fuel } = app;
   const wantedTags = (Object.keys(serviceTags) as ServiceTag[]).filter((t) => serviceTags[t]);
-  const brandFilterActive = stations.data.some((s) => s.cat !== 'unknown');
   return stations.data
     .map((s) => {
       const distKm = haversineKm(userPos, { lat: s.lat, lng: s.lng });
@@ -1064,7 +1074,7 @@ export function selectMapStations(app: AppStore): NearbyStation[] {
     .filter(
       (s) =>
         s.prices[fuel] != null &&
-        (!brandFilterActive || s.cat === 'unknown' || brandCats[s.cat as 'gs' | 'ind' | 'pet']) &&
+        (brandSel.length === 0 || (s.brand != null && brandSel.includes(s.brand))) &&
         wantedTags.every((t) => s.tags.includes(t)),
     );
 }

@@ -10,6 +10,7 @@ import {
 } from '../state/store';
 import { fmtPrice, distLabel, agoLabel, plural } from '../lib/format';
 import { openStatus } from '../lib/hours';
+import BrandAvatar from './BrandAvatar';
 import Freshness from './Freshness';
 import Star from './Star';
 
@@ -428,23 +429,7 @@ export default function MapSheet({
                 onClick={() => app.openStation(shown.id)}
                 style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%' }}
               >
-                <div
-                  style={{
-                    width: 46,
-                    height: 46,
-                    borderRadius: 12,
-                    background: C.surface3,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: C.mut,
-                    fontWeight: 800,
-                    fontSize: 15,
-                    flexShrink: 0,
-                  }}
-                >
-                  {shown.init}
-                </div>
+                <BrandAvatar label={shown.brand ?? shown.name} init={shown.init} size={46} fontSize={15} />
                 <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
                   <div style={{ color: C.ink, fontSize: 16, fontWeight: 600 }}>{shown.name}</div>
                   <div style={{ color: C.mut, fontSize: 13, marginTop: 2 }}>
@@ -624,23 +609,7 @@ export default function MapSheet({
                       : `1px solid ${best ? C.accentBorder : C.border}`,
                   }}
                 >
-                  <div
-                    style={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: 11,
-                      background: C.surface3,
-                      color: C.mut,
-                      fontWeight: 800,
-                      fontSize: 12.5,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                    }}
-                  >
-                    {s.init}
-                  </div>
+                  <BrandAvatar label={s.brand ?? s.name} init={s.init} size={38} fontSize={12.5} />
                   <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
                     <div
                       style={{

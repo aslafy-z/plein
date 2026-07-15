@@ -76,9 +76,12 @@ Tout passe par trois interfaces (`src/data/types.ts`) :
 - Le flux gouvernemental ne fournit **ni enseigne ni nom de station** : les enseignes
   viennent d'un **index statique OpenStreetMap** (`public/brands-fr.json`, ~110 ko gzip,
   généré par `npm run build:brands` et servi avec l'app) apparié par proximité (≤ 150 m).
-  Les providers déclarent `capabilities.brands` et l'UI s'adapte (le filtre « Marques »
-  n'apparaît que si la source connaît les enseignes). Le flux fournit en revanche les
-  **horaires** (parsés vers `Station.hours`, statut calculé dans `src/lib/hours.ts`).
+  Les providers déclarent `capabilities.brands` et l'UI s'adapte : le filtre « Marques »
+  (sélection d'enseignes favorites, persistée) n'apparaît que si la source connaît les
+  enseignes, et les avatars affichent le favicon des grandes enseignes
+  (`public/brand-icons/`, régénérés par `npm run build:icons`, repli sur les initiales).
+  Le flux fournit en revanche les **horaires** (parsés vers `Station.hours`, statut
+  calculé dans `src/lib/hours.ts`).
 - La recherche le long d'un trajet interroge des cercles qui **couvrent tout le
   corridor** (rayon = ½ espacement des échantillons + corridor), puis filtre par
   distance réelle à la polyline — `npm run verify:live` vérifie que les stations

@@ -13,8 +13,7 @@ export default function MapScreen() {
   const nbVisible = visible.length;
 
   const filtersActive =
-    SERVICE_TAGS.some((t) => app.serviceTags[t]) ||
-    !(app.brandCats.gs && app.brandCats.ind && app.brandCats.pet);
+    SERVICE_TAGS.some((t) => app.serviceTags[t]) || app.brandSel.length > 0;
 
   const geoOff = app.geoStatus === 'denied' || app.geoStatus === 'unavailable';
 
