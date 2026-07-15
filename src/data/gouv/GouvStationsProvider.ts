@@ -343,7 +343,7 @@ export class GouvStationsProvider implements StationsProvider {
     radiusKm: number,
     opts?: StationsFetchOptions,
   ): Promise<Station[]> {
-    // OSM brand POIs fetch concurrently with the price pages
+    // The static OSM brand index loads concurrently with the price pages
     const poisPromise = fuelPoisNear(center, radiusKm).catch(() => []);
     const stations: Station[] = [];
     for (let offset = 0; offset < NEAR_CAP; offset += PAGE) {
