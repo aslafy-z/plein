@@ -23,6 +23,8 @@ export default function MapScreen() {
   const stageRef = useRef<HTMLDivElement>(null);
   const [stageH, setStageH] = useState(0);
   const [sheetInset, setSheetInset] = useState(0);
+  // Open state lives here so the map can dim & close the sheet on tap
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   useLayoutEffect(() => {
     const el = stageRef.current;
@@ -184,8 +186,29 @@ export default function MapScreen() {
           </div>
         </div>
 
-        {/* Bottom sheet — collapsed card, pull the handle up for the list */}
-        <MapSheet stageH={stageH} onCollapsedHeight={onCollapsedHeight} />
+        {/* List open → the visible map dims and a tap on it closes the sheet */}
+        {sheetOpen && (
+          <button
+            onClick={() => setSheetOpen(false)}
+            aria-label="Fermer la liste"
+            className="sheet-swap"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 1050,
+              background: 'rgba(6, 9, 11, 0.35)',
+              cursor: 'pointer',
+            }}
+          />
+        )}
+
+        {/* Bottom sheet — swipe it (card, list at top, or handle) or tap the handle */}
+        <MapSheet
+          stageH={stageH}
+          onCollapsedHeight={onCollapsedHeight}
+          expanded={sheetOpen}
+          onExpandedChange={setSheetOpen}
+        />
       </div>
     </div>
   );
