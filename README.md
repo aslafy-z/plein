@@ -43,7 +43,7 @@ Tout passe par trois interfaces (`src/data/types.ts`) :
 
 | Interface          | Réel (défaut)                                            | Démo (hors-ligne)              |
 | ------------------ | -------------------------------------------------------- | ------------------------------ |
-| `StationsProvider` | data.economie.gouv.fr — flux instantané v2 (ODS Explore) | jeu fictif Lyon + corridors    |
+| `StationsProvider` | data.economie.gouv.fr — flux instantané v2 (ODS Explore) | jeu fictif Toulouse + corridors |
 | `GeocodeProvider`  | api-adresse.data.gouv.fr (BAN)                           | dictionnaire de villes         |
 | `RouteProvider`    | router.project-osrm.org (OSRM démo)                      | interpolation grande-cercle    |
 
@@ -54,7 +54,7 @@ Tout passe par trois interfaces (`src/data/types.ts`) :
   mise à jour, pictogramme horloge ambre quand les prix affichés datent de
   plus de 10 min — p. ex. hors-ligne). La **dernière position** est également
   persistée : au rechargement, l'app repart de là (cache instantané, pas de
-  flash Lyon/démo en attendant la géolocalisation).
+  flash Toulouse/démo en attendant la géolocalisation).
 - **PWA installable** : manifest + service worker minimal (`public/sw.js`,
   assets en cache-first, navigation en network-first) ; l'app capte
   `beforeinstallprompt` et propose le dialogue d'installation natif Android

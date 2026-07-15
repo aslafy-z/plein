@@ -16,12 +16,12 @@ import { DEMO_PLACES, DEMO_ROUTE_STATIONS, DEMO_STATIONS } from './demoData';
 
 const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-/** Anchor of the fictional dataset (Lyon Confluence) */
-const LYON: GeoPoint = { lat: 45.7406, lng: 4.8156 };
+/** Anchor of the fictional dataset (Toulouse Capitole) */
+const TOULOUSE: GeoPoint = { lat: 43.6047, lng: 1.4442 };
 
 /**
  * Synthetic corridor stops used when a demo route doesn't follow one of the
- * pre-built axes (or when the user is geolocated far from Lyon): fictional
+ * pre-built axes (or when the user is geolocated far from Toulouse): fictional
  * motorway-area names that claim no real geography, placed deterministically
  * along the polyline. detourMin is encoded via a perpendicular offset
  * (the store estimates ~2 min per km off-route).
@@ -90,11 +90,11 @@ export class DemoStationsProvider implements StationsProvider {
 
   async getStationsNear(center: GeoPoint, radiusKm: number): Promise<Station[]> {
     await delay(250);
-    // The fictional set surrounds Lyon; for users geolocated elsewhere,
+    // The fictional set surrounds Toulouse; for users geolocated elsewhere,
     // translate it around them so the demo works anywhere in France.
-    const dLat = center.lat - LYON.lat;
-    const dLng = center.lng - LYON.lng;
-    const shift = haversineKm(center, LYON) > 30;
+    const dLat = center.lat - TOULOUSE.lat;
+    const dLng = center.lng - TOULOUSE.lng;
+    const shift = haversineKm(center, TOULOUSE) > 30;
     const pool = shift
       ? DEMO_STATIONS.map((s) => ({ ...s, lat: s.lat + dLat, lng: s.lng + dLng }))
       : DEMO_STATIONS;
