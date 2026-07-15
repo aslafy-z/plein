@@ -11,7 +11,7 @@ Implémentation du prototype Claude Design « Plein - Prototype » (voir `projec
 npm install
 npm run dev          # http://localhost:5173
 npm run build        # production build (dist/)
-npm run verify       # E2E : parcourt tous les écrans + screenshots (nécessite le dev server)
+npm run e2e          # E2E Playwright : parcourt tous les écrans (lance le dev server tout seul)
 npm run verify:live  # vérifie les providers réels (gouv/BAN/OSRM) contre les vrais endpoints
 ```
 
