@@ -109,6 +109,8 @@ const API_UPSTREAMS: Record<string, string> = {
   osrm: 'https://router.project-osrm.org',
   valhalla: 'https://valhalla1.openstreetmap.de',
   overpass: 'https://overpass-api.de',
+  'overpass-mailru': 'https://maps.mail.ru/osm/tools/overpass',
+  'overpass-kumi': 'https://overpass.kumi.systems',
 }
 
 function fetchJson(url: string): Promise<{ status: number; body: string }> {
@@ -133,7 +135,7 @@ function fetchJson(url: string): Promise<{ status: number; body: string }> {
 }
 
 function apiHandler(req: IncomingMessage, res: ServerResponse): void {
-  const m = (req.url ?? '').match(/^\/(gouv|ban|osrm|valhalla|overpass)(\/.*)$/)
+  const m = (req.url ?? '').match(/^\/(gouv|ban|osrm|valhalla|overpass-mailru|overpass-kumi|overpass)(\/.*)$/)
   if (!m) {
     res.statusCode = 404
     res.end()
