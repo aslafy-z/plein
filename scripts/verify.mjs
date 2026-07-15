@@ -144,14 +144,43 @@ async function run(label, contextOpts, { demo = true } = {}) {
     await page.waitForTimeout(1000);
   }
 
-  // ── List ──
-  await page.getByText('Liste', { exact: true }).click();
+  // ── Favoris (replaces the old Liste tab) ──
+  await page.getByText('Favoris', { exact: true }).click();
   await page.waitForTimeout(400);
-  ok(`${label}: list hero`, await page.getByText('Votre économie possible').isVisible());
-  ok(`${label}: list rows`, await page.getByText('meilleur prix').first().isVisible().catch(() => false));
-  await shot('05-list');
-  await page.getByText('Distance', { exact: true }).click();
+  ok(
+    `${label}: favorites empty state`,
+    await page.getByText("Aucun favori pour l'instant").isVisible().catch(() => false),
+  );
+  // Star the shown station from its detail page
+  await page.getByText('Carte', { exact: true }).click();
+  await page.waitForTimeout(400);
+  await page.getByText(/MàJ /).first().click();
+  await page.waitForTimeout(500);
+  await page.getByRole('button', { name: 'Ajouter aux favoris' }).click();
   await page.waitForTimeout(200);
+  ok(
+    `${label}: star pins the station`,
+    await page.getByRole('button', { name: 'Retirer des favoris' }).isVisible().catch(() => false),
+  );
+  await page.getByRole('button', { name: 'Retour' }).click();
+  await page.waitForTimeout(400);
+  await page.getByText('Favoris', { exact: true }).click();
+  await page.waitForTimeout(400);
+  ok(
+    `${label}: favorite listed with live price`,
+    (await page.locator('button[aria-label^="Retirer "][aria-label$="des favoris"]').first().isVisible().catch(() => false)) &&
+      (await page.getByText('€').first().isVisible().catch(() => false)),
+  );
+  await shot('05-favorites');
+  // Row jumps to the map with the station selected
+  await page.locator('button[aria-label^="Voir "][aria-label$="sur la carte"]').first().click();
+  await page.waitForTimeout(1000);
+  ok(
+    `${label}: favorite opens the map with the station selected`,
+    await page.getByText('Station sélectionnée').isVisible().catch(() => false),
+  );
+  await page.getByRole('button', { name: 'Désélectionner la station' }).click().catch(() => {});
+  await page.waitForTimeout(400);
 
   // ── Route setup ──
   await page.getByText('Trajet', { exact: true }).click();
@@ -230,23 +259,23 @@ async function run(label, contextOpts, { demo = true } = {}) {
   ok(`${label}: footer credits`, await page.getByText('Made with ❤️ in Toulouse').isVisible());
   await shot('10-settings');
 
-  // tank slider affects savings — set to 80 and check list hero changes
+  // tank slider — set to 80 and check the shown value follows
   const slider = page.locator('input[type=range]').first();
   await slider.fill('80');
-  await page.getByText('Liste', { exact: true }).click();
-  await page.waitForTimeout(300);
-  ok(`${label}: hero shows 80 L`, await page.getByText('sur un plein de 80 L').isVisible());
-
-  // ── Tabs are routed: refresh keeps the screen ──
-  await page.getByText('Réglages', { exact: true }).click();
   await page.waitForTimeout(200);
+  ok(
+    `${label}: tank setting shows 80 L`,
+    await page.getByText('80 L', { exact: true }).isVisible().catch(() => false),
+  );
+
+  // ── Tabs are routed: refresh keeps the screen (already on Réglages) ──
   await page.reload({ waitUntil: 'networkidle' });
   ok(
     `${label}: refresh stays on Réglages (/settings)`,
     (await page.getByText('Carburant par défaut').isVisible().catch(() => false)) &&
       (await page.evaluate(() => location.pathname)) === '/settings',
   );
-  await page.getByText('Liste', { exact: true }).click();
+  await page.getByText('Favoris', { exact: true }).click();
   await page.waitForTimeout(300);
 
   // ── Browser back navigates the app instead of leaving it ──

@@ -147,26 +147,31 @@ export default function MapScreen() {
               </div>
             )}
 
-            {/* PWA install banner → native Android dialog */}
+            {/* PWA install — discreet chip (native dialog on tap; also in Réglages) */}
             {app.installBannerVisible && (
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
                 <button
                   onClick={() => app.promptInstall()}
                   style={{
                     ...chipBase,
-                    fontWeight: 700,
-                    background: C.accent,
-                    color: C.onAccent,
+                    fontSize: 12,
+                    padding: '6px 12px',
+                    fontWeight: 600,
+                    background: C.surface2,
+                    color: C.body,
+                    border: `1px solid ${C.border09}`,
                   }}
                 >
-                  Installer l'application
+                  ⤓ Installer l'app
                 </button>
                 <button
                   onClick={() => app.dismissInstallBanner()}
                   aria-label="Ne plus proposer l'installation"
                   style={{
                     ...chipBase,
-                    fontWeight: 700,
+                    fontSize: 12,
+                    padding: '6px 10px',
+                    fontWeight: 600,
                     background: C.surface2,
                     color: C.mut,
                     border: `1px solid ${C.border09}`,
