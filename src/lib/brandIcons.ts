@@ -3,6 +3,9 @@
 // and a full display name ("Total Access · Tournefeuille"), so favorites —
 // which only persist the name — resolve too. Brands without a usable icon
 // (BP, Cora, Casino…) simply stay on the initials avatar.
+/** Every banner of the U cooperative — grouped as one brand in the filter */
+const U_FAMILY = /super\s?u|hyper\s?u|système u|u express|station\s?u|enseignes u|^u\s*(·|$)/i;
+
 const ICON_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/total/i, 'total'],
   [/intermarch|mousquetaires/i, 'intermarche'],
@@ -10,7 +13,7 @@ const ICON_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/leclerc/i, 'leclerc'],
   [/avia/i, 'avia'],
   [/esso/i, 'esso'],
-  [/super\s?u|hyper\s?u|système u|u express|station\s?u|^u\s*(·|$)/i, 'u'],
+  [U_FAMILY, 'u'],
   [/auchan/i, 'auchan'],
   [/\beni\b|agip/i, 'eni'],
   [/shell/i, 'shell'],
@@ -23,6 +26,16 @@ const ICON_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/spar\b/i, 'spar'],
   [/colruyt/i, 'colruyt'],
 ];
+
+/**
+ * Grouping key for the brand filter: the U banners (Super U, Système U,
+ * U Express, Station U…) are one enseigne with one card program — filtering
+ * them separately would be noise. Other brands filter on their exact label
+ * (Total vs Total Access price differently, so they stay distinct).
+ */
+export function brandGroup(brand: string): string {
+  return U_FAMILY.test(brand) ? 'Enseignes U' : brand;
+}
 
 /** Icon URL for a brand or display name, or null when we have no logo. */
 export function brandIconSrc(label: string | undefined): string | null {

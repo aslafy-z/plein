@@ -2,7 +2,7 @@ import { C, mono } from '../theme';
 import { ALL_FUELS, FUEL_LABELS, SERVICE_TAGS } from '../data/types';
 import { useApp, selectVisible } from '../state/store';
 import { haversineKm } from '../lib/geo';
-import { brandIconSrc } from '../lib/brandIcons';
+import { brandGroup, brandIconSrc } from '../lib/brandIcons';
 
 const sectionLabel = {
   fontSize: 12,
@@ -23,7 +23,8 @@ export default function FiltersSheet() {
   const counts = new Map<string, number>();
   for (const s of app.stations.data) {
     if (s.brand && haversineKm(app.searchPos, { lat: s.lat, lng: s.lng }) <= app.radius) {
-      counts.set(s.brand, (counts.get(s.brand) ?? 0) + 1);
+      const g = brandGroup(s.brand);
+      counts.set(g, (counts.get(g) ?? 0) + 1);
     }
   }
   for (const b of app.brandSel) if (!counts.has(b)) counts.set(b, 0);

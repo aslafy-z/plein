@@ -97,10 +97,20 @@ export default function PlaceSearch() {
   );
 
   if (!open) {
-    // Collapsed: current searched place (clearable) or the search prompt
+    // Collapsed: current searched place (clearable in-bar) or the search prompt
     return (
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={() => setOpen(true)} style={barStyle} aria-label="Rechercher un lieu">
+      <div style={barStyle}>
+        <button
+          onClick={() => setOpen(true)}
+          aria-label="Rechercher un lieu"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            flex: 1,
+            minWidth: 0,
+          }}
+        >
           {pinIcon}
           <span
             style={{
@@ -123,14 +133,12 @@ export default function PlaceSearch() {
             aria-label="Revenir à ma position"
             style={{
               flexShrink: 0,
-              width: 48,
-              borderRadius: 28,
-              background: C.surface2,
-              border: `1px solid ${C.border09}`,
+              display: 'flex',
+              alignItems: 'center',
               color: C.mut,
               fontSize: 16,
               fontWeight: 700,
-              pointerEvents: 'auto',
+              padding: '0 2px',
             }}
           >
             ✕
