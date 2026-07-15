@@ -14,6 +14,7 @@ import type {
   ServiceTag,
   SourceCapabilities,
   Station,
+  StationsFetchOptions,
   StationsProvider,
 } from '../types';
 
@@ -318,8 +319,12 @@ function buildUrl(center: GeoPoint, radiusKm: number, limit: number, offset: num
   return `${ENDPOINT}?${params.toString()}`;
 }
 
-async function fetchPage(url: string): Promise<unknown[]> {
-  const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+async function fetchPage(url: string, lowPriority = false): Promise<unknown[]> {
+  const res = await fetch(url, {
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+    // Background refreshes yield to user-visible requests (tiles, geocoding)
+    priority: lowPriority ? 'low' : 'auto',
+  });
   if (!res.ok) throw new Error(`gouv flux HTTP ${res.status}`);
   const json = (await res.json()) as { total_count?: number; results?: unknown[] };
   return Array.isArray(json.results) ? json.results : [];
@@ -333,12 +338,16 @@ export class GouvStationsProvider implements StationsProvider {
     sublabel: 'temps réel · enseignes via OpenStreetMap',
   };
 
-  async getStationsNear(center: GeoPoint, radiusKm: number): Promise<Station[]> {
+  async getStationsNear(
+    center: GeoPoint,
+    radiusKm: number,
+    opts?: StationsFetchOptions,
+  ): Promise<Station[]> {
     // OSM brand POIs fetch concurrently with the price pages
     const poisPromise = fuelPoisNear(center, radiusKm).catch(() => []);
     const stations: Station[] = [];
     for (let offset = 0; offset < NEAR_CAP; offset += PAGE) {
-      const results = await fetchPage(buildUrl(center, radiusKm, PAGE, offset));
+      const results = await fetchPage(buildUrl(center, radiusKm, PAGE, offset), opts?.lowPriority);
       for (const r of results) {
         if (r && typeof r === 'object') {
           const st = parseRecord(r as Raw);

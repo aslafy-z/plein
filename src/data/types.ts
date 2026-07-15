@@ -83,11 +83,17 @@ export interface SourceCapabilities {
   sublabel: string;
 }
 
+export interface StationsFetchOptions {
+  /** Background refresh behind an already-painted cache: hint the browser to
+   * schedule the requests behind user-visible work (fetchpriority low). */
+  lowPriority?: boolean;
+}
+
 export interface StationsProvider {
   readonly id: DataSourceId;
   readonly capabilities: SourceCapabilities;
   /** Stations within radiusKm of a point (any fuel). */
-  getStationsNear(center: GeoPoint, radiusKm: number): Promise<Station[]>;
+  getStationsNear(center: GeoPoint, radiusKm: number, opts?: StationsFetchOptions): Promise<Station[]>;
   /** Stations within corridorKm of a route polyline. */
   getStationsAlong(polyline: GeoPoint[], corridorKm: number): Promise<Station[]>;
 }

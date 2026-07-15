@@ -58,7 +58,11 @@ Tout passe par trois interfaces (`src/data/types.ts`) :
   zones cherchées sont conservées en localStorage ; l'app affiche le cache
   instantanément et rafraîchit en arrière-plan (flèche qui tourne pendant la
   mise à jour, pictogramme horloge ambre quand les prix affichés datent de
-  plus de 10 min — p. ex. hors-ligne). La **dernière position** est également
+  plus de 10 min — p. ex. hors-ligne). Chaque fetch couvrant 25 km autour de
+  son centre, une zone affichée **entièrement incluse** dans une zone fraîche
+  (< 10 min) est servie sans aucune requête — un léger déplacement de la carte
+  réutilise les stations déjà chargées ; les refresh derrière un cache affiché
+  partent en `fetch` basse priorité. La **dernière position** est également
   persistée : au rechargement, l'app repart de là (cache instantané, pas de
   flash Toulouse/démo en attendant la géolocalisation).
 - **PWA installable** : manifest + service worker minimal (`public/sw.js`,

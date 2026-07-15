@@ -468,10 +468,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ── Stations near me (fetch at MAX radius, filter client-side) ─────────────
   // Stale-while-revalidate: a cached area paints instantly (refreshing: true)
   // while the live fetch runs; the UI flags outdated data via fetchedAt.
+  // When the displayed zone lies FULLY inside a fresh cached area, there is
+  // nothing to fetch at all — slight map moves re-use the stations already
+  // loaded, exactly like the prefetched basemap tiles.
   const stationsReq = useRef(0);
   const loadStations = useCallback(async () => {
     const reqId = ++stationsReq.current;
-    const cached = readStationsCache(sourceId, searchPos);
+    const cached = readStationsCache(sourceId, searchPos, radius);
+    if (cached && cached.covers && Date.now() - cached.fetchedAt < STALE_MS) {
+      setStations({
+        status: 'ready',
+        data: cached.stations,
+        activeSource: sourceId,
+        fellBack: false,
+        fetchedAt: cached.fetchedAt,
+        refreshing: false,
+      });
+      return;
+    }
     if (cached) {
       setStations({
         status: 'ready',
@@ -486,10 +500,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     const bundle = getProviders(sourceId);
     try {
-      const data = await bundle.stations.getStationsNear(searchPos, MAX_RADIUS_KM);
+      // Refreshing behind painted cache → don't compete with visible work
+      const data = await bundle.stations.getStationsNear(searchPos, MAX_RADIUS_KM, {
+        lowPriority: cached != null,
+      });
       if (reqId !== stationsReq.current) return;
       const fetchedAt = Date.now();
-      writeStationsCache(sourceId, searchPos, data, fetchedAt);
+      writeStationsCache(sourceId, searchPos, MAX_RADIUS_KM, data, fetchedAt);
       setStations({
         status: 'ready',
         data,
@@ -532,7 +549,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         refreshing: false,
       });
     }
-  }, [sourceId, searchPos]);
+  }, [sourceId, searchPos, radius]);
 
   useEffect(() => {
     void loadStations();
