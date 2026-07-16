@@ -36,7 +36,7 @@ test('an off-screen tile ring is prefetched so a slight pan shows no tile loadin
   await gotoMap(page)
 
   // Wait for the basemap to settle: every tile in the DOM finished downloading
-  // (incl. the ring, and incl. the CARTO→fallback swap when the CDN is blocked).
+  // (incl. the ring, and incl. a source→fallback swap when a tile CDN is blocked).
   await expect(async () => {
     const done = await page.evaluate(() =>
       [...document.querySelectorAll<HTMLImageElement>('img.leaflet-tile')].every(

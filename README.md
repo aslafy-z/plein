@@ -70,7 +70,7 @@ Aucun compte, aucun tracker : vos favoris et réglages restent dans votre naviga
 | Géocodage & autocomplétion | [Base Adresse Nationale](https://adresse.data.gouv.fr/) (api-adresse.data.gouv.fr) | Licence Ouverte / Open Licence |
 | Calcul d'itinéraires | [OSRM](https://project-osrm.org/) (serveur démo) | Données © OpenStreetMap |
 | Enseignes des stations | [OpenStreetMap](https://www.openstreetmap.org/) (index statique généré) | ODbL |
-| Fonds de carte | [CARTO](https://carto.com/attributions) dark · données © contributeurs [OpenStreetMap](https://www.openstreetmap.org/copyright) | — |
+| Fonds de carte | [OSM France](https://www.openstreetmap.fr/fonds-de-carte/) (libellés en français) · données © contributeurs [OpenStreetMap](https://www.openstreetmap.org/copyright) | — |
 
 L'app n'a **aucun backend** : le navigateur interroge directement ces services
 publics. Les sources sont pluggables (`src/data/types.ts`) — un jeu de données
