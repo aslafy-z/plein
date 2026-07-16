@@ -5,10 +5,12 @@
 // an already-seen area doesn't refetch every tile.
 const ASSET_CACHE = 'plein-assets-v1';
 const SHELL_CACHE = 'plein-shell-v1';
-const TILE_CACHE = 'plein-tiles-v1';
+// v2: basemap switched from CARTO (English labels) to OSM France / OSM —
+// the version bump purges the incompatible cached CARTO tiles on activate.
+const TILE_CACHE = 'plein-tiles-v2';
 
-// Tile hosts used by src/lib/tiles.ts (CARTO primary, OSM fallback)
-const TILE_HOSTS = ['basemaps.cartocdn.com', 'tile.openstreetmap.org'];
+// Tile hosts used by src/lib/tiles.ts (OSM France primary, OSM fallback)
+const TILE_HOSTS = ['tile.openstreetmap.fr', 'tile.openstreetmap.org'];
 // ~256×256 PNGs are small; 600 tiles ≈ a handful of city neighbourhoods
 const TILE_MAX_ENTRIES = 600;
 

@@ -1,19 +1,41 @@
-// Dark basemap with automatic fallback.
-// Primary: CARTO dark CDN, re-toned to the app palette via `.tiles-carto`.
-// When it can't load (offline CDN, firewalled network), the map swaps to
-// OpenStreetMap tiles (through the dev-server proxy in dev), darkened with
-// the `.tiles-dark` CSS filter so the app keeps its look. The first map that
-// discovers the CDN is unreachable remembers it for the session, so the map,
-// route and station views all switch together.
+// Dark basemap with automatic fallback — labels in French, like the app.
+// CARTO's dark CDN (the previous primary) renders English exonyms («Island of
+// France», «Burgundy Free County»…), so the chain prefers OpenStreetMap
+// renderings instead:
+//   1. OSM France (osmfr) — renders `name:fr` everywhere, matching the app.
+//   2. openstreetmap.org — local names (French in France), separate infra.
+// Both are light styles re-toned to the app palette via the `.tiles-dark` CSS
+// filter. When a source can't load (offline CDN, firewalled network), the map
+// swaps to the next one; the first map that discovers a dead source remembers
+// it for the session, so the map, route and station views all switch together.
+// In dev the browser often has no direct internet access: the single source is
+// the dev-server proxy (vite.config.ts), which walks the same chain upstream.
 import L from 'leaflet';
 import { IS_DEV } from './env';
 
-const CARTO_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-const FALLBACK_URL = IS_DEV ? '/tiles/{z}/{x}/{y}.png' : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-/** No CARTO tile managed to load within this window → assume unreachable */
+interface TileSource {
+  url: string;
+  attribution: string;
+}
+
+const SOURCES: TileSource[] = IS_DEV
+  ? [{ url: '/tiles/{z}/{x}/{y}.png', attribution: '© OpenStreetMap · OSM France' }]
+  : [
+      {
+        url: 'https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png',
+        attribution: '© OpenStreetMap · OSM France',
+      },
+      {
+        url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+        attribution: '© OpenStreetMap',
+      },
+    ];
+
+/** No tile of a source managed to load within this window → assume unreachable */
 const GIVE_UP_MS = 6000;
 
-let cartoUnreachable = false;
+/** First source believed alive — session memory across map instances */
+let firstAlive = 0;
 
 // Small pans shouldn't refetch tiles: keep a wide ring of off-screen tiles
 // alive instead of Leaflet's default 2-tile buffer, and load new tiles while
@@ -67,58 +89,48 @@ const BufferedTileLayer = L.TileLayer.extend({
 const bufferedTileLayer = (url: string, opts: L.TileLayerOptions): L.TileLayer =>
   new BufferedTileLayer(url, opts);
 
-function addFallback(map: L.Map): void {
-  bufferedTileLayer(FALLBACK_URL, {
+function addSourceChain(map: L.Map, index: number): void {
+  const src = SOURCES[index];
+  const layer = bufferedTileLayer(src.url, {
     ...TILE_RETENTION,
-    attribution: '© OpenStreetMap · © CARTO',
+    attribution: src.attribution,
     maxZoom: 19,
-    // The dev proxy serves CARTO (already dark); the prod fallback is raw OSM
-    // and needs the darkening filter.
-    className: IS_DEV ? 'tiles-carto' : 'tiles-dark',
-  }).addTo(map);
+    className: 'tiles-dark',
+  });
+
+  if (index < SOURCES.length - 1) {
+    let loaded = 0;
+    let errored = 0;
+    let swapped = false;
+
+    const swap = () => {
+      if (swapped) return;
+      swapped = true;
+      if (firstAlive <= index) firstAlive = index + 1;
+      map.removeLayer(layer);
+      addSourceChain(map, index + 1);
+    };
+
+    // Zoom changes abort pending tiles without firing tileerror, so a count
+    // alone can miss the failure — the timer catches that case.
+    const giveUp = setTimeout(() => {
+      if (loaded === 0) swap();
+    }, GIVE_UP_MS);
+
+    layer.on('tileload', () => {
+      loaded++;
+      clearTimeout(giveUp);
+    });
+    layer.on('tileerror', () => {
+      errored++;
+      if (loaded === 0 && errored >= 2) swap();
+    });
+    map.on('unload', () => clearTimeout(giveUp));
+  }
+
+  layer.addTo(map);
 }
 
 export function addDarkBasemap(map: L.Map): void {
-  if (cartoUnreachable) {
-    addFallback(map);
-    return;
-  }
-
-  const carto = bufferedTileLayer(CARTO_URL, {
-    ...TILE_RETENTION,
-    attribution: '© OpenStreetMap · © CARTO',
-    subdomains: 'abcd',
-    maxZoom: 19,
-    className: 'tiles-carto',
-  });
-
-  let loaded = 0;
-  let errored = 0;
-  let swapped = false;
-
-  const swap = () => {
-    if (swapped) return;
-    swapped = true;
-    cartoUnreachable = true;
-    map.removeLayer(carto);
-    addFallback(map);
-  };
-
-  // Zoom changes abort pending tiles without firing tileerror, so a count
-  // alone can miss the failure — the timer catches that case.
-  const giveUp = setTimeout(() => {
-    if (loaded === 0) swap();
-  }, GIVE_UP_MS);
-
-  carto.on('tileload', () => {
-    loaded++;
-    clearTimeout(giveUp);
-  });
-  carto.on('tileerror', () => {
-    errored++;
-    if (loaded === 0 && errored >= 2) swap();
-  });
-  map.on('unload', () => clearTimeout(giveUp));
-
-  carto.addTo(map);
+  addSourceChain(map, Math.min(firstAlive, SOURCES.length - 1));
 }
