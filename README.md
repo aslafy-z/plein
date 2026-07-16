@@ -3,8 +3,6 @@
 Application web (mobile-first, responsive desktop) pour trouver les stations-service
 les moins chères **autour de vous** et **le long de vos trajets**, en France.
 
-Implémentation du prototype Claude Design « Plein - Prototype » (voir `project/` et `chats/`).
-
 ## Lancer
 
 ```bash
