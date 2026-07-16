@@ -48,7 +48,7 @@ test('stations take their brand from the static index', async ({ page }) => {
 
   // The brand list is collapsed behind an accordion — expand it first.
   await page.getByText(/^Filtres · \d+$/).click()
-  await page.getByRole('button', { name: /^Marques/ }).click()
+  await page.getByRole('button', { name: /^Distributeurs/ }).click()
 
   // Both U banners group as one « Enseignes U » filter entry…
   const uRow = page.getByRole('button', { name: /Enseignes U/ })

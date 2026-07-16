@@ -78,7 +78,7 @@ export async function fuelPoisAlong(polyline: GeoPoint[], corridorKm: number): P
   );
 }
 
-// ── Brand → category (drives the « Marques » filter) ─────────────────────────
+// ── Brand → category (drives the « Distributeurs » filter) ───────────────────
 const BRAND_CATS: ReadonlyArray<readonly [RegExp, BrandCat]> = [
   [/leclerc/i, 'gs'],
   [/carrefour/i, 'gs'],

@@ -47,7 +47,7 @@ export default function FiltersSheet() {
 
   const brandSummary =
     app.brandSel.length === 0
-      ? 'Toutes'
+      ? 'Tous'
       : app.brandSel.slice(0, 2).join(', ') +
         (app.brandSel.length > 2 ? ` +${app.brandSel.length - 2}` : '');
 
@@ -154,7 +154,7 @@ export default function FiltersSheet() {
           </div>
         </div>
 
-        {/* Marques — accordion, collapsed by default */}
+        {/* Distributeurs — accordion, collapsed by default */}
         <div>
           {knowsBrands ? (
             <>
@@ -163,7 +163,7 @@ export default function FiltersSheet() {
                 aria-expanded={brandsOpen}
                 style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}
               >
-                <span style={sectionLabel}>Marques</span>
+                <span style={sectionLabel}>Distributeurs</span>
                 <span
                   style={{
                     flex: 1,
@@ -193,7 +193,7 @@ export default function FiltersSheet() {
               {brandsOpen && (
                 <div style={{ marginTop: 8 }}>
                   <div style={{ fontSize: 12, color: C.faint, marginBottom: 6 }}>
-                    Aucune sélection = toutes les marques.
+                    Aucune sélection = tous les distributeurs.
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {zoneBrands.map(([brand, count]) => {
@@ -316,7 +316,7 @@ export default function FiltersSheet() {
             </>
           ) : (
             <>
-              <div style={{ ...sectionLabel, marginBottom: 6 }}>Marques</div>
+              <div style={{ ...sectionLabel, marginBottom: 6 }}>Distributeurs</div>
               <div style={{ fontSize: 12, color: C.faint }}>
                 La source publique ne fournit pas les enseignes des stations.
               </div>
