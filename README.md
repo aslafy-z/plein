@@ -1,104 +1,107 @@
-# Plein. — le plein au juste prix
+<div align="center">
 
-Application web (mobile-first, responsive desktop) pour trouver les stations-service
-les moins chères **autour de vous** et **le long de vos trajets**, en France.
+<img src="public/icons/icon.svg" width="96" alt="Logo Plein." />
 
-## Lancer
+# Plein.
+
+**Le plein au juste prix** — trouvez les stations-service les moins chères
+autour de vous et le long de vos trajets, partout en France.
+
+[![Ouvrir l'app](https://img.shields.io/badge/%E2%96%B6%EF%B8%8E%20Ouvrir%20l'app-plein.zadkiel.fr-3ddc84?style=for-the-badge&labelColor=0f1a14)](https://plein.zadkiel.fr)
+
+[![Licence MIT](https://img.shields.io/badge/licence-MIT-3ddc84?labelColor=0f1a14)](LICENSE)
+[![PWA](https://img.shields.io/badge/PWA-installable-3ddc84?labelColor=0f1a14)](#-utilisation)
+[![Données](https://img.shields.io/badge/donn%C3%A9es-data.gouv.fr-blue?labelColor=0f1a14)](#-sources-de-données)
+[![React 18](https://img.shields.io/badge/React-18-61dafb?labelColor=0f1a14&logo=react)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?labelColor=0f1a14&logo=typescript)](https://www.typescriptlang.org)
+[![Leaflet](https://img.shields.io/badge/Leaflet-1.9-199900?labelColor=0f1a14)](https://leafletjs.com)
+
+<br/>
+
+| Les prix autour de vous *(Toulouse)* | Sur votre trajet *(Toulouse → Nantes)* |
+| :---: | :---: |
+| <img src="docs/screenshots/carte.png" width="300" alt="Carte des prix autour de Toulouse" /> | <img src="docs/screenshots/trajet.png" width="300" alt="Comparaison des stations sur un trajet Toulouse → Nantes" /> |
+
+</div>
+
+## ✨ Fonctionnalités
+
+- 🗺️ **Carte des prix en direct** — les stations autour de vous avec leur prix en
+  pin, la moins chère mise en avant ; déplacez la carte, les stations de la zone
+  se chargent automatiquement.
+- 📋 **Liste de la zone** — tirez le volet du bas : toutes les stations visibles,
+  triables par prix ou distance, synchronisées avec la carte.
+- 🛣️ **Comparateur de trajet** — départ « Ma position » ou n'importe quelle
+  adresse, autocomplétion, carte du corridor et **arrêt conseillé** selon
+  3 stratégies (meilleur compromis · prix le plus bas · détour minimal), avec
+  limite d'autonomie du réservoir et coût carburant estimé du trajet.
+- ⭐ **Favoris** — épinglez vos stations, retrouvez leur prix du jour d'un coup d'œil.
+- ⛽ **Tous les carburants** — Gazole, SP95/98, E10, E85, GPLc ; filtres par
+  rayon, enseignes et services.
+- 🕐 **Horaires réels** — « Ouvert 24/24 », « Fermé · ouvre à 6 h 30 »… calculés
+  depuis les horaires officiels ; fraîcheur des prix affichée (et signalée quand
+  ils datent).
+- 🏷️ **Enseignes reconnues** — logos et noms des stations (TotalEnergies,
+  E.Leclerc, Intermarché…) appariés depuis OpenStreetMap.
+- 🧭 **« Y aller »** — ouvre votre app GPS : choix de l'app sur Android (`geo:`),
+  Plans sur iOS, Google Maps sur desktop ; tournée multi-arrêts possible.
+- 📱 **PWA installable et tolérante au hors-ligne** — ajoutez-la à l'écran
+  d'accueil ; les dernières zones consultées et les tuiles de carte restent
+  disponibles sans réseau, avec indicateur d'ancienneté des prix.
+
+## 🚀 Utilisation
+
+1. Ouvrez **[plein.zadkiel.fr](https://plein.zadkiel.fr)** (le déploiement officiel).
+2. Autorisez la géolocalisation — ou continuez sans, et cherchez une ville.
+3. Choisissez votre carburant en haut de la carte : la station la moins chère
+   apparaît dans le volet du bas, **Y aller** lance le guidage.
+4. Avant de partir loin, onglet **Trajet** : saisissez la destination et
+   comparez les stations le long du parcours.
+5. Sur mobile, installez l'app (bannière d'installation ou
+   *Réglages → Application*) pour l'avoir en icône, plein écran et hors-ligne.
+
+Aucun compte, aucun tracker : vos favoris et réglages restent dans votre navigateur.
+
+## 📊 Sources de données
+
+| Donnée | Source | Licence |
+| --- | --- | --- |
+| Prix des carburants & horaires | [Prix des carburants — flux temps réel](https://data.economie.gouv.fr/explore/dataset/prix-des-carburants-en-france-flux-instantane-v2/) (data.economie.gouv.fr) | Licence Ouverte / Open Licence |
+| Géocodage & autocomplétion | [Base Adresse Nationale](https://adresse.data.gouv.fr/) (api-adresse.data.gouv.fr) | Licence Ouverte / Open Licence |
+| Calcul d'itinéraires | [OSRM](https://project-osrm.org/) (serveur démo) | Données © OpenStreetMap |
+| Enseignes des stations | [OpenStreetMap](https://www.openstreetmap.org/) (index statique généré) | ODbL |
+| Fonds de carte | [CARTO](https://carto.com/attributions) dark · données © contributeurs [OpenStreetMap](https://www.openstreetmap.org/copyright) | — |
+
+L'app n'a **aucun backend** : le navigateur interroge directement ces services
+publics. Les sources sont pluggables (`src/data/types.ts`) — un jeu de données
+de démonstration hors-ligne prend automatiquement le relais si le flux réel est
+indisponible, avec bannière explicite.
+
+## 🛠️ Développement
+
+Stack : **Vite · React 18 · TypeScript strict · Leaflet**, sans autre dépendance
+runtime. Déployé sur Cloudflare Workers (`wrangler`).
 
 ```bash
 npm install
 npm run dev          # http://localhost:5173
-npm run build        # production build (dist/)
-npm run e2e          # E2E Playwright : parcourt tous les écrans (lance le dev server tout seul)
+npm run build        # build de production (dist/)
+npm run e2e          # E2E Playwright : parcourt tous les écrans
 npm run verify:live  # vérifie les providers réels (gouv/BAN/OSRM) contre les vrais endpoints
+npm run deploy       # build + wrangler deploy
 ```
 
-## Écrans
-
-Onboarding → **Carte** (pins de prix Leaflet, meilleure station en bottom-sheet,
-tirette du bottom-sheet = liste des stations de la zone triable prix/distance,
-sélection liste ↔ carte : une ligne de la liste ou un pin sélectionne la station
-— pin mis en avant, carte centrée, fiche dans le bottom-sheet —,
-déplacement de la carte = chargement automatique des stations de la zone,
-bouton de recentrage) →
-**Favoris** (stations épinglées ⭐ depuis les fiches ou la carte — prix du jour,
-saut vers la carte avec sélection ; remplace l'ancien onglet Liste, la liste de
-zone vivant désormais dans le bottom-sheet de la carte) →
-**Trajet** (départ « Ma position »,
-autocomplétion, carte du trajet avec pins des stations du corridor + limite d'autonomie,
-ruban vertical avec arrêt conseillé selon 3 stratégies) →
-**Fiche station** (mini-carte, adresse, statut d'ouverture réel) →
-**Filtres** (carburant, rayon, marques, services) → **Réglages**.
-
-- Le **statut d'ouverture** (« Ouvert 24/24 », « Fermé · ouvre à 6 h 30 »…) vient des
-  horaires réels du flux gouvernemental ; quand la source ne les fournit pas, l'app
-  n'affiche rien plutôt que de prétendre « ouvert ».
-- Les **Récents** du Trajet sont l'historique réel des trajets calculés (distance +
-  date persistées) ; tant qu'il est vide, des suggestions neutres s'affichent.
-
-Action principale partout : **Y aller** — `geo:` sur Android (choix de
-l'app GPS installée), Plans sur iOS, Google Maps sur desktop ; la tournée
-multi-arrêts (« Lancer la tournée ») passe par Google Maps (seule URL multi-étapes).
-La « tournée » multi-arrêts est secondaire (petit « + » sur chaque arrêt).
-
-## Sources de données — architecture pluggable
-
-Tout passe par trois interfaces (`src/data/types.ts`) :
-
-| Interface          | Réel (défaut)                                            | Démo (hors-ligne)              |
-| ------------------ | -------------------------------------------------------- | ------------------------------ |
-| `StationsProvider` | data.economie.gouv.fr — flux instantané v2 (ODS Explore) | jeu fictif Toulouse + corridors |
-| `GeocodeProvider`  | api-adresse.data.gouv.fr (BAN)                           | dictionnaire de villes         |
-| `RouteProvider`    | router.project-osrm.org (OSRM démo)                      | interpolation grande-cercle    |
-
-- Sélection dans **Réglages → Données** (persistée en localStorage).
-- **Cache stale-while-revalidate** (`src/data/stationsCache.ts`) : les dernières
-  zones cherchées sont conservées en localStorage ; l'app affiche le cache
-  instantanément et rafraîchit en arrière-plan (flèche qui tourne pendant la
-  mise à jour, pictogramme horloge ambre quand les prix affichés datent de
-  plus de 10 min — p. ex. hors-ligne). Chaque fetch couvrant 25 km autour de
-  son centre, une zone affichée **entièrement incluse** dans une zone fraîche
-  (< 10 min) est servie sans aucune requête — un léger déplacement de la carte
-  réutilise les stations déjà chargées ; les refresh derrière un cache affiché
-  partent en `fetch` basse priorité. La **dernière position** est également
-  persistée : au rechargement, l'app repart de là (cache instantané, pas de
-  flash Toulouse/démo en attendant la géolocalisation).
-- **PWA installable** : manifest + service worker minimal (`public/sw.js`,
-  assets en cache-first, navigation en network-first, tuiles de carte en
-  cache-first paresseux et plafonné — un léger déplacement de la carte ne
-  recharge pas les tuiles déjà vues) ; l'app capte
-  `beforeinstallprompt` et propose le dialogue d'installation natif Android
-  (bannière sur la carte + entrée dans Réglages → Application).
-- Si la source réelle échoue sans cache disponible, bascule automatique sur la
-  démo avec bannière visible ; avec cache, les prix en cache restent affichés.
-- Le flux gouvernemental ne fournit **ni enseigne ni nom de station** : les enseignes
-  viennent d'un **index statique OpenStreetMap** (`public/brands-fr.json`, ~110 ko gzip,
-  généré par `npm run build:brands` et servi avec l'app) apparié par proximité (≤ 150 m).
-  Les providers déclarent `capabilities.brands` et l'UI s'adapte : le filtre « Marques »
-  (sélection d'enseignes favorites, persistée) n'apparaît que si la source connaît les
-  enseignes, et les avatars affichent le favicon des grandes enseignes
-  (`public/brand-icons/`, régénérés par `npm run build:icons`, repli sur les initiales).
-  Le flux fournit en revanche les **horaires** (parsés vers `Station.hours`, statut
-  calculé dans `src/lib/hours.ts`).
-- La recherche le long d'un trajet interroge des cercles qui **couvrent tout le
-  corridor** (rayon = ½ espacement des échantillons + corridor), puis filtre par
-  distance réelle à la polyline — `npm run verify:live` vérifie que les stations
-  s'étalent sur toute la longueur du trajet.
-
-Pour ajouter une source : implémenter les interfaces et l'enregistrer dans
+Pour ajouter une source de données : implémenter les interfaces
+`StationsProvider` / `GeocodeProvider` / `RouteProvider` et l'enregistrer dans
 `src/data/providers.ts`.
 
-### Environnements sans accès internet direct (sandboxes, proxys)
+En environnement sans accès internet direct (sandbox, proxy d'entreprise), le
+dev server Vite proxifie les APIs (`/proxy/*`) et les tuiles (`/tiles/*`) en
+respectant `HTTPS_PROXY` — voir `vite.config.ts`.
 
-En dev, les appels APIs passent par `/proxy/*` et les tuiles de secours par
-`/tiles/*`, servis par le dev server Vite (voir `vite.config.ts`), qui respecte
-`HTTPS_PROXY`. Les tuiles CARTO sombres restent la source principale ; si le CDN
-est injoignable depuis le navigateur, la carte bascule automatiquement sur des
-tuiles OpenStreetMap proxifiées et assombries en CSS (`.tiles-dark`). En build
-de production, les URLs directes sont utilisées.
+## 📄 Licence
 
-## Stack
-
-Vite · React 18 · TypeScript strict · Leaflet (tuiles CARTO dark) · aucune autre dépendance.
-State: contexte React unique (`src/state/store.tsx`) + sélecteurs purs partagés par
-tous les écrans (une seule définition de « station visible », « moins chère », etc.).
+Code sous licence [MIT](LICENSE) © Zadkiel Aharonian.
+Les données affichées restent soumises aux licences de leurs producteurs
+respectifs (Licence Ouverte pour les données publiques françaises, ODbL pour
+OpenStreetMap).
