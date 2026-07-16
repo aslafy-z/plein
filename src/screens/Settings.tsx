@@ -12,6 +12,13 @@ const SECTION_LABEL: React.CSSProperties = {
   marginBottom: 10,
 };
 
+const GEO_STATUS_LABELS = {
+  granted: 'activée — la carte suit votre position',
+  denied: 'refusée pour ce site',
+  unavailable: 'indisponible sur cet appareil',
+  pending: 'non demandée',
+} as const;
+
 const SOURCES: { id: DataSourceId; title: string; sub: string }[] = [
   {
     id: 'auto',
@@ -37,7 +44,7 @@ const SOURCES: { id: DataSourceId; title: string; sub: string }[] = [
 
 export default function Settings() {
   const app = useApp();
-  const { fuel, vehicle, tank, conso, alerts, bgloc, sourceId } = app;
+  const { fuel, vehicle, tank, conso, alerts, bgloc, sourceId, geoStatus } = app;
   // Slider ranges follow the profile (a moto tank is far smaller than a car's)
   const tankRange = vehicle === 'moto' ? { min: 5, max: 30, step: 1 } : { min: 30, max: 80, step: 5 };
 
@@ -108,7 +115,8 @@ export default function Settings() {
             })}
           </div>
           <div style={{ fontSize: 11.5, color: C.faint, marginTop: -10, marginBottom: 14 }}>
-            changer de profil applique réservoir {VEHICLE_PRESETS[vehicle === 'car' ? 'moto' : 'car'].tank} L
+            changer de profil applique {FUEL_LABELS[VEHICLE_PRESETS[vehicle === 'car' ? 'moto' : 'car'].fuel]}
+            · réservoir {VEHICLE_PRESETS[vehicle === 'car' ? 'moto' : 'car'].tank} L
             · {VEHICLE_PRESETS[vehicle === 'car' ? 'moto' : 'car'].conso.toFixed(1).replace('.', ',')} L/100 km
           </div>
           <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 10 }}>
@@ -173,6 +181,58 @@ export default function Settings() {
           />
           <div style={{ fontSize: 11.5, color: C.faint, marginTop: 6 }}>
             sert au calcul de l'autonomie et du coût carburant du trajet
+          </div>
+        </div>
+      </div>
+
+      {/* Localisation */}
+      <div style={{ marginTop: 18 }}>
+        <div style={SECTION_LABEL}>Localisation</div>
+        <div
+          style={{
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            borderRadius: 16,
+            overflow: 'hidden',
+          }}
+        >
+          <button
+            onClick={() => app.requestGeolocation()}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '14px 16px',
+              borderBottom: '1px solid rgba(255,255,255,.06)',
+              cursor: 'pointer',
+              width: '100%',
+              textAlign: 'left',
+            }}
+          >
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>
+                Position de l'appareil
+              </div>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: geoStatus === 'granted' ? C.accent : geoStatus === 'pending' ? C.faint : C.warn,
+                  marginTop: 2,
+                }}
+              >
+                {GEO_STATUS_LABELS[geoStatus]}
+              </div>
+            </div>
+            {geoStatus !== 'granted' && (
+              <span style={{ color: C.accent, fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+                Activer
+              </span>
+            )}
+          </button>
+          <div style={{ fontSize: 11.5, color: C.faint, padding: '10px 16px', lineHeight: 1.5 }}>
+            Sans localisation, la carte s'ouvre sur la dernière zone consultée (par défaut :
+            Toulouse). Si la demande n'apparaît plus, autorisez la localisation pour ce site dans
+            les réglages du navigateur.
           </div>
         </div>
       </div>
@@ -247,7 +307,10 @@ export default function Settings() {
             overflow: 'hidden',
           }}
         >
-          {SOURCES.map((src) => {
+          {/* The demo dataset is a debug/fallback tool — only shown to users
+              who already have it selected, so they can switch back to the
+              real source (it stays the automatic fallback when gouv is down). */}
+          {SOURCES.filter((src) => src.id !== 'demo' || sourceId === 'demo').map((src) => {
             const selected = sourceId === src.id;
             return (
               <button

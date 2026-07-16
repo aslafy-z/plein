@@ -42,10 +42,10 @@ export const DEFAULT_FROM_LABEL = 'Ma position';
 /** Recent-trip history kept in Réglages persistence */
 const MAX_RECENTS = 4;
 export const MAX_RADIUS_KM = 25;
-/** Vehicle profile presets (tank L, consumption L/100 km) — adjustable in Réglages */
-export const VEHICLE_PRESETS: Record<VehicleId, { tank: number; conso: number }> = {
-  car: { tank: 50, conso: 6.5 },
-  moto: { tank: 15, conso: 5 },
+/** Vehicle profile presets (tank L, consumption L/100 km, default fuel) — adjustable in Réglages */
+export const VEHICLE_PRESETS: Record<VehicleId, { tank: number; conso: number; fuel: FuelId }> = {
+  car: { tank: 50, conso: 6.5, fuel: 'gazole' },
+  moto: { tank: 15, conso: 5, fuel: 'e10' },
 };
 const DEFAULT_CONSO = VEHICLE_PRESETS.car.conso;
 /** Default departure tank level (%) — adjustable on the route setup */
@@ -106,6 +106,9 @@ interface PersistedSettings {
   /** Last position the app was centered on — restored on reload so the
       station cache hits instantly instead of flashing Toulouse/demo data */
   lastPos: GeoPoint;
+  /** true when geolocation succeeded before — on reload the first stations
+      fetch waits for the fresh fix instead of loading the stale area twice */
+  geoGranted: boolean;
   installDismissed: boolean;
   bgloc: boolean;
   recents: { label: string; sublabel: string; point: GeoPoint }[];
@@ -232,7 +235,7 @@ export interface AppStore {
 
   // settings
   vehicle: VehicleId;
-  /** Switch profile and apply its tank/conso presets */
+  /** Switch profile and apply its tank/conso/fuel presets */
   setVehicle(v: VehicleId): void;
   tank: number;
   setTank(t: number): void;
@@ -352,6 +355,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [searchLabel, setSearchLabel] = useState<string | null>(null);
   const [focusStationId, setFocusStationId] = useState<string | null>(null);
   const searchMovedRef = useRef(false);
+  // Geolocation worked last session → hold the initial stations fetch until
+  // the fresh fix lands (or a short fallback delay), so the app loads the
+  // right area once instead of fetching the stale area and jumping.
+  const [geoHold, setGeoHold] = useState<boolean>(
+    persisted.onboarded === true && persisted.geoGranted === true && 'geolocation' in navigator,
+  );
 
   const [favorites, setFavorites] = useState<FavoriteStation[]>(persisted.favorites ?? []);
   const toggleFavorite = useCallback((s: FavoriteStation) => {
@@ -392,6 +401,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const requestGeolocation = useCallback(() => {
     if (!('geolocation' in navigator)) {
       setGeoStatus('unavailable');
+      setGeoHold(false);
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -400,9 +410,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setUserPos(p);
         if (!searchMovedRef.current) setSearchPos(p);
         setGeoStatus('granted');
-        savePersisted({ lastPos: p });
+        setGeoHold(false);
+        savePersisted({ lastPos: p, geoGranted: true });
       },
-      () => setGeoStatus('denied'),
+      () => {
+        setGeoStatus('denied');
+        setGeoHold(false);
+        savePersisted({ geoGranted: false });
+      },
       { timeout: 10000, maximumAge: 300000 },
     );
   }, []);
@@ -566,8 +581,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [sourceId, searchPos, radius]);
 
   useEffect(() => {
+    if (geoHold) return;
     void loadStations();
-  }, [loadStations]);
+  }, [loadStations, geoHold]);
+
+  // Never wait on a slow GPS fix forever — release the hold after a beat and
+  // load the last known area (the fix will re-center when it finally lands).
+  useEffect(() => {
+    if (!geoHold) return;
+    const t = setTimeout(() => setGeoHold(false), 4000);
+    return () => clearTimeout(t);
+  }, [geoHold]);
 
   // ── Auto-refresh: keep prices fresh while the app is open and online ───────
   const stationsRef = useRef(stations);
@@ -762,7 +786,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const preset = VEHICLE_PRESETS[v];
     setTankState(preset.tank);
     setConsoState(preset.conso);
-    savePersisted({ vehicle: v, tank: preset.tank, conso: preset.conso });
+    // A moto runs on SP95-E10, not gazole — the fuel follows the profile
+    setFuelState(preset.fuel);
+    savePersisted({ vehicle: v, tank: preset.tank, conso: preset.conso, fuel: preset.fuel });
   }, []);
 
   const setAvoidMotorway = useCallback((v: boolean) => {

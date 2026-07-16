@@ -11,7 +11,7 @@ import {
   selectFocusStation,
   priceTier,
 } from '../state/store';
-import { fmtPrice, distLabel, agoLabel, plural } from '../lib/format';
+import { fmtPrice, distLabel, agoLabel, durationLabel, plural } from '../lib/format';
 import { openStatus } from '../lib/hours';
 import BrandAvatar from './BrandAvatar';
 import Freshness from './Freshness';
@@ -473,7 +473,7 @@ export default function MapSheet({
                     textAlign: 'center',
                   }}
                 >
-                  Y aller · {shown.driveMin} min
+                  Y aller · {durationLabel(shown.driveMin)}
                 </button>
                 <div
                   style={{

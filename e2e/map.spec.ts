@@ -35,7 +35,7 @@ test('filters sheet opens and applies', async ({ page }) => {
 test('selecting favorite brands keeps only their stations', async ({ page }) => {
   await page.getByText(/^Filtres · \d+$/).click()
   // The brand list is collapsed behind an accordion — expand it first.
-  await page.getByRole('button', { name: /^Marques/ }).click()
+  await page.getByRole('button', { name: /^Distributeurs/ }).click()
   await page.getByText('Intermarché', { exact: true }).click()
   await page.getByText(/^Voir \d+ stations?$/).click()
 
@@ -49,10 +49,10 @@ test('selecting favorite brands keeps only their stations', async ({ page }) => 
   await page.reload()
   await expect(page.getByText(/^Filtres · \d+$/)).toBeVisible({ timeout: 15_000 })
   await page.getByText(/^Filtres · \d+$/).click()
-  await expect(page.getByRole('button', { name: /Marques Intermarché/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Distributeurs Intermarché/ })).toBeVisible()
   // …and clears with the filters
   await page.getByText('Réinitialiser').click()
-  await expect(page.getByRole('button', { name: /Marques Toutes/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Distributeurs Tous/ })).toBeVisible()
 })
 
 test('pull-up sheet lists the zone stations, a row selects on the map', async ({ page }) => {

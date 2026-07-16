@@ -3,7 +3,7 @@ import L from 'leaflet';
 import { C, mono } from '../theme';
 import { ALL_FUELS, MAIN_FUELS, FUEL_LABELS, type FuelId, type Station } from '../data/types';
 import { useApp, selectVisibleForFuel } from '../state/store';
-import { fmtPrice, distLabel, agoLabel } from '../lib/format';
+import { fmtPrice, distLabel, agoLabel, durationLabel } from '../lib/format';
 import { haversineKm } from '../lib/geo';
 import { openStatus } from '../lib/hours';
 import { addDarkBasemap } from '../lib/tiles';
@@ -76,7 +76,7 @@ export default function StationDetail() {
   const driveMin = Math.max(1, Math.round(distKm * 2));
   const placeChip = isRoute
     ? `KM ${routeSt!.kmAlong} · ${routeSt!.detourMin === 0 ? 'sans détour' : `détour +${routeSt!.detourMin} min`}`
-    : `${distLabel(distKm)} · ${driveMin} min`;
+    : `${distLabel(distKm)} · ${durationLabel(driveMin)}`;
 
   // Fuels to display: any priced fuel + always the main fuels
   const shownFuels = ALL_FUELS.filter((f) => s.prices[f] != null || MAIN_FUELS.includes(f));

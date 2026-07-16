@@ -20,7 +20,7 @@ export const MAIN_FUELS: FuelId[] = ['gazole', 'e10', 'e85'];
 export const ALL_FUELS: FuelId[] = ['gazole', 'e10', 'sp98', 'sp95', 'e85', 'gplc'];
 
 // ── Stations ─────────────────────────────────────────────────────────────────
-/** Brand category used by the « Marques » filter */
+/** Brand category used by the « Distributeurs » filter */
 export type BrandCat = 'gs' | 'ind' | 'pet' | 'unknown';
 
 /** Normalized, filterable service tags (raw services kept for the detail screen) */
