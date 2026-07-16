@@ -115,7 +115,9 @@ function fetchJson(url: string): Promise<{ status: number; body: string }> {
     return new Promise((resolve, reject) => {
       execFile(
         'curl',
-        ['-sS', '--max-time', '25', '-A', UA, '-w', '\n__STATUS__%{http_code}', url],
+        // --compressed: some egress proxies gzip the response even without
+        // Accept-Encoding — let curl negotiate and decode it
+        ['-sS', '--compressed', '--max-time', '25', '-A', UA, '-w', '\n__STATUS__%{http_code}', url],
         { maxBuffer: 64e6 },
         (err, stdout) => {
           if (err) return reject(err)
