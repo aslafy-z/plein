@@ -44,11 +44,19 @@ test('stations take their brand from the static index', async ({ page }) => {
   await gotoMap(page)
   await expect(page.getByText('Super U · Testville').first()).toBeVisible()
 
-  // Both U banners group as one « Enseignes U » filter entry…
+  // The brand list is collapsed behind an accordion — expand it first.
   await page.getByText(/^Filtres · \d+$/).click()
+  await page.getByRole('button', { name: /^Marques/ }).click()
+
+  // Both U banners group as one « Enseignes U » filter entry…
   const uRow = page.getByRole('button', { name: /Enseignes U/ })
   await expect(uRow).toContainText('2')
   // …and selecting it keeps both stations
   await uRow.click()
+  await expect(page.getByText('Voir 2 stations')).toBeVisible()
+
+  // A brand absent from the zone is still selectable (« hors de la zone »),
+  // and adding it to the selection never hides matching stations.
+  await page.getByRole('button', { name: 'Shell', exact: true }).click()
   await expect(page.getByText('Voir 2 stations')).toBeVisible()
 })
