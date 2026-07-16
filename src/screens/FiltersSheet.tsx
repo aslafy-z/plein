@@ -1,8 +1,14 @@
+import { useState } from 'react';
 import { C, mono } from '../theme';
 import { ALL_FUELS, FUEL_LABELS, SERVICE_TAGS } from '../data/types';
 import { useApp, selectVisible } from '../state/store';
 import { haversineKm } from '../lib/geo';
-import { brandGroup, brandIconSrc } from '../lib/brandIcons';
+import {
+  brandGroup,
+  brandIconSrc,
+  INDEPENDENT_GROUP,
+  KNOWN_BRAND_GROUPS,
+} from '../lib/brandIcons';
 
 const sectionLabel = {
   fontSize: 12,
@@ -16,19 +22,34 @@ export default function FiltersSheet() {
   const app = useApp();
   const nbVisible = selectVisible(app).length;
   const knowsBrands = app.stations.data.some((s) => s.brand != null);
+  // The brand list is collapsed by default so a brand-rich zone doesn't
+  // stretch the sheet — the header always shows what's selected.
+  const [brandsOpen, setBrandsOpen] = useState(false);
 
-  // Brands present in the zone with their station count, most frequent first —
-  // plus any selected brand that dropped out of the zone, so it stays
-  // uncheckable (the selection is persisted across areas and sessions).
+  // Brand groups present in the zone with their station count, most frequent
+  // first; brandless stations count as « Indépendants & autres », pinned last
+  // so the tail never buries the real enseignes.
   const counts = new Map<string, number>();
   for (const s of app.stations.data) {
-    if (s.brand && haversineKm(app.searchPos, { lat: s.lat, lng: s.lng }) <= app.radius) {
+    if (haversineKm(app.searchPos, { lat: s.lat, lng: s.lng }) <= app.radius) {
       const g = brandGroup(s.brand);
       counts.set(g, (counts.get(g) ?? 0) + 1);
     }
   }
-  for (const b of app.brandSel) if (!counts.has(b)) counts.set(b, 0);
-  const brands = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const zoneBrands = [...counts.entries()].sort((a, b) => {
+    if (a[0] === INDEPENDENT_GROUP) return 1;
+    if (b[0] === INDEPENDENT_GROUP) return -1;
+    return b[1] - a[1] || a[0].localeCompare(b[0]);
+  });
+  // Every known group absent from the zone stays selectable — the selection
+  // is persisted across areas and sessions, and prepares the next trip.
+  const outOfZone = KNOWN_BRAND_GROUPS.filter((g) => !counts.has(g));
+
+  const brandSummary =
+    app.brandSel.length === 0
+      ? 'Toutes'
+      : app.brandSel.slice(0, 2).join(', ') +
+        (app.brandSel.length > 2 ? ` +${app.brandSel.length - 2}` : '');
 
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 1100 }}>
@@ -133,94 +154,173 @@ export default function FiltersSheet() {
           </div>
         </div>
 
-        {/* Marques */}
+        {/* Marques — accordion, collapsed by default */}
         <div>
-          <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 6 }}>
-            <span style={{ ...sectionLabel, flex: 1 }}>Marques</span>
-            {app.brandSel.length > 0 && (
-              <span style={{ fontSize: 12, color: C.faint }}>
-                {app.brandSel.length} sélectionnée{app.brandSel.length > 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
           {knowsBrands ? (
             <>
-              <div style={{ fontSize: 12, color: C.faint, marginBottom: 8 }}>
-                Aucune sélection = toutes les marques.
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {brands.map(([brand, count]) => {
-                  const on = app.brandSel.includes(brand);
-                  const icon = brandIconSrc(brand);
-                  return (
-                    <button
-                      key={brand}
-                      onClick={() => app.toggleBrand(brand)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 12,
-                        padding: '8px 2px',
-                        width: '100%',
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: 20,
-                          height: 20,
-                          borderRadius: 6,
-                          background: on ? C.accent : 'transparent',
-                          border: `2px solid ${on ? C.accent : 'rgba(255,255,255,.25)'}`,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: C.onAccent,
-                          fontSize: 12,
-                          fontWeight: 800,
-                          flexShrink: 0,
-                        }}
-                      >
-                        {on ? '✓' : ''}
-                      </div>
-                      {icon && (
-                        <img
-                          src={icon}
-                          alt=""
-                          width={18}
-                          height={18}
+              <button
+                onClick={() => setBrandsOpen((o) => !o)}
+                aria-expanded={brandsOpen}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}
+              >
+                <span style={sectionLabel}>Marques</span>
+                <span
+                  style={{
+                    flex: 1,
+                    textAlign: 'right',
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    color: app.brandSel.length ? C.accent : C.faint,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {brandSummary}
+                </span>
+                <span
+                  aria-hidden
+                  style={{
+                    color: C.mut,
+                    fontSize: 12,
+                    transform: brandsOpen ? 'rotate(180deg)' : 'none',
+                    transition: 'transform .15s',
+                  }}
+                >
+                  ▾
+                </span>
+              </button>
+              {brandsOpen && (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ fontSize: 12, color: C.faint, marginBottom: 6 }}>
+                    Aucune sélection = toutes les marques.
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {zoneBrands.map(([brand, count]) => {
+                      const on = app.brandSel.includes(brand);
+                      const icon = brandIconSrc(brand);
+                      return (
+                        <button
+                          key={brand}
+                          onClick={() => app.toggleBrand(brand)}
                           style={{
-                            objectFit: 'contain',
-                            background: '#fff',
-                            borderRadius: 5,
-                            padding: 1,
-                            flexShrink: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 12,
+                            padding: '7px 2px',
+                            width: '100%',
                           }}
-                        />
-                      )}
-                      <span
-                        style={{
-                          fontSize: 15,
-                          color: C.ink,
-                          fontWeight: 600,
-                          flex: 1,
-                          textAlign: 'left',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {brand}
-                      </span>
-                      <span style={{ fontSize: 12, color: C.faint }}>{count}</span>
-                    </button>
-                  );
-                })}
-              </div>
+                        >
+                          <div
+                            style={{
+                              width: 20,
+                              height: 20,
+                              borderRadius: 6,
+                              background: on ? C.accent : 'transparent',
+                              border: `2px solid ${on ? C.accent : 'rgba(255,255,255,.25)'}`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: C.onAccent,
+                              fontSize: 12,
+                              fontWeight: 800,
+                              flexShrink: 0,
+                            }}
+                          >
+                            {on ? '✓' : ''}
+                          </div>
+                          {icon && (
+                            <img
+                              src={icon}
+                              alt=""
+                              width={18}
+                              height={18}
+                              style={{
+                                objectFit: 'contain',
+                                background: '#fff',
+                                borderRadius: 5,
+                                padding: 1,
+                                flexShrink: 0,
+                              }}
+                            />
+                          )}
+                          <span
+                            style={{
+                              fontSize: 15,
+                              color: C.ink,
+                              fontWeight: 600,
+                              flex: 1,
+                              textAlign: 'left',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {brand}
+                          </span>
+                          <span style={{ fontSize: 12, color: C.faint }}>{count}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {outOfZone.length > 0 && (
+                    <>
+                      <div style={{ fontSize: 11.5, color: C.faint, margin: '10px 0 8px' }}>
+                        Hors de la zone — pour un prochain trajet
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+                        {outOfZone.map((brand) => {
+                          const on = app.brandSel.includes(brand);
+                          const icon = brandIconSrc(brand);
+                          return (
+                            <button
+                              key={brand}
+                              onClick={() => app.toggleBrand(brand)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                background: on ? C.accentSoft14 : 'transparent',
+                                color: on ? C.accent : C.body,
+                                fontSize: 12.5,
+                                fontWeight: 600,
+                                padding: '6px 11px',
+                                borderRadius: 15,
+                                border: `1px solid ${on ? C.accentBorderStrong : C.border12}`,
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {icon && (
+                                <img
+                                  src={icon}
+                                  alt=""
+                                  width={14}
+                                  height={14}
+                                  style={{
+                                    objectFit: 'contain',
+                                    background: '#fff',
+                                    borderRadius: 4,
+                                    padding: 1,
+                                  }}
+                                />
+                              )}
+                              {brand}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </>
           ) : (
-            <div style={{ fontSize: 12, color: C.faint }}>
-              La source publique ne fournit pas les enseignes des stations.
-            </div>
+            <>
+              <div style={{ ...sectionLabel, marginBottom: 6 }}>Marques</div>
+              <div style={{ fontSize: 12, color: C.faint }}>
+                La source publique ne fournit pas les enseignes des stations.
+              </div>
+            </>
           )}
         </div>
 

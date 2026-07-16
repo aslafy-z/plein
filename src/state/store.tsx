@@ -308,7 +308,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [fuel, setFuelState] = useState<FuelId>(persisted.fuel ?? 'gazole');
   const [sort, setSort] = useState<SortMode>('prix');
   const [radius, setRadiusState] = useState<number>(persisted.radius ?? 5);
-  const [brandSel, setBrandSelState] = useState<string[]>(persisted.brandSel ?? []);
+  // Persisted selections may predate a grouping change ("Total", "Esso
+  // Express"…) — remap them onto the current canonical groups.
+  const [brandSel, setBrandSelState] = useState<string[]>(() => [
+    ...new Set((persisted.brandSel ?? []).map(brandGroup)),
+  ]);
   const [serviceTags, setServiceTags] = useState<Partial<Record<ServiceTag, boolean>>>({});
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [routeMode, setRouteMode] = useState<RouteMode>('compromis');
@@ -1047,7 +1051,8 @@ export function selectVisibleForFuel(app: AppStore, fuel: FuelId): NearbyStation
       (s) =>
         s.searchKm <= radius &&
         s.prices[fuel] != null &&
-        (brandSel.length === 0 || (s.brand != null && brandSel.includes(brandGroup(s.brand)))) &&
+        // Brandless stations pass as « Indépendants & autres » via brandGroup
+        (brandSel.length === 0 || brandSel.includes(brandGroup(s.brand))) &&
         wantedTags.every((t) => s.tags.includes(t)),
     );
 }
@@ -1075,7 +1080,7 @@ export function selectMapStations(app: AppStore): NearbyStation[] {
     .filter(
       (s) =>
         s.prices[fuel] != null &&
-        (brandSel.length === 0 || (s.brand != null && brandSel.includes(brandGroup(s.brand)))) &&
+        (brandSel.length === 0 || brandSel.includes(brandGroup(s.brand))) &&
         wantedTags.every((t) => s.tags.includes(t)),
     );
 }
