@@ -6,9 +6,10 @@ import { addDarkBasemap } from '../lib/tiles';
 import { useApp, selectVisible, selectMapStations, selectCheapest } from '../state/store';
 
 /**
- * Dense areas: only the PIN_CAP cheapest stations wear a price bubble; the
- * rest shrink to small dots (still tappable) so the map stays readable. The
- * selected station always keeps its full pin, wherever it ranks.
+ * Dense areas: only the PIN_CAP cheapest stations wear a price bubble — the
+ * ones inside the search circle first — the rest shrink to small dots (still
+ * tappable) so the map stays readable. The selected station always keeps its
+ * full pin, wherever it ranks.
  */
 const PIN_CAP = 15;
 
@@ -166,10 +167,19 @@ export default function MapCanvas() {
     const markers = markersRef.current;
     const wanted = new Set<string>();
 
-    // Price bubbles for the PIN_CAP cheapest only — the rest are dots
+    // Price bubbles for the PIN_CAP cheapest only — the rest are dots. The
+    // search circle keeps priority: its stations rank first, so a dense zone
+    // always shows PIN_CAP prices INSIDE the circle, whatever cheaper
+    // stations sit outside it; out-of-zone stations only get the leftover
+    // bubbles when the zone is sparse.
+    const zoneIds = new Set(selectVisible(app).map((s) => s.id));
     const priced = new Set(
       [...pins]
-        .sort((a, b) => a.prices[app.fuel]!.value - b.prices[app.fuel]!.value)
+        .sort(
+          (a, b) =>
+            Number(zoneIds.has(b.id)) - Number(zoneIds.has(a.id)) ||
+            a.prices[app.fuel]!.value - b.prices[app.fuel]!.value,
+        )
         .slice(0, PIN_CAP)
         .map((s) => s.id),
     );
