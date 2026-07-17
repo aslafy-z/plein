@@ -1,6 +1,6 @@
 import { C, mono } from '../theme';
 import { ALL_FUELS, FUEL_LABELS, type DataSourceId } from '../data/types';
-import { useApp, VEHICLE_PRESETS } from '../state/store';
+import { useApp, MAPS_SITES, VEHICLE_PRESETS } from '../state/store';
 import { APP_VERSION } from '../lib/appUpdate';
 
 const SECTION_LABEL: React.CSSProperties = {
@@ -44,22 +44,25 @@ const SOURCES: { id: DataSourceId; title: string; sub: string }[] = [
 
 export default function Settings() {
   const app = useApp();
-  const { fuel, vehicle, tank, conso, alerts, bgloc, sourceId, geoStatus } = app;
+  const { fuel, vehicle, tank, conso, alerts, bgloc, sourceId, geoStatus, mapsSite } = app;
   // Slider ranges follow the profile (a moto tank is far smaller than a car's)
   const tankRange = vehicle === 'moto' ? { min: 5, max: 30, step: 1 } : { min: 30, max: 80, step: 5 };
 
-  const toggles: { label: string; sub: string; on: boolean; set: (v: boolean) => void }[] = [
+  // `soon`: feature not built yet — activating shows a toast, like « Signaler »
+  const toggles: { label: string; sub: string; on: boolean; set: (v: boolean) => void; soon: string }[] = [
     {
       label: 'Alerte prix bas',
       sub: 'quand une de vos stations favorites baisse son prix',
       on: alerts,
       set: app.setAlerts,
+      soon: 'Bientôt ! Les alertes ne sont pas encore actives.',
     },
     {
       label: 'Localisation en arrière-plan',
       sub: 'suggestions de plein pendant la conduite',
       on: bgloc,
       set: app.setBgloc,
+      soon: "Bientôt ! Cette fonction n'est pas encore active.",
     },
   ];
 
@@ -237,6 +240,50 @@ export default function Settings() {
         </div>
       </div>
 
+      {/* Itinéraires */}
+      <div style={{ marginTop: 18 }}>
+        <div style={SECTION_LABEL}>Itinéraires</div>
+        <div
+          style={{
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            borderRadius: 16,
+            padding: 16,
+          }}
+        >
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 10 }}>
+            Site pour « Y aller »
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {MAPS_SITES.map((site) => {
+              const active = site.id === mapsSite;
+              return (
+                <button
+                  key={site.id}
+                  onClick={() => app.setMapsSite(site.id)}
+                  style={{
+                    background: active ? C.accent : 'transparent',
+                    color: active ? C.onAccent : C.body,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    padding: '8px 14px',
+                    borderRadius: 16,
+                    border: active ? `1px solid ${C.accent}` : `1px solid ${C.border12}`,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {site.label}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: 11.5, color: C.faint, marginTop: 10 }}>
+            utilisé sur ordinateur — sur mobile, l'app GPS de l'appareil s'ouvre directement
+          </div>
+        </div>
+      </div>
+
       {/* Notifications */}
       <div style={{ marginTop: 18 }}>
         <div style={SECTION_LABEL}>Notifications</div>
@@ -251,7 +298,10 @@ export default function Settings() {
           {toggles.map((t) => (
             <button
               key={t.label}
-              onClick={() => t.set(!t.on)}
+              onClick={() => {
+                if (!t.on) app.notify(t.soon);
+                t.set(!t.on);
+              }}
               style={{
                 display: 'flex',
                 alignItems: 'center',

@@ -20,6 +20,7 @@ const TAG_RULES: ReadonlyArray<readonly [ServiceTag, RegExp]> = [
   ['Lavage', /avage/i],
   ['Boutique', /outique/i],
   ['Gonflage', /onflage/i],
+  ['Additifs', /additiv/i],
 ];
 
 /** Derive normalized filter tags from raw service labels (shared shape with gouv) */
@@ -126,20 +127,20 @@ export const DEMO_STATIONS: Station[] = [
   build({
     id: 'te', name: 'TotalEnergies · Centre', init: 'TE', brand: 'TotalEnergies', cat: 'pet',
     lat: 43.6001, lng: 1.4386, address: '1 allée Jules-Guesde', city: 'Toulouse', cp: '31000',
-    h: 1, conf: 15, services: ['Ouvert 24/24', 'Lavage', 'Boutique', 'Gonflage'],
+    h: 1, conf: 15, services: ['Ouvert 24/24', 'Lavage', 'Boutique', 'Gonflage', 'Carburant additivé'],
     prices: { gazole: 1.82, e10: 1.89, e85: 0.89, sp95: 1.93, sp98: 1.99 },
   }),
   build({
     id: 'bp', name: 'BP · Rocade Est', init: 'BP', brand: 'BP', cat: 'pet',
     lat: 43.6241, lng: 1.4886, address: 'Rocade Est', city: 'Toulouse', cp: '31500',
-    h: 5, conf: 6, services: ['Ouvert 24/24', 'Boutique'],
+    h: 5, conf: 6, services: ['Ouvert 24/24', 'Boutique', 'Carburant additivé'],
     prices: { gazole: 1.80, e10: 1.88, sp95: 1.92, sp98: 1.98 },
   }),
   // Eight more, spread 3–19 km out, all six fuels represented across the set
   build({
     id: 'es', name: 'Esso Express · L\'Union', init: 'ES', brand: 'Esso', cat: 'pet',
     lat: 43.6341, lng: 1.5086, address: '210 route d\'Albi', city: 'L\'Union', cp: '31240',
-    h: 4, conf: 7, services: ['Ouvert 24/24', 'Boutique'],
+    h: 4, conf: 7, services: ['Ouvert 24/24', 'Boutique', 'Vente d\'additifs carburants'],
     prices: { gazole: 1.79, e10: 1.85, sp95: 1.89, sp98: 1.95, e85: 0.87, gplc: 1.02 },
   }),
   build({

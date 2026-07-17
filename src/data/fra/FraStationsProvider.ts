@@ -263,6 +263,8 @@ function deriveTags(services: string[], rec: Raw): ServiceTag[] {
   if (/avage/i.test(joined)) tags.push('Lavage');
   if (/outique/i.test(joined)) tags.push('Boutique');
   if (/onflage/i.test(joined)) tags.push('Gonflage');
+  // « Carburant additivé » and « Vente d'additifs carburants » in the gouv flux
+  if (/additiv/i.test(joined)) tags.push('Additifs');
   return tags;
 }
 
