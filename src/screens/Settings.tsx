@@ -1,6 +1,7 @@
 import { C, mono } from '../theme';
 import { ALL_FUELS, FUEL_LABELS, type DataSourceId } from '../data/types';
 import { useApp, MAPS_SITES, VEHICLE_PRESETS } from '../state/store';
+import { HAS_NATIVE_MAPS } from '../lib/env';
 import { APP_VERSION } from '../lib/appUpdate';
 
 const SECTION_LABEL: React.CSSProperties = {
@@ -240,7 +241,8 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* Itinéraires */}
+      {/* Itinéraires — desktop only: on mobile « Y aller » opens the native GPS app */}
+      {!HAS_NATIVE_MAPS && (
       <div style={{ marginTop: 18 }}>
         <div style={SECTION_LABEL}>Itinéraires</div>
         <div
@@ -279,10 +281,11 @@ export default function Settings() {
             })}
           </div>
           <div style={{ fontSize: 11.5, color: C.faint, marginTop: 10 }}>
-            utilisé sur ordinateur — sur mobile, l'app GPS de l'appareil s'ouvre directement
+            site ouvert par le bouton « Y aller »
           </div>
         </div>
       </div>
+      )}
 
       {/* Notifications */}
       <div style={{ marginTop: 18 }}>

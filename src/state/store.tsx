@@ -10,6 +10,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { IS_ANDROID, IS_IOS } from '../lib/env';
 import type { GeoPoint } from '../lib/geo';
 import { cumulativeKm, haversineKm, nearestOnPolyline } from '../lib/geo';
 import {
@@ -939,13 +940,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const openInMaps = useCallback(
     (target: Station) => {
-      const ua = navigator.userAgent;
       // Android: geo: URI → the native maps-app chooser (Google Maps, Waze,
-      // Organic Maps…). iOS/iPadOS: Apple Plans universal link (modern iPads
-      // report as Macintosh, hence the touch check). Elsewhere: Google Maps.
-      const isAndroid = /android/i.test(ua);
-      const isIOS =
-        /iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+      // Organic Maps…). iOS/iPadOS: Apple Plans universal link. Elsewhere:
+      // the web maps site chosen in Réglages.
       // A brand-matched station exists as a mapped POI: hand the maps app a
       // text search (anchored on our coordinates) so it opens its own place
       // card instead of a bare coordinate pin, which it never links to the
@@ -956,14 +953,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
             [target.brand, target.address, target.cp, target.city].filter(Boolean).join(' '),
           )
         : null;
-      if (isAndroid) {
+      if (IS_ANDROID) {
         showToast("Ouverture de l'app GPS…");
         const label = encodeURIComponent(target.name);
         const q = poiQuery ?? `${target.lat},${target.lng}(${label})`;
         window.location.href = `geo:${target.lat},${target.lng}?q=${q}`;
         return;
       }
-      if (isIOS) {
+      if (IS_IOS) {
         showToast('Ouverture de Plans…');
         window.location.href = `https://maps.apple.com/?daddr=${target.lat},${target.lng}&dirflg=d`;
         return;
