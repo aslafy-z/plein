@@ -162,6 +162,17 @@ button {
   border-left: 6px solid transparent;
   border-right: 6px solid transparent;
 }
+/* Dense areas: stations beyond the cheapest PIN_CAP shrink to a tappable dot */
+.pin-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #2a3136;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  box-sizing: border-box;
+}
 
 /* Simple fade/slide for sheets and toast */
 @keyframes sheet-up {
