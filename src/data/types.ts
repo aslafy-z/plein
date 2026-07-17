@@ -24,8 +24,8 @@ export const ALL_FUELS: FuelId[] = ['gazole', 'e10', 'sp98', 'sp95', 'e85', 'gpl
 export type BrandCat = 'gs' | 'ind' | 'pet' | 'unknown';
 
 /** Normalized, filterable service tags (raw services kept for the detail screen) */
-export type ServiceTag = '24/24' | 'Lavage' | 'Boutique' | 'Gonflage';
-export const SERVICE_TAGS: ServiceTag[] = ['24/24', 'Lavage', 'Boutique', 'Gonflage'];
+export type ServiceTag = '24/24' | 'Lavage' | 'Boutique' | 'Gonflage' | 'Additifs';
+export const SERVICE_TAGS: ServiceTag[] = ['24/24', 'Lavage', 'Boutique', 'Gonflage', 'Additifs'];
 
 export interface FuelPrice {
   value: number; // €/L

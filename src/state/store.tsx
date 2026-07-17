@@ -67,6 +67,27 @@ export type Screen =
 export type RouteMode = 'compromis' | 'prix' | 'detour';
 export type SortMode = 'prix' | 'dist';
 
+/** Web maps site used by « Y aller » on desktop (mobile opens the native GPS app) */
+export type MapsSiteId = 'google' | 'waze' | 'apple' | 'osm';
+export const MAPS_SITES: { id: MapsSiteId; label: string }[] = [
+  { id: 'google', label: 'Google Maps' },
+  { id: 'waze', label: 'Waze' },
+  { id: 'apple', label: 'Apple Plans' },
+  { id: 'osm', label: 'OpenStreetMap' },
+];
+function mapsSiteUrl(site: MapsSiteId, lat: number, lng: number): string {
+  switch (site) {
+    case 'waze':
+      return `https://www.waze.com/ul?ll=${lat}%2C${lng}&navigate=yes`;
+    case 'apple':
+      return `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`;
+    case 'osm':
+      return `https://www.openstreetmap.org/directions?to=${lat}%2C${lng}`;
+    default:
+      return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+  }
+}
+
 interface StationsState {
   status: 'idle' | 'loading' | 'ready' | 'error';
   data: Station[];
@@ -103,6 +124,7 @@ interface PersistedSettings {
   sourceId: DataSourceId;
   onboarded: boolean;
   alerts: boolean;
+  mapsSite: MapsSiteId;
   /** Last position the app was centered on — restored on reload so the
       station cache hits instantly instead of flashing Toulouse/demo data */
   lastPos: GeoPoint;
@@ -248,6 +270,9 @@ export interface AppStore {
   setBgloc(v: boolean): void;
   sourceId: DataSourceId;
   setSourceId(s: DataSourceId): void;
+  /** Maps website opened by « Y aller » on desktop */
+  mapsSite: MapsSiteId;
+  setMapsSite(s: MapsSiteId): void;
 
   // detail
   detailId: string | null;
@@ -345,6 +370,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const saved = persisted.sourceId as string | undefined;
     return saved === 'fra' || saved === 'esp' || saved === 'demo' ? saved : 'auto';
   });
+  const [mapsSite, setMapsSiteState] = useState<MapsSiteId>(persisted.mapsSite ?? 'google');
   const [toast, setToast] = useState<string | null>(null);
   // Start from the last known position so the per-area cache hits instantly
   const initialPos = persisted.lastPos ?? DEFAULT_POS;
@@ -821,6 +847,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     savePersisted({ sourceId: s });
   }, []);
 
+  const setMapsSite = useCallback((s: MapsSiteId) => {
+    setMapsSiteState(s);
+    savePersisted({ mapsSite: s });
+  }, []);
+
   const toggleBrand = useCallback((label: string) => {
     setBrandSelState((sel) => {
       const next = sel.includes(label) ? sel.filter((b) => b !== label) : [...sel, label];
@@ -937,14 +968,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         window.location.href = `https://maps.apple.com/?daddr=${target.lat},${target.lng}&dirflg=d`;
         return;
       }
-      showToast('Ouverture de Google Maps…');
-      // Unlike geo:, the dir URL carries no coordinate anchor for a text
-      // search — only use it when a street address can disambiguate the query.
-      const destination = poiQuery && target.address ? poiQuery : `${target.lat},${target.lng}`;
-      const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`;
+      // Desktop: the site is a Réglages choice (Google Maps by default).
+      // Unlike geo:, the Google dir URL carries no coordinate anchor for a
+      // text search — only use it when a street address can disambiguate.
+      const site = MAPS_SITES.find((s) => s.id === mapsSite) ?? MAPS_SITES[0];
+      showToast(`Ouverture de ${site.label}…`);
+      const url =
+        site.id === 'google' && poiQuery && target.address
+          ? `https://www.google.com/maps/dir/?api=1&destination=${poiQuery}&travelmode=driving`
+          : mapsSiteUrl(site.id, target.lat, target.lng);
       window.open(url, '_blank', 'noopener');
     },
-    [showToast],
+    [showToast, mapsSite],
   );
 
   const openTourInMaps = useCallback(() => {
@@ -1044,6 +1079,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setBgloc,
       sourceId,
       setSourceId,
+      mapsSite,
+      setMapsSite,
       detailId,
       installReady: canInstall && !isStandalone(),
       installBannerVisible: canInstall && !isStandalone() && !installDismissed,
@@ -1065,7 +1102,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       routeMode, routeState, tour, toggleTour, vehicle, setVehicle, tank, setTank, conso, setConso,
       avoidMotorway, avoidToll, setAvoidMotorway, setAvoidToll, startTankPct, setStartTankPct,
       setFiltersOpenNav, alerts, setAlerts,
-      bgloc, setBgloc, sourceId, setSourceId, detailId, toast, showToast,
+      bgloc, setBgloc, sourceId, setSourceId, mapsSite, setMapsSite, detailId, toast, showToast,
       canInstall, installDismissed, promptInstall, dismissInstallBanner, persisted.lastPos,
       openInMaps, openTourInMaps, finishOnboarding,
     ],
