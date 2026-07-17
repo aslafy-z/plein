@@ -51,7 +51,7 @@ export default function Settings() {
   const toggles: { label: string; sub: string; on: boolean; set: (v: boolean) => void }[] = [
     {
       label: 'Alerte prix bas',
-      sub: 'quand une station de vos trajets baisse son prix',
+      sub: 'quand une de vos stations favorites baisse son prix',
       on: alerts,
       set: app.setAlerts,
     },
