@@ -5,6 +5,13 @@ import { haversineKm } from '../lib/geo';
 import { addDarkBasemap } from '../lib/tiles';
 import { useApp, selectVisible, selectMapStations, selectCheapest } from '../state/store';
 
+/**
+ * Dense areas: only the PIN_CAP cheapest stations wear a price bubble; the
+ * rest shrink to small dots (still tappable) so the map stays readable. The
+ * selected station always keeps its full pin, wherever it ranks.
+ */
+const PIN_CAP = 15;
+
 export default function MapCanvas() {
   const app = useApp();
 
@@ -159,11 +166,20 @@ export default function MapCanvas() {
     const markers = markersRef.current;
     const wanted = new Set<string>();
 
+    // Price bubbles for the PIN_CAP cheapest only — the rest are dots
+    const priced = new Set(
+      [...pins]
+        .sort((a, b) => a.prices[app.fuel]!.value - b.prices[app.fuel]!.value)
+        .slice(0, PIN_CAP)
+        .map((s) => s.id),
+    );
+
     for (const s of pins) {
       const best = cheapest?.id === s.id;
       const focused = app.focusStationId === s.id;
+      const dot = !priced.has(s.id) && !focused;
       const price = s.prices[app.fuel]!.value;
-      const sig = `${price}|${best}|${focused}`;
+      const sig = `${price}|${best}|${focused}|${dot}`;
       wanted.add(s.id);
       const existing = markers.get(s.id);
       if (existing && existing.sig === sig) continue;
@@ -187,20 +203,22 @@ export default function MapCanvas() {
           ? 'drop-shadow(0 4px 12px rgba(61,220,132,.35))'
           : 'none';
       const label = price.toFixed(2).replace('.', ',');
-      const html =
-        `<div style="transform:translate(-50%,-100%);display:flex;flex-direction:column;` +
-        `align-items:center;cursor:pointer;filter:${shadow}">` +
-        `<div class="pin-bubble" style="background:${bg};color:${fg};font:${font};` +
-        `padding:${pad};border:${border}">${label}</div>` +
-        `<div class="pin-tip" style="border-top:7px solid ${bg}"></div></div>`;
+      const html = dot
+        ? `<div style="transform:translate(-50%,-50%)"><div class="pin-dot"></div></div>`
+        : `<div style="transform:translate(-50%,-100%);display:flex;flex-direction:column;` +
+          `align-items:center;cursor:pointer;filter:${shadow}">` +
+          `<div class="pin-bubble" style="background:${bg};color:${fg};font:${font};` +
+          `padding:${pad};border:${border}">${label}</div>` +
+          `<div class="pin-tip" style="border-top:7px solid ${bg}"></div></div>`;
       const icon = L.divIcon({ className: '', html, iconSize: [0, 0], iconAnchor: [0, 0] });
+      const z = focused ? 2000 : best ? 1000 : dot ? -400 : 0;
 
       if (existing) {
         existing.marker.setIcon(icon);
-        existing.marker.setZIndexOffset(focused ? 2000 : best ? 1000 : 0);
+        existing.marker.setZIndexOffset(z);
         existing.sig = sig;
       } else {
-        const marker = L.marker([s.lat, s.lng], { zIndexOffset: focused ? 2000 : best ? 1000 : 0, icon });
+        const marker = L.marker([s.lat, s.lng], { zIndexOffset: z, icon });
         // Tapping a pin selects the station in the bottom-sheet card
         // (the full detail opens from there) — Google-Maps-like flow
         marker.on('click', () => appRef.current.setFocusStation(s.id));
@@ -243,9 +261,45 @@ export default function MapCanvas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [app.focusStationId]);
 
+  const hiddenPins = Math.max(0, selectMapStations(app).length - PIN_CAP);
+
   return (
     <div style={{ position: 'absolute', inset: 0, background: C.mapBg }}>
       <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
+
+      {/* Dense area: tell that only the cheapest wear a price, the rest are dots */}
+      {app.stations.status !== 'loading' && hiddenPins > 0 && (
+        <div
+          data-testid="pin-cap-hint"
+          style={{
+            position: 'absolute',
+            // Clear of the recenter button (right) and the attribution line
+            left: 64,
+            right: 64,
+            bottom: 26,
+            display: 'flex',
+            justifyContent: 'center',
+            zIndex: 1000,
+            pointerEvents: 'none',
+          }}
+        >
+          <span
+            style={{
+              background: C.surface2,
+              color: C.body,
+              fontSize: 12,
+              fontWeight: 600,
+              padding: '7px 14px',
+              borderRadius: 16,
+              border: `1px solid ${C.border09}`,
+              boxShadow: '0 8px 24px rgba(0,0,0,.5)',
+              textAlign: 'center',
+            }}
+          >
+            Les {PIN_CAP} moins chères · {hiddenPins} en points
+          </span>
+        </div>
+      )}
 
       {/* Loading indicator while the moved area fetches its stations */}
       {app.stations.status === 'loading' && (
