@@ -21,6 +21,8 @@ const DRAG_SLOP_PX = 6;
 /** Release speed (px/ms) above which the sheet snaps in the fling direction */
 const FLING_VPS = 0.45;
 const TRANSITION = 'height .3s cubic-bezier(.4,0,.2,1)';
+/** Dense zones: the list opens on the N best rows, the rest behind a button */
+const LIST_CAP = 15;
 
 /**
  * Bottom sheet over the map. Collapsed: the cheapest (or map-selected)
@@ -65,6 +67,22 @@ export default function MapSheet({
   const headerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const [collapsedH, setCollapsedH] = useState<number | null>(null);
+
+  // Dense zones: only the LIST_CAP best rows (cheapest or nearest, per the
+  // active sort) until « Afficher les N autres » is tapped. Back to the capped
+  // view whenever the zone changes or the sheet closes — a fresh look at a
+  // zone should always lead with the best picks.
+  const [showAll, setShowAll] = useState(false);
+  useEffect(() => {
+    setShowAll(false);
+  }, [app.searchPos, app.radius, app.fuel]);
+  useEffect(() => {
+    if (!expanded) setShowAll(false);
+  }, [expanded]);
+
+  const capped = !showAll && rows.length > LIST_CAP;
+  const shownRows = capped ? rows.slice(0, LIST_CAP) : rows;
+  const hiddenCount = rows.length - shownRows.length;
 
   // Measure the always-visible part; the map keeps that strip free below it
   useLayoutEffect(() => {
@@ -581,7 +599,7 @@ export default function MapSheet({
                 Aucune station dans le rayon.
               </div>
             )}
-            {rows.map((s) => {
+            {shownRows.map((s) => {
               const best = cheapest?.id === s.id;
               const isFocus = app.focusStationId === s.id;
               const price = s.prices[app.fuel]!.value;
@@ -645,6 +663,31 @@ export default function MapSheet({
                 </button>
               );
             })}
+            {capped && (
+              <button
+                data-testid="zone-list-more"
+                onClick={() => setShowAll(true)}
+                aria-label={`Afficher ${plural(hiddenCount, 'autre station', 'autres stations')}`}
+                style={{
+                  width: '100%',
+                  background: 'transparent',
+                  borderRadius: 14,
+                  padding: '12px 14px',
+                  flexShrink: 0,
+                  border: `1px dashed ${C.border09}`,
+                  textAlign: 'center',
+                }}
+              >
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: C.accent }}>
+                  Afficher {plural(hiddenCount, 'autre station', 'autres stations')}
+                </div>
+                <div style={{ fontSize: 11.5, color: C.mut, marginTop: 3 }}>
+                  {app.sort === 'prix'
+                    ? `Les ${LIST_CAP} moins chères de la zone sont affichées`
+                    : `Les ${LIST_CAP} plus proches de la zone sont affichées`}
+                </div>
+              </button>
+            )}
           </div>
         </div>
       )}
