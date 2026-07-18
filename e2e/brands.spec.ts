@@ -27,7 +27,8 @@ test('stations take their brand from the static index', async ({ page }) => {
   })
 
   // Deterministic index: two U-banner POIs ~30 m from each station, at the
-  // default position (Toulouse Capitole) where the stations above land.
+  // default position (Toulouse Capitole) where the stations above land, plus
+  // an unlabeled POI (index -1: kept for coordinates only, donates no brand).
   await page.route('**/brands-fr.json', (route) =>
     route.fulfill({
       json: {
@@ -36,6 +37,7 @@ test('stations take their brand from the static index', async ({ page }) => {
         pois: [
           [43.605, 1.4442, 0],
           [43.6149, 1.4442, 1],
+          [43.62, 1.4442, -1],
         ],
       },
     }),

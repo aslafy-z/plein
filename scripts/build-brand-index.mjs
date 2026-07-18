@@ -67,12 +67,17 @@ for (const el of data.elements ?? []) {
   const lat = el.lat ?? el.center?.lat;
   const lng = el.lon ?? el.center?.lon;
   const label = (el.tags?.brand ?? el.tags?.name ?? el.tags?.operator)?.trim();
-  if (lat == null || lng == null || !label) continue;
-  let i = labelIdx.get(label);
-  if (i === undefined) {
-    i = labels.length;
-    labelIdx.set(label, i);
-    labels.push(label);
+  if (lat == null || lng == null) continue;
+  // Unlabeled stations are kept (label index -1): they donate no brand, but
+  // their OSM position still corrects the flux's imprecise coordinates.
+  let i = -1;
+  if (label) {
+    i = labelIdx.get(label);
+    if (i === undefined) {
+      i = labels.length;
+      labelIdx.set(label, i);
+      labels.push(label);
+    }
   }
   // 5 decimals ≈ 1 m — plenty for the 150 m matching threshold
   pois.push([Number(lat.toFixed(5)), Number(lng.toFixed(5)), i]);
@@ -87,4 +92,4 @@ const out = {
 };
 const path = join(dirname(fileURLToPath(import.meta.url)), '../public/brands-fr.json');
 writeFileSync(path, JSON.stringify(out));
-console.log(`${pois.length} labeled POIs, ${labels.length} distinct labels → ${path}`);
+console.log(`${pois.length} POIs, ${labels.length} distinct labels → ${path}`);

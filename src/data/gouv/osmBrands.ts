@@ -1,4 +1,5 @@
-// Brand/name enrichment for the gouv flux (which ships neither).
+// Brand/name/position enrichment for the gouv flux (which ships no names and
+// often imprecise coordinates geocoded from partial addresses).
 // Brands come from a static France-wide OpenStreetMap index generated at build
 // time (scripts/build-brand-index.mjs) and served with the app. Querying
 // Overpass at runtime proved hopeless — public instances rate-limit, block IPs
@@ -9,7 +10,7 @@ import type { GeoPoint } from '../../lib/geo';
 import { haversineKm } from '../../lib/geo';
 import type { BrandCat, Station } from '../types';
 
-/** A gouv station adopts a POI's brand only within this distance */
+/** A gouv station adopts a POI's brand (and position) only within this distance */
 const MATCH_KM = 0.15;
 
 export interface FuelPoi {
@@ -108,28 +109,59 @@ function initialsOf(label: string): string {
   return label.slice(0, 2).toUpperCase();
 }
 
-/** Match stations to the nearest POI and adopt its brand/name. */
+/**
+ * Match stations to the nearest POI and adopt its brand/name — and its
+ * coordinates. The gouv flux position is often geocoded from a partial
+ * address (mid-street, missing house number), while OSM contributors place
+ * the node on the forecourt itself: snapping fixes both the map pin and the
+ * « Y aller » navigation target.
+ */
 export function enrichWithBrands(stations: Station[], pois: FuelPoi[]): Station[] {
   if (!pois.length) return stations;
-  return stations.map((s) => {
+  const matches = stations.map((s) => {
+    // Nearest POI donates its position; nearest *labeled* POI donates the
+    // brand (the index also carries unlabeled stations, kept for their coords).
     let best: FuelPoi | null = null;
     let bestKm = Infinity;
+    let labeled: FuelPoi | null = null;
+    let labeledKm = Infinity;
     for (const p of pois) {
       const d = haversineKm({ lat: s.lat, lng: s.lng }, p);
       if (d < bestKm) {
         bestKm = d;
         best = p;
       }
+      if (p.label && d < labeledKm) {
+        labeledKm = d;
+        labeled = p;
+      }
     }
-    if (!best || bestKm > MATCH_KM || !best.label) return s;
-    const label = best.label;
+    if (!best || bestKm > MATCH_KM) return null;
+    return {
+      poi: best,
+      km: bestKm,
+      label: labeled && labeledKm <= MATCH_KM ? labeled.label : '',
+    };
+  });
+  // If several gouv records match the same POI (duplicates, dense areas),
+  // only the closest one snaps to it — otherwise their pins would stack.
+  const closestKm = new Map<FuelPoi, number>();
+  for (const m of matches) {
+    if (m && m.km < (closestKm.get(m.poi) ?? Infinity)) closestKm.set(m.poi, m.km);
+  }
+  return stations.map((s, i) => {
+    const m = matches[i];
+    if (!m) return s;
+    const snap = closestKm.get(m.poi) === m.km ? { lat: m.poi.lat, lng: m.poi.lng } : {};
+    if (!m.label) return { ...s, ...snap };
     const city = s.city ? s.name.split('·').pop()?.trim() : '';
     return {
       ...s,
-      brand: label,
-      cat: catFor(label),
-      name: city ? `${label} · ${city}` : label,
-      init: initialsOf(label),
+      brand: m.label,
+      cat: catFor(m.label),
+      name: city ? `${m.label} · ${city}` : m.label,
+      init: initialsOf(m.label),
+      ...snap,
     };
   });
 }

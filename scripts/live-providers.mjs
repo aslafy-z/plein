@@ -6,7 +6,7 @@
 // which honors the proxy environment. Usage: npm run verify:live
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -16,6 +16,12 @@ const pexec = promisify(execFile);
 
 // ── curl-backed fetch (proxy-aware) ──────────────────────────────────────────
 globalThis.fetch = async (url) => {
+  // App-relative URLs (only /brands-fr.json today) are bundled assets: serve
+  // the local file so OSM enrichment (brands + position snapping) runs too.
+  if (String(url).startsWith('/')) {
+    const body = readFileSync(join(process.cwd(), 'public', String(url)), 'utf8');
+    return { ok: true, status: 200, json: async () => JSON.parse(body), text: async () => body };
+  }
   const { stdout } = await pexec(
     'curl',
     ['-sS', '--max-time', '25', '-A', 'plein-live-check/1', '-w', '\n__STATUS__%{http_code}', String(url)],
@@ -79,6 +85,11 @@ ok('gouv: plausible gazole price', cheapest && cheapest.prices.gazole.value > 1 
 const branded = near.filter((s) => s.brand);
 ok('gouv: brands enriched from OSM', branded.length >= near.length * 0.4,
   `${branded.length}/${near.length} · ex: ${branded.slice(0, 3).map((s) => s.name).join(' / ')}`);
+const index = JSON.parse(readFileSync(join(process.cwd(), 'public/brands-fr.json'), 'utf8'));
+const poiSet = new Set(index.pois.map(([lat, lng]) => `${lat},${lng}`));
+const snapped = near.filter((s) => poiSet.has(`${s.lat},${s.lng}`));
+ok('gouv: positions snapped to OSM POIs', snapped.length > 0 && snapped.length >= branded.length * 0.8,
+  `${snapped.length}/${near.length} snapped`);
 const withHours = near.filter((s) => s.hours);
 ok('gouv: opening hours parsed', withHours.length > 0, `${withHours.length}/${near.length} with hours`);
 const statuses = withHours.map((s) => P.openStatus(s.hours)).filter(Boolean);
