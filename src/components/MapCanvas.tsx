@@ -1,9 +1,15 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { C } from '../theme';
 import { haversineKm } from '../lib/geo';
 import { addDarkBasemap } from '../lib/tiles';
-import { useApp, selectVisible, selectMapStations, selectCheapest } from '../state/store';
+import {
+  useApp,
+  selectVisible,
+  selectMapStations,
+  selectCheapest,
+  type AppStore,
+} from '../state/store';
 
 /**
  * Dense areas: only the PIN_CAP cheapest stations wear a price bubble — the
@@ -12,6 +18,26 @@ import { useApp, selectVisible, selectMapStations, selectCheapest } from '../sta
  * full pin, wherever it ranks.
  */
 const PIN_CAP = 15;
+
+/**
+ * Stations wearing a price bubble: the PIN_CAP cheapest, the search circle
+ * first — a dense zone always shows PIN_CAP prices INSIDE the circle,
+ * whatever cheaper stations sit outside it; out-of-zone stations only get
+ * the leftover bubbles when the zone is sparse.
+ */
+function pricedIds(app: AppStore): Set<string> {
+  const zoneIds = new Set(selectVisible(app).map((s) => s.id));
+  return new Set(
+    [...selectMapStations(app)]
+      .sort(
+        (a, b) =>
+          Number(zoneIds.has(b.id)) - Number(zoneIds.has(a.id)) ||
+          a.prices[app.fuel]!.value - b.prices[app.fuel]!.value,
+      )
+      .slice(0, PIN_CAP)
+      .map((s) => s.id),
+  );
+}
 
 export default function MapCanvas() {
   const app = useApp();
@@ -28,6 +54,10 @@ export default function MapCanvas() {
   // moveend closures read the latest app state through this ref
   const appRef = useRef(app);
   appRef.current = app;
+
+  // The pin-cap chip counts what is actually ON SCREEN — re-render on view
+  // changes so its numbers follow the pan/zoom
+  const [, setViewTick] = useState(0);
 
   const circleRef = useRef<L.Circle | null>(null);
   const userDotRef = useRef<L.Marker | null>(null);
@@ -53,6 +83,8 @@ export default function MapCanvas() {
     };
     map.on('dragstart', markInteract);
     map.on('zoomstart', markInteract);
+
+    map.on('moveend zoomend', () => setViewTick((t) => t + 1));
 
     // While the USER pans, the zone circle glides with the screen center —
     // no more jumpy circle waiting for the debounce. Never during a zoom
@@ -167,22 +199,7 @@ export default function MapCanvas() {
     const markers = markersRef.current;
     const wanted = new Set<string>();
 
-    // Price bubbles for the PIN_CAP cheapest only — the rest are dots. The
-    // search circle keeps priority: its stations rank first, so a dense zone
-    // always shows PIN_CAP prices INSIDE the circle, whatever cheaper
-    // stations sit outside it; out-of-zone stations only get the leftover
-    // bubbles when the zone is sparse.
-    const zoneIds = new Set(selectVisible(app).map((s) => s.id));
-    const priced = new Set(
-      [...pins]
-        .sort(
-          (a, b) =>
-            Number(zoneIds.has(b.id)) - Number(zoneIds.has(a.id)) ||
-            a.prices[app.fuel]!.value - b.prices[app.fuel]!.value,
-        )
-        .slice(0, PIN_CAP)
-        .map((s) => s.id),
-    );
+    const priced = pricedIds(app);
 
     for (const s of pins) {
       const best = cheapest?.id === s.id;
@@ -271,14 +288,27 @@ export default function MapCanvas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [app.focusStationId]);
 
-  const hiddenPins = Math.max(0, selectMapStations(app).length - PIN_CAP);
+  // Chip numbers: only the stations inside the CURRENT view — the fetched
+  // area is far larger than the screen, and counting it reads as nonsense
+  // (« 110 en points » with five dots visible)
+  let bubblesInView = 0;
+  let dotsInView = 0;
+  if (mapRef.current && app.stations.status !== 'loading') {
+    const bounds = mapRef.current.getBounds();
+    const priced = pricedIds(app);
+    for (const s of selectMapStations(app)) {
+      if (!bounds.contains([s.lat, s.lng])) continue;
+      if (priced.has(s.id) || s.id === app.focusStationId) bubblesInView++;
+      else dotsInView++;
+    }
+  }
 
   return (
     <div style={{ position: 'absolute', inset: 0, background: C.mapBg }}>
       <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
 
       {/* Dense area: tell that only the cheapest wear a price, the rest are dots */}
-      {app.stations.status !== 'loading' && hiddenPins > 0 && (
+      {app.stations.status !== 'loading' && dotsInView > 0 && (
         <div
           data-testid="pin-cap-hint"
           style={{
@@ -306,7 +336,11 @@ export default function MapCanvas() {
               textAlign: 'center',
             }}
           >
-            Les {PIN_CAP} moins chères · {hiddenPins} en points
+            {bubblesInView > 0
+              ? `${
+                  bubblesInView > 1 ? `Les ${bubblesInView} moins chères` : 'La moins chère'
+                } · ${dotsInView} en point${dotsInView > 1 ? 's' : ''}`
+              : 'Touchez un point pour son prix'}
           </span>
         </div>
       )}
