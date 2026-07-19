@@ -1195,11 +1195,17 @@ export function selectMapStations(app: AppStore): NearbyStation[] {
     );
 }
 
+/**
+ * Zone stations cheapest-first. Prices are DISPLAYED at cent precision while
+ * the feeds carry tenths of a cent (1,896 vs 1,904 both read « 1,90 €»), so
+ * the ranking works in cents too: at the same displayed price the NEAREST
+ * station comes first — the recommended pump must never be a farther one
+ * for a difference the user cannot even see.
+ */
 export function selectByPrice(app: AppStore): NearbyStation[] {
   const f = app.fuel;
-  return [...selectVisible(app)].sort(
-    (a, b) => (a.prices[f]?.value ?? 9) - (b.prices[f]?.value ?? 9),
-  );
+  const cents = (s: NearbyStation) => Math.round((s.prices[f]?.value ?? 9) * 100);
+  return [...selectVisible(app)].sort((a, b) => cents(a) - cents(b) || a.distKm - b.distKm);
 }
 
 export function selectSorted(app: AppStore): NearbyStation[] {
@@ -1315,13 +1321,19 @@ export function selectDeals(app: AppStore): NearbyStation[] {
 }
 
 export function selectPriceRange(app: AppStore): { min: number; max: number } | null {
-  const byPrice = selectByPrice(app);
-  if (!byPrice.length) return null;
   const f = app.fuel;
-  return {
-    min: byPrice[0].prices[f]!.value,
-    max: byPrice[byPrice.length - 1].prices[f]!.value,
-  };
+  const zone = selectVisible(app);
+  if (!zone.length) return null;
+  // True extremes of the raw prices — selectByPrice ranks in cents with a
+  // distance tie-break, so its first/last are not the exact min/max anymore
+  let min = Infinity;
+  let max = -Infinity;
+  for (const s of zone) {
+    const p = s.prices[f]!.value;
+    if (p < min) min = p;
+    if (p > max) max = p;
+  }
+  return { min, max };
 }
 
 /** Autonomy narrative for the route ribbon (depends on tank setting) */
