@@ -5,13 +5,13 @@ import { test, expect, gotoMap } from './fixtures'
 // freshly fetched area the store re-uses the cached stations and skips the
 // network entirely — the data equivalent of the prefetched basemap tiles.
 
-test.use({ seed: { sourceId: 'gouv', onboarded: true } })
+test.use({ seed: { sourceId: 'fra', onboarded: true } })
 
 test('a slight pan re-uses the fetched area instead of refetching', async ({ page }) => {
   let gouvCalls = 0
 
   // Deterministic gouv flux: echo three stations around the queried center.
-  await page.route('**/proxy/gouv/**', async (route) => {
+  await page.route('**/proxy/fra/**', async (route) => {
     gouvCalls++
     const where = new URL(route.request().url()).searchParams.get('where') ?? ''
     const m = /POINT\(([-\d.]+) ([-\d.]+)\)/.exec(where)

@@ -14,9 +14,14 @@ const SECTION_LABEL: React.CSSProperties = {
 
 const SOURCES: { id: DataSourceId; title: string; sub: string }[] = [
   {
-    id: 'gouv',
+    id: 'fra',
     title: 'prix-carburants.gouv.fr',
     sub: 'temps réel · mis à jour toutes les 10 min',
+  },
+  {
+    id: 'esp',
+    title: 'geoportalgasolineras.es',
+    sub: 'Espagne · officiel MITECO · toutes les 30 min',
   },
   {
     id: 'demo',
@@ -392,7 +397,8 @@ export default function Settings() {
         </div>
         <div>
           Prix : <a href="https://prix-carburants.gouv.fr" target="_blank" rel="noreferrer" style={{ color: C.ghost, textDecoration: 'underline' }}>prix-carburants.gouv.fr</a>
-          {' '}· à titre indicatif · adresses : BAN · itinéraires : OSRM / Valhalla
+          {' '}· <a href="https://geoportalgasolineras.es" target="_blank" rel="noreferrer" style={{ color: C.ghost, textDecoration: 'underline' }}>geoportalgasolineras.es</a>
+          {' '}· à titre indicatif · adresses : BAN / CartoCiudad · itinéraires : OSRM / Valhalla
         </div>
         <div>
           cartes : © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" style={{ color: C.ghost, textDecoration: 'underline' }}>OpenStreetMap</a> · © CARTO

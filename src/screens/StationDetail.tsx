@@ -121,9 +121,11 @@ export default function StationDetail() {
   const footerText =
     s.confirmations != null
       ? `Mis à jour ${agoLabel(mostRecent)} · confirmé par ${s.confirmations} conducteurs`
-      : activeSource === 'gouv'
+      : activeSource === 'fra'
         ? `Mis à jour ${agoLabel(mostRecent)} · source : prix-carburants.gouv.fr`
-        : `Mis à jour ${agoLabel(mostRecent)} · données de démonstration`;
+        : activeSource === 'esp'
+          ? `Mis à jour ${agoLabel(mostRecent)} · source : geoportalgasolineras.es`
+          : `Mis à jour ${agoLabel(mostRecent)} · données de démonstration`;
 
   // Address line already shows the city; the third chip adds brand or context
   const thirdChip = s.brand ?? (s.highway ? 'Autoroute' : s.address ? null : s.city);

@@ -335,7 +335,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
   const [alerts, setAlertsState] = useState<boolean>(persisted.alerts ?? true);
   const [bgloc, setBglocState] = useState<boolean>(persisted.bgloc ?? false);
-  const [sourceId, setSourceIdState] = useState<DataSourceId>(persisted.sourceId ?? 'gouv');
+  const [sourceId, setSourceIdState] = useState<DataSourceId>(persisted.sourceId ?? 'fra');
   const [toast, setToast] = useState<string | null>(null);
   // Start from the last known position so the per-area cache hits instantly
   const initialPos = persisted.lastPos ?? DEFAULT_POS;
