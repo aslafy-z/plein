@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { C, mono } from '../theme';
 import { FUEL_LABELS } from '../data/types';
-import { useApp, type FavoriteStation } from '../state/store';
+import { useApp, effectivePrice, type FavoriteStation } from '../state/store';
 import { fmtPrice, distLabel, agoLabel, plural } from '../lib/format';
 import { openStatus } from '../lib/hours';
 import { haversineKm } from '../lib/geo';
@@ -34,7 +34,7 @@ export default function FavoritesScreen() {
 
   const rows = app.favorites.map((f) => {
     const live = app.stations.data.find((s) => s.id === f.id);
-    const price = live?.prices[app.fuel]?.value ?? null;
+    const price = (live && effectivePrice(live, app.fuel)?.value) ?? null;
     const distKm = haversineKm(app.userPos, f);
     return { f, live, price, distKm };
   });
@@ -138,7 +138,7 @@ export default function FavoritesScreen() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 14 }}>
             {favs.map(({ f, live, price, distKm }) => {
-              const updated = live?.prices[app.fuel]?.updatedAt;
+              const updated = live && effectivePrice(live, app.fuel)?.updatedAt;
               const status = live ? openStatus(live.hours)?.short : undefined;
               return (
                 <div

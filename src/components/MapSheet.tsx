@@ -9,6 +9,9 @@ import {
   selectPriceStats,
   selectDeals,
   selectFocusStation,
+  selectZoneFuels,
+  effectiveFuel,
+  effectivePrice,
   priceTier,
   priceCents,
 } from '../state/store';
@@ -72,6 +75,8 @@ export default function MapSheet({
   const loading = app.stations.status === 'loading' || app.stations.status === 'idle';
 
   const hasCard = shown != null;
+  // Zone empty for the SELECTED fuel: which fuels are actually sold around?
+  const soldFuels = !loading && !hasCard ? selectZoneFuels(app).filter((f) => f !== app.fuel) : [];
 
   const rootRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -355,7 +360,7 @@ export default function MapSheet({
   const height = expanded && hasCard ? expandedH : (collapsedH ?? undefined);
 
   const isBest = shown != null && cheapest?.id === shown.id;
-  const shownPrice = shown?.prices[app.fuel]?.value ?? 0;
+  const shownPrice = (shown && effectivePrice(shown, app.fuel)?.value) || 0;
   // Deltas at DISPLAYED precision: what the user reads is (price shown) −
   // (min shown), never a tenth-of-a-cent artifact off by one
   const shownDelta = (priceCents(shownPrice) - priceCents(min)) / 100;
@@ -495,7 +500,7 @@ export default function MapSheet({
                     {[
                       distLabel(shown.distKm),
                       openStatus(shown.hours)?.short,
-                      `MàJ ${agoLabel(shown.prices[app.fuel]?.updatedAt)}`,
+                      `MàJ ${agoLabel(effectivePrice(shown, app.fuel)?.updatedAt)}`,
                     ]
                       .filter(Boolean)
                       .join(' · ')}
@@ -503,10 +508,11 @@ export default function MapSheet({
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
                   <div style={{ font: mono(700, 22), color: C.accent, whiteSpace: 'nowrap' }}>
-                    {fmtPrice(shown.prices[app.fuel]?.value)} €
+                    {fmtPrice(effectivePrice(shown, app.fuel)?.value)} €
                   </div>
+                  {/* Fuel of the SHOWN price — SP95 when E10 fell back on it */}
                   <div style={{ color: C.mut, fontSize: 11.5, whiteSpace: 'nowrap' }}>
-                    {FUEL_LABELS[app.fuel]} / L
+                    {FUEL_LABELS[effectiveFuel(shown, app.fuel) ?? app.fuel]} / L
                   </div>
                 </div>
               </button>
@@ -552,6 +558,43 @@ export default function MapSheet({
               style={{ padding: '18px 20px', textAlign: 'center', color: C.mut, fontSize: 13.5 }}
             >
               Recherche des stations autour de vous…
+            </div>
+          ) : soldFuels.length > 0 ? (
+            // Stations around, but none sells the selected fuel (no E10/E85
+            // outside France…) — name the culprit and offer what IS sold
+            <div
+              style={{ padding: '16px 20px 18px', textAlign: 'center', color: C.mut, fontSize: 13.5 }}
+            >
+              Aucune station ne vend du {FUEL_LABELS[app.fuel]} dans cette zone.
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  flexWrap: 'wrap',
+                  gap: 8,
+                  marginTop: 10,
+                }}
+              >
+                <span style={{ alignSelf: 'center' }}>Vendus ici :</span>
+                {soldFuels.map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => app.setFuel(f)}
+                    style={{
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      color: C.accent,
+                      background: C.surface2,
+                      padding: '6px 12px',
+                      borderRadius: 14,
+                      border: `1px solid ${C.border}`,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {FUEL_LABELS[f]}
+                  </button>
+                ))}
+              </div>
             </div>
           ) : (
             <div
@@ -655,7 +698,7 @@ export default function MapSheet({
             {rows.map((s) => {
               const best = cheapest?.id === s.id;
               const isFocus = app.focusStationId === s.id;
-              const price = s.prices[app.fuel]!.value;
+              const price = effectivePrice(s, app.fuel)!.value;
               // Rows are zone stations — the zone floor applies (the cheapest
               // of the circle is a bon plan even when the area has cheaper)
               const deal = priceTier(price, stats, true) === 'deal';

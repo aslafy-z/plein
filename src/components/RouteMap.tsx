@@ -5,7 +5,7 @@ import L from 'leaflet';
 import { C } from '../theme';
 import { cumulativeKm, type GeoPoint } from '../lib/geo';
 import { addDarkBasemap } from '../lib/tiles';
-import { useApp, selectRouteAnalysis } from '../state/store';
+import { useApp, selectRouteAnalysis, effectivePrice } from '../state/store';
 
 /** Vertex at a given km along the polyline (vertex precision is plenty here) */
 function pointAtKm(polyline: GeoPoint[], cum: number[], km: number): GeoPoint | null {
@@ -90,7 +90,7 @@ export default function RouteMap() {
 
     // Corridor stops as price pins (recommended one highlighted)
     for (const st of analysis.stops) {
-      const price = st.prices[app.fuel]?.value;
+      const price = effectivePrice(st, app.fuel)?.value;
       if (price == null) continue;
       const reco = st.id === analysis.recoId;
       const bg = reco ? '#3ddc84' : '#22282c';

@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { C, mono } from '../theme';
 import { ALL_FUELS, MAIN_FUELS, FUEL_LABELS, type FuelId, type Station } from '../data/types';
-import { useApp, selectVisibleForFuel, priceCents } from '../state/store';
+import { useApp, selectVisibleForFuel, effectivePrice, priceCents } from '../state/store';
 import { fmtPrice, distLabel, agoLabel, durationLabel } from '../lib/format';
 import { haversineKm } from '../lib/geo';
 import { openStatus } from '../lib/hours';
@@ -102,7 +102,8 @@ export default function StationDetail() {
     return values.length ? Math.max(...values) : null;
   })();
 
-  const cur = s.prices[app.fuel]?.value;
+  // SP95 stands in for E10 in Spain/Andorra — same substitution as the map
+  const cur = effectivePrice(s, app.fuel)?.value;
   const dSave = cur != null && maxForCurrentFuel != null ? (maxForCurrentFuel - cur) * app.tank : 0;
   const dSaveStr = dSave > 0 ? `−${fmtPrice(dSave)}` : '0,00';
 

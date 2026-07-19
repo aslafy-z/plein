@@ -18,6 +18,7 @@ import {
   type VehicleId,
   type DataSourceId,
   type FuelId,
+  type FuelPrice,
   type GeocodeResult,
   type NearbyStation,
   type Route,
@@ -745,7 +746,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           enriched.length <= 30
             ? enriched
             : [...enriched]
-                .sort((a, b) => (a.prices[fuel]?.value ?? 9) - (b.prices[fuel]?.value ?? 9))
+                .sort(
+                  (a, b) =>
+                    (effectivePrice(a, fuel)?.value ?? 9) - (effectivePrice(b, fuel)?.value ?? 9),
+                )
                 .slice(0, 30)
                 .sort((a, b) => a.kmAlong - b.kmAlong);
         return { route, stations: capped };
@@ -1148,6 +1152,32 @@ export function useApp(): AppStore {
 
 // ── Derived selectors (pure — shared by every screen) ────────────────────────
 
+/**
+ * Fuel actually compared and displayed for a station. E10 barely exists in
+ * Spain (a handful of stations country-wide) and not at all in Andorra —
+ * their SP95 (E5) is what an E10 vehicle fills up there, so those stations
+ * join the E10 map with their SP95 price. Never the reverse: an SP95-only
+ * engine must not be sent to an E10 pump, and French stations list both
+ * fuels separately anyway.
+ */
+export function effectiveFuel(s: Station, fuel: FuelId): FuelId | null {
+  if (s.prices[fuel] != null) return fuel;
+  if (
+    fuel === 'e10' &&
+    s.prices.sp95 != null &&
+    (s.id.startsWith('esp-') || s.id.startsWith('and-'))
+  ) {
+    return 'sp95';
+  }
+  return null;
+}
+
+/** Price of the effective fuel (undefined when the station sells neither) */
+export function effectivePrice(s: Station, fuel: FuelId): FuelPrice | undefined {
+  const f = effectiveFuel(s, fuel);
+  return f ? s.prices[f] : undefined;
+}
+
 /** Stations passing the current filters, enriched with distance, for a given fuel */
 export function selectVisibleForFuel(app: AppStore, fuel: FuelId): NearbyStation[] {
   const { stations, userPos, searchPos, radius, brandSel, serviceTags } = app;
@@ -1162,7 +1192,7 @@ export function selectVisibleForFuel(app: AppStore, fuel: FuelId): NearbyStation
     .filter(
       (s) =>
         s.searchKm <= radius &&
-        s.prices[fuel] != null &&
+        effectivePrice(s, fuel) != null &&
         // Brandless stations pass as « Indépendants & autres » via brandGroup
         (brandSel.length === 0 || brandSel.includes(brandGroup(s.brand))) &&
         wantedTags.every((t) => s.tags.includes(t)),
@@ -1172,6 +1202,20 @@ export function selectVisibleForFuel(app: AppStore, fuel: FuelId): NearbyStation
 /** Stations passing the current filters, for the currently selected fuel */
 export function selectVisible(app: AppStore): NearbyStation[] {
   return selectVisibleForFuel(app, app.fuel);
+}
+
+/**
+ * Fuels actually sold in the zone (radius + brand/service filters). Drives
+ * the empty state when the selected fuel isn't sold at all — E10 and E85
+ * barely exist outside France (nowhere in Andorra, a handful of Spanish
+ * stations), so an empty map must say so instead of looking broken.
+ */
+export function selectZoneFuels(app: AppStore): FuelId[] {
+  // Raw prices only — a fuel reachable through the SP95 fallback is not
+  // « sold here », the chip must name what the pumps actually serve
+  return ALL_FUELS.filter((f) =>
+    selectVisibleForFuel(app, f).some((s) => s.prices[f] != null),
+  );
 }
 
 /**
@@ -1191,7 +1235,7 @@ export function selectMapStations(app: AppStore): NearbyStation[] {
     })
     .filter(
       (s) =>
-        s.prices[fuel] != null &&
+        effectivePrice(s, fuel) != null &&
         (brandSel.length === 0 || brandSel.includes(brandGroup(s.brand))) &&
         wantedTags.every((t) => s.tags.includes(t)),
     );
@@ -1206,7 +1250,7 @@ export function selectMapStations(app: AppStore): NearbyStation[] {
  */
 export function selectByPrice(app: AppStore): NearbyStation[] {
   const f = app.fuel;
-  const cents = (s: NearbyStation) => priceCents(s.prices[f]?.value ?? 9);
+  const cents = (s: NearbyStation) => priceCents(effectivePrice(s, f)?.value ?? 9);
   return [...selectVisible(app)].sort((a, b) => cents(a) - cents(b) || a.distKm - b.distKm);
 }
 
@@ -1281,7 +1325,7 @@ export interface PriceStats {
  */
 export function selectPriceStats(app: AppStore): PriceStats | null {
   const f = app.fuel;
-  const prices = selectMapStations(app).map((s) => s.prices[f]!.value);
+  const prices = selectMapStations(app).map((s) => effectivePrice(s, f)!.value);
   if (!prices.length) return null;
   let min = Infinity;
   let max = -Infinity;
@@ -1294,7 +1338,7 @@ export function selectPriceStats(app: AppStore): PriceStats | null {
   const mean = sum / prices.length;
   let zoneMin = Infinity;
   for (const s of selectVisible(app)) {
-    const p = s.prices[f]!.value;
+    const p = effectivePrice(s, f)!.value;
     if (p < zoneMin) zoneMin = p;
   }
   return {
@@ -1331,7 +1375,9 @@ export function selectDeals(app: AppStore): NearbyStation[] {
   const stats = selectPriceStats(app);
   if (!stats) return [];
   const f = app.fuel;
-  return selectByPrice(app).filter((s) => priceTier(s.prices[f]!.value, stats, true) === 'deal');
+  return selectByPrice(app).filter(
+    (s) => priceTier(effectivePrice(s, f)!.value, stats, true) === 'deal',
+  );
 }
 
 export function selectPriceRange(app: AppStore): { min: number; max: number } | null {
@@ -1343,7 +1389,7 @@ export function selectPriceRange(app: AppStore): { min: number; max: number } | 
   let min = Infinity;
   let max = -Infinity;
   for (const s of zone) {
-    const p = s.prices[f]!.value;
+    const p = effectivePrice(s, f)!.value;
     if (p < min) min = p;
     if (p > max) max = p;
   }
@@ -1380,7 +1426,7 @@ export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
   const route = routeState.route;
   const needsStop = !!route && route.distanceKm > limitKm;
 
-  const priceOf = (s: RouteStation) => s.prices[fuel]?.value ?? Infinity;
+  const priceOf = (s: RouteStation) => effectivePrice(s, fuel)?.value ?? Infinity;
   // Strategy score — the SAME ranking picks the shown stops and the reco,
   // so the strategy chips act on the whole ribbon.
   const scoreOf = (s: RouteStation): number => {
@@ -1389,7 +1435,7 @@ export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
     return priceOf(s) * tank + s.detourMin * EUR_PER_DETOUR_MIN;
   };
 
-  const all = routeState.stations.filter((s) => s.prices[fuel] != null);
+  const all = routeState.stations.filter((s) => effectivePrice(s, fuel) != null);
   const byScore = [...all].sort((a, b) => scoreOf(a) - scoreOf(b));
   const reachableByScore = byScore.filter((s) => s.kmAlong <= limitKm);
 

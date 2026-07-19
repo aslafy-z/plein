@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { C, mono } from '../theme';
 import { fmtPrice, durationLabel, plural } from '../lib/format';
 import { FUEL_LABELS, type RouteStation } from '../data/types';
-import { useApp, selectRouteAnalysis } from '../state/store';
+import { useApp, selectRouteAnalysis, effectiveFuel, effectivePrice } from '../state/store';
 import RouteMap from '../components/RouteMap';
 
 const STRATEGIES = [
@@ -110,10 +110,11 @@ export default function RouteRibbon() {
             </div>
             <div style={{ textAlign: 'right', flexShrink: 0 }}>
               <div style={{ font: mono(700, 22), color: C.accent, whiteSpace: 'nowrap' }}>
-                {fmtPrice(st.prices[fuel]?.value)} €
+                {fmtPrice(effectivePrice(st, fuel)?.value)} €
               </div>
+              {/* Fuel of the SHOWN price — SP95 when E10 fell back on it */}
               <div style={{ fontSize: 11, color: C.mut, whiteSpace: 'nowrap' }}>
-                {FUEL_LABELS[fuel]} / L
+                {FUEL_LABELS[effectiveFuel(st, fuel) ?? fuel]} / L
               </div>
             </div>
           </button>
@@ -188,7 +189,7 @@ export default function RouteRibbon() {
             </div>
           </button>
           <div style={{ font: mono(700, 17), color: C.ink, whiteSpace: 'nowrap' }}>
-            {fmtPrice(st.prices[fuel]?.value)} €
+            {fmtPrice(effectivePrice(st, fuel)?.value)} €
           </div>
           <button
             onClick={() => app.toggleTour(st.id)}
