@@ -23,6 +23,10 @@ const EXPAND_RATIO = 0.75;
 const DRAG_SLOP_PX = 6;
 /** Release speed (px/ms) above which the sheet snaps in the fling direction */
 const FLING_VPS = 0.45;
+/** Fling speed is averaged over the samples of this trailing window */
+const FLING_WINDOW_MS = 100;
+/** Pointer parked longer than this before release → the fling is cancelled */
+const FLING_HOLD_MS = 150;
 const TRANSITION = 'height .3s cubic-bezier(.4,0,.2,1)';
 
 /**
@@ -116,16 +120,16 @@ export default function MapSheet({
   const g = useRef({
     active: false,
     moved: false,
+    fromHandle: false,
+    toggled: false,
     startY: 0,
     startH: 0,
-    lastY: 0,
-    lastT: 0,
-    v: 0,
+    samples: [] as { y: number; t: number }[],
     raf: 0,
     pendingH: 0,
   });
 
-  const dragEnd = useCallback((cancelled = false) => {
+  const dragEnd = useCallback((cancelled = false, t = performance.now()) => {
     const el = rootRef.current;
     const s = g.current;
     if (!el || !s.active) return;
@@ -134,15 +138,40 @@ export default function MapSheet({
       cancelAnimationFrame(s.raf);
       s.raf = 0;
     }
+    el.style.transition = TRANSITION;
+    // A motionless press is a tap, not a gesture: the height was never
+    // touched and the open/close decision belongs to the tap handlers —
+    // voting from the current height here would race the handle's toggle.
+    if (!s.moved) return;
+    // Fling velocity: displacement over the trailing samples, measured on
+    // event timestamps — a busy main thread delivers moves late and
+    // coalesced, and that must not turn a real flick into a slow gesture.
+    // The trailing span is the fixed window widened backwards across gaps
+    // that carry fast displacement (motion delivered late), and it stops at
+    // still gaps (a genuine pause: what precedes it must not lend the
+    // release any speed). A pointer parked before releasing has no speed.
+    const last = s.samples[s.samples.length - 1];
+    let v = 0; // > 0 = upward
+    if (t - last.t <= FLING_HOLD_MS) {
+      let i = s.samples.length - 1;
+      while (i > 0) {
+        const prev = s.samples[i - 1];
+        const gap = s.samples[i].t - prev.t;
+        const fastGap = gap > 0 && Math.abs(s.samples[i].y - prev.y) / gap > FLING_VPS / 2;
+        if (last.t - prev.t > FLING_WINDOW_MS && !fastGap) break;
+        i--;
+      }
+      const from = s.samples[i];
+      if (last.t > from.t) v = (from.y - last.y) / (last.t - from.t);
+    }
     const d = dims.current;
     const h = el.getBoundingClientRect().height;
     let open: boolean;
-    if (!cancelled && s.moved && Math.abs(s.v) > FLING_VPS) {
-      open = s.v > 0; // fling: follow the gesture direction, whatever the travel
+    if (!cancelled && Math.abs(v) > FLING_VPS) {
+      open = v > 0; // fling: follow the gesture direction, whatever the travel
     } else {
       open = h > (d.min + d.max) / 2;
     }
-    el.style.transition = TRANSITION;
     el.style.height = `${open ? d.max : d.min}px`;
     openRef.current(open);
     // keep `moved` up until the trailing click has been swallowed
@@ -152,7 +181,7 @@ export default function MapSheet({
   }, []);
 
   const dragBegin = useCallback(
-    (y: number) => {
+    (y: number, t: number) => {
       const el = rootRef.current;
       if (!el || !dims.current.canDrag || g.current.active) return;
       g.current = {
@@ -161,17 +190,15 @@ export default function MapSheet({
         moved: false,
         startY: y,
         startH: el.getBoundingClientRect().height,
-        lastY: y,
-        lastT: performance.now(),
-        v: 0,
+        samples: [{ y, t }],
         pendingH: 0,
       };
       el.style.transition = 'none';
       // The pointer may be released outside the sheet before any capture
-      const done = () => {
+      const done = (e: PointerEvent) => {
         window.removeEventListener('pointerup', done);
         window.removeEventListener('pointercancel', done);
-        dragEnd();
+        dragEnd(e.type === 'pointercancel', e.timeStamp);
       };
       window.addEventListener('pointerup', done);
       window.addEventListener('pointercancel', done);
@@ -179,20 +206,16 @@ export default function MapSheet({
     [dragEnd],
   );
 
-  const dragMove = useCallback((y: number) => {
+  const dragMove = useCallback((y: number, t: number) => {
     const el = rootRef.current;
     const s = g.current;
     if (!el || !s.active) return;
     if (!s.moved && Math.abs(y - s.startY) < DRAG_SLOP_PX) return;
     s.moved = true;
-    const now = performance.now();
-    const dt = now - s.lastT;
-    if (dt > 0) {
-      const inst = (s.lastY - y) / dt; // > 0 = finger moving up (opening)
-      s.v = 0.7 * inst + 0.3 * s.v;
+    s.samples.push({ y, t });
+    while (s.samples.length > 1 && t - s.samples[0].t > FLING_WINDOW_MS + FLING_HOLD_MS) {
+      s.samples.shift();
     }
-    s.lastY = y;
-    s.lastT = now;
     const d = dims.current;
     s.pendingH = Math.min(d.max, Math.max(d.min, s.startH + (s.startY - y)));
     if (!s.raf) {
@@ -214,16 +237,31 @@ export default function MapSheet({
   });
 
   // ── Card zone: drag from anywhere on the collapsed card ──
+  const handleRef = useRef<HTMLDivElement>(null);
   const cardPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    dragBegin(e.clientY);
+    g.current.fromHandle = !!handleRef.current?.contains(e.target as Node);
+    g.current.toggled = false;
+    dragBegin(e.clientY, e.timeStamp);
   };
   const cardPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!g.current.active) return;
     const wasMoved = g.current.moved;
-    dragMove(e.clientY);
+    dragMove(e.clientY, e.timeStamp);
     if (!wasMoved && g.current.moved) e.currentTarget.setPointerCapture(e.pointerId);
   };
-  const cardPointerUp = () => dragEnd();
+  const cardPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    // A tap on the handle toggles here, on pointerup, from this stable
+    // ancestor: the browser `click` that used to carry the toggle is lost
+    // whenever the pressed node is swapped by a re-render mid-press (the
+    // click retargets to an ancestor without a click handler) — seen as
+    // taps that silently do nothing on slow machines.
+    const tap = g.current.active && !g.current.moved && g.current.fromHandle;
+    dragEnd(false, e.timeStamp);
+    if (tap) {
+      g.current.toggled = true;
+      onExpandedChange(!expanded);
+    }
+  };
   const cardPointerCancel = () => dragEnd(true);
   // A drag must not leak a click into the card's buttons on release
   const swallowClickAfterDrag = (e: React.MouseEvent) => {
@@ -234,15 +272,15 @@ export default function MapSheet({
   };
 
   // ── List zone (mouse): drag down from the top of the list closes ──
-  const listArm = useRef<{ y: number; top: number } | null>(null);
+  const listArm = useRef<{ y: number; t: number; top: number } | null>(null);
   const listPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.pointerType !== 'mouse') return; // touch has its own path below
-    listArm.current = { y: e.clientY, top: listRef.current?.scrollTop ?? 0 };
+    listArm.current = { y: e.clientY, t: e.timeStamp, top: listRef.current?.scrollTop ?? 0 };
   };
   const listPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (g.current.active) {
       const wasMoved = g.current.moved;
-      dragMove(e.clientY);
+      dragMove(e.clientY, e.timeStamp);
       if (!wasMoved && g.current.moved) e.currentTarget.setPointerCapture(e.pointerId);
       return;
     }
@@ -250,15 +288,15 @@ export default function MapSheet({
     if (!arm) return;
     const dy = e.clientY - arm.y;
     if (dy > DRAG_SLOP_PX && arm.top <= 0) {
-      dragBegin(arm.y);
-      dragMove(e.clientY);
+      dragBegin(arm.y, arm.t);
+      dragMove(e.clientY, e.timeStamp);
       e.currentTarget.setPointerCapture(e.pointerId);
     } else if (Math.abs(dy) > DRAG_SLOP_PX) {
       listArm.current = null; // upward or scrolled: not a sheet gesture
     }
   };
-  const listPointerUp = () => {
-    if (g.current.active) dragEnd();
+  const listPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (g.current.active) dragEnd(false, e.timeStamp);
     listArm.current = null;
   };
 
@@ -270,10 +308,12 @@ export default function MapSheet({
     const el = listRef.current;
     if (!el || !listAttached) return;
     let armY = 0;
+    let armT = 0;
     let armTop = 0;
     let armed = false;
     const start = (e: TouchEvent) => {
       armY = e.touches[0].clientY;
+      armT = e.timeStamp;
       armTop = el.scrollTop;
       armed = true;
     };
@@ -281,21 +321,21 @@ export default function MapSheet({
       const y = e.touches[0].clientY;
       if (g.current.active) {
         e.preventDefault();
-        dragMove(y);
+        dragMove(y, e.timeStamp);
         return;
       }
       if (!armed) return;
       const dy = y - armY;
       if (dy > DRAG_SLOP_PX && armTop <= 0 && el.scrollTop <= 0) {
-        dragBegin(armY);
-        dragMove(y);
+        dragBegin(armY, armT);
+        dragMove(y, e.timeStamp);
         e.preventDefault();
       } else if (Math.abs(dy) > DRAG_SLOP_PX) {
         armed = false;
       }
     };
-    const end = () => {
-      if (g.current.active) dragEnd();
+    const end = (e: TouchEvent) => {
+      if (g.current.active) dragEnd(false, e.timeStamp);
       armed = false;
     };
     el.addEventListener('touchstart', start, { passive: true });
@@ -349,8 +389,11 @@ export default function MapSheet({
         <div key={stateKey} className="sheet-swap">
           {shown ? (
             <div style={{ padding: '0 20px 18px' }}>
-              {/* Drag handle — kept as the visible affordance + a11y toggle */}
+              {/* Drag handle — kept as the visible affordance + a11y toggle.
+                  Pointer taps toggle in cardPointerUp; onClick only serves
+                  keyboard/AT synthetic clicks (no pointerup precedes them). */}
               <div
+                ref={handleRef}
                 role="button"
                 tabIndex={0}
                 aria-expanded={expanded}
@@ -359,7 +402,13 @@ export default function MapSheet({
                     ? 'Réduire la liste des stations'
                     : 'Voir la liste des stations de la zone'
                 }
-                onClick={() => onExpandedChange(!expanded)}
+                onClick={() => {
+                  if (g.current.toggled) {
+                    g.current.toggled = false;
+                    return;
+                  }
+                  onExpandedChange(!expanded);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
