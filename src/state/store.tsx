@@ -335,7 +335,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
   const [alerts, setAlertsState] = useState<boolean>(persisted.alerts ?? true);
   const [bgloc, setBglocState] = useState<boolean>(persisted.bgloc ?? false);
-  const [sourceId, setSourceIdState] = useState<DataSourceId>(persisted.sourceId ?? 'fra');
+  // Forced migration to « Automatique » : legacy persisted ids ('gouv' before
+  // the country rename) and new installs land on 'auto'; only explicit choices
+  // of the current scheme survive.
+  const [sourceId, setSourceIdState] = useState<DataSourceId>(() => {
+    const saved = persisted.sourceId as string | undefined;
+    return saved === 'fra' || saved === 'esp' || saved === 'demo' ? saved : 'auto';
+  });
   const [toast, setToast] = useState<string | null>(null);
   // Start from the last known position so the per-area cache hits instantly
   const initialPos = persisted.lastPos ?? DEFAULT_POS;
