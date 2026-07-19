@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { C } from '../theme';
-import { haversineKm } from '../lib/geo';
+import { haversineKm, type GeoPoint } from '../lib/geo';
 import { addDarkBasemap } from '../lib/tiles';
 import {
   useApp,
@@ -27,6 +27,20 @@ const LIVE_SEARCH_MS = 250;
 const LIVE_SEARCH_MIN_KM = 0.1;
 /** Per-move decay of the circle↔center gap left over when a pan begins */
 const OFFSET_DECAY = 0.8;
+
+/**
+ * View kept across unmounts. Opening a station detail (or another tab)
+ * unmounts the whole map; without this, coming back rebuilt it on the
+ * default zoom + auto-fit and threw away the user's pan/zoom. Only
+ * restored while the search area is unchanged — searching elsewhere
+ * meanwhile means the old view no longer shows the right zone.
+ */
+let savedView: {
+  center: L.LatLng;
+  zoom: number;
+  userInteracted: boolean;
+  searchPos: GeoPoint;
+} | null = null;
 
 /**
  * Stations wearing a price bubble: the PIN_CAP cheapest of the EFFECTIVE
@@ -75,6 +89,8 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
   const userInteractedRef = useRef(false);
+  /** true right after the saved view was restored — skip the mount-run pan-to-station */
+  const restoredViewRef = useRef(false);
   const programmaticUntil = useRef(0);
   /** Skip the next auto-fit: the search area moved because the USER moved the map */
   const keepViewRef = useRef(false);
@@ -104,7 +120,21 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
       zoomControl: false,
       attributionControl: true,
     });
-    map.setView([app.searchPos.lat, app.searchPos.lng], 13);
+    const saved =
+      savedView &&
+      savedView.searchPos.lat === app.searchPos.lat &&
+      savedView.searchPos.lng === app.searchPos.lng
+        ? savedView
+        : null;
+    if (saved) {
+      // Back from the detail (or another tab): put the user's view back
+      // exactly where they left it, auto-fit stays off if they had panned
+      map.setView(saved.center, saved.zoom, { animate: false });
+      userInteractedRef.current = saved.userInteracted;
+      restoredViewRef.current = true;
+    } else {
+      map.setView([app.searchPos.lat, app.searchPos.lng], 13);
+    }
 
     addDarkBasemap(map);
 
@@ -116,6 +146,22 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
     };
     map.on('dragstart', markInteract);
     map.on('zoomstart', markInteract);
+
+    // zoomstart alone can't tell a user zoom from a fitBounds one, and the
+    // programmatic time-window re-arms on every auto-fit (sheet inset,
+    // stations landing…) — a wheel/pinch/double-tap zoom landing inside it
+    // was swallowed, so the next auto-fit yanked the view back. These DOM
+    // events only ever come from the user: mark the takeover directly.
+    const el = map.getContainer();
+    const domInteract = () => {
+      userInteractedRef.current = true;
+    };
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length >= 2) domInteract(); // pinch, not a tap
+    };
+    el.addEventListener('wheel', domInteract, { passive: true });
+    el.addEventListener('dblclick', domInteract);
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
 
     // The glide below keeps the circle on the viewport center, but when a
     // pan BEGINS the circle usually isn't there: the load auto-fit centers
@@ -213,6 +259,15 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
     return () => {
       clearTimeout(moveTimer.current);
       ro.disconnect();
+      el.removeEventListener('wheel', domInteract);
+      el.removeEventListener('dblclick', domInteract);
+      el.removeEventListener('touchstart', onTouchStart);
+      savedView = {
+        center: map.getCenter(),
+        zoom: map.getZoom(),
+        userInteracted: userInteractedRef.current,
+        searchPos: appRef.current.searchPos,
+      };
       map.remove();
       mapRef.current = null;
       layerRef.current = null;
@@ -226,7 +281,13 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
   }, []);
 
   // ── Reset auto-fit when the frame of reference changes ──────────────────────
+  const lastFrameRef = useRef({ searchPos: app.searchPos, radius: app.radius });
   useEffect(() => {
+    const last = lastFrameRef.current;
+    lastFrameRef.current = { searchPos: app.searchPos, radius: app.radius };
+    // Mount run (nothing changed): a restored view must keep its
+    // « user interacted » flag — only real frame changes re-arm the auto-fit
+    if (last.searchPos === app.searchPos && last.radius === app.radius) return;
     if (keepViewRef.current) {
       keepViewRef.current = false;
       return;
@@ -403,8 +464,12 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
 
   // ── Selecting a station (pin tap or sheet-list tap) pans the map onto it ──
   useEffect(() => {
+    // Mount run after a restore: the saved view already frames what the user
+    // was looking at when the detail opened — don't recenter on the station
+    const wasRestore = restoredViewRef.current;
+    restoredViewRef.current = false;
     const map = mapRef.current;
-    if (!map || !app.focusStationId) return;
+    if (!map || !app.focusStationId || wasRestore) return;
     const s = selectMapStations(app).find((x) => x.id === app.focusStationId);
     if (!s) return;
     programmaticUntil.current = Date.now() + 1200; // no auto-search, no circle glide

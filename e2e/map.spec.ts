@@ -151,6 +151,48 @@ test('station detail opens from the sheet and jumps back with the station select
   await expect(page.getByText('Station sélectionnée')).toBeVisible({ timeout: 15_000 })
 })
 
+test('the user zoom survives a detail round-trip via the back button', async ({ page }) => {
+  // Current zoom level, read from the tile URLs (…/{z}/{x}/{y}.png). Max
+  // across the tiles: during/right after an animation Leaflet still holds
+  // the outgoing level's tiles, and we only ever zoom IN here.
+  const tileZoom = async () => {
+    const srcs = await page
+      .locator('.leaflet-tile')
+      .evaluateAll((els) => els.map((el) => (el as HTMLImageElement).src))
+    const zooms = srcs
+      .map((s) => s.match(/\/(\d+)\/\d+\/\d+(?:@2x)?\.png/))
+      .filter((m): m is RegExpMatchArray => m != null)
+      .map((m) => Number(m[1]))
+    if (!zooms.length) throw new Error('no tiles on the map')
+    return Math.max(...zooms)
+  }
+  const initial = await tileZoom()
+
+  // Wheel-zoom over the map center: the user takes the view over (a wheel
+  // zooms the map even over a pin, unlike a double-click)
+  const box = await page.locator('.leaflet-container').first().boundingBox()
+  if (!box) throw new Error('map container not found')
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  // Retry the wheel itself: a notch landing mid-animation can be dropped
+  await expect(async () => {
+    await page.mouse.wheel(0, -120)
+    await page.waitForTimeout(250)
+    expect(await tileZoom()).toBeGreaterThan(initial)
+  }).toPass()
+  await page.waitForTimeout(500) // let the zoom animation settle
+  const zoomed = await tileZoom()
+
+  // Detail round-trip with the (Android) back button
+  await page.getByText(/MàJ /).first().click()
+  await expect(page.locator('[aria-label="Carte de la station"]')).toBeVisible()
+  await page.goBack()
+
+  await expect(page.getByText(/La moins chère/).first()).toBeVisible({ timeout: 15_000 })
+  await expect(async () => {
+    expect(await tileZoom()).toBe(zoomed)
+  }).toPass()
+})
+
 test('panning the map auto-loads stations of the new area', async ({ page }) => {
   const box = await page.locator('.leaflet-container').first().boundingBox()
   if (!box) throw new Error('map container not found')
