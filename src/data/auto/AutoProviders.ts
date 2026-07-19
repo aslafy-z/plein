@@ -97,9 +97,11 @@ export class AutoGeocodeProvider implements GeocodeProvider {
     const [fr, es, ad] = await Promise.allSettled([
       this.ban.search(query),
       this.cartociudad.search(query),
-      this.and.search(query), // static index — never actually rejects
+      this.and.search(query),
     ]);
-    if (fr.status === 'rejected' && es.status === 'rejected') throw fr.reason;
+    if (fr.status === 'rejected' && es.status === 'rejected' && ad.status === 'rejected') {
+      throw fr.reason;
+    }
     const a = fr.status === 'fulfilled' ? fr.value : [];
     const b = es.status === 'fulfilled' ? es.value : [];
     const c = ad.status === 'fulfilled' ? ad.value : [];
