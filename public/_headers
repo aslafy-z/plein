@@ -11,5 +11,5 @@
 
 # Station-brand index (build-time OpenStreetMap snapshot, ~110 kB gzipped):
 # refreshed rarely, so a day of caching keeps repeat loads free.
-/brands-fr.json
+/brands-fra.json
   Cache-Control: public, max-age=86400
