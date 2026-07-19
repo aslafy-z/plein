@@ -9,6 +9,7 @@ import {
   selectMapStations,
   selectCheapest,
   selectPriceStats,
+  effectivePrice,
   priceTier,
   type AppStore,
 } from '../state/store';
@@ -51,7 +52,7 @@ function pricedIds(app: AppStore, bounds: L.LatLngBounds | null): Set<string> {
       .sort(
         (a, b) =>
           rank.get(b.id)! - rank.get(a.id)! ||
-          a.prices[app.fuel]!.value - b.prices[app.fuel]!.value,
+          effectivePrice(a, app.fuel)!.value - effectivePrice(b, app.fuel)!.value,
       )
       .slice(0, PIN_CAP)
       .map((s) => s.id),
@@ -306,7 +307,7 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
       const best = cheapest?.id === s.id;
       const focused = app.focusStationId === s.id;
       const dot = !priced.has(s.id) && !focused;
-      const price = s.prices[app.fuel]!.value;
+      const price = effectivePrice(s, app.fuel)!.value;
       const tier = priceTier(price, stats, s.searchKm <= app.radius);
       const deal = tier === 'deal';
       const sig = `${price}|${tier}|${best}|${focused}|${dot}`;
