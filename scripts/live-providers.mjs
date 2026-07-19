@@ -217,9 +217,14 @@ ok('and: brands resolve to filter groups', andGrouped.length >= andNear.length *
   `${andGrouped.length}/${andNear.length} grouped`);
 const andGeo = new P.AndGeocodeProvider();
 const andPlaces = await andGeo.search('Pas de la Casa');
-ok('and: local geocoder finds "Pas de la Casa"',
+ok('and: IDE geocoder finds "Pas de la Casa"',
   andPlaces.some((p) => Math.abs(p.point.lat - 42.54) < 0.1 && Math.abs(p.point.lng - 1.73) < 0.1),
   andPlaces[0]?.label);
+// Accent-tolerant gazetteer lookup on a small hamlet (no hardcoded list)
+const andHamlet = await andGeo.search('aixas');
+ok('and: IDE geocoder finds "Aixàs" hamlet',
+  andHamlet.some((p) => Math.abs(p.point.lat - 42.487) < 0.05 && Math.abs(p.point.lng - 1.467) < 0.05),
+  andHamlet[0]?.label);
 const autoAndorra = await auto.getStationsNear(ANDORRA_LA_VELLA, 10);
 ok('auto: Andorra zone yields Andorran stations', autoAndorra.some((s) => s.id.startsWith('and-')),
   `${autoAndorra.filter((s) => s.id.startsWith('and-')).length} and of ${autoAndorra.length}`);

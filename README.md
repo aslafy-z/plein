@@ -79,7 +79,7 @@ Aucun compte, aucun tracker : vos favoris et réglages restent dans votre naviga
 | Prix des carburants & horaires | [Prix des carburants — flux temps réel](https://data.economie.gouv.fr/explore/dataset/prix-des-carburants-en-france-flux-instantane-v2/) (data.economie.gouv.fr) | Licence Ouverte / Open Licence |
 | Prix des carburants en Espagne | [Precios de carburantes](https://geoportalgasolineras.es) (sedeaplicaciones.minetur.gob.es, MITECO) | Datos abiertos |
 | Prix des carburants en Andorre | [Preus dels carburants](https://sig.govern.ad/IPE/PreusCarburants) (sig.govern.ad, Govern d'Andorra — Oficina de l'energia i del canvi climàtic) | © Govern d'Andorra |
-| Géocodage & autocomplétion | [Base Adresse Nationale](https://adresse.data.gouv.fr/) (api-adresse.data.gouv.fr) · [CartoCiudad](https://www.cartociudad.es) pour l'Espagne · index local pour l'Andorre (localités © [OpenStreetMap](https://www.openstreetmap.org/copyright)) | Licence Ouverte / Open Licence · CC BY 4.0 · ODbL |
+| Géocodage & autocomplétion | [Base Adresse Nationale](https://adresse.data.gouv.fr/) (api-adresse.data.gouv.fr) · [CartoCiudad](https://www.cartociudad.es) pour l'Espagne · Nomenclàtor & géocodeur IDE (sig.govern.ad) pour l'Andorre | Licence Ouverte / Open Licence · CC BY 4.0 · © Govern d'Andorra |
 | Calcul d'itinéraires | [OSRM](https://project-osrm.org/) (serveur démo) | Données © OpenStreetMap |
 | Enseignes des stations | [OpenStreetMap](https://www.openstreetmap.org/) (index statique généré) | ODbL |
 | Fonds de carte | [CARTO](https://carto.com/attributions) dark · données © contributeurs [OpenStreetMap](https://www.openstreetmap.org/copyright) | — |
