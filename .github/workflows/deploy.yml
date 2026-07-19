@@ -6,6 +6,10 @@
 # Required repository secrets:
 #   CLOUDFLARE_API_TOKEN   — API token with the "Edit Cloudflare Workers" template
 #   CLOUDFLARE_ACCOUNT_ID  — Cloudflare account id (dashboard → Workers & Pages)
+# Optional Worker secret (one-time, not a repository secret):
+#   wrangler secret put TANKERKOENIG_API_KEY — personal tankerkoenig.de key for
+#   German prices, held server-side by worker/index.ts; without it the deu
+#   source stays disabled in the deployed app.
 #
 # Actions are pinned by commit SHA (tag in comment).
 name: Deploy

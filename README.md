@@ -70,15 +70,19 @@ Aucun compte, aucun tracker : vos favoris et réglages restent dans votre naviga
 | --- | --- | --- |
 | Prix des carburants & horaires | [Prix des carburants — flux temps réel](https://data.economie.gouv.fr/explore/dataset/prix-des-carburants-en-france-flux-instantane-v2/) (data.economie.gouv.fr) | Licence Ouverte / Open Licence |
 | Prix des carburants en Espagne | [Precios de carburantes](https://geoportalgasolineras.es) (sedeaplicaciones.minetur.gob.es, MITECO) | Datos abiertos |
-| Géocodage & autocomplétion | [Base Adresse Nationale](https://adresse.data.gouv.fr/) (api-adresse.data.gouv.fr) · [CartoCiudad](https://www.cartociudad.es) pour l'Espagne | Licence Ouverte / Open Licence · CC BY 4.0 |
+| Prix des carburants en Allemagne | [Tankerkönig](https://creativecommons.tankerkoenig.de) (relais du flux officiel MTS-K, Bundeskartellamt) | CC BY 4.0 |
+| Géocodage & autocomplétion | [Base Adresse Nationale](https://adresse.data.gouv.fr/) (api-adresse.data.gouv.fr) · [CartoCiudad](https://www.cartociudad.es) pour l'Espagne · [Photon](https://photon.komoot.io) pour l'Allemagne | Licence Ouverte / Open Licence · CC BY 4.0 · ODbL |
 | Calcul d'itinéraires | [OSRM](https://project-osrm.org/) (serveur démo) | Données © OpenStreetMap |
 | Enseignes des stations | [OpenStreetMap](https://www.openstreetmap.org/) (index statique généré) | ODbL |
 | Fonds de carte | [CARTO](https://carto.com/attributions) dark · données © contributeurs [OpenStreetMap](https://www.openstreetmap.org/copyright) | — |
 
-L'app n'a **aucun backend** : le navigateur interroge directement ces services
-publics. Les sources sont pluggables (`src/data/types.ts`) — un jeu de données
-de démonstration hors-ligne prend automatiquement le relais si le flux réel est
-indisponible, avec bannière explicite.
+L'app n'a **pas de backend applicatif** : le navigateur interroge directement
+ces services publics. Seule exception, la source allemande passe par un mini
+proxy sur le Worker qui sert l'app (`worker/index.ts`) — Tankerkönig exige une
+clé API personnelle qui ne doit jamais être exposée côté client. Les sources
+sont pluggables (`src/data/types.ts`) — un jeu de données de démonstration
+hors-ligne prend automatiquement le relais si le flux réel est indisponible,
+avec bannière explicite.
 
 ## 🛠️ Développement
 
@@ -101,6 +105,15 @@ Pour ajouter une source de données : implémenter les interfaces
 En environnement sans accès internet direct (sandbox, proxy d'entreprise), le
 dev server Vite proxifie les APIs (`/proxy/*`) et les tuiles (`/tiles/*`) en
 respectant `HTTPS_PROXY` — voir `vite.config.ts`.
+
+La source allemande (Tankerkönig) demande une **clé API personnelle** —
+gratuite, sur [tankerkoenig.de](https://creativecommons.tankerkoenig.de). Les
+CGU interdisent de publier une clé (repo, bundle…) : elle ne transite donc
+jamais par le client. En dev, exportez `TANKERKOENIG_API_KEY` avant
+`npm run dev` (le proxy Vite l'injecte côté serveur) ; en production, stockez-la
+en secret Worker : `wrangler secret put TANKERKOENIG_API_KEY` (le Worker
+proxifie l'API avec un cache edge de 5 min — `worker/index.ts`). Sans clé, la
+source allemande se déclare simplement indisponible.
 
 ## 📄 Licence
 

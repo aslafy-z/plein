@@ -110,6 +110,8 @@ const API_UPSTREAMS: Record<string, string> = {
   valhalla: 'https://valhalla1.openstreetmap.de',
   esp: 'https://sedeaplicaciones.minetur.gob.es',
   cartociudad: 'https://www.cartociudad.es',
+  deu: 'https://creativecommons.tankerkoenig.de',
+  photon: 'https://photon.komoot.io',
 }
 
 function fetchJson(url: string): Promise<{ status: number; body: string }> {
@@ -136,13 +138,27 @@ function fetchJson(url: string): Promise<{ status: number; body: string }> {
 }
 
 function apiHandler(req: IncomingMessage, res: ServerResponse): void {
-  const m = (req.url ?? '').match(/^\/(fra|ban|osrm|valhalla|esp|cartociudad)(\/.*)$/)
+  const m = (req.url ?? '').match(/^\/(fra|ban|osrm|valhalla|esp|cartociudad|deu|photon)(\/.*)$/)
   if (!m) {
     res.statusCode = 404
     res.end()
     return
   }
-  fetchJson(`${API_UPSTREAMS[m[1]]}${m[2]}`)
+  let path = m[2]
+  if (m[1] === 'deu') {
+    // Tankerkönig needs a PERSONAL API key (free, tankerkoenig.de) that must
+    // never be committed nor bundled: the dev server injects it from the
+    // environment, mirroring the production Worker (worker/index.ts).
+    const key = process.env.TANKERKOENIG_API_KEY
+    if (!key) {
+      res.statusCode = 503
+      res.setHeader('Content-Type', 'application/json; charset=utf-8')
+      res.end('{"ok":false,"message":"TANKERKOENIG_API_KEY not set in the dev environment"}')
+      return
+    }
+    path += `${path.includes('?') ? '&' : '?'}apikey=${encodeURIComponent(key)}`
+  }
+  fetchJson(`${API_UPSTREAMS[m[1]]}${path}`)
     .then(({ status, body }) => {
       res.statusCode = status
       res.setHeader('Content-Type', 'application/json; charset=utf-8')

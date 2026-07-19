@@ -24,7 +24,7 @@ const SOURCES: { id: DataSourceId; title: string; sub: string }[] = [
   {
     id: 'auto',
     title: 'Automatique',
-    sub: 'France + Espagne combinées selon la zone affichée',
+    sub: 'France + Espagne + Allemagne combinées selon la zone affichée',
   },
   {
     id: 'fra',
@@ -35,6 +35,11 @@ const SOURCES: { id: DataSourceId; title: string; sub: string }[] = [
     id: 'esp',
     title: 'geoportalgasolineras.es',
     sub: 'Espagne · officiel MITECO · toutes les 30 min',
+  },
+  {
+    id: 'deu',
+    title: 'tankerkoenig.de',
+    sub: 'Allemagne · données officielles MTS-K · temps réel',
   },
   {
     id: 'demo',
@@ -519,7 +524,8 @@ export default function Settings() {
         <div>
           Prix : <a href="https://prix-carburants.gouv.fr" target="_blank" rel="noreferrer" style={{ color: C.ghost, textDecoration: 'underline' }}>prix-carburants.gouv.fr</a>
           {' '}· <a href="https://geoportalgasolineras.es" target="_blank" rel="noreferrer" style={{ color: C.ghost, textDecoration: 'underline' }}>geoportalgasolineras.es</a>
-          {' '}· à titre indicatif · adresses : BAN / CartoCiudad · itinéraires : OSRM / Valhalla
+          {' '}· <a href="https://creativecommons.tankerkoenig.de" target="_blank" rel="noreferrer" style={{ color: C.ghost, textDecoration: 'underline' }}>tankerkoenig.de</a> (MTS-K)
+          {' '}· à titre indicatif · adresses : BAN / CartoCiudad / Photon · itinéraires : OSRM / Valhalla
         </div>
         <div>
           cartes : © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" style={{ color: C.ghost, textDecoration: 'underline' }}>OpenStreetMap</a> · © CARTO

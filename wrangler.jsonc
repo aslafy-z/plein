@@ -15,7 +15,12 @@
   "observability": {
     "enabled": true
   },
+  // Proxies /api/deu/* (Tankerkönig) with the key kept as a Wrangler secret:
+  // `wrangler secret put TANKERKOENIG_API_KEY`. Everything else falls through
+  // to the static assets.
+  "main": "worker/index.ts",
   "assets": {
+    "binding": "ASSETS",
     "not_found_handling": "single-page-application"
   },
   "compatibility_flags": [

@@ -76,6 +76,21 @@ const BRAND_GROUPS: ReadonlyArray<BrandGroupDef> = [
   { label: 'Disa', match: /\bdisa\b/i },
   { label: 'Petrocat', match: /petrocat/i },
   { label: 'HAM', match: /\bham\b/i },
+  // Enseignes allemandes (source tankerkoenig.de / MTS-K) — Agip roule sous
+  // le groupe Eni ci-dessus ; Shell, Esso, Total, Avia et Aldi sont partagés.
+  { label: 'Aral', match: /\baral\b/i },
+  { label: 'Jet', match: /\bjet\b/i },
+  { label: 'OMV', match: /\bomv\b/i },
+  { label: 'Star (Orlen)', match: /\bstar\b|orlen/i },
+  { label: 'HEM', match: /\bhem\b/i },
+  { label: 'bft', match: /\bbft\b/i },
+  { label: 'Westfalen', match: /westfalen/i },
+  { label: 'Oil!', match: /\boil!/i },
+  { label: 'Raiffeisen', match: /raiffeisen/i },
+  { label: 'Hoyer', match: /hoyer/i },
+  { label: 'Classic', match: /\bclassic\b/i },
+  { label: 'Sprint', match: /\bsprint\b/i },
+  { label: 'Globus', match: /globus/i },
 ];
 
 /** Every filter entry the app knows — drives the « hors zone » selector. */

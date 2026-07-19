@@ -1,6 +1,7 @@
-// Live verification of the REAL data providers (fra flux, BAN, OSRM, esp flux, CartoCiudad) from
-// Node — proves the fetch + parsing path against the actual endpoints without
-// needing a browser (sandboxed browsers often can't reach the open internet).
+// Live verification of the REAL data providers (fra flux, BAN, OSRM, esp flux,
+// CartoCiudad, deu flux, Photon) from Node — proves the fetch + parsing path
+// against the actual endpoints without needing a browser (sandboxed browsers
+// often can't reach the open internet).
 //
 // Node's fetch ignores HTTPS_PROXY, so requests are relayed through curl,
 // which honors the proxy environment. Usage: npm run verify:live
@@ -45,6 +46,8 @@ export { BanGeocodeProvider } from './src/data/fra/BanGeocodeProvider';
 export { RealRouteProvider } from './src/data/fra/OsrmRouteProvider';
 export { EspStationsProvider } from './src/data/esp/EspStationsProvider';
 export { CartoCiudadGeocodeProvider } from './src/data/esp/CartoCiudadGeocodeProvider';
+export { DeuStationsProvider } from './src/data/deu/DeuStationsProvider';
+export { PhotonGeocodeProvider } from './src/data/deu/PhotonGeocodeProvider';
 export { AutoStationsProvider, AutoGeocodeProvider } from './src/data/auto/AutoProviders';
 export { nearestOnPolyline, polylineLengthKm } from './src/lib/geo';
 export { openStatus } from './src/lib/hours';
@@ -192,6 +195,55 @@ const autoGeo = new P.AutoGeocodeProvider();
 const autoPlaces = await autoGeo.search('Girona');
 ok('auto: geocoder finds Spanish places', autoPlaces.some((p) => Math.abs(p.point.lat - 41.98) < 1 && Math.abs(p.point.lng - 2.82) < 1),
   autoPlaces.slice(0, 2).map((p) => p.label).join(' / '));
+
+// 9 — Photon geocoding (keyless, always checked)
+const photon = new P.PhotonGeocodeProvider();
+const deuPlaces = await photon.search('München');
+ok('Photon: geocodes "München"', deuPlaces.length >= 1, deuPlaces[0]?.label);
+ok('Photon: plausible coordinates',
+  deuPlaces[0] && Math.abs(deuPlaces[0].point.lat - 48.14) < 1 && Math.abs(deuPlaces[0].point.lng - 11.58) < 1);
+
+// 10 — German source (Tankerkönig / MTS-K). A PERSONAL API key is required
+// (free, tankerkoenig.de) and keys must never be committed — these checks only
+// run when TANKERKOENIG_API_KEY is exported in the environment. The demo key
+// from the API docs also works here (real stations, placeholder prices).
+if (!process.env.TANKERKOENIG_API_KEY) {
+  console.log('⏭️  deu: skipped — set TANKERKOENIG_API_KEY to check the German source');
+} else {
+  const BERLIN = { lat: 52.52, lng: 13.405 };
+  const deu = new P.DeuStationsProvider();
+  const deuNear = await deu.getStationsNear(BERLIN, 5);
+  ok('deu: stations within 5 km of Berlin', deuNear.length >= 10, `${deuNear.length} stations`);
+  const inGermany = (s) => s.lat > 47 && s.lat < 55.2 && s.lng > 5.5 && s.lng < 15.5;
+  ok('deu: coordinates all in Germany', deuNear.every(inGermany));
+  const deuPriced = deuNear.filter((s) => s.prices.gazole || s.prices.sp95 || s.prices.e10);
+  ok('deu: most stations carry prices', deuPriced.length >= deuNear.length * 0.5,
+    `${deuPriced.length}/${deuNear.length} priced`);
+  const deuBranded = deuNear.filter((s) => s.brand);
+  ok('deu: brands from the flux', deuBranded.length >= deuNear.length * 0.5,
+    `${deuBranded.length}/${deuNear.length} · ex: ${deuBranded.slice(0, 3).map((s) => s.name).join(' / ')}`);
+  const deuGrouped = deuNear.filter((s) => P.brandGroup(s.brand) !== P.INDEPENDENT_GROUP);
+  ok('deu: Berlin brands resolve to filter groups', deuGrouped.length >= deuNear.length * 0.4,
+    `${deuGrouped.length}/${deuNear.length} grouped`);
+
+  // stations along a German route
+  const POTSDAM = { lat: 52.3906, lng: 13.0645 };
+  const deuRoute = await osrm.getRoute(BERLIN, POTSDAM);
+  ok('OSRM: Berlin → Potsdam distance', deuRoute.distanceKm > 20 && deuRoute.distanceKm < 60,
+    `${Math.round(deuRoute.distanceKm)} km`);
+  const deuAlong = await deu.getStationsAlong(deuRoute.polyline, 5);
+  ok('deu: stations along the corridor', deuAlong.length >= 5, `${deuAlong.length} stations`);
+  ok('deu: every corridor station is within 5 km of the route',
+    deuAlong.every((s) => P.nearestOnPolyline({ lat: s.lat, lng: s.lng }, deuRoute.polyline).distKm <= 5));
+
+  // auto source at the Franco-German border (Strasbourg / Kehl)
+  const STRASBOURG = { lat: 48.5734, lng: 7.7521 };
+  const borderDeu = await auto.getStationsNear(STRASBOURG, 15);
+  const borderDeuOnly = borderDeu.filter((s) => s.id.startsWith('deu-'));
+  ok('auto: Strasbourg zone mixes France and Germany',
+    borderDeuOnly.length > 0 && borderDeuOnly.length < borderDeu.length,
+    `${borderDeu.length - borderDeuOnly.length} fra + ${borderDeuOnly.length} deu`);
+}
 
 const failed = results.filter((r) => !r.pass);
 console.log(`\n${results.length - failed.length}/${results.length} live checks passed`);

@@ -369,7 +369,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // of the current scheme survive.
   const [sourceId, setSourceIdState] = useState<DataSourceId>(() => {
     const saved = persisted.sourceId as string | undefined;
-    return saved === 'fra' || saved === 'esp' || saved === 'demo' ? saved : 'auto';
+    return saved === 'fra' || saved === 'esp' || saved === 'deu' || saved === 'demo'
+      ? saved
+      : 'auto';
   });
   const [mapsSite, setMapsSiteState] = useState<MapsSiteId>(persisted.mapsSite ?? 'google');
   const [toast, setToast] = useState<string | null>(null);

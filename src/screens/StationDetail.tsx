@@ -118,9 +118,15 @@ export default function StationDetail() {
   const activeSource = isRoute
     ? (app.routeState.fellBack ? 'demo' : app.sourceId)
     : app.stations.activeSource;
-  // The auto source mixes both countries — attribute per station (esp ids are prefixed)
+  // The auto source mixes countries — attribute per station (foreign ids are prefixed)
   const stationSource =
-    activeSource === 'auto' ? (s.id.startsWith('esp-') ? 'esp' : 'fra') : activeSource;
+    activeSource === 'auto'
+      ? s.id.startsWith('esp-')
+        ? 'esp'
+        : s.id.startsWith('deu-')
+          ? 'deu'
+          : 'fra'
+      : activeSource;
   const footerText =
     s.confirmations != null
       ? `Mis à jour ${agoLabel(mostRecent)} · confirmé par ${s.confirmations} conducteurs`
@@ -128,7 +134,9 @@ export default function StationDetail() {
         ? `Mis à jour ${agoLabel(mostRecent)} · source : prix-carburants.gouv.fr`
         : stationSource === 'esp'
           ? `Mis à jour ${agoLabel(mostRecent)} · source : geoportalgasolineras.es`
-          : `Mis à jour ${agoLabel(mostRecent)} · données de démonstration`;
+          : stationSource === 'deu'
+            ? `Mis à jour ${agoLabel(mostRecent)} · source : tankerkoenig.de (MTS-K)`
+            : `Mis à jour ${agoLabel(mostRecent)} · données de démonstration`;
 
   // Address line already shows the city; the third chip adds brand or context
   const thirdChip = s.brand ?? (s.highway ? 'Autoroute' : s.address ? null : s.city);

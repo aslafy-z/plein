@@ -9,6 +9,7 @@ test('settings expose fuel, vehicle, consumption and data source', async ({ page
   await expect(page.getByText('Consommation moyenne')).toBeVisible()
   await expect(page.getByText('prix-carburants.gouv.fr').first()).toBeVisible()
   await expect(page.getByText('geoportalgasolineras.es').first()).toBeVisible()
+  await expect(page.getByText('tankerkoenig.de').first()).toBeVisible()
   await expect(page.getByText('Made with ❤️ in Toulouse')).toBeVisible()
 })
 

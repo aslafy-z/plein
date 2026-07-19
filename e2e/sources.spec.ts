@@ -39,6 +39,30 @@ test.describe('Auto source', () => {
   })
 })
 
+test.describe('German source', () => {
+  // Same contract for the German flux (Tankerkönig / MTS-K), centered on
+  // Berlin. With TANKERKOENIG_API_KEY exported the dev proxy serves live data;
+  // without it the proxy answers 503 and the demo fallback must kick in —
+  // both end on a usable map.
+  test.use({
+    seed: {
+      sourceId: 'deu',
+      onboarded: true,
+      lastPos: { lat: 52.52, lng: 13.405 },
+    },
+  })
+
+  test('deu source yields a usable map (live data, or demo fallback with banner)', async ({ page }) => {
+    test.setTimeout(120_000)
+    await page.goto('/')
+
+    const usable = page
+      .getByText('La moins chère près de vous')
+      .or(page.getByText('Aucune station ne correspond'))
+    await expect(usable.first()).toBeVisible({ timeout: 90_000 })
+  })
+})
+
 test.describe('Spanish source', () => {
   // Same contract for the Spanish flux, centered on Madrid so the searched
   // zone actually intersects Spanish provinces.

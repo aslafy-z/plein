@@ -5,6 +5,8 @@ import { BanGeocodeProvider } from './fra/BanGeocodeProvider';
 import { RealRouteProvider } from './fra/OsrmRouteProvider';
 import { EspStationsProvider } from './esp/EspStationsProvider';
 import { CartoCiudadGeocodeProvider } from './esp/CartoCiudadGeocodeProvider';
+import { DeuStationsProvider } from './deu/DeuStationsProvider';
+import { PhotonGeocodeProvider } from './deu/PhotonGeocodeProvider';
 import { AutoGeocodeProvider, AutoStationsProvider } from './auto/AutoProviders';
 import {
   DemoGeocodeProvider,
@@ -34,6 +36,14 @@ function createBundle(id: DataSourceId): ProviderBundle {
       stations: new EspStationsProvider(),
       geocode: new CartoCiudadGeocodeProvider(),
       // OSRM / Valhalla public servers cover Spain too
+      route: new RealRouteProvider(),
+    };
+  }
+  if (id === 'deu') {
+    return {
+      stations: new DeuStationsProvider(),
+      geocode: new PhotonGeocodeProvider(),
+      // OSRM / Valhalla public servers cover Germany too
       route: new RealRouteProvider(),
     };
   }

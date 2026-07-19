@@ -1,8 +1,8 @@
-// « Automatique » — both real sources rendered on the same map.
+// « Automatique » — every real source rendered on the same map.
 // Each source is queried only when its coverage area can intersect the
-// searched zone / route corridor, so a Toulouse map costs zero Spanish
-// requests and a Madrid one zero French requests, while the border shows
-// both countries at once. One source failing must not blank the other's
+// searched zone / route corridor, so a Toulouse map costs zero Spanish or
+// German requests and a Madrid one zero French requests, while borders show
+// both countries at once. One source failing must not blank the others'
 // stations: the call only throws when every RELEVANT source failed (which
 // lets the store fall back to demo data as usual).
 import type { GeoPoint } from '../../lib/geo';
@@ -19,6 +19,8 @@ import { FraStationsProvider } from '../fra/FraStationsProvider';
 import { BanGeocodeProvider } from '../fra/BanGeocodeProvider';
 import { EspStationsProvider, espCoversAlong, espCoversNear } from '../esp/EspStationsProvider';
 import { CartoCiudadGeocodeProvider } from '../esp/CartoCiudadGeocodeProvider';
+import { DeuStationsProvider, deuCoversAlong, deuCoversNear } from '../deu/DeuStationsProvider';
+import { PhotonGeocodeProvider } from '../deu/PhotonGeocodeProvider';
 
 // ── French flux coverage ─────────────────────────────────────────────────────
 // The gouv flux serves métropole + DOM; the ODS API filters geographically
@@ -55,11 +57,12 @@ export class AutoStationsProvider implements StationsProvider {
   readonly capabilities: SourceCapabilities = {
     brands: true,
     label: 'Automatique',
-    sublabel: 'France + Espagne selon la zone',
+    sublabel: 'France + Espagne + Allemagne selon la zone',
   };
 
   private readonly fra = new FraStationsProvider();
   private readonly esp = new EspStationsProvider();
+  private readonly deu = new DeuStationsProvider();
 
   async getStationsNear(
     center: GeoPoint,
@@ -69,6 +72,7 @@ export class AutoStationsProvider implements StationsProvider {
     const tasks: Promise<Station[]>[] = [];
     if (fraCoversNear(center, radiusKm)) tasks.push(this.fra.getStationsNear(center, radiusKm, opts));
     if (espCoversNear(center, radiusKm)) tasks.push(this.esp.getStationsNear(center, radiusKm, opts));
+    if (deuCoversNear(center, radiusKm)) tasks.push(this.deu.getStationsNear(center, radiusKm, opts));
     return mergeSettled(tasks);
   }
 
@@ -76,6 +80,7 @@ export class AutoStationsProvider implements StationsProvider {
     const tasks: Promise<Station[]>[] = [];
     if (fraCoversAlong(polyline, corridorKm)) tasks.push(this.fra.getStationsAlong(polyline, corridorKm));
     if (espCoversAlong(polyline, corridorKm)) tasks.push(this.esp.getStationsAlong(polyline, corridorKm));
+    if (deuCoversAlong(polyline, corridorKm)) tasks.push(this.deu.getStationsAlong(polyline, corridorKm));
     return mergeSettled(tasks);
   }
 }
@@ -86,20 +91,25 @@ const MAX_RESULTS = 6;
 export class AutoGeocodeProvider implements GeocodeProvider {
   private readonly ban = new BanGeocodeProvider();
   private readonly cartociudad = new CartoCiudadGeocodeProvider();
+  private readonly photon = new PhotonGeocodeProvider();
 
   async search(query: string): Promise<GeocodeResult[]> {
-    const [fr, es] = await Promise.allSettled([
+    const settled = await Promise.allSettled([
       this.ban.search(query),
       this.cartociudad.search(query),
+      this.photon.search(query),
     ]);
-    if (fr.status === 'rejected' && es.status === 'rejected') throw fr.reason;
-    const a = fr.status === 'fulfilled' ? fr.value : [];
-    const b = es.status === 'fulfilled' ? es.value : [];
-    // Interleave (France first) so both countries stay visible in the top 6
+    if (settled.every((s) => s.status === 'rejected')) {
+      throw (settled[0] as PromiseRejectedResult).reason;
+    }
+    const lists = settled.map((s) => (s.status === 'fulfilled' ? s.value : []));
+    // Interleave (France first) so every country stays visible in the top 6
     const out: GeocodeResult[] = [];
     const seen = new Set<string>();
-    for (let i = 0; i < Math.max(a.length, b.length); i++) {
-      for (const r of [a[i], b[i]]) {
+    const longest = Math.max(...lists.map((l) => l.length));
+    for (let i = 0; i < longest; i++) {
+      for (const list of lists) {
+        const r = list[i];
         if (r && !seen.has(r.label)) {
           seen.add(r.label);
           out.push(r);
