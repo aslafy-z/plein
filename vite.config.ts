@@ -104,10 +104,12 @@ function tileHandler(req: IncomingMessage, res: ServerResponse): void {
 // dev server forwards to the real endpoint (through HTTPS_PROXY when set), so
 // the app shows live data even when the browser has no direct internet access.
 const API_UPSTREAMS: Record<string, string> = {
-  gouv: 'https://data.economie.gouv.fr',
+  fra: 'https://data.economie.gouv.fr',
   ban: 'https://api-adresse.data.gouv.fr',
   osrm: 'https://router.project-osrm.org',
   valhalla: 'https://valhalla1.openstreetmap.de',
+  esp: 'https://sedeaplicaciones.minetur.gob.es',
+  cartociudad: 'https://www.cartociudad.es',
 }
 
 function fetchJson(url: string): Promise<{ status: number; body: string }> {
@@ -134,7 +136,7 @@ function fetchJson(url: string): Promise<{ status: number; body: string }> {
 }
 
 function apiHandler(req: IncomingMessage, res: ServerResponse): void {
-  const m = (req.url ?? '').match(/^\/(gouv|ban|osrm|valhalla)(\/.*)$/)
+  const m = (req.url ?? '').match(/^\/(fra|ban|osrm|valhalla|esp|cartociudad)(\/.*)$/)
   if (!m) {
     res.statusCode = 404
     res.end()

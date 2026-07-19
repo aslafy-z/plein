@@ -51,6 +51,16 @@ const BRAND_GROUPS: ReadonlyArray<BrandGroupDef> = [
   { label: 'Tamoil', match: /tamoil/i, icon: 'tamoil' },
   { label: 'Élan', match: /^[ée]lan\b/i },
   { label: 'Vito', match: /^vito\b/i },
+  // Enseignes espagnoles (source geoportalgasolineras.es) — Petronor prices
+  // under the Repsol group; Moeve is Cepsa's new banner but prices apart.
+  { label: 'Repsol', match: /repsol|petronor/i },
+  { label: 'Cepsa', match: /cepsa/i },
+  { label: 'Moeve', match: /moeve/i },
+  { label: 'Galp', match: /galp/i },
+  { label: 'Ballenoil', match: /ballenoil/i },
+  { label: 'Plenergy', match: /plenergy|plenoil/i },
+  { label: 'Petroprix', match: /petroprix/i },
+  { label: 'Q8', match: /\bq8\b/i },
 ];
 
 /** Every filter entry the app knows — drives the « hors zone » selector. */

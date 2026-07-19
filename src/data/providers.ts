@@ -1,8 +1,10 @@
 // Provider registry — resolves a DataSourceId to a memoized bundle of providers.
 import type { DataSourceId, ProviderBundle } from './types';
-import { GouvStationsProvider } from './gouv/GouvStationsProvider';
-import { BanGeocodeProvider } from './gouv/BanGeocodeProvider';
-import { RealRouteProvider } from './gouv/OsrmRouteProvider';
+import { FraStationsProvider } from './fra/FraStationsProvider';
+import { BanGeocodeProvider } from './fra/BanGeocodeProvider';
+import { RealRouteProvider } from './fra/OsrmRouteProvider';
+import { EspStationsProvider } from './esp/EspStationsProvider';
+import { CartoCiudadGeocodeProvider } from './esp/CartoCiudadGeocodeProvider';
 import {
   DemoGeocodeProvider,
   DemoRouteProvider,
@@ -12,10 +14,18 @@ import {
 const cache = new Map<DataSourceId, ProviderBundle>();
 
 function createBundle(id: DataSourceId): ProviderBundle {
-  if (id === 'gouv') {
+  if (id === 'fra') {
     return {
-      stations: new GouvStationsProvider(),
+      stations: new FraStationsProvider(),
       geocode: new BanGeocodeProvider(),
+      route: new RealRouteProvider(),
+    };
+  }
+  if (id === 'esp') {
+    return {
+      stations: new EspStationsProvider(),
+      geocode: new CartoCiudadGeocodeProvider(),
+      // OSRM / Valhalla public servers cover Spain too
       route: new RealRouteProvider(),
     };
   }

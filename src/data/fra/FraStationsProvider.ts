@@ -21,7 +21,7 @@ import type {
 // In dev the call goes through the Vite proxy (see vite.config.ts) so the app
 // gets live data even when the browser has no direct internet access.
 const ENDPOINT =
-  (IS_DEV ? '/proxy/gouv' : 'https://data.economie.gouv.fr') +
+  (IS_DEV ? '/proxy/fra' : 'https://data.economie.gouv.fr') +
   '/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records';
 
 const PAGE = 100;
@@ -330,8 +330,8 @@ async function fetchPage(url: string, lowPriority = false): Promise<unknown[]> {
   return Array.isArray(json.results) ? json.results : [];
 }
 
-export class GouvStationsProvider implements StationsProvider {
-  readonly id = 'gouv' as const;
+export class FraStationsProvider implements StationsProvider {
+  readonly id = 'fra' as const;
   readonly capabilities: SourceCapabilities = {
     brands: true, // enriched from OpenStreetMap by proximity
     label: 'prix-carburants.gouv.fr',
