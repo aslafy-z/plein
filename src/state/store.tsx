@@ -1204,7 +1204,7 @@ export function selectMapStations(app: AppStore): NearbyStation[] {
  */
 export function selectByPrice(app: AppStore): NearbyStation[] {
   const f = app.fuel;
-  const cents = (s: NearbyStation) => Math.round((s.prices[f]?.value ?? 9) * 100);
+  const cents = (s: NearbyStation) => priceCents(s.prices[f]?.value ?? 9);
   return [...selectVisible(app)].sort((a, b) => cents(a) - cents(b) || a.distKm - b.distKm);
 }
 
@@ -1228,6 +1228,15 @@ export function selectFocusStation(app: AppStore): NearbyStation | null {
 }
 
 // ── Price tiers: « bons plans » vs stations chères ───────────────────────────
+/**
+ * The feeds carry tenths of a cent but the UI displays cents — every price
+ * comparison shown to the user (ranking, tiers, deltas) works on this
+ * rounding, so two stations reading the same price always behave the same.
+ */
+export function priceCents(v: number): number {
+  return Math.round(v * 100);
+}
+
 /** Prices within this margin of the extremes always share their tier (€/L) */
 const TIER_EPS = 0.01;
 /** Share of the min→mean (resp. mean→max) gap folded into the extreme tiers */
@@ -1306,9 +1315,12 @@ export function priceTier(price: number, stats: PriceStats | null, inZone = fals
   if (!stats) return 'mid';
   const dealMax =
     inZone && stats.zoneDealMax != null ? Math.max(stats.dealMax, stats.zoneDealMax) : stats.dealMax;
-  if (price <= dealMax) return 'deal';
+  // Tier at DISPLAYED precision: a raw threshold falling inside a cent must
+  // not split two stations both reading « 1,90 € » into green and gray
+  if (priceCents(price) <= priceCents(dealMax)) return 'deal';
   // A tight area can make the two bounds overlap — being a bon plan wins
-  if (price >= stats.highMin && stats.highMin > stats.dealMax) return 'high';
+  if (priceCents(price) >= priceCents(stats.highMin) && stats.highMin > stats.dealMax)
+    return 'high';
   return 'mid';
 }
 

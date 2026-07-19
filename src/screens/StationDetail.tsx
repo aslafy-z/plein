@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { C, mono } from '../theme';
 import { ALL_FUELS, MAIN_FUELS, FUEL_LABELS, type FuelId, type Station } from '../data/types';
-import { useApp, selectVisibleForFuel } from '../state/store';
+import { useApp, selectVisibleForFuel, priceCents } from '../state/store';
 import { fmtPrice, distLabel, agoLabel, durationLabel } from '../lib/format';
 import { haversineKm } from '../lib/geo';
 import { openStatus } from '../lib/hours';
@@ -291,11 +291,13 @@ export default function StationDetail() {
             let noteColor: string = C.mut;
             if (price == null) {
               note = 'non distribué';
-            } else if (min != null && price <= min + 0.0001) {
+            } else if (min != null && priceCents(price) <= priceCents(min)) {
+              // Cent precision, like everywhere: a station reading the same
+              // displayed price as the minimum IS the minimum for the user
               note = scopeLow;
               noteColor = C.accent;
             } else if (min != null) {
-              note = `+${fmtPrice(price - min)} vs le + bas`;
+              note = `+${fmtPrice((priceCents(price) - priceCents(min)) / 100)} vs le + bas`;
             }
             const isCur = f === app.fuel;
             return (

@@ -10,6 +10,7 @@ import {
   selectDeals,
   selectFocusStation,
   priceTier,
+  priceCents,
 } from '../state/store';
 import { fmtPrice, distLabel, agoLabel, durationLabel, plural } from '../lib/format';
 import { openStatus } from '../lib/hours';
@@ -355,7 +356,9 @@ export default function MapSheet({
 
   const isBest = shown != null && cheapest?.id === shown.id;
   const shownPrice = shown?.prices[app.fuel]?.value ?? 0;
-  const shownDelta = shownPrice - min;
+  // Deltas at DISPLAYED precision: what the user reads is (price shown) −
+  // (min shown), never a tenth-of-a-cent artifact off by one
+  const shownDelta = (priceCents(shownPrice) - priceCents(min)) / 100;
 
   return (
     <div
@@ -539,7 +542,7 @@ export default function MapSheet({
                   }}
                 >
                   {isBest
-                    ? `−${fmtPrice(max - min)} €/L`
+                    ? `−${fmtPrice((priceCents(max) - priceCents(min)) / 100)} €/L`
                     : `${shownDelta >= 0 ? '+' : '−'}${fmtPrice(Math.abs(shownDelta))} €/L`}
                 </div>
               </div>
@@ -656,7 +659,7 @@ export default function MapSheet({
               // Rows are zone stations — the zone floor applies (the cheapest
               // of the circle is a bon plan even when the area has cheaper)
               const deal = priceTier(price, stats, true) === 'deal';
-              const delta = price - min;
+              const delta = (priceCents(price) - priceCents(min)) / 100;
               return (
                 <button
                   key={s.id}
