@@ -5,13 +5,13 @@
 # Plein.
 
 **Le plein au juste prix** — trouvez les stations-service les moins chères
-autour de vous et le long de vos trajets, partout en France.
+autour de vous et le long de vos trajets, en France et en Espagne.
 
 [![Ouvrir l'app](https://img.shields.io/badge/%E2%96%B6%EF%B8%8E%20Ouvrir%20l'app-plein.zadkiel.fr-3ddc84?style=for-the-badge&labelColor=0f1a14)](https://plein.zadkiel.fr)
 
 [![Licence MIT](https://img.shields.io/badge/licence-MIT-3ddc84?labelColor=0f1a14)](LICENSE)
 [![PWA](https://img.shields.io/badge/PWA-installable-3ddc84?labelColor=0f1a14)](#-utilisation)
-[![Données](https://img.shields.io/badge/donn%C3%A9es-data.gouv.fr-blue?labelColor=0f1a14)](#-sources-de-données)
+[![Données](https://img.shields.io/badge/donn%C3%A9es-%F0%9F%87%AB%F0%9F%87%B7%20France%20%C2%B7%20%F0%9F%87%AA%F0%9F%87%B8%20Espagne-blue?labelColor=0f1a14)](#-sources-de-données)
 [![React 18](https://img.shields.io/badge/React-18-61dafb?labelColor=0f1a14&logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?labelColor=0f1a14&logo=typescript)](https://www.typescriptlang.org)
 [![Leaflet](https://img.shields.io/badge/Leaflet-1.9-199900?labelColor=0f1a14)](https://leafletjs.com)
@@ -29,7 +29,11 @@ autour de vous et le long de vos trajets, partout en France.
 - 🗺️ **Carte des prix en direct** — les stations autour de vous avec leur prix en
   pin, colorés selon le prix : les « bons plans » (toutes les stations quasi au
   meilleur prix, pas seulement la première) en vert, les plus chères teintées
-  orange ; déplacez la carte, les stations de la zone se chargent automatiquement.
+  orange ; déplacez la carte, les stations de la zone se chargent automatiquement,
+  et dans les zones denses seules les moins chères gardent leur bulle de prix.
+- 🇫🇷🇪🇸 **France et Espagne sur la même carte** — la source « Automatique »
+  combine les flux officiels des deux pays : les prix suivent, que vous soyez à
+  Toulouse ou de l'autre côté des Pyrénées.
 - 📋 **Liste de la zone** — tirez le volet du bas : toutes les stations visibles,
   triables par prix ou distance, les bons plans surlignés, synchronisées avec la
   carte.
@@ -39,14 +43,17 @@ autour de vous et le long de vos trajets, partout en France.
   limite d'autonomie du réservoir et coût carburant estimé du trajet.
 - ⭐ **Favoris** — épinglez vos stations, retrouvez leur prix du jour d'un coup d'œil.
 - ⛽ **Tous les carburants** — Gazole, SP95/98, E10, E85, GPLc ; filtres par
-  rayon, enseignes et services.
+  rayon, enseignes, type de distributeur et services (24/24, lavage, boutique,
+  gonflage, additifs type AdBlue…).
 - 🕐 **Horaires réels** — « Ouvert 24/24 », « Fermé · ouvre à 6 h 30 »… calculés
   depuis les horaires officiels ; fraîcheur des prix affichée (et signalée quand
   ils datent).
 - 🏷️ **Enseignes reconnues** — logos et noms des stations (TotalEnergies,
-  E.Leclerc, Intermarché…) appariés depuis OpenStreetMap.
-- 🧭 **« Y aller »** — ouvre votre app GPS : choix de l'app sur Android (`geo:`),
-  Plans sur iOS, Google Maps sur desktop ; tournée multi-arrêts possible.
+  E.Leclerc, Intermarché… et Repsol, Cepsa, Galp côté espagnol) appariés depuis
+  OpenStreetMap, positions recalées sur les vraies coordonnées OSM.
+- 🧭 **« Y aller »** — ouvre la fiche du lieu dans votre app GPS : choix de
+  l'app sur Android (`geo:`), Plans sur iOS, Google Maps sur desktop ; tournée
+  multi-arrêts possible.
 - 📱 **PWA installable et tolérante au hors-ligne** — ajoutez-la à l'écran
   d'accueil ; les dernières zones consultées et les tuiles de carte restent
   disponibles sans réseau, avec indicateur d'ancienneté des prix.
@@ -54,7 +61,8 @@ autour de vous et le long de vos trajets, partout en France.
 ## 🚀 Utilisation
 
 1. Ouvrez **[plein.zadkiel.fr](https://plein.zadkiel.fr)** (le déploiement officiel).
-2. Autorisez la géolocalisation — ou continuez sans, et cherchez une ville.
+2. Autorisez la géolocalisation — ou continuez sans, et cherchez une ville, en
+   France comme en Espagne.
 3. Choisissez votre carburant en haut de la carte : la station la moins chère
    apparaît dans le volet du bas, **Y aller** lance le guidage.
 4. Avant de partir loin, onglet **Trajet** : saisissez la destination et
@@ -90,7 +98,7 @@ npm install
 npm run dev          # http://localhost:5173
 npm run build        # build de production (dist/)
 npm run e2e          # E2E Playwright : parcourt tous les écrans
-npm run verify:live  # vérifie les providers réels (gouv/BAN/OSRM) contre les vrais endpoints
+npm run verify:live  # vérifie les providers réels (France/Espagne/BAN/OSRM) contre les vrais endpoints
 npm run deploy       # build + wrangler deploy
 ```
 
@@ -106,5 +114,5 @@ respectant `HTTPS_PROXY` — voir `vite.config.ts`.
 
 Code sous licence [MIT](LICENSE) © Zadkiel Aharonian.
 Les données affichées restent soumises aux licences de leurs producteurs
-respectifs (Licence Ouverte pour les données publiques françaises, ODbL pour
-OpenStreetMap).
+respectifs (Licence Ouverte pour les données publiques françaises, datos
+abiertos du MITECO pour les prix espagnols, ODbL pour OpenStreetMap).
