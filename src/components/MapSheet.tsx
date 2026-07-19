@@ -6,7 +6,10 @@ import {
   selectSorted,
   selectCheapest,
   selectPriceRange,
+  selectPriceStats,
+  selectDeals,
   selectFocusStation,
+  priceTier,
 } from '../state/store';
 import { fmtPrice, distLabel, agoLabel, plural } from '../lib/format';
 import { openStatus } from '../lib/hours';
@@ -55,6 +58,10 @@ export default function MapSheet({
   const shown = focused ?? cheapest;
   const rows = selectSorted(app);
   const range = selectPriceRange(app);
+  // « Bons plans » (near-identical low prices): the collapsed card still
+  // preselects a single station, but the expanded list highlights all of them
+  const stats = selectPriceStats(app);
+  const dealCount = selectDeals(app).length;
   const min = range?.min ?? 0;
   const max = range?.max ?? 0;
   const loading = app.stations.status === 'loading' || app.stations.status === 'idle';
@@ -534,6 +541,18 @@ export default function MapSheet({
             >
               {plural(rows.length, 'station')} dans la zone
             </span>
+            {dealCount > 1 && (
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: C.accent,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {dealCount} bons plans
+              </span>
+            )}
             {([['prix', 'Prix'], ['dist', 'Distance']] as const).map(([k, label]) => {
               const active = app.sort === k;
               return (
@@ -585,6 +604,7 @@ export default function MapSheet({
               const best = cheapest?.id === s.id;
               const isFocus = app.focusStationId === s.id;
               const price = s.prices[app.fuel]!.value;
+              const deal = priceTier(price, stats) === 'deal';
               const delta = price - min;
               return (
                 <button
@@ -600,13 +620,13 @@ export default function MapSheet({
                     alignItems: 'center',
                     gap: 12,
                     width: '100%',
-                    background: C.surface2,
+                    background: deal ? C.accentSoft09 : C.surface2,
                     borderRadius: 14,
                     padding: '11px 14px',
                     flexShrink: 0,
                     border: isFocus
                       ? `1.5px solid ${C.accent}`
-                      : `1px solid ${best ? C.accentBorder : C.border}`,
+                      : `1px solid ${deal ? C.accentBorderStrong : C.border}`,
                   }}
                 >
                   <BrandAvatar label={s.brand ?? s.name} init={s.init} size={38} fontSize={12.5} />
@@ -628,18 +648,18 @@ export default function MapSheet({
                     </div>
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ font: mono(700, 17), color: best ? C.accent : C.ink, whiteSpace: 'nowrap' }}>
+                    <div style={{ font: mono(700, 17), color: deal ? C.accent : C.ink, whiteSpace: 'nowrap' }}>
                       {fmtPrice(price)} €
                     </div>
                     <div
                       style={{
                         fontSize: 11,
                         fontWeight: 600,
-                        color: best ? C.accent : delta > 0.12 ? C.warn : C.mut,
+                        color: deal ? C.accent : delta > 0.12 ? C.warn : C.mut,
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {best ? 'meilleur prix' : `+${fmtPrice(delta)}`}
+                      {best ? 'meilleur prix' : deal ? `bon plan · +${fmtPrice(delta)}` : `+${fmtPrice(delta)}`}
                     </div>
                   </div>
                 </button>
