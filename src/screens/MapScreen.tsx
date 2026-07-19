@@ -17,8 +17,10 @@ export default function MapScreen() {
 
   const geoOff = app.geoStatus === 'denied' || app.geoStatus === 'unavailable';
 
-  // The sheet overlays the stage; the map itself stops above the collapsed
-  // part (recenter button stays visible) and only resizes when that part does.
+  // The sheet overlays the stage; the map keeps the FULL stage size at all
+  // times (a sheet growing/shrinking must never resize Leaflet — that moves
+  // the view under the user). Only the controls riding the map's bottom edge
+  // (recenter button, pills, attribution) slide up with the collapsed sheet.
   const stageRef = useRef<HTMLDivElement>(null);
   const [stageH, setStageH] = useState(0);
   const [sheetInset, setSheetInset] = useState(0);
@@ -51,18 +53,9 @@ export default function MapScreen() {
         ref={stageRef}
         style={{ position: 'relative', flex: 1, minHeight: 0, overflow: 'hidden', background: C.mapBg }}
       >
-        {/* Map area — bottom edge follows the collapsed sheet, animated */}
-        <div
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            top: 0,
-            bottom: sheetInset,
-            transition: 'bottom .3s cubic-bezier(.4,0,.2,1)',
-          }}
-        >
-          <MapCanvas />
+        {/* Map area — always the full stage; the sheet overlays it */}
+        <div style={{ position: 'absolute', inset: 0 }}>
+          <MapCanvas bottomInset={sheetInset} />
 
           {/* Top overlay controls */}
           <div

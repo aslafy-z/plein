@@ -115,6 +115,12 @@ button {
   background: #14181a;
   font-family: Archivo, system-ui, sans-serif;
 }
+/* The map keeps the full stage size and the bottom sheet overlays it —
+   the attribution control rides up with the sheet like the other controls */
+.leaflet-bottom {
+  bottom: var(--map-bottom-inset, 0px);
+  transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
 .leaflet-control-attribution {
   background: rgba(16, 18, 20, 0.75) !important;
   color: #5c666c !important;
