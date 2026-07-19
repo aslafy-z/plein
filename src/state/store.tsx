@@ -54,6 +54,9 @@ export const VEHICLE_PRESETS: Record<VehicleId, { tank: number; conso: number; f
   moto: { tank: 15, conso: 5, fuel: 'e10' },
 };
 const DEFAULT_CONSO = VEHICLE_PRESETS.car.conso;
+/** EV defaults — a common compact EV (battery kWh, consumption kWh/100 km) */
+const DEFAULT_BATTERY_KWH = 55;
+const DEFAULT_EV_CONSO = 17;
 /** Default departure tank level (%) — adjustable on the route setup */
 const DEFAULT_START_TANK_PCT = 70;
 /** € value of one minute of detour, for the « compromis » strategy */
@@ -132,6 +135,10 @@ interface PersistedSettings {
   vehicle: VehicleId;
   tank: number;
   conso: number;
+  /** EV battery capacity (kWh) — drives the charge-cost estimate */
+  battery: number;
+  /** EV consumption (kWh/100 km) */
+  evConso: number;
   avoidMotorway: boolean;
   avoidToll: boolean;
   startTankPct: number;
@@ -315,6 +322,12 @@ export interface AppStore {
   /** Average consumption, L/100 km — feeds autonomy + trip cost */
   conso: number;
   setConso(v: number): void;
+  /** EV battery capacity (kWh) — the charge-cost estimate is a 20 → 80 % session */
+  battery: number;
+  setBattery(v: number): void;
+  /** EV consumption, kWh/100 km */
+  evConso: number;
+  setEvConso(v: number): void;
   alerts: boolean;
   setAlerts(v: boolean): void;
   bgloc: boolean;
@@ -407,6 +420,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [vehicle, setVehicleState] = useState<VehicleId>(persisted.vehicle ?? 'car');
   const [tank, setTankState] = useState<number>(persisted.tank ?? VEHICLE_PRESETS.car.tank);
   const [conso, setConsoState] = useState<number>(persisted.conso ?? DEFAULT_CONSO);
+  const [battery, setBatteryState] = useState<number>(persisted.battery ?? DEFAULT_BATTERY_KWH);
+  const [evConso, setEvConsoState] = useState<number>(persisted.evConso ?? DEFAULT_EV_CONSO);
   const [avoidMotorway, setAvoidMotorwayState] = useState<boolean>(persisted.avoidMotorway ?? false);
   const [avoidToll, setAvoidTollState] = useState<boolean>(persisted.avoidToll ?? false);
   const [startTankPct, setStartTankPctState] = useState<number>(
@@ -989,6 +1004,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     savePersisted({ conso: v });
   }, []);
 
+  const setBattery = useCallback((v: number) => {
+    setBatteryState(v);
+    savePersisted({ battery: v });
+  }, []);
+
+  const setEvConso = useCallback((v: number) => {
+    setEvConsoState(v);
+    savePersisted({ evConso: v });
+  }, []);
+
   const setVehicle = useCallback((v: VehicleId) => {
     setVehicleState(v);
     const preset = VEHICLE_PRESETS[v];
@@ -1287,6 +1312,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setTank,
       conso,
       setConso,
+      battery,
+      setBattery,
+      evConso,
+      setEvConso,
       alerts,
       setAlerts,
       bgloc,
@@ -1317,6 +1346,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setFrom, setTo, searchPlaces, recents, hasTripHistory, routeReady, startRoute, editRoute,
       openRouteSearch, focusDestination, consumeFocusDestination,
       routeMode, routeState, tour, toggleTour, vehicle, setVehicle, tank, setTank, conso, setConso,
+      battery, setBattery, evConso, setEvConso,
       avoidMotorway, avoidToll, setAvoidMotorway, setAvoidToll, startTankPct, setStartTankPct,
       setFiltersOpenNav, alerts, setAlerts,
       bgloc, setBgloc, sourceId, setSourceId, mapsSite, setMapsSite, detailId, toast, showToast,

@@ -45,7 +45,8 @@ const SOURCES: { id: DataSourceId; title: string; sub: string }[] = [
 
 export default function Settings() {
   const app = useApp();
-  const { fuel, vehicle, tank, conso, alerts, bgloc, sourceId, geoStatus, mapsSite } = app;
+  const { fuel, vehicle, tank, conso, battery, evConso, alerts, bgloc, sourceId, geoStatus, mapsSite } = app;
+  const ev = app.mode === 'ev';
   // Slider ranges follow the profile (a moto tank is far smaller than a car's)
   const tankRange = vehicle === 'moto' ? { min: 5, max: 30, step: 1 } : { min: 30, max: 80, step: 5 };
 
@@ -90,6 +91,40 @@ export default function Settings() {
             padding: 16,
           }}
         >
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 10 }}>
+            Motorisation
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+            {([['fuel', '⛽ Thermique'], ['ev', '⚡ Électrique']] as const).map(([m, label]) => {
+              const active = app.mode === m;
+              return (
+                <button
+                  key={m}
+                  onClick={() => app.setMode(m)}
+                  style={{
+                    flex: 1,
+                    background: active ? C.accent : 'transparent',
+                    color: active ? C.onAccent : C.body,
+                    fontSize: 13.5,
+                    fontWeight: 700,
+                    padding: '10px 0',
+                    borderRadius: 16,
+                    border: active ? `1px solid ${C.accent}` : `1px solid ${C.border12}`,
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: 11.5, color: C.faint, marginBottom: 14 }}>
+            la carte compare les prix à la pompe ou les bornes de recharge (€/kWh) —
+            même bascule que le bouton ⛽/⚡ sur la carte
+          </div>
+          {!ev && (
+          <>
           <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 10 }}>
             Profil
           </div>
@@ -186,6 +221,48 @@ export default function Settings() {
           <div style={{ fontSize: 11.5, color: C.faint, marginTop: 6 }}>
             sert au calcul de l'autonomie et du coût carburant du trajet
           </div>
+          </>
+          )}
+          {ev && (
+          <>
+          <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 6 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.ink, flex: 1 }}>Batterie</span>
+            <span style={{ font: mono(700, 15), color: C.accent }}>{battery} kWh</span>
+          </div>
+          <input
+            type="range"
+            min={20}
+            max={120}
+            step={5}
+            value={battery}
+            onChange={(e) => app.setBattery(+e.target.value)}
+            style={{ width: '100%', cursor: 'pointer' }}
+          />
+          <div style={{ fontSize: 11.5, color: C.faint, marginTop: 6 }}>
+            sert à l'estimation du coût d'une charge 20 → 80 % sur la fiche borne
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', marginTop: 18, marginBottom: 6 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.ink, flex: 1 }}>
+              Consommation moyenne
+            </span>
+            <span style={{ font: mono(700, 15), color: C.accent }}>
+              {evConso.toFixed(1).replace('.', ',')} kWh/100 km
+            </span>
+          </div>
+          <input
+            type="range"
+            min={10}
+            max={30}
+            step={0.5}
+            value={evConso}
+            onChange={(e) => app.setEvConso(+e.target.value)}
+            style={{ width: '100%', cursor: 'pointer' }}
+          />
+          <div style={{ fontSize: 11.5, color: C.faint, marginTop: 6 }}>
+            servira au coût du trajet quand le comparateur passera à l'électrique
+          </div>
+          </>
+          )}
         </div>
       </div>
 
