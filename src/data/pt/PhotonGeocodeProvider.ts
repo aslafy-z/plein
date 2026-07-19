@@ -1,6 +1,6 @@
 // Photon (photon.komoot.io), the autocomplete front end to OpenStreetMap data,
 // on the public FOSS instance the app already leans on for routing (OSRM /
-// Valhalla). It is Portugal's geocoder, and the backup of the three other
+// Valhalla). It is Portugal's and Germany's geocoder, and the backup of the three other
 // countries: the app asks it for French, Spanish or Andorran places only when
 // that country's own service does not answer (`FrGeocodeProvider`,
 // `BackedUpGeocodeProvider`), so an outage of a national service does not
@@ -11,7 +11,9 @@
 // the official CAOP/CTT data — only resolves exact administrative names and
 // answers with whole boundary geometries (~250 KB a municipality), which no
 // keystroke-by-keystroke search can afford. Photon answers a free-text query
-// with coordinates in one request instead.
+// with coordinates in one request instead. Germany has no keyless national
+// geocoder either: the BKG services behind adresse.bund.de require
+// registration.
 //
 // Results are pinned to one country: `bbox` narrows the search server side,
 // and the country code is checked again here because a box overlaps its
@@ -69,6 +71,14 @@ export const PHOTON_ANDORRA: PhotonArea = {
   bbox: '1.40,42.42,1.79,42.66',
   countryCode: 'AD',
   country: 'ad',
+  communeInContext: false,
+};
+
+/** Germany, the area the Tankerkönig price flux covers */
+export const PHOTON_GERMANY: PhotonArea = {
+  bbox: '5.5,47.1,15.4,55.2',
+  countryCode: 'DE',
+  country: 'de',
   communeInContext: false,
 };
 

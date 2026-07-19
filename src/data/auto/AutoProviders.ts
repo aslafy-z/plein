@@ -1,7 +1,7 @@
 // « Automatic » — every real source rendered on the same map.
 // Each source is queried only when its coverage area can intersect the
-// searched zone / route corridor, so a Toulouse map costs zero Spanish
-// requests and a Madrid one zero French requests, while the border shows
+// searched zone / route corridor, so a Toulouse map costs zero Spanish or
+// German requests and a Madrid one zero French requests, while the border shows
 // several countries at once. A failed source is never papered over by the
 // others when its stations were REQUIRED: the store would cache the partial
 // merge as a fresh, complete area — no banner, no retry until it goes stale.
@@ -32,10 +32,12 @@ import { PtStationsProvider, ptCoversAlong, ptCoversNear } from '../pt/PtStation
 import {
   PHOTON_ANDORRA,
   PHOTON_FRANCE,
+  PHOTON_GERMANY,
   PHOTON_SPAIN,
   PhotonGeocodeProvider,
 } from '../pt/PhotonGeocodeProvider';
 import { BackedUpGeocodeProvider } from '../geocodeBackup';
+import { DeStationsProvider, deCoversAlong, deCoversNear } from '../de/DeStationsProvider';
 import { mergeByKind } from '../geocodeRank';
 
 // ── French flux coverage ─────────────────────────────────────────────────────
@@ -118,6 +120,7 @@ export class AutoStationsProvider implements StationsProvider {
   private readonly es = new EsStationsProvider();
   private readonly ad = new AdStationsProvider();
   private readonly pt = new PtStationsProvider();
+  private readonly de = new DeStationsProvider();
 
   async getStationsNear(
     center: GeoPoint,
@@ -138,6 +141,9 @@ export class AutoStationsProvider implements StationsProvider {
     }
     if (ptCoversNear(center, radiusKm)) {
       tasks.push({ task: this.pt.getStationsNear(center, radiusKm, opts), required: ptCoversNear(center, 0) });
+    }
+    if (deCoversNear(center, radiusKm)) {
+      tasks.push({ task: this.de.getStationsNear(center, radiusKm, opts), required: deCoversNear(center, 0) });
     }
     const merged = await mergeSettled(tasks);
     const nearest = capNearest(merged, center);
@@ -169,13 +175,14 @@ export class AutoStationsProvider implements StationsProvider {
     if (esCoversAlong(polyline, corridorKm)) add(this.es.getStationsAlong(polyline, corridorKm));
     if (adCoversAlong(polyline, corridorKm)) add(this.ad.getStationsAlong(polyline, corridorKm));
     if (ptCoversAlong(polyline, corridorKm)) add(this.pt.getStationsAlong(polyline, corridorKm));
+    if (deCoversAlong(polyline, corridorKm)) add(this.de.getStationsAlong(polyline, corridorKm));
     return mergeSettled(tasks);
   }
 }
 
 // ── Geocoding ────────────────────────────────────────────────────────────────
 // The suggestion list scrolls, so it is worth carrying more than a screenful —
-// four countries answering at once fill six rows with their first hits alone.
+// five countries answering at once fill six rows with their first hits alone.
 const MAX_RESULTS = 15;
 
 /**
@@ -348,12 +355,17 @@ export class AutoGeocodeProvider extends MergedGeocodeProvider {
   constructor() {
     // Inside one kind the country the map is looking at comes first, and the
     // others interleave in the order given here — France, Andorra, Portugal,
-    // Spain — so none of them fills the visible rows on its own.
+    // Spain, Germany — so none of them fills the visible rows on its own.
     super([
       { country: 'fr', provider: new FrGeocodeProvider(), covers: (p) => frCoversNear(p, 0) },
       { country: 'ad', provider: adGeocodeProvider(), covers: (p) => adCoversNear(p, 0) },
       { country: 'pt', provider: new PhotonGeocodeProvider(), covers: (p) => ptCoversNear(p, 0) },
       { country: 'es', provider: esGeocodeProvider(), covers: (p) => esCoversNear(p, 0) },
+      {
+        country: 'de',
+        provider: new PhotonGeocodeProvider(PHOTON_GERMANY),
+        covers: (p) => deCoversNear(p, 0),
+      },
     ]);
   }
 }

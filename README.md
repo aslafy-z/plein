@@ -5,7 +5,7 @@
 # Plein.
 
 **A full tank at the right price** — find the cheapest fuel stations around
-you and along your routes, in France, Spain, Andorra and Portugal.
+you and along your routes, in France, Spain, Andorra, Portugal and Germany.
 
 **English** · [Français](README.fr.md) · [Español](README.es.md) · [Català](README.ca.md) · [Português](README.pt.md)
 
@@ -15,7 +15,7 @@ Want what is coming next? [staging-plein.zadkiel.workers.dev](https://staging-pl
 
 [![MIT license](https://img.shields.io/badge/license-MIT-3ddc84?labelColor=0f1a14)](LICENSE)
 [![PWA](https://img.shields.io/badge/PWA-installable-3ddc84?labelColor=0f1a14)](#-usage)
-[![Data](https://img.shields.io/badge/data-%F0%9F%87%AB%F0%9F%87%B7%20France%20%C2%B7%20%F0%9F%87%AA%F0%9F%87%B8%20Spain%20%C2%B7%20%F0%9F%87%A6%F0%9F%87%A9%20Andorra%20%C2%B7%20%F0%9F%87%B5%F0%9F%87%B9%20Portugal-blue?labelColor=0f1a14)](#-data-sources)
+[![Data](https://img.shields.io/badge/data-%F0%9F%87%AB%F0%9F%87%B7%20France%20%C2%B7%20%F0%9F%87%AA%F0%9F%87%B8%20Spain%20%C2%B7%20%F0%9F%87%A6%F0%9F%87%A9%20Andorra%20%C2%B7%20%F0%9F%87%B5%F0%9F%87%B9%20Portugal%20%C2%B7%20%F0%9F%87%A9%F0%9F%87%AA%20Germany-blue?labelColor=0f1a14)](#-data-sources)
 [![React 18](https://img.shields.io/badge/React-18-61dafb?labelColor=0f1a14&logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?labelColor=0f1a14&logo=typescript)](https://www.typescriptlang.org)
 [![Leaflet](https://img.shields.io/badge/Leaflet-1.9-199900?labelColor=0f1a14)](https://leafletjs.com)
@@ -36,10 +36,11 @@ Want what is coming next? [staging-plein.zadkiel.workers.dev](https://staging-pl
 
 - 🗺️ **Live price map** — stations around you, price pins colored by price:
   good deals in green, the priciest in orange.
-- 🇫🇷🇪🇸🇦🇩🇵🇹 **Four countries on one map** — the official feeds of France,
-  Spain, Andorra and Portugal combined; border fill-ups compare at a glance.
+- 🇫🇷🇪🇸🇦🇩🇵🇹🇩🇪 **Five countries on one map** — the official feeds of France,
+  Spain, Andorra, Portugal and Germany combined; border fill-ups compare at a
+  glance.
 - 🔎 **Place search** — towns, addresses and points of interest (railway
-  stations, airports, monuments) across the four countries, ranked by how
+  stations, airports, monuments) across the five countries, ranked by how
   well they match what you typed, the country on the map first.
 - 📋 **Real best choice** — the fuel burned for the detour is counted, so a
   closer station can beat the cheapest one.
@@ -69,7 +70,7 @@ Want what is coming next? [staging-plein.zadkiel.workers.dev](https://staging-pl
 
 1. Open **[plein.zadkiel.fr](https://plein.zadkiel.fr)** (the official deployment).
 2. Allow geolocation — or continue without it, and search for a city in
-   France, Spain, Andorra or Portugal. The search remembers the places you
+   France, Spain, Andorra, Portugal or Germany. The search remembers the places you
    picked there: it offers them as soon as it opens and ranks them at the top
    of the suggestions as soon as you type.
 3. Pick your fuel at the top of the map: the best choice (price AND distance,
@@ -89,7 +90,7 @@ No account, no tracker: your favorites and settings stay in your browser.
 
 Each covered country has its own official feeds — prices and geocoding —
 which the app picks according to the visible area (*Automatic* source). The
-rest (routing, basemaps) is shared by all four.
+rest (routing, basemaps) is shared by all five.
 
 ### 🇫🇷 France
 
@@ -124,7 +125,14 @@ rest (routing, basemaps) is shared by all four.
 | Fuel prices & brands | [Preços dos combustíveis](https://precoscombustiveis.dgeg.gov.pt) (DGEG — Direção-Geral de Energia e Geologia) — the brand (*marca*) is carried by the feed, which gives neither opening hours nor E10; mainland coverage (the Azores and Madeira have their own regime) | Dados abertos |
 | Geocoding & autocompletion | [Photon](https://photon.komoot.io) (public Komoot instance, OpenStreetMap index), bounded to mainland Portugal — the country publishes no keyless address geocoder | ODbL |
 
-### Shared by all four countries
+### 🇩🇪 Germany
+
+| Data | Source | License |
+| --- | --- | --- |
+| Fuel prices & brands | [Tankerkönig](https://creativecommons.tankerkoenig.de) (open relay of the official MTS-K flux — Markttransparenzstelle für Kraftstoffe, Bundeskartellamt) — the brand is carried by the feed, which gives neither services nor weekly opening hours; a personal API key is required and stays server-side (see [Development](#%EF%B8%8F-development)) | CC BY 4.0 |
+| Geocoding & autocompletion | [Photon](https://photon.komoot.io) (public Komoot instance, OpenStreetMap index), bounded to Germany — the official BKG geocoders require registration | ODbL |
+
+### Shared by all five countries
 
 | Data | Source | License |
 | --- | --- | --- |
@@ -132,7 +140,9 @@ rest (routing, basemaps) is shared by all four.
 | Basemaps | [OpenFreeMap](https://openfreemap.org) vector tiles, no API key, Positron / Dark Matter style following the theme (OpenStreetMap raster tiles as fallback when OpenFreeMap is unreachable or the device has no WebGL) | © [OpenMapTiles](https://openmaptiles.org) · © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors · dark style colors © [CARTO](https://carto.com/attributions) (CC BY 4.0) |
 
 The app has **no backend**: the browser queries these public services
-directly. Sources are pluggable (`src/data/types.ts`). Offline or when a feed
+directly. The one exception is the German source — Tankerkönig requires a
+personal API key that must never reach the client, so the Worker serving the
+app proxies it (`worker/index.ts`). Sources are pluggable (`src/data/types.ts`). Offline or when a feed
 is down, the app keeps the last loaded stations (per-area cache) with an
 explicit banner and retries as soon as the connection returns. When a
 country's geocoder does not answer, Photon stands in for it; if that fails
@@ -152,13 +162,23 @@ rules and the tests. When reporting a bug, paste the debug snapshot: Settings
 › Offline data › Debug overlay, then the floating **DBG** chip → **Report**,
 which copies it and opens the form.
 
+The German source (Tankerkönig) requires a **personal API key** — free, on
+[tankerkoenig.de](https://creativecommons.tankerkoenig.de). The terms of use
+forbid publishing a key (repo, bundle…), so it never goes through the client.
+In dev, export `TANKERKOENIG_API_KEY` before `npm run dev` (the Vite proxy
+injects it server-side); in production, store it as a Worker secret:
+`wrangler secret put TANKERKOENIG_API_KEY` (the Worker proxies the API with a
+~5 min edge cache — `worker/index.ts`). Without a key the German source
+simply reports itself unavailable.
+
 ## 📄 License
 
 Code under the [MIT](LICENSE) license © Zadkiel Aharonian.
 The displayed data remains subject to the licenses of its respective
 producers (Licence Ouverte for French public data, MITECO datos abiertos for
 Spanish prices, © Govern d'Andorra for Andorra, DGEG dados abertos for
-Portuguese prices, ODbL for OpenStreetMap).
+Portuguese prices, CC BY 4.0 for German prices — Tankerkönig / MTS-K, ODbL
+for OpenStreetMap).
 The **Archivo** and **Spline Sans Mono** fonts, embedded in `public/fonts/`,
 are under the [SIL Open Font License 1.1](public/fonts/) (see the `*-OFL.txt`
 files in the same folder).

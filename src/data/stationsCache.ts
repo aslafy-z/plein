@@ -160,7 +160,7 @@ function estimateBytes(stations: Station[]): number {
  *  the 3-letter country codes older builds used, a corrupt record — could
  *  never match a read again, so hydration sheds it instead of carrying its
  *  payload for a week. */
-const KNOWN_SOURCES: readonly string[] = ['auto', 'fr', 'es', 'ad', 'pt', 'demo'];
+const KNOWN_SOURCES: readonly string[] = ['auto', 'fr', 'es', 'ad', 'pt', 'de', 'demo'];
 
 function isUsableMeta(value: unknown): value is AreaMeta {
   if (typeof value !== 'object' || value === null) return false;

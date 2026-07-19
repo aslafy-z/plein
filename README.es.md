@@ -5,8 +5,8 @@
 # Plein.
 
 **El depósito lleno al precio justo** — encuentra las gasolineras más baratas
-a tu alrededor y a lo largo de tus rutas, en Francia, España, Andorra y
-Portugal.
+a tu alrededor y a lo largo de tus rutas, en Francia, España, Andorra,
+Portugal y Alemania.
 
 [English](README.md) · [Français](README.fr.md) · **Español** · [Català](README.ca.md) · [Português](README.pt.md)
 
@@ -16,7 +16,7 @@ Portugal.
 
 [![Licencia MIT](https://img.shields.io/badge/licencia-MIT-3ddc84?labelColor=0f1a14)](LICENSE)
 [![PWA](https://img.shields.io/badge/PWA-instalable-3ddc84?labelColor=0f1a14)](#-uso)
-[![Datos](https://img.shields.io/badge/datos-%F0%9F%87%AB%F0%9F%87%B7%20Francia%20%C2%B7%20%F0%9F%87%AA%F0%9F%87%B8%20Espa%C3%B1a%20%C2%B7%20%F0%9F%87%A6%F0%9F%87%A9%20Andorra%20%C2%B7%20%F0%9F%87%B5%F0%9F%87%B9%20Portugal-blue?labelColor=0f1a14)](#-fuentes-de-datos)
+[![Datos](https://img.shields.io/badge/datos-%F0%9F%87%AB%F0%9F%87%B7%20Francia%20%C2%B7%20%F0%9F%87%AA%F0%9F%87%B8%20Espa%C3%B1a%20%C2%B7%20%F0%9F%87%A6%F0%9F%87%A9%20Andorra%20%C2%B7%20%F0%9F%87%B5%F0%9F%87%B9%20Portugal%20%C2%B7%20%F0%9F%87%A9%F0%9F%87%AA%20Alemania-blue?labelColor=0f1a14)](#-fuentes-de-datos)
 [![React 18](https://img.shields.io/badge/React-18-61dafb?labelColor=0f1a14&logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?labelColor=0f1a14&logo=typescript)](https://www.typescriptlang.org)
 [![Leaflet](https://img.shields.io/badge/Leaflet-1.9-199900?labelColor=0f1a14)](https://leafletjs.com)
@@ -38,11 +38,11 @@ Portugal.
 - 🗺️ **Mapa de precios en directo** — las estaciones a tu alrededor, precios
   en chinchetas coloreadas según el precio: chollos en verde, las más caras
   en naranja.
-- 🇫🇷🇪🇸🇦🇩🇵🇹 **Cuatro países en un mapa** — los flujos oficiales de Francia,
-  España, Andorra y Portugal combinados; los repostajes fronterizos se
-  comparan de un vistazo.
+- 🇫🇷🇪🇸🇦🇩🇵🇹🇩🇪 **Cinco países en un mapa** — los flujos oficiales de Francia,
+  España, Andorra, Portugal y Alemania combinados; los repostajes fronterizos
+  se comparan de un vistazo.
 - 🔎 **Búsqueda de lugares** — ciudades, direcciones y puntos de interés
-  (estaciones de tren, aeropuertos, monumentos) en los cuatro países,
+  (estaciones de tren, aeropuertos, monumentos) en los cinco países,
   ordenados según su coincidencia con lo que has escrito, con el país del
   mapa primero.
 - 📋 **Mejor elección real** — el combustible quemado en el desvío se tiene
@@ -74,7 +74,7 @@ Portugal.
 
 1. Abre **[plein.zadkiel.fr](https://plein.zadkiel.fr)** (el despliegue oficial).
 2. Autoriza la geolocalización — o continúa sin ella y busca una ciudad, en
-   Francia, España, Andorra o Portugal. La búsqueda recuerda los lugares que
+   Francia, España, Andorra, Portugal o Alemania. La búsqueda recuerda los lugares que
    has elegido: los propone nada más abrirse y los sube al principio de las
    sugerencias en cuanto escribes.
 3. Elige tu combustible en la parte superior del mapa: la mejor elección
@@ -96,7 +96,7 @@ Sin cuenta, sin rastreadores: tus favoritos y ajustes se quedan en tu navegador.
 
 Cada país cubierto tiene sus propios flujos oficiales — precios y
 geocodificación — que la app elige según la zona mostrada (fuente
-*Automática*). El resto (rutas, mapas base) es común a los cuatro.
+*Automática*). El resto (rutas, mapas base) es común a los cinco.
 
 ### 🇫🇷 Francia
 
@@ -131,7 +131,14 @@ geocodificación — que la app elige según la zona mostrada (fuente
 | Precios de carburantes y marcas | [Preços dos combustíveis](https://precoscombustiveis.dgeg.gov.pt) (DGEG — Direção-Geral de Energia e Geologia) — la marca la aporta el flujo, que no da ni horarios ni E10; cobertura continental (las Azores y Madeira tienen su propio régimen) | Dados abertos |
 | Geocodificación y autocompletado | [Photon](https://photon.komoot.io) (instancia pública de Komoot, índice OpenStreetMap), limitado al Portugal continental — el país no publica ningún geocodificador de direcciones sin clave | ODbL |
 
-### Comunes a los cuatro países
+### 🇩🇪 Alemania
+
+| Dato | Fuente | Licencia |
+| --- | --- | --- |
+| Precios de carburantes y marcas | [Tankerkönig](https://creativecommons.tankerkoenig.de) (repetidor abierto del flujo oficial MTS-K — Markttransparenzstelle für Kraftstoffe, Bundeskartellamt) — la marca la aporta el flujo, que no da ni servicios ni horarios semanales; se necesita una clave API personal que se queda en el servidor (ver [Desarrollo](#%EF%B8%8F-desarrollo)) | CC BY 4.0 |
+| Geocodificación y autocompletado | [Photon](https://photon.komoot.io) (instancia pública de Komoot, índice OpenStreetMap), limitado a Alemania — los geocodificadores oficiales del BKG exigen registro | ODbL |
+
+### Comunes a los cinco países
 
 | Dato | Fuente | Licencia |
 | --- | --- | --- |
@@ -139,7 +146,9 @@ geocodificación — que la app elige según la zona mostrada (fuente
 | Mapas base | Teselas vectoriales de [OpenFreeMap](https://openfreemap.org), sin clave de API, estilo Positron / Dark Matter según el tema (teselas ráster de OpenStreetMap como respaldo si OpenFreeMap no responde o el dispositivo no tiene WebGL) | © [OpenMapTiles](https://openmaptiles.org) · © colaboradores de [OpenStreetMap](https://www.openstreetmap.org/copyright) · colores del estilo oscuro © [CARTO](https://carto.com/attributions) (CC BY 4.0) |
 
 La app no tiene **ningún backend**: el navegador consulta directamente estos
-servicios públicos. Las fuentes son conectables (`src/data/types.ts`). Sin
+servicios públicos. La única excepción es la fuente alemana — Tankerkönig
+exige una clave API personal que nunca debe llegar al cliente, así que el
+Worker que sirve la app le hace de proxy (`worker/index.ts`). Las fuentes son conectables (`src/data/types.ts`). Sin
 conexión o con un flujo caído, la app conserva las últimas estaciones
 cargadas (caché por zona) con un banner explícito y reintenta en cuanto
 vuelve la conexión. Cuando el geocodificador de un país no responde, Photon
@@ -162,14 +171,24 @@ la instantánea de depuración: Ajustes › Datos sin conexión › Superposici�
 depuración, y luego la pastilla flotante **DBG** → **Report**, que la copia y
 abre el formulario.
 
+La fuente alemana (Tankerkönig) requiere una **clave API personal** —
+gratuita, en [tankerkoenig.de](https://creativecommons.tankerkoenig.de). Las
+condiciones de uso prohíben publicar una clave (repo, bundle…), así que nunca
+pasa por el cliente. En desarrollo, exporta `TANKERKOENIG_API_KEY` antes de
+`npm run dev` (el proxy de Vite la inyecta en el servidor); en producción,
+guárdala como secreto del Worker: `wrangler secret put TANKERKOENIG_API_KEY`
+(el Worker hace de proxy de la API con una caché edge de ~5 min —
+`worker/index.ts`). Sin clave, la fuente alemana simplemente se declara no
+disponible.
+
 ## 📄 Licencia
 
 Código bajo licencia [MIT](LICENSE) © Zadkiel Aharonian.
 Los datos mostrados siguen sujetos a las licencias de sus respectivos
 productores (Licence Ouverte para los datos públicos franceses, datos
 abiertos del MITECO para los precios españoles, © Govern d'Andorra para
-Andorra, dados abertos de la DGEG para los precios portugueses, ODbL para
-OpenStreetMap).
+Andorra, dados abertos de la DGEG para los precios portugueses, CC BY 4.0
+para los precios alemanes — Tankerkönig / MTS-K, ODbL para OpenStreetMap).
 Las tipografías **Archivo** y **Spline Sans Mono**, incluidas en
 `public/fonts/`, están bajo la [SIL Open Font License 1.1](public/fonts/)
 (ver los archivos `*-OFL.txt` de la misma carpeta).

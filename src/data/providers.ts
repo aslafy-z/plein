@@ -7,7 +7,8 @@ import { RealRouteProvider } from './fr/OsrmRouteProvider';
 import { EsStationsProvider } from './es/EsStationsProvider';
 import { AdStationsProvider } from './ad/AdStationsProvider';
 import { PtStationsProvider } from './pt/PtStationsProvider';
-import { PhotonGeocodeProvider } from './pt/PhotonGeocodeProvider';
+import { PHOTON_GERMANY, PhotonGeocodeProvider } from './pt/PhotonGeocodeProvider';
+import { DeStationsProvider } from './de/DeStationsProvider';
 import {
   AutoGeocodeProvider,
   AutoStationsProvider,
@@ -59,6 +60,14 @@ function createBundle(id: DataSourceId): ProviderBundle {
       stations: new PtStationsProvider(),
       geocode: new PhotonGeocodeProvider(),
       // OSRM / Valhalla public servers cover Portugal too
+      route: new RealRouteProvider(),
+    };
+  }
+  if (id === 'de') {
+    return {
+      stations: new DeStationsProvider(),
+      geocode: new PhotonGeocodeProvider(PHOTON_GERMANY),
+      // OSRM / Valhalla public servers cover Germany too
       route: new RealRouteProvider(),
     };
   }
