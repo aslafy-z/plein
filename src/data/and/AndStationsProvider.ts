@@ -201,6 +201,9 @@ function groupStations(features: unknown[]): Station[] {
     if (!Object.keys(acc.prices).length) continue;
     const banner = BANNERS.find(([re]) => re.test(acc.nom));
     const name = tidyName(acc.nom);
+    // AdBlue / Gasoil millorat ≈ the French « additifs » services (same rule
+    // as the Spanish source)
+    const additifs = acc.services.has(8) || acc.services.has(9);
     stations.push({
       id: `and-${id}`,
       name,
@@ -213,7 +216,7 @@ function groupStations(features: unknown[]): Station[] {
       city: acc.parroquia,
       cp: acc.cp,
       prices: acc.prices,
-      tags: [],
+      tags: additifs ? ['Additifs'] : [],
       services: EXTRA_PRODUCTS.filter(([p]) => acc.services.has(p)).map(([, label]) => label),
       highway: false, // Andorra has no motorways
       hours: undefined, // the flux carries no opening hours
