@@ -8,18 +8,13 @@
 import type { GeoPoint } from '../../lib/geo';
 import { haversineKm, nearestOnPolyline } from '../../lib/geo';
 import type {
-  GeocodeProvider,
-  GeocodeResult,
   SourceCapabilities,
   Station,
   StationsFetchOptions,
   StationsProvider,
 } from '../types';
 import { FraStationsProvider } from '../fra/FraStationsProvider';
-import { BanGeocodeProvider } from '../fra/BanGeocodeProvider';
 import { EspStationsProvider, espCoversAlong, espCoversNear } from '../esp/EspStationsProvider';
-import { CartoCiudadGeocodeProvider } from '../esp/CartoCiudadGeocodeProvider';
-import { PhotonGeocodeProvider } from '../eu/PhotonGeocodeProvider';
 
 // ── French flux coverage ─────────────────────────────────────────────────────
 // The gouv flux serves métropole + DOM; the ODS API filters geographically
@@ -78,41 +73,5 @@ export class AutoStationsProvider implements StationsProvider {
     if (fraCoversAlong(polyline, corridorKm)) tasks.push(this.fra.getStationsAlong(polyline, corridorKm));
     if (espCoversAlong(polyline, corridorKm)) tasks.push(this.esp.getStationsAlong(polyline, corridorKm));
     return mergeSettled(tasks);
-  }
-}
-
-// ── Geocoding ────────────────────────────────────────────────────────────────
-const MAX_RESULTS = 6;
-
-export class AutoGeocodeProvider implements GeocodeProvider {
-  private readonly ban = new BanGeocodeProvider();
-  private readonly cartociudad = new CartoCiudadGeocodeProvider();
-  private readonly photon = new PhotonGeocodeProvider();
-
-  async search(query: string): Promise<GeocodeResult[]> {
-    const settled = await Promise.allSettled([
-      this.ban.search(query),
-      this.cartociudad.search(query),
-      this.photon.search(query),
-    ]);
-    if (settled.every((s) => s.status === 'rejected')) {
-      throw (settled[0] as PromiseRejectedResult).reason;
-    }
-    const lists = settled.map((s) => (s.status === 'fulfilled' ? s.value : []));
-    // Interleave — official sources first (better address precision at home),
-    // Photon last (rest of Europe) — so every country stays visible in the top 6
-    const longest = Math.max(...lists.map((l) => l.length));
-    const out: GeocodeResult[] = [];
-    const seen = new Set<string>();
-    for (let i = 0; i < longest; i++) {
-      for (const list of lists) {
-        const r = list[i];
-        if (r && !seen.has(r.label)) {
-          seen.add(r.label);
-          out.push(r);
-        }
-      }
-    }
-    return out.slice(0, MAX_RESULTS);
   }
 }

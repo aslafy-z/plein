@@ -46,7 +46,7 @@ export { RealRouteProvider } from './src/data/fra/OsrmRouteProvider';
 export { EspStationsProvider } from './src/data/esp/EspStationsProvider';
 export { CartoCiudadGeocodeProvider } from './src/data/esp/CartoCiudadGeocodeProvider';
 export { PhotonGeocodeProvider } from './src/data/eu/PhotonGeocodeProvider';
-export { AutoStationsProvider, AutoGeocodeProvider } from './src/data/auto/AutoProviders';
+export { AutoStationsProvider } from './src/data/auto/AutoProviders';
 export { nearestOnPolyline, polylineLengthKm } from './src/lib/geo';
 export { openStatus } from './src/lib/hours';
 export { brandGroup, INDEPENDENT_GROUP } from './src/lib/brandIcons';
@@ -200,13 +200,15 @@ ok('auto: border zone mixes both countries', borderEsp.length > 0 && borderEsp.l
 const autoToulouse = await auto.getStationsNear(TOULOUSE, 5);
 ok('auto: Toulouse stays French-only', autoToulouse.length >= 10 && autoToulouse.every((s) => !s.id.startsWith('esp-')),
   `${autoToulouse.length} stations`);
-const autoGeo = new P.AutoGeocodeProvider();
-const autoPlaces = await autoGeo.search('Girona');
-ok('auto: geocoder finds Spanish places', autoPlaces.some((p) => Math.abs(p.point.lat - 41.98) < 1 && Math.abs(p.point.lng - 2.82) < 1),
+// auto's geocoder IS Photon — prove it covers France and Spain too
+const autoPlaces = await photon.search('Girona');
+ok('auto (Photon): finds Spanish places', autoPlaces.some((p) => Math.abs(p.point.lat - 41.98) < 1 && Math.abs(p.point.lng - 2.82) < 1),
   autoPlaces.slice(0, 2).map((p) => p.label).join(' / '));
-const autoBerlin = await autoGeo.search('Berlin');
-ok('auto: geocoder finds German places (Photon)',
-  autoBerlin.some((p) => Math.abs(p.point.lat - 52.52) < 1 && Math.abs(p.point.lng - 13.4) < 1),
+const autoFr = await photon.search('Bordeaux');
+ok('auto (Photon): finds French places', autoFr.some((p) => Math.abs(p.point.lat - 44.84) < 1 && Math.abs(p.point.lng + 0.58) < 1),
+  autoFr.slice(0, 2).map((p) => p.label).join(' / '));
+const autoBerlin = await photon.search('Berlin');
+ok('auto (Photon): finds German places', autoBerlin.some((p) => Math.abs(p.point.lat - 52.52) < 1 && Math.abs(p.point.lng - 13.4) < 1),
   autoBerlin.slice(0, 2).map((p) => p.label).join(' / '));
 
 const failed = results.filter((r) => !r.pass);

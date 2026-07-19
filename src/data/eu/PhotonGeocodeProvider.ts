@@ -1,7 +1,7 @@
 // Photon geocoder — https://photon.komoot.io, OSM-based, worldwide coverage.
 // The one free keyless geocoder whose policy allows search-as-you-type, which
-// is exactly what PlaceSearch does. Complements the official FR/ES sources in
-// « Automatique » so search also works in Germany, Andorra, Italy…
+// is exactly what PlaceSearch does. Sole geocoder of « Automatique »: one
+// ranking for all of Europe (Germany, Andorra, Italy… France and Spain too).
 // `lang=fr` localizes labels (« Andorre-la-Vieille, Andorre »).
 import { IS_DEV } from '../../lib/env';
 import type { GeocodeProvider, GeocodeResult } from '../types';
@@ -9,7 +9,7 @@ import type { GeocodeProvider, GeocodeResult } from '../types';
 const ENDPOINT = (IS_DEV ? '/proxy/photon' : 'https://photon.komoot.io') + '/api/';
 const TIMEOUT_MS = 6000;
 const MIN_QUERY = 3;
-const MAX_RESULTS = 5;
+const MAX_RESULTS = 6;
 
 interface PhotonFeature {
   properties?: {
