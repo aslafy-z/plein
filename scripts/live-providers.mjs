@@ -1,4 +1,4 @@
-// Live verification of the REAL data providers (fra flux, BAN, OSRM, esp flux, CartoCiudad) from
+// Live verification of the REAL data providers (fra flux, BAN, OSRM, esp flux, CartoCiudad, and flux) from
 // Node — proves the fetch + parsing path against the actual endpoints without
 // needing a browser (sandboxed browsers often can't reach the open internet).
 //
@@ -45,6 +45,8 @@ export { BanGeocodeProvider } from './src/data/fra/BanGeocodeProvider';
 export { RealRouteProvider } from './src/data/fra/OsrmRouteProvider';
 export { EspStationsProvider } from './src/data/esp/EspStationsProvider';
 export { CartoCiudadGeocodeProvider } from './src/data/esp/CartoCiudadGeocodeProvider';
+export { AndStationsProvider } from './src/data/and/AndStationsProvider';
+export { AndGeocodeProvider } from './src/data/and/AndGeocodeProvider';
 export { AutoStationsProvider, AutoGeocodeProvider } from './src/data/auto/AutoProviders';
 export { nearestOnPolyline, polylineLengthKm } from './src/lib/geo';
 export { openStatus } from './src/lib/hours';
@@ -192,6 +194,39 @@ const autoGeo = new P.AutoGeocodeProvider();
 const autoPlaces = await autoGeo.search('Girona');
 ok('auto: geocoder finds Spanish places', autoPlaces.some((p) => Math.abs(p.point.lat - 41.98) < 1 && Math.abs(p.point.lng - 2.82) < 1),
   autoPlaces.slice(0, 2).map((p) => p.label).join(' / '));
+
+// 9 — Andorran source (Govern d'Andorra flux, whole-country fetch)
+const ANDORRA_LA_VELLA = { lat: 42.5063, lng: 1.5218 };
+const and = new P.AndStationsProvider();
+const andNear = await and.getStationsNear(ANDORRA_LA_VELLA, 10);
+ok('and: stations within 10 km of Andorra la Vella', andNear.length >= 10, `${andNear.length} stations`);
+const inAndorra = (s) => s.lat > 42.4 && s.lat < 42.7 && s.lng > 1.4 && s.lng < 1.8;
+ok('and: coordinates all in Andorra', andNear.every(inAndorra));
+ok('and: every station carries prices',
+  andNear.every((s) => s.prices.gazole || s.prices.sp95 || s.prices.sp98));
+const andCheapest = [...andNear]
+  .filter((s) => s.prices.gazole)
+  .sort((a, b) => a.prices.gazole.value - b.prices.gazole.value)[0];
+ok('and: plausible gazole price', andCheapest && andCheapest.prices.gazole.value > 0.8 && andCheapest.prices.gazole.value < 3,
+  andCheapest ? `${andCheapest.prices.gazole.value} €/L (${andCheapest.name})` : 'none');
+const andBranded = andNear.filter((s) => s.brand);
+ok('and: banners from the station names', andBranded.length >= andNear.length * 0.7,
+  `${andBranded.length}/${andNear.length} · ex: ${andBranded.slice(0, 3).map((s) => s.name).join(' / ')}`);
+const andGrouped = andNear.filter((s) => P.brandGroup(s.brand) !== P.INDEPENDENT_GROUP);
+ok('and: brands resolve to filter groups', andGrouped.length >= andNear.length * 0.6,
+  `${andGrouped.length}/${andNear.length} grouped`);
+const andGeo = new P.AndGeocodeProvider();
+const andPlaces = await andGeo.search('Pas de la Casa');
+ok('and: local geocoder finds "Pas de la Casa"',
+  andPlaces.some((p) => Math.abs(p.point.lat - 42.54) < 0.1 && Math.abs(p.point.lng - 1.73) < 0.1),
+  andPlaces[0]?.label);
+const autoAndorra = await auto.getStationsNear(ANDORRA_LA_VELLA, 10);
+ok('auto: Andorra zone yields Andorran stations', autoAndorra.some((s) => s.id.startsWith('and-')),
+  `${autoAndorra.filter((s) => s.id.startsWith('and-')).length} and of ${autoAndorra.length}`);
+const autoAndPlaces = await autoGeo.search('Soldeu');
+ok('auto: geocoder finds Andorran places',
+  autoAndPlaces.some((p) => Math.abs(p.point.lat - 42.577) < 0.1 && Math.abs(p.point.lng - 1.667) < 0.1),
+  autoAndPlaces.slice(0, 2).map((p) => p.label).join(' / '));
 
 const failed = results.filter((r) => !r.pass);
 console.log(`\n${results.length - failed.length}/${results.length} live checks passed`);

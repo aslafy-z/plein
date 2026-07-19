@@ -39,6 +39,27 @@ test.describe('Auto source', () => {
   })
 })
 
+test.describe('Andorran source', () => {
+  // Same contract for the Andorran flux, centered on Andorra la Vella.
+  test.use({
+    seed: {
+      sourceId: 'and',
+      onboarded: true,
+      lastPos: { lat: 42.5063, lng: 1.5218 },
+    },
+  })
+
+  test('and source yields a usable map (live data, or demo fallback with banner)', async ({ page }) => {
+    test.setTimeout(120_000)
+    await page.goto('/')
+
+    const usable = page
+      .getByText('La moins chère près de vous')
+      .or(page.getByText('Aucune station ne correspond'))
+    await expect(usable.first()).toBeVisible({ timeout: 90_000 })
+  })
+})
+
 test.describe('Spanish source', () => {
   // Same contract for the Spanish flux, centered on Madrid so the searched
   // zone actually intersects Spanish provinces.
