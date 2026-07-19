@@ -5,7 +5,8 @@ import { BanGeocodeProvider } from './fra/BanGeocodeProvider';
 import { RealRouteProvider } from './fra/OsrmRouteProvider';
 import { EspStationsProvider } from './esp/EspStationsProvider';
 import { CartoCiudadGeocodeProvider } from './esp/CartoCiudadGeocodeProvider';
-import { AutoGeocodeProvider, AutoStationsProvider } from './auto/AutoProviders';
+import { AutoStationsProvider } from './auto/AutoProviders';
+import { PhotonGeocodeProvider } from './eu/PhotonGeocodeProvider';
 import {
   DemoGeocodeProvider,
   DemoRouteProvider,
@@ -18,7 +19,8 @@ function createBundle(id: DataSourceId): ProviderBundle {
   if (id === 'auto') {
     return {
       stations: new AutoStationsProvider(),
-      geocode: new AutoGeocodeProvider(),
+      // Photon alone: pan-European coverage with one ranking, no interleave
+      geocode: new PhotonGeocodeProvider(),
       route: new RealRouteProvider(),
     };
   }

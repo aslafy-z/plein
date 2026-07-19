@@ -8,17 +8,13 @@
 import type { GeoPoint } from '../../lib/geo';
 import { haversineKm, nearestOnPolyline } from '../../lib/geo';
 import type {
-  GeocodeProvider,
-  GeocodeResult,
   SourceCapabilities,
   Station,
   StationsFetchOptions,
   StationsProvider,
 } from '../types';
 import { FraStationsProvider } from '../fra/FraStationsProvider';
-import { BanGeocodeProvider } from '../fra/BanGeocodeProvider';
 import { EspStationsProvider, espCoversAlong, espCoversNear } from '../esp/EspStationsProvider';
-import { CartoCiudadGeocodeProvider } from '../esp/CartoCiudadGeocodeProvider';
 
 // ── French flux coverage ─────────────────────────────────────────────────────
 // The gouv flux serves métropole + DOM; the ODS API filters geographically
@@ -77,35 +73,5 @@ export class AutoStationsProvider implements StationsProvider {
     if (fraCoversAlong(polyline, corridorKm)) tasks.push(this.fra.getStationsAlong(polyline, corridorKm));
     if (espCoversAlong(polyline, corridorKm)) tasks.push(this.esp.getStationsAlong(polyline, corridorKm));
     return mergeSettled(tasks);
-  }
-}
-
-// ── Geocoding ────────────────────────────────────────────────────────────────
-const MAX_RESULTS = 6;
-
-export class AutoGeocodeProvider implements GeocodeProvider {
-  private readonly ban = new BanGeocodeProvider();
-  private readonly cartociudad = new CartoCiudadGeocodeProvider();
-
-  async search(query: string): Promise<GeocodeResult[]> {
-    const [fr, es] = await Promise.allSettled([
-      this.ban.search(query),
-      this.cartociudad.search(query),
-    ]);
-    if (fr.status === 'rejected' && es.status === 'rejected') throw fr.reason;
-    const a = fr.status === 'fulfilled' ? fr.value : [];
-    const b = es.status === 'fulfilled' ? es.value : [];
-    // Interleave (France first) so both countries stay visible in the top 6
-    const out: GeocodeResult[] = [];
-    const seen = new Set<string>();
-    for (let i = 0; i < Math.max(a.length, b.length); i++) {
-      for (const r of [a[i], b[i]]) {
-        if (r && !seen.has(r.label)) {
-          seen.add(r.label);
-          out.push(r);
-        }
-      }
-    }
-    return out.slice(0, MAX_RESULTS);
   }
 }
