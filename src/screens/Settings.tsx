@@ -294,6 +294,23 @@ export default function Settings() {
             </div>
           )}
 
+          <div
+            style={{
+              padding: '12px 16px',
+              borderBottom: '1px solid rgba(255,255,255,.06)',
+              fontSize: 12,
+              lineHeight: 1.55,
+              color: C.mut,
+            }}
+          >
+            <span style={{ fontWeight: 700, color: C.body }}>Un mot sur les prix</span> — ils
+            proviennent des déclarations officielles des stations et sont donnés à titre
+            indicatif, sans garantie : nous ne pouvons pas les vérifier un par un, et il peut
+            arriver qu'un prix ait changé le temps d'arriver à la pompe. Jetez-y un œil sur
+            place avant de faire le plein — le détour reste à votre appréciation. Et si un prix
+            vous semble faux, dites-le-nous juste en dessous 💚
+          </div>
+
           <button
             onClick={() => app.notify('Merci ! Le signalement arrive bientôt.')}
             style={{
@@ -375,7 +392,7 @@ export default function Settings() {
         </div>
         <div>
           Prix : <a href="https://prix-carburants.gouv.fr" target="_blank" rel="noreferrer" style={{ color: C.ghost, textDecoration: 'underline' }}>prix-carburants.gouv.fr</a>
-          {' '}· adresses : BAN · itinéraires : OSRM / Valhalla
+          {' '}· à titre indicatif · adresses : BAN · itinéraires : OSRM / Valhalla
         </div>
         <div>
           cartes : © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" style={{ color: C.ghost, textDecoration: 'underline' }}>OpenStreetMap</a> · © CARTO
