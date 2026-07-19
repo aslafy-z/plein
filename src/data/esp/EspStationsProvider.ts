@@ -259,6 +259,27 @@ interface EspResponse {
   ResultadoConsulta?: string;
 }
 
+function provincesNear(center: GeoPoint, radiusKm: number): string[] {
+  return PROVINCES.filter(
+    ([, lat, lng, r]) => haversineKm(center, { lat, lng }) <= r + radiusKm,
+  ).map(([id]) => id);
+}
+
+function provincesAlong(polyline: GeoPoint[], corridorKm: number): string[] {
+  return PROVINCES.filter(
+    ([, lat, lng, r]) => nearestOnPolyline({ lat, lng }, polyline).distKm <= r + corridorKm,
+  ).map(([id]) => id);
+}
+
+/** Can the zone hold Spanish stations at all? (drives the « auto » source) */
+export function espCoversNear(center: GeoPoint, radiusKm: number): boolean {
+  return provincesNear(center, radiusKm).length > 0;
+}
+
+export function espCoversAlong(polyline: GeoPoint[], corridorKm: number): boolean {
+  return provincesAlong(polyline, corridorKm).length > 0;
+}
+
 const provinceCache = new Map<string, { fetchedAt: number; stations: Station[] }>();
 
 async function fetchProvince(id: string, lowPriority = false): Promise<Station[]> {
@@ -300,9 +321,7 @@ export class EspStationsProvider implements StationsProvider {
     radiusKm: number,
     opts?: StationsFetchOptions,
   ): Promise<Station[]> {
-    const ids = PROVINCES.filter(
-      ([, lat, lng, r]) => haversineKm(center, { lat, lng }) <= r + radiusKm,
-    ).map(([id]) => id);
+    const ids = provincesNear(center, radiusKm);
     const batches = await Promise.all(ids.map((id) => fetchProvince(id, opts?.lowPriority)));
     return batches
       .flat()
@@ -316,9 +335,7 @@ export class EspStationsProvider implements StationsProvider {
   }
 
   async getStationsAlong(polyline: GeoPoint[], corridorKm: number): Promise<Station[]> {
-    const ids = PROVINCES.filter(
-      ([, lat, lng, r]) => nearestOnPolyline({ lat, lng }, polyline).distKm <= r + corridorKm,
-    ).map(([id]) => id);
+    const ids = provincesAlong(polyline, corridorKm);
     const batches = await Promise.all(ids.map((id) => fetchProvince(id)));
     return batches
       .flat()

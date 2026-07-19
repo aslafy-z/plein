@@ -5,7 +5,7 @@ import { test, expect, gotoMap } from './fixtures'
 // dots (still tappable) and a passive chip says how many. Selecting a dot
 // promotes it to a full price pin.
 
-test.use({ seed: { sourceId: 'gouv', onboarded: true } })
+test.use({ seed: { sourceId: 'fra', onboarded: true } })
 
 const FAR = 4 // the FAR cheapest stations sit OUTSIDE the 5 km circle
 const NEAR = 18 // stations inside the circle, all pricier than the far ones
@@ -13,10 +13,10 @@ const TOTAL = FAR + NEAR
 const CAP = 15
 
 test.beforeEach(async ({ page }) => {
-  // Deterministic gouv flux: prices strictly increase with the index, and the
+  // Deterministic fra flux: prices strictly increase with the index, and the
   // cheapest FAR stations are placed ~7 km out — beyond the default 5 km
   // radius but inside the fetched area — so the circle-priority is observable.
-  await page.route('**/proxy/gouv/**', async (route) => {
+  await page.route('**/proxy/fra/**', async (route) => {
     const where = new URL(route.request().url()).searchParams.get('where') ?? ''
     const m = /POINT\(([-\d.]+) ([-\d.]+)\)/.exec(where)
     const lng = m ? parseFloat(m[1]) : 1.44
@@ -37,7 +37,7 @@ test.beforeEach(async ({ page }) => {
     await route.fulfill({ json: { total_count: TOTAL, results } })
   })
   // Brand enrichment is irrelevant here — keep it deterministic and instant
-  await page.route('**/brands-fr.json', (route) =>
+  await page.route('**/brands-fra.json', (route) =>
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
   await gotoMap(page)

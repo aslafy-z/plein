@@ -118,12 +118,15 @@ export default function StationDetail() {
   const activeSource = isRoute
     ? (app.routeState.fellBack ? 'demo' : app.sourceId)
     : app.stations.activeSource;
+  // The auto source mixes both countries — attribute per station (esp ids are prefixed)
+  const stationSource =
+    activeSource === 'auto' ? (s.id.startsWith('esp-') ? 'esp' : 'fra') : activeSource;
   const footerText =
     s.confirmations != null
       ? `Mis à jour ${agoLabel(mostRecent)} · confirmé par ${s.confirmations} conducteurs`
-      : activeSource === 'fra'
+      : stationSource === 'fra'
         ? `Mis à jour ${agoLabel(mostRecent)} · source : prix-carburants.gouv.fr`
-        : activeSource === 'esp'
+        : stationSource === 'esp'
           ? `Mis à jour ${agoLabel(mostRecent)} · source : geoportalgasolineras.es`
           : `Mis à jour ${agoLabel(mostRecent)} · données de démonstration`;
 
