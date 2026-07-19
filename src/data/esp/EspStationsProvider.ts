@@ -230,6 +230,8 @@ function parseRecord(rec: Raw, updatedAt: string | undefined): Station | null {
   const services = EXTRA_PRODUCTS.filter(([col]) => toNum(rec[col]) != null).map(
     ([, label]) => label,
   );
+  // AdBlue / Gasóleo Premium ≈ the French « additifs » services
+  if (services.some((s) => /adblue|premium/i.test(s))) tags.push('Additifs');
   const id = toStr(rec['IDEESS']);
 
   return {
