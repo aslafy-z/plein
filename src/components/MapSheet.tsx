@@ -710,7 +710,13 @@ export default function MapSheet({
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {best ? 'meilleur prix' : deal ? `bon plan · +${fmtPrice(delta)}` : `+${fmtPrice(delta)}`}
+                      {/* Sub-cent deltas read « +0,00 » — at the displayed
+                          precision these prices are simply equal, say nothing */}
+                      {best
+                        ? 'meilleur prix'
+                        : deal
+                          ? `bon plan${Math.abs(delta) >= 0.005 ? ` · +${fmtPrice(delta)}` : ''}`
+                          : `+${fmtPrice(delta)}`}
                     </div>
                   </div>
                 </button>
