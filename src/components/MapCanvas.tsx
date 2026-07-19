@@ -252,9 +252,11 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
 
     const pins = selectMapStations(app);
     const cheapest = selectCheapest(app);
-    // Pin & dot colors follow the zone's price tiers: « bons plans » in
-    // green (SEVERAL stations at near-identical low prices all stand out,
-    // not just the single cheapest), the priciest tier tinted orange.
+    // Pin & dot colors follow the price tiers of the whole loaded area —
+    // the very stations drawn here — so the scale can't flip with the
+    // circle: « bons plans » in green (SEVERAL stations at near-identical
+    // low prices all stand out, not just the single cheapest), the
+    // priciest tier tinted orange.
     const stats = selectPriceStats(app);
     const markers = markersRef.current;
     const wanted = new Set<string>();

@@ -1240,7 +1240,13 @@ export interface PriceStats {
 }
 
 /**
- * Price distribution of the zone (radius + filters) for the selected fuel.
+ * Price distribution tiering the pins, dots and list rows for the selected
+ * fuel. Computed over ALL the stations drawn on the map (the whole loaded
+ * area) — the same population the tiers color — NOT just the radius circle:
+ * scoping the scale to the circle while coloring the whole map made a sparse
+ * circle degenerate the bounds (one lone station in the circle → everything
+ * on screen ≤ its price + 1 ct turned green), so a small pan flipped pins
+ * between red and green a few centimeters apart.
  * The tier bounds adapt to the spread: a station is a « bon plan » when its
  * price sits within 1 ct of the cheapest — widened to a quarter of the
  * cheapest→average gap when prices are spread out — so SEVERAL stations at
@@ -1249,7 +1255,7 @@ export interface PriceStats {
  */
 export function selectPriceStats(app: AppStore): PriceStats | null {
   const f = app.fuel;
-  const prices = selectVisible(app).map((s) => s.prices[f]!.value);
+  const prices = selectMapStations(app).map((s) => s.prices[f]!.value);
   if (!prices.length) return null;
   let min = Infinity;
   let max = -Infinity;
