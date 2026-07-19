@@ -59,9 +59,14 @@ test('pull-up sheet lists the zone stations, a row selects on the map', async ({
   const handle = page.getByRole('button', { name: /liste des stations/ })
   const before = (await handle.boundingBox())?.y ?? 0
   await handle.click()
+  // The sheet must expand upwards AND settle: a row tapped while the open
+  // animation still runs can land on whatever slid under the tap point.
+  let last = Number.NaN
   await expect(async () => {
     const after = (await handle.boundingBox())?.y ?? 0
-    expect(after, 'the sheet must expand upwards').toBeLessThan(before - 100)
+    const settled = after === last && after < before - 100
+    last = after
+    expect(settled, 'the sheet must expand upwards and settle').toBe(true)
   }).toPass()
 
   await page.locator('button[aria-label^="Voir "][aria-label$="sur la carte"]').nth(1).click()
@@ -127,7 +132,12 @@ test('swiping down a scrolled list scrolls it instead of closing the sheet', asy
 test('tapping the dimmed map closes the list', async ({ page }) => {
   const handle = page.getByRole('button', { name: /liste des stations/ })
   await handle.click()
-  await page.getByRole('button', { name: 'Fermer la liste' }).click()
+  // The scrim spans the whole stage but the expanded sheet (above it) covers
+  // its center — Playwright's default click point. Tap near the top, on the
+  // strip of dimmed map the sheet never reaches (≥ 64px stays free).
+  await page
+    .getByRole('button', { name: 'Fermer la liste' })
+    .click({ position: { x: 40, y: 30 } })
   await expect(handle).toHaveAttribute('aria-expanded', 'false')
 })
 

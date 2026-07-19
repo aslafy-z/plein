@@ -7,7 +7,7 @@ import { test, expect, gotoMap } from './fixtures'
 // The collapsed sheet still preselects a single station; expanding the list
 // shows every bon plan highlighted with its own label.
 
-test.use({ seed: { sourceId: 'gouv', onboarded: true } })
+test.use({ seed: { sourceId: 'fra', onboarded: true } })
 
 // mean ≈ 1.732 → dealMax ≈ 1.633 (3 deals) ; highMin ≈ 1.820 (2 high)
 const PRICES = [1.6, 1.61, 1.62, 1.75, 1.76, 1.77, 1.78, 1.85, 1.85]
@@ -15,9 +15,9 @@ const DEALS = 3
 const HIGHS = 2
 
 test.beforeEach(async ({ page }) => {
-  // Deterministic gouv flux around the searched point: a cluster of three
+  // Deterministic fra flux around the searched point: a cluster of three
   // near-identical low prices, a mid pack, and two stations hugging the max.
-  await page.route('**/proxy/gouv/**', async (route) => {
+  await page.route('**/proxy/fra/**', async (route) => {
     const where = new URL(route.request().url()).searchParams.get('where') ?? ''
     const m = /POINT\(([-\d.]+) ([-\d.]+)\)/.exec(where)
     const lng = m ? parseFloat(m[1]) : 1.44
@@ -35,7 +35,7 @@ test.beforeEach(async ({ page }) => {
     await route.fulfill({ json: { total_count: results.length, results } })
   })
   // Brand enrichment is irrelevant here — keep it deterministic and instant
-  await page.route('**/brands-fr.json', (route) =>
+  await page.route('**/brands-fra.json', (route) =>
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
   await gotoMap(page)
