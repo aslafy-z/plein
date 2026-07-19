@@ -17,6 +17,28 @@ test('gouv source yields a usable map (live data, or demo fallback with banner)'
   await expect(usable.first()).toBeVisible({ timeout: 90_000 })
 })
 
+test.describe('Auto source', () => {
+  // Seeded at the Le Perthus border crossing: the auto source may draw both
+  // French and Spanish stations there (live, or demo fallback offline).
+  test.use({
+    seed: {
+      sourceId: 'auto',
+      onboarded: true,
+      lastPos: { lat: 42.463, lng: 2.865 },
+    },
+  })
+
+  test('auto source yields a usable map (live data, or demo fallback with banner)', async ({ page }) => {
+    test.setTimeout(120_000)
+    await page.goto('/')
+
+    const usable = page
+      .getByText('La moins chère près de vous')
+      .or(page.getByText('Aucune station ne correspond'))
+    await expect(usable.first()).toBeVisible({ timeout: 90_000 })
+  })
+})
+
 test.describe('Spanish source', () => {
   // Same contract for the Spanish flux, centered on Madrid so the searched
   // zone actually intersects Spanish provinces.

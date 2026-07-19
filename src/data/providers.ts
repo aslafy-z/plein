@@ -5,6 +5,7 @@ import { BanGeocodeProvider } from './fra/BanGeocodeProvider';
 import { RealRouteProvider } from './fra/OsrmRouteProvider';
 import { EspStationsProvider } from './esp/EspStationsProvider';
 import { CartoCiudadGeocodeProvider } from './esp/CartoCiudadGeocodeProvider';
+import { AutoGeocodeProvider, AutoStationsProvider } from './auto/AutoProviders';
 import {
   DemoGeocodeProvider,
   DemoRouteProvider,
@@ -14,6 +15,13 @@ import {
 const cache = new Map<DataSourceId, ProviderBundle>();
 
 function createBundle(id: DataSourceId): ProviderBundle {
+  if (id === 'auto') {
+    return {
+      stations: new AutoStationsProvider(),
+      geocode: new AutoGeocodeProvider(),
+      route: new RealRouteProvider(),
+    };
+  }
   if (id === 'fra') {
     return {
       stations: new FraStationsProvider(),

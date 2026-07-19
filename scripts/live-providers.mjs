@@ -45,6 +45,7 @@ export { BanGeocodeProvider } from './src/data/fra/BanGeocodeProvider';
 export { RealRouteProvider } from './src/data/fra/OsrmRouteProvider';
 export { EspStationsProvider } from './src/data/esp/EspStationsProvider';
 export { CartoCiudadGeocodeProvider } from './src/data/esp/CartoCiudadGeocodeProvider';
+export { AutoStationsProvider, AutoGeocodeProvider } from './src/data/auto/AutoProviders';
 export { nearestOnPolyline, polylineLengthKm } from './src/lib/geo';
 export { openStatus } from './src/lib/hours';
 export { brandGroup, INDEPENDENT_GROUP } from './src/lib/brandIcons';
@@ -176,6 +177,21 @@ const espAlong = await esp.getStationsAlong(espRoute.polyline, 5);
 ok('esp: stations along the corridor', espAlong.length >= 5, `${espAlong.length} stations`);
 ok('esp: every corridor station is within 5 km of the route',
   espAlong.every((s) => P.nearestOnPolyline({ lat: s.lat, lng: s.lng }, espRoute.polyline).distKm <= 5));
+
+// 8 — auto source: both countries at the border, no useless queries inland
+const LE_PERTHUS = { lat: 42.463, lng: 2.865 }; // French-Spanish border crossing
+const auto = new P.AutoStationsProvider();
+const border = await auto.getStationsNear(LE_PERTHUS, 20);
+const borderEsp = border.filter((s) => s.id.startsWith('esp-'));
+ok('auto: border zone mixes both countries', borderEsp.length > 0 && borderEsp.length < border.length,
+  `${border.length - borderEsp.length} fra + ${borderEsp.length} esp`);
+const autoToulouse = await auto.getStationsNear(TOULOUSE, 5);
+ok('auto: Toulouse stays French-only', autoToulouse.length >= 10 && autoToulouse.every((s) => !s.id.startsWith('esp-')),
+  `${autoToulouse.length} stations`);
+const autoGeo = new P.AutoGeocodeProvider();
+const autoPlaces = await autoGeo.search('Girona');
+ok('auto: geocoder finds Spanish places', autoPlaces.some((p) => Math.abs(p.point.lat - 41.98) < 1 && Math.abs(p.point.lng - 2.82) < 1),
+  autoPlaces.slice(0, 2).map((p) => p.label).join(' / '));
 
 const failed = results.filter((r) => !r.pass);
 console.log(`\n${results.length - failed.length}/${results.length} live checks passed`);

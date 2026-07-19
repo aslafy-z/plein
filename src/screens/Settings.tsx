@@ -14,6 +14,11 @@ const SECTION_LABEL: React.CSSProperties = {
 
 const SOURCES: { id: DataSourceId; title: string; sub: string }[] = [
   {
+    id: 'auto',
+    title: 'Automatique',
+    sub: 'France + Espagne combinées selon la zone affichée',
+  },
+  {
     id: 'fra',
     title: 'prix-carburants.gouv.fr',
     sub: 'temps réel · mis à jour toutes les 10 min',
