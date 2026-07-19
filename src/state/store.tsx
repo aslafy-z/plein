@@ -1125,6 +1125,71 @@ export function selectFocusStation(app: AppStore): NearbyStation | null {
   return selectMapStations(app).find((s) => s.id === app.focusStationId) ?? null;
 }
 
+// ── Price tiers: « bons plans » vs stations chères ───────────────────────────
+/** Prices within this margin of the extremes always share their tier (€/L) */
+const TIER_EPS = 0.01;
+/** Share of the min→mean (resp. mean→max) gap folded into the extreme tiers */
+const TIER_SPREAD = 0.25;
+
+export type PriceTier = 'deal' | 'mid' | 'high';
+
+export interface PriceStats {
+  min: number;
+  max: number;
+  mean: number;
+  /** Upper price bound of the « bon plan » tier */
+  dealMax: number;
+  /** Lower price bound of the expensive tier */
+  highMin: number;
+}
+
+/**
+ * Price distribution of the zone (radius + filters) for the selected fuel.
+ * The tier bounds adapt to the spread: a station is a « bon plan » when its
+ * price sits within 1 ct of the cheapest — widened to a quarter of the
+ * cheapest→average gap when prices are spread out — so SEVERAL stations at
+ * near-identical low prices are all highlighted, not just the first one.
+ * Symmetrically, prices hugging the maximum form the expensive tier.
+ */
+export function selectPriceStats(app: AppStore): PriceStats | null {
+  const f = app.fuel;
+  const prices = selectVisible(app).map((s) => s.prices[f]!.value);
+  if (!prices.length) return null;
+  let min = Infinity;
+  let max = -Infinity;
+  let sum = 0;
+  for (const p of prices) {
+    if (p < min) min = p;
+    if (p > max) max = p;
+    sum += p;
+  }
+  const mean = sum / prices.length;
+  return {
+    min,
+    max,
+    mean,
+    dealMax: min + Math.max(TIER_EPS, TIER_SPREAD * (mean - min)),
+    highMin: max - Math.max(TIER_EPS, TIER_SPREAD * (max - mean)),
+  };
+}
+
+/** Tier of a price against the zone distribution — colors pins, dots and rows */
+export function priceTier(price: number, stats: PriceStats | null): PriceTier {
+  if (!stats) return 'mid';
+  if (price <= stats.dealMax) return 'deal';
+  // A tight zone can make the two bounds overlap — being a bon plan wins
+  if (price >= stats.highMin && stats.highMin > stats.dealMax) return 'high';
+  return 'mid';
+}
+
+/** Zone stations in the « bon plan » tier, cheapest first */
+export function selectDeals(app: AppStore): NearbyStation[] {
+  const stats = selectPriceStats(app);
+  if (!stats) return [];
+  const f = app.fuel;
+  return selectByPrice(app).filter((s) => s.prices[f]!.value <= stats.dealMax);
+}
+
 export function selectPriceRange(app: AppStore): { min: number; max: number } | null {
   const byPrice = selectByPrice(app);
   if (!byPrice.length) return null;

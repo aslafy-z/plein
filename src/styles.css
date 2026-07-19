@@ -173,6 +173,16 @@ button {
   cursor: pointer;
   box-sizing: border-box;
 }
+/* Price tiers: « bons plans » glow green, the priciest tier warns in orange */
+.pin-dot--deal {
+  background: #3ddc84;
+  border-color: rgba(8, 18, 12, 0.55);
+  box-shadow: 0 0 6px rgba(61, 220, 132, 0.55);
+}
+.pin-dot--high {
+  background: #3a2b27;
+  border-color: rgba(224, 122, 95, 0.6);
+}
 
 /* Simple fade/slide for sheets and toast */
 @keyframes sheet-up {

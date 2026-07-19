@@ -27,10 +27,12 @@ autour de vous et le long de vos trajets, partout en France.
 ## ✨ Fonctionnalités
 
 - 🗺️ **Carte des prix en direct** — les stations autour de vous avec leur prix en
-  pin, la moins chère mise en avant ; déplacez la carte, les stations de la zone
-  se chargent automatiquement.
+  pin, colorés selon le prix : les « bons plans » (toutes les stations quasi au
+  meilleur prix, pas seulement la première) en vert, les plus chères teintées
+  orange ; déplacez la carte, les stations de la zone se chargent automatiquement.
 - 📋 **Liste de la zone** — tirez le volet du bas : toutes les stations visibles,
-  triables par prix ou distance, synchronisées avec la carte.
+  triables par prix ou distance, les bons plans surlignés, synchronisées avec la
+  carte.
 - 🛣️ **Comparateur de trajet** — départ « Ma position » ou n'importe quelle
   adresse, autocomplétion, carte du corridor et **arrêt conseillé** selon
   3 stratégies (meilleur compromis · prix le plus bas · détour minimal), avec

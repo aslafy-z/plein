@@ -8,6 +8,8 @@ import {
   selectVisible,
   selectMapStations,
   selectCheapest,
+  selectPriceStats,
+  priceTier,
   type AppStore,
 } from '../state/store';
 
@@ -213,6 +215,10 @@ export default function MapCanvas() {
 
     const pins = selectMapStations(app);
     const cheapest = selectCheapest(app);
+    // Pin & dot colors follow the zone's price tiers: « bons plans » in
+    // green (SEVERAL stations at near-identical low prices all stand out,
+    // not just the single cheapest), the priciest tier tinted orange.
+    const stats = selectPriceStats(app);
     const markers = markersRef.current;
     const wanted = new Set<string>();
 
@@ -225,13 +231,15 @@ export default function MapCanvas() {
       const focused = app.focusStationId === s.id;
       const dot = !priced.has(s.id) && !focused;
       const price = s.prices[app.fuel]!.value;
-      const sig = `${price}|${best}|${focused}|${dot}`;
+      const tier = priceTier(price, stats);
+      const deal = tier === 'deal';
+      const sig = `${price}|${tier}|${best}|${focused}|${dot}`;
       wanted.add(s.id);
       const existing = markers.get(s.id);
       if (existing && existing.sig === sig) continue;
 
-      const bg = best ? '#3ddc84' : '#22282c';
-      const fg = best ? '#08120c' : '#cfd6da';
+      const bg = deal ? '#3ddc84' : '#22282c';
+      const fg = deal ? '#08120c' : tier === 'high' ? '#e07a5f' : '#cfd6da';
       const big = best || focused;
       const font = big
         ? "700 15px 'Spline Sans Mono',monospace"
@@ -239,25 +247,32 @@ export default function MapCanvas() {
       const pad = big ? '7px 11px' : '5px 9px';
       // The selected pin gets an accent halo so it stands out from the list
       const border = focused
-        ? `2px solid ${best ? '#eafff3' : '#3ddc84'}`
-        : best
+        ? `2px solid ${deal ? '#eafff3' : '#3ddc84'}`
+        : deal
           ? '1px solid #3ddc84'
-          : '1px solid rgba(255,255,255,.08)';
+          : tier === 'high'
+            ? '1px solid rgba(224,122,95,.35)'
+            : '1px solid rgba(255,255,255,.08)';
       const shadow = focused
         ? 'drop-shadow(0 6px 16px rgba(61,220,132,.55))'
         : best
           ? 'drop-shadow(0 4px 12px rgba(61,220,132,.35))'
           : 'none';
       const label = price.toFixed(2).replace('.', ',');
+      const tierClass = deal ? '--deal' : tier === 'high' ? '--high' : '';
+      const dotClass = `pin-dot${tierClass && ` pin-dot${tierClass}`}`;
+      const bubbleClass = `pin-bubble${tierClass && ` pin-bubble${tierClass}`}`;
       const html = dot
-        ? `<div style="transform:translate(-50%,-50%)"><div class="pin-dot"></div></div>`
+        ? `<div style="transform:translate(-50%,-50%)"><div class="${dotClass}"></div></div>`
         : `<div style="transform:translate(-50%,-100%);display:flex;flex-direction:column;` +
           `align-items:center;cursor:pointer;filter:${shadow}">` +
-          `<div class="pin-bubble" style="background:${bg};color:${fg};font:${font};` +
+          `<div class="${bubbleClass}" style="background:${bg};color:${fg};font:${font};` +
           `padding:${pad};border:${border}">${label}</div>` +
           `<div class="pin-tip" style="border-top:7px solid ${bg}"></div></div>`;
       const icon = L.divIcon({ className: '', html, iconSize: [0, 0], iconAnchor: [0, 0] });
-      const z = focused ? 2000 : best ? 1000 : dot ? -400 : 0;
+      // Deals float above their tier-mates (green dots above gray dots, green
+      // bubbles above the rest) without ever crossing the dot/bubble divide
+      const z = focused ? 2000 : best ? 1000 : dot ? (deal ? -200 : -400) : deal ? 500 : 0;
 
       if (existing) {
         existing.marker.setIcon(icon);
