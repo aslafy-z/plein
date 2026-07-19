@@ -80,6 +80,26 @@ test.describe('Portuguese source', () => {
   })
 })
 
+test.describe('German source', () => {
+  // Same contract for the German flux (Tankerkönig / MTS-K), centered on
+  // Berlin. With TANKERKOENIG_API_KEY exported the dev proxy serves live
+  // data; without it the proxy answers 503 and the app must own up with its
+  // source-down state — both end on a usable map.
+  test.use({
+    seed: {
+      sourceId: 'de',
+      onboarded: true,
+      lastPos: { lat: 52.52, lng: 13.405 },
+    },
+  })
+
+  test('de source yields a usable map (live data, or the explicit source-down state)', async ({ page }) => {
+    test.setTimeout(120_000)
+    await page.goto('/')
+    await expectUsableMap(page)
+  })
+})
+
 test.describe('Spanish source', () => {
   // Same contract for the Spanish flux, centered on Madrid so the searched
   // zone actually intersects Spanish provinces.

@@ -40,7 +40,7 @@ const SECTION_LABEL: React.CSSProperties = {
 /** Credits links — dimmer than the body text, they sit in the footer */
 const CREDIT_LINK: React.CSSProperties = { color: C.ghost, textDecoration: 'underline' };
 
-const SOURCES: DataSourceId[] = ['auto', 'fr', 'es', 'ad', 'pt', 'demo'];
+const SOURCES: DataSourceId[] = ['auto', 'fr', 'es', 'ad', 'pt', 'de', 'demo'];
 
 const FEEDBACK_EMAIL = 'plein@zadkiel.fr';
 
@@ -1051,6 +1051,12 @@ export default function Settings() {
           <div>
             {m.settings_credits_prices_prt()}{' '}
             <a href="https://precoscombustiveis.dgeg.gov.pt" target="_blank" rel="noreferrer" style={CREDIT_LINK}>precoscombustiveis.dgeg.gov.pt</a>
+            {' '}
+            {m.settings_credits_addresses({ source: 'Photon · OpenStreetMap' })}
+          </div>
+          <div>
+            {m.settings_credits_prices_deu()}{' '}
+            <a href="https://creativecommons.tankerkoenig.de" target="_blank" rel="noreferrer" style={CREDIT_LINK}>tankerkoenig.de</a> (MTS-K)
             {' '}
             {m.settings_credits_addresses({ source: 'Photon · OpenStreetMap' })}
           </div>

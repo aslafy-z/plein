@@ -1,4 +1,4 @@
-// Live verification of the REAL data providers (fr flux, BAN, OSRM, es flux, CartoCiudad, ad flux) from
+// Live verification of the REAL data providers (fr flux, BAN, OSRM, es flux, CartoCiudad, ad flux, pt flux, de flux, Photon) from
 // Node — proves the fetch + parsing path against the actual endpoints without
 // needing a browser (sandboxed browsers often can't reach the open internet).
 //
@@ -49,6 +49,8 @@ export { AdStationsProvider } from './src/data/ad/AdStationsProvider';
 export { AdGeocodeProvider } from './src/data/ad/AdGeocodeProvider';
 export { PtStationsProvider } from './src/data/pt/PtStationsProvider';
 export { PhotonGeocodeProvider } from './src/data/pt/PhotonGeocodeProvider';
+export { DeStationsProvider } from './src/data/de/DeStationsProvider';
+export { DePhotonGeocodeProvider } from './src/data/de/DePhotonGeocodeProvider';
 export { AutoStationsProvider, AutoGeocodeProvider } from './src/data/auto/AutoProviders';
 export { nearestOnPolyline, polylineLengthKm } from './src/lib/geo';
 export { openStatus } from './src/lib/hours';
@@ -286,6 +288,59 @@ const autoPtPlaces = await autoGeo.search('Guimarães');
 ok('auto: geocoder finds Portuguese places',
   autoPtPlaces.some((p) => Math.abs(p.point.lat - 41.44) < 0.2 && Math.abs(p.point.lng + 8.29) < 0.2),
   autoPtPlaces.slice(0, 2).map((p) => p.label).join(' / '));
+
+// 13 — Photon geocoding, pinned to Germany (keyless, always checked)
+const dePhoton = new P.DePhotonGeocodeProvider();
+const dePlaces = await dePhoton.search('München');
+ok('Photon DE: geocodes "München"', dePlaces.length >= 1, dePlaces[0]?.label);
+ok('Photon DE: the city comes before its streets',
+  dePlaces[0]?.kind === 'locality' && Math.abs(dePlaces[0].point.lat - 48.14) < 0.5 &&
+  Math.abs(dePlaces[0].point.lng - 11.58) < 0.5,
+  dePlaces.slice(0, 3).map((p) => `${p.label} (${p.kind})`).join(' / '));
+ok('Photon DE: stays inside Germany', dePlaces.every((p) => p.country === 'de' &&
+  p.point.lat > 47 && p.point.lat < 55.2 && p.point.lng > 5.5 && p.point.lng < 15.5));
+
+// 14 — German source (Tankerkönig / MTS-K). A PERSONAL API key is required
+// (free, tankerkoenig.de) and keys must never be committed — these checks only
+// run when TANKERKOENIG_API_KEY is exported in the environment. The demo key
+// from the API docs also works here (real stations, placeholder prices).
+if (!process.env.TANKERKOENIG_API_KEY) {
+  console.log('⏭️  de: skipped — set TANKERKOENIG_API_KEY to check the German source');
+} else {
+  const BERLIN = { lat: 52.52, lng: 13.405 };
+  const de = new P.DeStationsProvider();
+  const deNear = await de.getStationsNear(BERLIN, 5);
+  ok('de: stations within 5 km of Berlin', deNear.length >= 10, `${deNear.length} stations`);
+  const inGermany = (s) => s.lat > 47 && s.lat < 55.2 && s.lng > 5.5 && s.lng < 15.5;
+  ok('de: coordinates all in Germany', deNear.every(inGermany));
+  const dePriced = deNear.filter((s) => s.prices.diesel || s.prices.unleaded95 || s.prices.e10);
+  ok('de: most stations carry prices', dePriced.length >= deNear.length * 0.5,
+    `${dePriced.length}/${deNear.length} priced`);
+  const deBranded = deNear.filter((s) => s.brand);
+  ok('de: brands from the flux', deBranded.length >= deNear.length * 0.5,
+    `${deBranded.length}/${deNear.length} · ex: ${deBranded.slice(0, 3).map((s) => s.name).join(' / ')}`);
+  const deGrouped = deNear.filter((s) => P.brandGroup(s.brand) !== P.INDEPENDENT_BRAND_ID);
+  ok('de: Berlin brands resolve to filter groups', deGrouped.length >= deNear.length * 0.4,
+    `${deGrouped.length}/${deNear.length} grouped`);
+
+  // stations along a German route
+  const POTSDAM = { lat: 52.3906, lng: 13.0645 };
+  const deRoute = await osrm.getRoute(BERLIN, POTSDAM);
+  ok('OSRM: Berlin → Potsdam distance', deRoute.distanceKm > 20 && deRoute.distanceKm < 60,
+    `${Math.round(deRoute.distanceKm)} km`);
+  const deAlong = await de.getStationsAlong(deRoute.polyline, 5);
+  ok('de: stations along the corridor', deAlong.length >= 5, `${deAlong.length} stations`);
+  ok('de: every corridor station is within 5 km of the route',
+    deAlong.every((s) => P.nearestOnPolyline({ lat: s.lat, lng: s.lng }, deRoute.polyline).distKm <= 5));
+
+  // auto source at the Franco-German border (Strasbourg / Kehl)
+  const STRASBOURG = { lat: 48.5734, lng: 7.7521 };
+  const borderDe = await auto.getStationsNear(STRASBOURG, 15);
+  const borderDeOnly = borderDe.filter((s) => s.id.startsWith('de-'));
+  ok('auto: Strasbourg zone mixes France and Germany',
+    borderDeOnly.length > 0 && borderDeOnly.length < borderDe.length,
+    `${borderDe.length - borderDeOnly.length} fr + ${borderDeOnly.length} de`);
+}
 
 const failed = results.filter((r) => !r.pass);
 console.log(`\n${results.length - failed.length}/${results.length} live checks passed`);

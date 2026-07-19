@@ -760,7 +760,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // persisted are already translated by persist.ts's migrate() before this.
   const [sourceId, setSourceIdState] = useState<DataSourceId>(() => {
     const saved = persisted.sourceId as string | undefined;
-    return saved === 'fr' || saved === 'es' || saved === 'ad' || saved === 'pt' || saved === 'demo'
+    return saved === 'fr' ||
+      saved === 'es' ||
+      saved === 'ad' ||
+      saved === 'pt' ||
+      saved === 'de' ||
+      saved === 'demo'
       ? saved
       : 'auto';
   });
@@ -1326,7 +1331,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // A source that answers by exact id (fr) refreshes all its favorites in
     // one request wherever they sit; the others fetch one circle per place.
     const byIdCountries = new Set(
-      (['fr', 'es', 'ad', 'pt'] as const).filter(
+      (['fr', 'es', 'ad', 'pt', 'de'] as const).filter(
         (country) => getProviders(country).stations.getStationsByIds != null,
       ),
     );

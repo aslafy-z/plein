@@ -1,8 +1,8 @@
 // « Automatic » — every real source rendered on the same map.
 // Each source is queried only when its coverage area can intersect the
-// searched zone / route corridor, so a Toulouse map costs zero Spanish
-// requests and a Madrid one zero French requests, while the border shows
-// several countries at once. One source failing must not blank the others'
+// searched zone / route corridor, so a Toulouse map costs zero Spanish or
+// German requests and a Madrid one zero French requests, while the border
+// shows several countries at once. One source failing must not blank the others'
 // stations: the call only throws when every RELEVANT source failed (which
 // lets the store fall back to demo data as usual).
 import type { GeoPoint } from '../../lib/geo';
@@ -24,6 +24,8 @@ import { AdStationsProvider, adCoversAlong, adCoversNear } from '../ad/AdStation
 import { AdGeocodeProvider } from '../ad/AdGeocodeProvider';
 import { PtStationsProvider, ptCoversAlong, ptCoversNear } from '../pt/PtStationsProvider';
 import { PhotonGeocodeProvider } from '../pt/PhotonGeocodeProvider';
+import { DeStationsProvider, deCoversAlong, deCoversNear } from '../de/DeStationsProvider';
+import { DePhotonGeocodeProvider } from '../de/DePhotonGeocodeProvider';
 import { mergeByKind } from '../geocodeRank';
 
 // ── French flux coverage ─────────────────────────────────────────────────────
@@ -88,6 +90,7 @@ export class AutoStationsProvider implements StationsProvider {
   private readonly es = new EsStationsProvider();
   private readonly ad = new AdStationsProvider();
   private readonly pt = new PtStationsProvider();
+  private readonly de = new DeStationsProvider();
 
   async getStationsNear(
     center: GeoPoint,
@@ -99,6 +102,7 @@ export class AutoStationsProvider implements StationsProvider {
     if (esCoversNear(center, radiusKm)) tasks.push(this.es.getStationsNear(center, radiusKm, opts));
     if (adCoversNear(center, radiusKm)) tasks.push(this.ad.getStationsNear(center, radiusKm, opts));
     if (ptCoversNear(center, radiusKm)) tasks.push(this.pt.getStationsNear(center, radiusKm, opts));
+    if (deCoversNear(center, radiusKm)) tasks.push(this.de.getStationsNear(center, radiusKm, opts));
     return capNearest(await mergeSettled(tasks), center);
   }
 
@@ -115,13 +119,14 @@ export class AutoStationsProvider implements StationsProvider {
     if (esCoversAlong(polyline, corridorKm)) tasks.push(this.es.getStationsAlong(polyline, corridorKm));
     if (adCoversAlong(polyline, corridorKm)) tasks.push(this.ad.getStationsAlong(polyline, corridorKm));
     if (ptCoversAlong(polyline, corridorKm)) tasks.push(this.pt.getStationsAlong(polyline, corridorKm));
+    if (deCoversAlong(polyline, corridorKm)) tasks.push(this.de.getStationsAlong(polyline, corridorKm));
     return mergeSettled(tasks);
   }
 }
 
 // ── Geocoding ────────────────────────────────────────────────────────────────
 // The suggestion list scrolls, so it is worth carrying more than a screenful —
-// four countries answering at once fill six rows with their first hits alone.
+// five countries answering at once fill six rows with their first hits alone.
 const MAX_RESULTS = 15;
 
 /**
@@ -172,13 +177,14 @@ export class AutoGeocodeProvider implements GeocodeProvider {
   private readonly cartociudad = new CartoCiudadGeocodeProvider();
   private readonly ad = new AdGeocodeProvider();
   private readonly photon = new PhotonGeocodeProvider();
+  private readonly dePhoton = new DePhotonGeocodeProvider();
 
   search(query: string, opts?: GeocodeSearchOptions): Promise<GeocodeResult[]> {
-    // Localities of all four countries first, then their streets, then their
+    // Localities of all five countries first, then their streets, then their
     // house numbers; inside one kind the sources interleave in the order given
-    // here — France, Andorra, Portugal, Spain — so no country fills the visible
-    // rows on its own.
-    const sources = [this.ban, this.ad, this.photon, this.cartociudad];
+    // here — France, Andorra, Portugal, Spain, Germany — so no country fills
+    // the visible rows on its own.
+    const sources = [this.ban, this.ad, this.photon, this.cartociudad, this.dePhoton];
     return mergeAsTheyLand(
       sources.map((source) => source.search(query)),
       opts?.onPartial,

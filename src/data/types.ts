@@ -190,17 +190,17 @@ export interface GeocodeResult {
    * Country to name in front of `sublabel`. The French and Spanish sources say
    * where a place is themselves (a département, a province) — proper nouns no
    * locale translates. The Andorran one returns the parish alone and the
-   * Portuguese one an OSM district, so the country is the app's own word and
-   * belongs to the catalog.
+   * Portuguese and German ones an OSM district, so the country is the app's
+   * own word and belongs to the catalog.
    */
-  country?: 'ad' | 'pt';
+  country?: 'ad' | 'pt' | 'de';
   kind: PlaceKind;
 }
 
 export interface GeocodeSearchOptions {
   /**
    * Suggestions known SO FAR, published each time a source lands. « Automatic »
-   * queries four national geocoders at once and one of them can be seconds
+   * queries five national geocoders at once and one of them can be seconds
    * behind the others: the list fills in as they answer instead of waiting for
    * the slowest. The promise still resolves with the complete merge, so a view
    * can keep its spinner up until every source has concluded.
@@ -256,7 +256,7 @@ export interface RouteProvider {
 }
 
 // ── Source selection ─────────────────────────────────────────────────────────
-export type DataSourceId = 'auto' | 'fr' | 'es' | 'ad' | 'pt' | 'demo';
+export type DataSourceId = 'auto' | 'fr' | 'es' | 'ad' | 'pt' | 'de' | 'demo';
 
 export interface ProviderBundle {
   stations: StationsProvider;

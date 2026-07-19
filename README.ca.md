@@ -5,8 +5,8 @@
 # Plein.
 
 **El dipòsit ple al preu just** — trobeu les benzineres més barates al vostre
-voltant i al llarg dels vostres trajectes, a França, Espanya, Andorra i
-Portugal.
+voltant i al llarg dels vostres trajectes, a França, Espanya, Andorra,
+Portugal i Alemanya.
 
 [English](README.md) · [Français](README.fr.md) · [Español](README.es.md) · **Català** · [Português](README.pt.md)
 
@@ -14,7 +14,7 @@ Portugal.
 
 [![Llicència MIT](https://img.shields.io/badge/llic%C3%A8ncia-MIT-3ddc84?labelColor=0f1a14)](LICENSE)
 [![PWA](https://img.shields.io/badge/PWA-instal%C2%B7lable-3ddc84?labelColor=0f1a14)](#-ús)
-[![Dades](https://img.shields.io/badge/dades-%F0%9F%87%AB%F0%9F%87%B7%20Fran%C3%A7a%20%C2%B7%20%F0%9F%87%AA%F0%9F%87%B8%20Espanya%20%C2%B7%20%F0%9F%87%A6%F0%9F%87%A9%20Andorra%20%C2%B7%20%F0%9F%87%B5%F0%9F%87%B9%20Portugal-blue?labelColor=0f1a14)](#-fonts-de-dades)
+[![Dades](https://img.shields.io/badge/dades-%F0%9F%87%AB%F0%9F%87%B7%20Fran%C3%A7a%20%C2%B7%20%F0%9F%87%AA%F0%9F%87%B8%20Espanya%20%C2%B7%20%F0%9F%87%A6%F0%9F%87%A9%20Andorra%20%C2%B7%20%F0%9F%87%B5%F0%9F%87%B9%20Portugal%20%C2%B7%20%F0%9F%87%A9%F0%9F%87%AA%20Alemanya-blue?labelColor=0f1a14)](#-fonts-de-dades)
 [![React 18](https://img.shields.io/badge/React-18-61dafb?labelColor=0f1a14&logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?labelColor=0f1a14&logo=typescript)](https://www.typescriptlang.org)
 [![Leaflet](https://img.shields.io/badge/Leaflet-1.9-199900?labelColor=0f1a14)](https://leafletjs.com)
@@ -32,9 +32,9 @@ Portugal.
 - 🗺️ **Mapa de preus en directe** — les benzineres al vostre voltant, preus
   en xinxetes acolorides segons el preu: bones ofertes en verd, les més cares
   en taronja.
-- 🇫🇷🇪🇸🇦🇩🇵🇹 **Quatre països en un mapa** — els fluxos oficials de França,
-  Espanya, Andorra i Portugal combinats; els proveïments fronterers es
-  comparen d'un cop d'ull.
+- 🇫🇷🇪🇸🇦🇩🇵🇹🇩🇪 **Cinc països en un mapa** — els fluxos oficials de França,
+  Espanya, Andorra, Portugal i Alemanya combinats; els proveïments fronterers
+  es comparen d'un cop d'ull.
 - 📋 **Millor tria real** — el combustible cremat en el desviament es té en
   compte: una estació més propera pot guanyar la més barata.
 - 🛣️ **Pla de proveïment en ruta** — on parar al llarg del viatge, quants
@@ -61,7 +61,7 @@ Portugal.
 
 1. Obriu **[plein.zadkiel.fr](https://plein.zadkiel.fr)** (el desplegament oficial).
 2. Autoritzeu la geolocalització — o continueu sense i cerqueu una ciutat, a
-   França, Espanya, Andorra o Portugal. La cerca recorda els llocs que hi heu
+   França, Espanya, Andorra, Portugal o Alemanya. La cerca recorda els llocs que hi heu
    triat: els proposa tan bon punt s'obre i els puja al capdamunt dels
    suggeriments així que escriviu.
 3. Trieu el combustible a la part superior del mapa: la millor tria (preu I
@@ -80,7 +80,7 @@ vostre navegador.
 
 Cada país cobert té els seus propis fluxos oficials — preus i geocodificació
 — que l'app tria segons la zona mostrada (font *Automàtica*). La resta
-(itineraris, mapes base) és comuna als quatre.
+(itineraris, mapes base) és comuna als cinc.
 
 ### 🇫🇷 França
 
@@ -111,7 +111,14 @@ Cada país cobert té els seus propis fluxos oficials — preus i geocodificaci�
 | Preus dels carburants i marques | [Preços dos combustíveis](https://precoscombustiveis.dgeg.gov.pt) (DGEG — Direção-Geral de Energia e Geologia) — la marca (*marca*) l'aporta el flux, que no dona ni horaris ni E10; cobertura continental (les Açores i Madeira tenen el seu propi règim) | Dados abertos |
 | Geocodificació i autocompleció | [Photon](https://photon.komoot.io) (instància pública de Komoot, índex OpenStreetMap), limitat al Portugal continental — el país no publica cap geocodificador d'adreces sense clau | ODbL |
 
-### Comuns als quatre països
+### 🇩🇪 Alemanya
+
+| Dada | Font | Llicència |
+| --- | --- | --- |
+| Preus dels carburants i marques | [Tankerkönig](https://creativecommons.tankerkoenig.de) (repetidor obert del flux oficial MTS-K — Markttransparenzstelle für Kraftstoffe, Bundeskartellamt) — la marca l'aporta el flux, que no dona ni serveis ni horaris setmanals; cal una clau API personal que es queda al servidor (vegeu [Desenvolupament](#%EF%B8%8F-desenvolupament)) | CC BY 4.0 |
+| Geocodificació i autocompleció | [Photon](https://photon.komoot.io) (instància pública de Komoot, índex OpenStreetMap), limitat a Alemanya — els geocodificadors oficials del BKG exigeixen registre | ODbL |
+
+### Comuns als cinc països
 
 | Dada | Font | Llicència |
 | --- | --- | --- |
@@ -119,10 +126,12 @@ Cada país cobert té els seus propis fluxos oficials — preus i geocodificaci�
 | Mapes base | [CARTO](https://carto.com/attributions) clar / fosc segons el tema (tessel·les d'OpenStreetMap com a recurs fora de línia) | © col·laboradors d'[OpenStreetMap](https://www.openstreetmap.org/copyright) |
 
 L'app no té **cap backend**: el navegador consulta directament aquests
-serveis públics. Les fonts són connectables (`src/data/types.ts`). Sense
-connexió o amb un flux caigut, l'app conserva les últimes estacions
-carregades (memòria cau per zona) amb un bàner explícit i ho torna a provar
-així que torna la connexió.
+serveis públics. L'única excepció és la font alemanya — Tankerkönig exigeix
+una clau API personal que no ha d'arribar mai al client, així que el Worker
+que serveix l'app li fa de proxy (`worker/index.ts`). Les fonts són
+connectables (`src/data/types.ts`). Sense connexió o amb un flux caigut,
+l'app conserva les últimes estacions carregades (memòria cau per zona) amb un
+bàner explícit i ho torna a provar així que torna la connexió.
 
 ## 🛠️ Desenvolupament
 
@@ -134,7 +143,7 @@ npm install
 npm run dev          # http://localhost:5173
 npm run build        # compilació de producció (dist/)
 npm run e2e          # E2E Playwright: recorre totes les pantalles
-npm run verify:live  # comprova els proveïdors reals (França, Espanya, Andorra, Portugal, geocodificadors, OSRM) contra els endpoints reals
+npm run verify:live  # comprova els proveïdors reals (França, Espanya, Andorra, Portugal, Alemanya, geocodificadors, OSRM) contra els endpoints reals
 npm run deploy       # build + wrangler deploy
 ```
 
@@ -147,14 +156,24 @@ servidor de desenvolupament de Vite fa de proxy per a les APIs (`/proxy/*`) i
 les tessel·les (`/tiles/*`) respectant `HTTPS_PROXY` — vegeu
 `vite.config.ts`.
 
+La font alemanya (Tankerkönig) requereix una **clau API personal** —
+gratuïta, a [tankerkoenig.de](https://creativecommons.tankerkoenig.de). Les
+condicions d'ús prohibeixen publicar una clau (repo, bundle…), així que no
+passa mai pel client. En desenvolupament, exporteu `TANKERKOENIG_API_KEY`
+abans de `npm run dev` (el proxy de Vite la injecta al servidor); en
+producció, deseu-la com a secret del Worker:
+`wrangler secret put TANKERKOENIG_API_KEY` (el Worker fa de proxy de l'API
+amb una memòria cau edge de ~5 min — `worker/index.ts`). Sense clau, la font
+alemanya simplement es declara no disponible.
+
 ## 📄 Llicència
 
 Codi sota llicència [MIT](LICENSE) © Zadkiel Aharonian.
 Les dades mostrades continuen subjectes a les llicències dels seus productors
 respectius (Licence Ouverte per a les dades públiques franceses, datos
 abiertos del MITECO per als preus espanyols, © Govern d'Andorra per a
-Andorra, dados abertos de la DGEG per als preus portuguesos, ODbL per a
-OpenStreetMap).
+Andorra, dados abertos de la DGEG per als preus portuguesos, CC BY 4.0 per
+als preus alemanys — Tankerkönig / MTS-K, ODbL per a OpenStreetMap).
 Les tipografies **Archivo** i **Spline Sans Mono**, incloses a
 `public/fonts/`, estan sota la [SIL Open Font License 1.1](public/fonts/)
 (vegeu els fitxers `*-OFL.txt` de la mateixa carpeta).
