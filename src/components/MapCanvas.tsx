@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { C } from '../theme';
 import { haversineKm } from '../lib/geo';
@@ -20,18 +20,28 @@ import {
 const PIN_CAP = 15;
 
 /**
- * Stations wearing a price bubble: the PIN_CAP cheapest, the search circle
- * first — a dense zone always shows PIN_CAP prices INSIDE the circle,
- * whatever cheaper stations sit outside it; out-of-zone stations only get
- * the leftover bubbles when the zone is sparse.
+ * Stations wearing a price bubble: the PIN_CAP cheapest of the EFFECTIVE
+ * zone — the search circle intersected with the current view. When the
+ * circle fits the screen that is simply the circle; when it overflows the
+ * screen (zoomed in), the visible part of it becomes the zone, so the
+ * prices follow what the user is looking at. On-screen stations outside
+ * the circle, then off-screen ones, only get the leftover bubbles when
+ * the effective zone is sparse.
  */
-function pricedIds(app: AppStore): Set<string> {
+function pricedIds(app: AppStore, bounds: L.LatLngBounds | null): Set<string> {
   const zoneIds = new Set(selectVisible(app).map((s) => s.id));
+  const pins = selectMapStations(app);
+  const rank = new Map(
+    pins.map((s) => {
+      const inView = bounds == null || bounds.contains([s.lat, s.lng]);
+      return [s.id, inView ? (zoneIds.has(s.id) ? 2 : 1) : 0];
+    }),
+  );
   return new Set(
-    [...selectMapStations(app)]
+    [...pins]
       .sort(
         (a, b) =>
-          Number(zoneIds.has(b.id)) - Number(zoneIds.has(a.id)) ||
+          rank.get(b.id)! - rank.get(a.id)! ||
           a.prices[app.fuel]!.value - b.prices[app.fuel]!.value,
       )
       .slice(0, PIN_CAP)
@@ -54,6 +64,11 @@ export default function MapCanvas() {
   // moveend closures read the latest app state through this ref
   const appRef = useRef(app);
   appRef.current = app;
+
+  // Pins and chip re-rank against the view after a pan/zoom. Guarded on the
+  // actual bounds so a programmatic re-fit to the same view can't loop.
+  const [viewTick, setViewTick] = useState(0);
+  const lastBoundsRef = useRef('');
 
   const circleRef = useRef<L.Circle | null>(null);
   const userDotRef = useRef<L.Marker | null>(null);
@@ -79,6 +94,14 @@ export default function MapCanvas() {
     };
     map.on('dragstart', markInteract);
     map.on('zoomstart', markInteract);
+
+    map.on('moveend zoomend', () => {
+      const key = map.getBounds().toBBoxString();
+      if (key !== lastBoundsRef.current) {
+        lastBoundsRef.current = key;
+        setViewTick((t) => t + 1);
+      }
+    });
 
     // While the USER pans, the zone circle glides with the screen center —
     // no more jumpy circle waiting for the debounce. Never during a zoom
@@ -193,7 +216,9 @@ export default function MapCanvas() {
     const markers = markersRef.current;
     const wanted = new Set<string>();
 
-    const priced = pricedIds(app);
+    // map.getBounds() is unusable before the first view is set — rank
+    // without the view filter on that very first pass
+    const priced = pricedIds(app, lastBoundsRef.current ? map.getBounds() : null);
 
     for (const s of pins) {
       const best = cheapest?.id === s.id;
@@ -255,18 +280,26 @@ export default function MapCanvas() {
       }
     }
 
-    // Auto-fit (to the radius zone, not the whole fetched area) until the user
-    // takes over — and never while a station is selected (don't yank the view)
-    if (!userInteractedRef.current && !app.focusStationId) {
-      programmaticUntil.current = Date.now() + 700;
-      const zone = selectVisible(app);
-      const coords: L.LatLngExpression[] = [[app.searchPos.lat, app.searchPos.lng]];
-      zone.forEach((s) => coords.push([s.lat, s.lng]));
-      if (coords.length > 1) {
-        map.fitBounds(L.latLngBounds(coords), { padding: [40, 40], maxZoom: 15 });
-      } else {
-        map.setView([app.searchPos.lat, app.searchPos.lng], 13, { animate: false });
-      }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [app.stations.data, app.fuel, app.radius, app.brandSel, app.serviceTags, app.userPos, app.searchPos, app.focusStationId, viewTick]);
+
+  // ── Auto-fit (to the radius zone, not the whole fetched area) until the user
+  // takes over — and never while a station is selected (don't yank the view).
+  // Own effect WITHOUT the view tick: re-fitting after every pan/zoom would
+  // fight the user's gesture (and revert it whenever it lands inside the
+  // post-fit programmatic window).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (userInteractedRef.current || app.focusStationId) return;
+    programmaticUntil.current = Date.now() + 700;
+    const zone = selectVisible(app);
+    const coords: L.LatLngExpression[] = [[app.searchPos.lat, app.searchPos.lng]];
+    zone.forEach((s) => coords.push([s.lat, s.lng]));
+    if (coords.length > 1) {
+      map.fitBounds(L.latLngBounds(coords), { padding: [40, 40], maxZoom: 15 });
+    } else {
+      map.setView([app.searchPos.lat, app.searchPos.lng], 13, { animate: false });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [app.stations.data, app.fuel, app.radius, app.brandSel, app.serviceTags, app.userPos, app.searchPos, app.focusStationId]);
@@ -282,11 +315,20 @@ export default function MapCanvas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [app.focusStationId]);
 
-  // Chip numbers: scoped to the search circle, like every other count in the
-  // app (« Filtres · 30 », « 30 stations dans la zone »). Counting the whole
-  // screen or the fetched area reads as nonsense against what the user
-  // checks: the dots inside the circle.
-  const zoneDots = Math.max(0, selectVisible(app).length - PIN_CAP);
+  // Chip numbers: scoped to the EFFECTIVE zone — the circle intersected with
+  // the view. Circle on screen → the circle (like « Filtres · 30 »); circle
+  // overflowing the screen (zoomed in) → its visible part, so the count
+  // matches the dots the user can actually see.
+  let zoneInView = 0;
+  if (mapRef.current && lastBoundsRef.current) {
+    const bounds = mapRef.current.getBounds();
+    for (const s of selectVisible(app)) {
+      if (bounds.contains([s.lat, s.lng])) zoneInView++;
+    }
+  } else {
+    zoneInView = selectVisible(app).length;
+  }
+  const zoneDots = Math.max(0, zoneInView - PIN_CAP);
 
   return (
     <div style={{ position: 'absolute', inset: 0, background: C.mapBg }}>
