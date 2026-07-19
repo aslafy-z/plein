@@ -10,8 +10,12 @@ import {
   selectDeals,
   selectFocusStation,
   priceTier,
+  selectSortedCharge,
+  selectBestCharge,
+  selectFocusCharge,
+  selectChargePriceRange,
 } from '../state/store';
-import { fmtPrice, distLabel, agoLabel, durationLabel, plural } from '../lib/format';
+import { fmtPrice, kwLabel, distLabel, agoLabel, durationLabel, plural } from '../lib/format';
 import { openStatus } from '../lib/hours';
 import BrandAvatar from './BrandAvatar';
 import Freshness from './Freshness';
@@ -53,18 +57,29 @@ export default function MapSheet({
   onExpandedChange: (open: boolean) => void;
 }) {
   const app = useApp();
-  const cheapest = selectCheapest(app);
-  const focused = selectFocusStation(app);
-  const shown = focused ?? cheapest;
-  const rows = selectSorted(app);
-  const range = selectPriceRange(app);
+  const ev = app.mode === 'ev';
+  // Fuel and EV keep separate selector chains; `shown` carries the fields the
+  // two domains share (name, position, hours…), the price blocks branch on `ev`.
+  const cheapest = ev ? null : selectCheapest(app);
+  const focused = ev ? null : selectFocusStation(app);
+  const bestEv = ev ? selectBestCharge(app) : null;
+  const focusedEv = ev ? selectFocusCharge(app) : null;
+  const shownFuel = ev ? null : (focused ?? cheapest);
+  const shownEv = ev ? (focusedEv ?? bestEv) : null;
+  const shown = shownFuel ?? shownEv;
+  const focusedAny = focused ?? focusedEv;
+  const rows = ev ? [] : selectSorted(app);
+  const evRows = ev ? selectSortedCharge(app) : [];
+  const nbRows = ev ? evRows.length : rows.length;
+  const range = ev ? selectChargePriceRange(app) : selectPriceRange(app);
   // « Bons plans » (near-identical low prices): the collapsed card still
   // preselects a single station, but the expanded list highlights all of them
-  const stats = selectPriceStats(app);
-  const dealCount = selectDeals(app).length;
+  const stats = ev ? null : selectPriceStats(app);
+  const dealCount = ev ? 0 : selectDeals(app).length;
   const min = range?.min ?? 0;
   const max = range?.max ?? 0;
-  const loading = app.stations.status === 'loading' || app.stations.status === 'idle';
+  const domain = ev ? app.charge : app.stations;
+  const loading = domain.status === 'loading' || domain.status === 'idle';
 
   const hasCard = shown != null;
 
@@ -313,9 +328,18 @@ export default function MapSheet({
   const stateKey = hasCard ? 'card' : loading ? 'loading' : 'empty';
   const height = expanded && hasCard ? expandedH : (collapsedH ?? undefined);
 
-  const isBest = shown != null && cheapest?.id === shown.id;
-  const shownPrice = shown?.prices[app.fuel]?.value ?? 0;
+  const isBest = shown != null && (ev ? bestEv?.id === shown.id : cheapest?.id === shown.id);
+  const shownPrice = (ev ? shownEv?.price?.value : shownFuel?.prices[app.fuel]?.value) ?? 0;
   const shownDelta = shownPrice - min;
+  const shownEvPriced = shownEv?.price != null;
+
+  const cardTitle = focusedAny
+    ? 'Station sélectionnée'
+    : ev && !shownEvPriced
+      ? 'La plus puissante à proximité'
+      : app.searchedAway
+        ? 'La moins chère dans cette zone'
+        : 'La moins chère près de vous';
 
   return (
     <div
@@ -390,13 +414,9 @@ export default function MapSheet({
                     color: C.accent,
                   }}
                 >
-                  {focused
-                    ? 'Station sélectionnée'
-                    : app.searchedAway
-                      ? 'La moins chère dans cette zone'
-                      : 'La moins chère près de vous'}
+                  {cardTitle}
                 </span>
-                {focused && (
+                {focusedAny && (
                   <button
                     onClick={() => app.setFocusStation(null)}
                     aria-label="Désélectionner la station"
@@ -436,25 +456,47 @@ export default function MapSheet({
                 onClick={() => app.openStation(shown.id)}
                 style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%' }}
               >
-                <BrandAvatar label={shown.brand ?? shown.name} init={shown.init} size={46} fontSize={15} />
+                <BrandAvatar
+                  label={(shownFuel?.brand ?? shownEv?.operator) ?? shown.name}
+                  init={shown.init}
+                  size={46}
+                  fontSize={15}
+                />
                 <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
                   <div style={{ color: C.ink, fontSize: 16, fontWeight: 600 }}>{shown.name}</div>
                   <div style={{ color: C.mut, fontSize: 13, marginTop: 2 }}>
-                    {[
-                      distLabel(shown.distKm),
-                      openStatus(shown.hours)?.short,
-                      `MàJ ${agoLabel(shown.prices[app.fuel]?.updatedAt)}`,
-                    ]
+                    {(ev
+                      ? [
+                          distLabel(shown.distKm),
+                          shownEv!.maxPowerKw > 0 ? kwLabel(shownEv!.maxPowerKw) : null,
+                          openStatus(shown.hours)?.short,
+                        ]
+                      : [
+                          distLabel(shown.distKm),
+                          openStatus(shown.hours)?.short,
+                          `MàJ ${agoLabel(shownFuel!.prices[app.fuel]?.updatedAt)}`,
+                        ]
+                    )
                       .filter(Boolean)
                       .join(' · ')}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
                   <div style={{ font: mono(700, 22), color: C.accent, whiteSpace: 'nowrap' }}>
-                    {fmtPrice(shown.prices[app.fuel]?.value)} €
+                    {ev
+                      ? shownEvPriced
+                        ? `${fmtPrice(shownEv!.price!.value)} €`
+                        : kwLabel(shownEv!.maxPowerKw)
+                      : `${fmtPrice(shownFuel!.prices[app.fuel]?.value)} €`}
                   </div>
                   <div style={{ color: C.mut, fontSize: 11.5, whiteSpace: 'nowrap' }}>
-                    {FUEL_LABELS[app.fuel]} / L
+                    {ev
+                      ? shownEvPriced
+                        ? shownEv!.free
+                          ? 'gratuit'
+                          : 'le kWh'
+                        : 'puissance max'
+                      : `${FUEL_LABELS[app.fuel]} / L`}
                   </div>
                 </div>
               </button>
@@ -489,9 +531,11 @@ export default function MapSheet({
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {isBest
-                    ? `−${fmtPrice(max - min)} €/L`
-                    : `${shownDelta >= 0 ? '+' : '−'}${fmtPrice(Math.abs(shownDelta))} €/L`}
+                  {ev && !shownEvPriced
+                    ? `${shownEv!.pdcCount} pdc`
+                    : isBest
+                      ? `−${fmtPrice(max - min)} €/${ev ? 'kWh' : 'L'}`
+                      : `${shownDelta >= 0 ? '+' : '−'}${fmtPrice(Math.abs(shownDelta))} €/${ev ? 'kWh' : 'L'}`}
                 </div>
               </div>
             </div>
@@ -499,13 +543,15 @@ export default function MapSheet({
             <div
               style={{ padding: '18px 20px', textAlign: 'center', color: C.mut, fontSize: 13.5 }}
             >
-              Recherche des stations autour de vous…
+              {ev
+                ? 'Recherche des bornes autour de vous…'
+                : 'Recherche des stations autour de vous…'}
             </div>
           ) : (
             <div
               style={{ padding: '18px 20px', textAlign: 'center', color: C.mut, fontSize: 13.5 }}
             >
-              Aucune station ne correspond à vos filtres.{' '}
+              {ev ? 'Aucune borne ne correspond à vos filtres.' : 'Aucune station ne correspond à vos filtres.'}{' '}
               <button
                 onClick={() => app.setFiltersOpen(true)}
                 style={{ color: C.accent, fontWeight: 700, display: 'inline' }}
@@ -539,7 +585,7 @@ export default function MapSheet({
                 flex: 1,
               }}
             >
-              {plural(rows.length, 'station')} dans la zone
+              {plural(nbRows, ev ? 'borne' : 'station')} dans la zone
             </span>
             {dealCount > 1 && (
               <span
@@ -595,12 +641,97 @@ export default function MapSheet({
               gap: 8,
             }}
           >
-            {rows.length === 0 && (
+            {nbRows === 0 && (
               <div style={{ textAlign: 'center', color: C.mut, fontSize: 13, padding: '18px 0' }}>
-                Aucune station dans le rayon.
+                {ev ? 'Aucune borne dans le rayon.' : 'Aucune station dans le rayon.'}
               </div>
             )}
-            {rows.map((s) => {
+            {ev &&
+              evRows.map((s) => {
+                const best = bestEv?.id === s.id;
+                const isFocus = app.focusStationId === s.id;
+                const priced = s.price != null;
+                const delta = priced ? s.price!.value - min : 0;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => {
+                      app.setFocusStation(s.id);
+                      onExpandedChange(false);
+                    }}
+                    aria-label={`Voir ${s.name} sur la carte`}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      width: '100%',
+                      background: C.surface2,
+                      borderRadius: 14,
+                      padding: '11px 14px',
+                      flexShrink: 0,
+                      border: isFocus
+                        ? `1.5px solid ${C.accent}`
+                        : `1px solid ${best ? C.accentBorder : C.border}`,
+                    }}
+                  >
+                    <BrandAvatar label={s.operator ?? s.name} init={s.init} size={38} fontSize={12.5} />
+                    <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                      <div
+                        style={{
+                          fontSize: 14.5,
+                          fontWeight: 700,
+                          color: C.ink,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {s.name}
+                      </div>
+                      <div style={{ fontSize: 12, color: C.mut, marginTop: 1 }}>
+                        {[
+                          distLabel(s.distKm),
+                          s.maxPowerKw > 0 ? `${kwLabel(s.maxPowerKw)} · ${s.pdcCount} pdc` : null,
+                          openStatus(s.hours)?.short,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div
+                        style={{ font: mono(700, 17), color: best ? C.accent : C.ink, whiteSpace: 'nowrap' }}
+                      >
+                        {priced ? `${fmtPrice(s.price!.value)} €` : kwLabel(s.maxPowerKw)}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: !priced
+                            ? C.mut
+                            : best
+                              ? C.accent
+                              : delta > 0.1
+                                ? C.warn
+                                : C.mut,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {!priced
+                          ? 'prix inconnu'
+                          : s.free
+                            ? 'gratuit'
+                            : best
+                              ? 'meilleur prix'
+                              : `+${fmtPrice(delta)}`}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            {!ev &&
+              rows.map((s) => {
               const best = cheapest?.id === s.id;
               const isFocus = app.focusStationId === s.id;
               const price = s.prices[app.fuel]!.value;

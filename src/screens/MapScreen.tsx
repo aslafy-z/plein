@@ -1,19 +1,20 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { C } from '../theme';
 import { FUEL_LABELS, SERVICE_TAGS } from '../data/types';
-import { useApp, selectVisible } from '../state/store';
+import { useApp, selectVisible, selectVisibleCharge } from '../state/store';
 import MapCanvas from '../components/MapCanvas';
 import MapSheet from '../components/MapSheet';
 import PlaceSearch from '../components/PlaceSearch';
 
 export default function MapScreen() {
   const app = useApp();
+  const ev = app.mode === 'ev';
 
-  const visible = selectVisible(app);
-  const nbVisible = visible.length;
+  const nbVisible = ev ? selectVisibleCharge(app).length : selectVisible(app).length;
 
-  const filtersActive =
-    SERVICE_TAGS.some((t) => app.serviceTags[t]) || app.brandSel.length > 0;
+  const filtersActive = ev
+    ? app.connSel.length > 0 || app.minPowerKw > 0 || app.evFreeOnly || app.evPricedOnly
+    : SERVICE_TAGS.some((t) => app.serviceTags[t]) || app.brandSel.length > 0;
 
   const geoOff = app.geoStatus === 'denied' || app.geoStatus === 'unavailable';
 
@@ -81,8 +82,24 @@ export default function MapScreen() {
             <PlaceSearch />
 
             <div style={{ display: 'flex', gap: 8 }}>
+              {/* Fuel ↔ EV mode toggle — the map compares €/L or €/kWh, never both */}
               <button
-                onClick={() => app.cycleFuel()}
+                onClick={() => app.setMode(ev ? 'fuel' : 'ev')}
+                aria-label={ev ? 'Passer aux carburants' : 'Passer à la recharge électrique'}
+                title={ev ? 'Carburants' : 'Recharge électrique'}
+                style={{
+                  ...chipBase,
+                  padding: '8px 11px',
+                  background: C.surface2,
+                  color: C.body,
+                  fontWeight: 700,
+                  border: `1px solid ${C.border09}`,
+                }}
+              >
+                {ev ? '⛽' : '⚡'}
+              </button>
+              <button
+                onClick={() => (ev ? app.cyclePower() : app.cycleFuel())}
                 style={{
                   ...chipBase,
                   background: C.accent,
@@ -90,7 +107,11 @@ export default function MapScreen() {
                   fontWeight: 700,
                 }}
               >
-                {FUEL_LABELS[app.fuel]} ↻
+                {ev
+                  ? app.minPowerKw > 0
+                    ? `≥ ${app.minPowerKw} kW ↻`
+                    : 'Puissance ↻'
+                  : `${FUEL_LABELS[app.fuel]} ↻`}
               </button>
               <button
                 onClick={() => app.setFiltersOpen(true)}

@@ -7,13 +7,15 @@ import { C } from '../theme';
  */
 export default function FallbackBanner() {
   const app = useApp();
-  const { stations, routeState, screen } = app;
+  const { routeState, screen } = app;
   if (screen === 'onboarding') return null;
 
+  // Watches whichever domain the map shows (fuel prices or charge stations)
+  const domain = app.mode === 'ev' ? app.charge : app.stations;
   const fellBack =
-    (stations.status === 'ready' && stations.fellBack) ||
+    (domain.status === 'ready' && domain.fellBack) ||
     (routeState.status === 'ready' && routeState.fellBack);
-  const errored = stations.status === 'error';
+  const errored = domain.status === 'error';
   if (!fellBack && !errored) return null;
 
   return (

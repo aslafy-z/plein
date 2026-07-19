@@ -1,7 +1,14 @@
 import { useState } from 'react';
 import { C, mono } from '../theme';
-import { ALL_FUELS, FUEL_LABELS, SERVICE_TAGS } from '../data/types';
-import { useApp, selectVisible } from '../state/store';
+import {
+  ALL_CONNECTORS,
+  ALL_FUELS,
+  CONNECTOR_LABELS,
+  FUEL_LABELS,
+  POWER_STEPS,
+  SERVICE_TAGS,
+} from '../data/types';
+import { useApp, selectVisible, selectVisibleCharge } from '../state/store';
 import { haversineKm } from '../lib/geo';
 import {
   brandGroup,
@@ -20,7 +27,8 @@ const sectionLabel = {
 
 export default function FiltersSheet() {
   const app = useApp();
-  const nbVisible = selectVisible(app).length;
+  const ev = app.mode === 'ev';
+  const nbVisible = ev ? selectVisibleCharge(app).length : selectVisible(app).length;
   const knowsBrands = app.stations.data.some((s) => s.brand != null);
   // The brand list is collapsed by default so a brand-rich zone doesn't
   // stretch the sheet — the header always shows what's selected.
@@ -98,6 +106,7 @@ export default function FiltersSheet() {
         </div>
 
         {/* Carburant */}
+        {!ev && (
         <div>
           <div style={{ ...sectionLabel, marginBottom: 10 }}>Carburant</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -124,6 +133,102 @@ export default function FiltersSheet() {
             })}
           </div>
         </div>
+        )}
+
+        {/* Connecteurs (mode recharge) */}
+        {ev && (
+          <div>
+            <div style={{ ...sectionLabel, marginBottom: 10 }}>Connecteurs</div>
+            <div style={{ fontSize: 12, color: C.faint, marginBottom: 8 }}>
+              Aucune sélection = tous les connecteurs.
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {ALL_CONNECTORS.map((c) => {
+                const on = app.connSel.includes(c);
+                return (
+                  <button
+                    key={c}
+                    onClick={() => app.toggleConnector(c)}
+                    style={{
+                      background: on ? C.accent : 'transparent',
+                      color: on ? C.onAccent : C.body,
+                      fontSize: 13.5,
+                      fontWeight: 700,
+                      padding: '9px 15px',
+                      borderRadius: 18,
+                      border: `1px solid ${on ? C.accent : C.border12}`,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {CONNECTOR_LABELS[c]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Puissance minimale (mode recharge) */}
+        {ev && (
+          <div>
+            <div style={{ ...sectionLabel, marginBottom: 10 }}>Puissance minimale</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {POWER_STEPS.map((kw) => {
+                const on = app.minPowerKw === kw;
+                return (
+                  <button
+                    key={kw}
+                    onClick={() => app.setMinPowerKw(kw)}
+                    style={{
+                      background: on ? C.accent : 'transparent',
+                      color: on ? C.onAccent : C.body,
+                      fontSize: 13.5,
+                      fontWeight: 700,
+                      padding: '9px 15px',
+                      borderRadius: 18,
+                      border: `1px solid ${on ? C.accent : C.border12}`,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {kw === 0 ? 'Toutes' : `≥ ${kw} kW`}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Options (mode recharge) */}
+        {ev && (
+          <div>
+            <div style={{ ...sectionLabel, marginBottom: 10 }}>Options</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {(
+                [
+                  ['Gratuit uniquement', app.evFreeOnly, app.setEvFreeOnly],
+                  ['Prix connu uniquement', app.evPricedOnly, app.setEvPricedOnly],
+                ] as const
+              ).map(([label, on, set]) => (
+                <button
+                  key={label}
+                  onClick={() => set(!on)}
+                  style={{
+                    background: on ? C.accent : 'transparent',
+                    color: on ? C.onAccent : C.body,
+                    fontSize: 13.5,
+                    fontWeight: 600,
+                    padding: '9px 15px',
+                    borderRadius: 18,
+                    border: `1px solid ${on ? C.accent : C.border12}`,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Rayon */}
         <div>
@@ -155,6 +260,7 @@ export default function FiltersSheet() {
         </div>
 
         {/* Distributeurs — accordion, collapsed by default */}
+        {!ev && (
         <div>
           {knowsBrands ? (
             <>
@@ -323,8 +429,10 @@ export default function FiltersSheet() {
             </>
           )}
         </div>
+        )}
 
         {/* Services */}
+        {!ev && (
         <div>
           <div style={{ ...sectionLabel, marginBottom: 10 }}>Services</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -351,6 +459,7 @@ export default function FiltersSheet() {
             })}
           </div>
         </div>
+        )}
 
         <button
           onClick={() => app.setFiltersOpen(false)}
@@ -366,7 +475,8 @@ export default function FiltersSheet() {
             boxShadow: '0 6px 16px rgba(61,220,132,.25)',
           }}
         >
-          Voir {nbVisible} station{nbVisible === 1 ? '' : 's'}
+          Voir {nbVisible} {ev ? 'borne' : 'station'}
+          {nbVisible === 1 ? '' : 's'}
         </button>
       </div>
     </div>

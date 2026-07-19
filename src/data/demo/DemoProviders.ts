@@ -3,6 +3,8 @@
 import type { GeoPoint } from '../../lib/geo';
 import { haversineKm, lerpPoint, nearestOnPolyline, polylineLengthKm } from '../../lib/geo';
 import type {
+  ChargeProvider,
+  ChargeStation,
   GeocodeProvider,
   GeocodeResult,
   Route,
@@ -13,6 +15,7 @@ import type {
   StationsProvider,
 } from '../types';
 import { DEMO_PLACES, DEMO_ROUTE_STATIONS, DEMO_STATIONS } from './demoData';
+import { DEMO_CHARGE_STATIONS } from './demoChargeData';
 
 const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
@@ -121,6 +124,30 @@ export class DemoStationsProvider implements StationsProvider {
     const stations = found.map((f) => f.station);
     if (deep < 3) return [...stations, ...synthCorridorStations(polyline)];
     return stations;
+  }
+}
+
+// ── Charge stations ──────────────────────────────────────────────────────────
+export class DemoChargeProvider implements ChargeProvider {
+  async getChargeNear(center: GeoPoint, radiusKm: number): Promise<ChargeStation[]> {
+    await delay(250);
+    // Same trick as the fuel set: translate the fictional Toulouse stations
+    // around users geolocated elsewhere so the demo works anywhere.
+    const dLat = center.lat - TOULOUSE.lat;
+    const dLng = center.lng - TOULOUSE.lng;
+    const shift = haversineKm(center, TOULOUSE) > 30;
+    const pool = shift
+      ? DEMO_CHARGE_STATIONS.map((s) => ({ ...s, lat: s.lat + dLat, lng: s.lng + dLng }))
+      : DEMO_CHARGE_STATIONS;
+    return pool.filter((s) => haversineKm(center, { lat: s.lat, lng: s.lng }) <= radiusKm);
+  }
+
+  async getChargeAlong(polyline: GeoPoint[], corridorKm: number): Promise<ChargeStation[]> {
+    await delay(250);
+    const tol = corridorKm + 3;
+    return DEMO_CHARGE_STATIONS.filter(
+      (s) => nearestOnPolyline({ lat: s.lat, lng: s.lng }, polyline).distKm <= tol,
+    );
   }
 }
 

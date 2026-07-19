@@ -6,7 +6,9 @@ import { RealRouteProvider } from './fra/OsrmRouteProvider';
 import { EspStationsProvider } from './esp/EspStationsProvider';
 import { CartoCiudadGeocodeProvider } from './esp/CartoCiudadGeocodeProvider';
 import { AutoGeocodeProvider, AutoStationsProvider } from './auto/AutoProviders';
+import { IrveChargeProvider } from './irve/IrveChargeProvider';
 import {
+  DemoChargeProvider,
   DemoGeocodeProvider,
   DemoRouteProvider,
   DemoStationsProvider,
@@ -15,9 +17,13 @@ import {
 const cache = new Map<DataSourceId, ProviderBundle>();
 
 function createBundle(id: DataSourceId): ProviderBundle {
+  // Charge stations: the IRVE register is France-only for now, so every real
+  // source shares the same provider — an 'esp'/'auto' map away from France
+  // simply shows no bornes (the geo query returns nothing there).
   if (id === 'auto') {
     return {
       stations: new AutoStationsProvider(),
+      charge: new IrveChargeProvider(),
       geocode: new AutoGeocodeProvider(),
       route: new RealRouteProvider(),
     };
@@ -25,6 +31,7 @@ function createBundle(id: DataSourceId): ProviderBundle {
   if (id === 'fra') {
     return {
       stations: new FraStationsProvider(),
+      charge: new IrveChargeProvider(),
       geocode: new BanGeocodeProvider(),
       route: new RealRouteProvider(),
     };
@@ -32,6 +39,7 @@ function createBundle(id: DataSourceId): ProviderBundle {
   if (id === 'esp') {
     return {
       stations: new EspStationsProvider(),
+      charge: new IrveChargeProvider(),
       geocode: new CartoCiudadGeocodeProvider(),
       // OSRM / Valhalla public servers cover Spain too
       route: new RealRouteProvider(),
@@ -39,6 +47,7 @@ function createBundle(id: DataSourceId): ProviderBundle {
   }
   return {
     stations: new DemoStationsProvider(),
+    charge: new DemoChargeProvider(),
     geocode: new DemoGeocodeProvider(),
     route: new DemoRouteProvider(),
   };

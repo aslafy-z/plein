@@ -40,6 +40,11 @@ autour de vous et le long de vos trajets, partout en France.
 - ⭐ **Favoris** — épinglez vos stations, retrouvez leur prix du jour d'un coup d'œil.
 - ⛽ **Tous les carburants** — Gazole, SP95/98, E10, E85, GPLc ; filtres par
   rayon, enseignes et services.
+- ⚡ **Mode recharge électrique** — basculez la carte sur les bornes (base
+  nationale IRVE) avec le **prix au kWh** quand il est connu : déclaré par
+  l'opérateur, issu de la grille publique des grands réseaux (Tesla, Ionity,
+  Electra…) ou gratuit — provenance et date affichées ; filtres par
+  connecteur (T2, Combo CCS, CHAdeMO), puissance minimale et gratuité.
 - 🕐 **Horaires réels** — « Ouvert 24/24 », « Fermé · ouvre à 6 h 30 »… calculés
   depuis les horaires officiels ; fraîcheur des prix affichée (et signalée quand
   ils datent).
@@ -70,6 +75,8 @@ Aucun compte, aucun tracker : vos favoris et réglages restent dans votre naviga
 | --- | --- | --- |
 | Prix des carburants & horaires | [Prix des carburants — flux temps réel](https://data.economie.gouv.fr/explore/dataset/prix-des-carburants-en-france-flux-instantane-v2/) (data.economie.gouv.fr) | Licence Ouverte / Open Licence |
 | Prix des carburants en Espagne | [Precios de carburantes](https://geoportalgasolineras.es) (sedeaplicaciones.minetur.gob.es, MITECO) | Datos abiertos |
+| Bornes de recharge électrique | [Base nationale des IRVE](https://www.data.gouv.fr/datasets/fichier-consolide-des-bornes-de-recharge-pour-vehicules-electriques/) consolidée par Etalab (via le miroir Opendatasoft, schéma 2.2.0) | Licence Ouverte / Open Licence |
+| Prix de la recharge (€/kWh) | champ `tarification` déclaré par les opérateurs + grille ad-hoc des grands réseaux relevée à la main (`public/ev-prices-fr.json`, sources citées) | — |
 | Géocodage & autocomplétion | [Base Adresse Nationale](https://adresse.data.gouv.fr/) (api-adresse.data.gouv.fr) · [CartoCiudad](https://www.cartociudad.es) pour l'Espagne | Licence Ouverte / Open Licence · CC BY 4.0 |
 | Calcul d'itinéraires | [OSRM](https://project-osrm.org/) (serveur démo) | Données © OpenStreetMap |
 | Enseignes des stations | [OpenStreetMap](https://www.openstreetmap.org/) (index statique généré) | ODbL |
@@ -90,7 +97,8 @@ npm install
 npm run dev          # http://localhost:5173
 npm run build        # build de production (dist/)
 npm run e2e          # E2E Playwright : parcourt tous les écrans
-npm run verify:live  # vérifie les providers réels (gouv/BAN/OSRM) contre les vrais endpoints
+npm run verify:live  # vérifie les providers réels (gouv/IRVE/BAN/OSRM) contre les vrais endpoints
+npm run check:ev-prices  # valide la grille €/kWh des réseaux (refuse un relevé > 90 j)
 npm run deploy       # build + wrangler deploy
 ```
 
