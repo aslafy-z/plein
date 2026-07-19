@@ -21,6 +21,11 @@ import {
  */
 const PIN_CAP = 15;
 
+/** Min pause between two live search-area updates while the circle drags */
+const LIVE_SEARCH_MS = 250;
+/** Live drifts smaller than this (km) don't change the results — skip them */
+const LIVE_SEARCH_MIN_KM = 0.1;
+
 /**
  * Stations wearing a price bubble: the PIN_CAP cheapest of the EFFECTIVE
  * zone — the search circle intersected with the current view. When the
@@ -117,10 +122,25 @@ export default function MapCanvas() {
       zooming = false;
       if (userInteractedRef.current) circleRef.current?.setLatLng(map.getCenter());
     });
+    // Results follow the circle LIVE while the finger drags (throttled):
+    // the bottom card, the list and the chips update during the pan, not
+    // only once the map settles. In-zone moves cost nothing — the store
+    // skips loading when the area already in memory covers the new zone.
+    let lastLiveSearch = 0;
     map.on('move', () => {
       if (!userInteractedRef.current || zooming) return;
       if (Date.now() < programmaticUntil.current) return; // pan-to-station, fits…
-      circleRef.current?.setLatLng(map.getCenter());
+      const c = map.getCenter();
+      circleRef.current?.setLatLng(c);
+      const now = Date.now();
+      if (now - lastLiveSearch < LIVE_SEARCH_MS) return;
+      const cur = appRef.current;
+      // A fetch is already running for a previous live position — let it land
+      if (cur.stations.status === 'loading') return;
+      if (haversineKm({ lat: c.lat, lng: c.lng }, cur.searchPos) < LIVE_SEARCH_MIN_KM) return;
+      lastLiveSearch = now;
+      keepViewRef.current = true; // live tracking must never re-trigger auto-fit
+      cur.setSearchArea({ lat: c.lat, lng: c.lng });
     });
 
     // Moving the map away loads the stations of the new area automatically
@@ -131,8 +151,9 @@ export default function MapCanvas() {
       const c = map.getCenter();
       const cur = appRef.current;
       const drift = haversineKm({ lat: c.lat, lng: c.lng }, cur.searchPos);
-      // Track the screen center closely so shown pumps match the visible area
-      if (drift <= Math.max(0.4, cur.radius * 0.1)) return;
+      // Live tracking leaves at most a throttle-tick of lag — this settle
+      // pass closes it so the circle and the results match exactly
+      if (drift <= 0.05) return;
       clearTimeout(moveTimer.current);
       moveTimer.current = setTimeout(() => {
         keepViewRef.current = true; // don't yank the map back after reload
@@ -140,7 +161,24 @@ export default function MapCanvas() {
       }, 350);
     });
 
-    const ro = new ResizeObserver(() => map.invalidateSize());
+    // The container resizes when the bottom sheet grows or shrinks (results
+    // appearing mid-pan…). Resizing Leaflet mid-drag re-pans the content —
+    // and the circle — under the finger: defer it to the end of the gesture,
+    // and once the user owns the view never let a resize pan the map at all.
+    let resizePending = false;
+    const applyResize = () => {
+      resizePending = false;
+      map.invalidateSize({ pan: !userInteractedRef.current });
+    };
+    map.on('dragend', () => {
+      if (resizePending) applyResize();
+    });
+    // `moving()` exists on the Drag handler but the typings stop at Handler
+    const dragHandler = map.dragging as L.Handler & { moving?: () => boolean };
+    const ro = new ResizeObserver(() => {
+      if (dragHandler.moving?.()) resizePending = true;
+      else applyResize();
+    });
     ro.observe(containerRef.current);
 
     return () => {
@@ -181,7 +219,11 @@ export default function MapCanvas() {
         interactive: false,
       }).addTo(map);
     } else {
-      circleRef.current.setLatLng([app.searchPos.lat, app.searchPos.lng]);
+      // Mid-gesture the glide handler owns the position — snapping back to
+      // the (throttled) searchPos would rubber-band the circle backwards
+      if (!userInteractedRef.current) {
+        circleRef.current.setLatLng([app.searchPos.lat, app.searchPos.lng]);
+      }
       circleRef.current.setRadius(app.radius * 1000);
     }
   }, [app.searchPos, app.radius]);
