@@ -1,4 +1,4 @@
-// Regenerates public/brands-fr.json — the static France-wide station-brand
+// Regenerates public/brands-fra.json — the static France-wide station-brand
 // index the app matches gouv stations against (see src/data/gouv/osmBrands.ts).
 //
 // One bulk OpenStreetMap query at build time replaces the old per-user runtime
@@ -90,6 +90,6 @@ const out = {
   labels,
   pois,
 };
-const path = join(dirname(fileURLToPath(import.meta.url)), '../public/brands-fr.json');
+const path = join(dirname(fileURLToPath(import.meta.url)), '../public/brands-fra.json');
 writeFileSync(path, JSON.stringify(out));
 console.log(`${pois.length} POIs, ${labels.length} distinct labels → ${path}`);

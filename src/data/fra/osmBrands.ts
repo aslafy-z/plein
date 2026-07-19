@@ -30,7 +30,7 @@ let indexPromise: Promise<FuelPoi[]> | null = null;
 
 function loadIndex(): Promise<FuelPoi[]> {
   if (!indexPromise) {
-    indexPromise = fetch('/brands-fr.json', { signal: AbortSignal.timeout(15000) }).then(
+    indexPromise = fetch('/brands-fra.json', { signal: AbortSignal.timeout(15000) }).then(
       async (res) => {
         if (!res.ok) throw new Error(`brand index HTTP ${res.status}`);
         const json = (await res.json()) as BrandIndexFile;

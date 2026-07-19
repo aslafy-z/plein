@@ -34,6 +34,15 @@ const ICONS = [
   ['lidl', 'lidl.fr'],
   ['spar', 'spar.fr'],
   ['colruyt', 'colruyt.fr'],
+  // Enseignes espagnoles (source esp — geoportalgasolineras.es).
+  // Pas de cepsa.es : il sert le favicon Moeve depuis le rebranding — les
+  // stations encore siglées Cepsa gardent l'avatar à initiales.
+  ['repsol', 'repsol.es'],
+  ['moeve', 'moeve.es'],
+  ['galp', 'galp.com'],
+  // Ballenoil / Plenergy serve no favicon — they keep the initials avatar
+  ['petroprix', 'petroprix.es'],
+  ['q8', 'q8.it'],
 ];
 
 const SIZE = 64;

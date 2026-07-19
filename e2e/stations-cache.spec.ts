@@ -33,7 +33,7 @@ test('a slight pan re-uses the fetched area instead of refetching', async ({ pag
     })
   })
   // Brand enrichment is irrelevant here — keep it deterministic and instant
-  await page.route('**/brands-fr.json', (route) =>
+  await page.route('**/brands-fra.json', (route) =>
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
 

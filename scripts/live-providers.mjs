@@ -16,7 +16,7 @@ const pexec = promisify(execFile);
 
 // ── curl-backed fetch (proxy-aware) ──────────────────────────────────────────
 globalThis.fetch = async (url) => {
-  // App-relative URLs (only /brands-fr.json today) are bundled assets: serve
+  // App-relative URLs (only /brands-fra.json today) are bundled assets: serve
   // the local file so OSM enrichment (brands + position snapping) runs too.
   if (String(url).startsWith('/')) {
     const body = readFileSync(join(process.cwd(), 'public', String(url)), 'utf8');
@@ -87,7 +87,7 @@ ok('fra: plausible gazole price', cheapest && cheapest.prices.gazole.value > 1 &
 const branded = near.filter((s) => s.brand);
 ok('fra: brands enriched from OSM', branded.length >= near.length * 0.4,
   `${branded.length}/${near.length} · ex: ${branded.slice(0, 3).map((s) => s.name).join(' / ')}`);
-const index = JSON.parse(readFileSync(join(process.cwd(), 'public/brands-fr.json'), 'utf8'));
+const index = JSON.parse(readFileSync(join(process.cwd(), 'public/brands-fra.json'), 'utf8'));
 const poiSet = new Set(index.pois.map(([lat, lng]) => `${lat},${lng}`));
 const snapped = near.filter((s) => poiSet.has(`${s.lat},${s.lng}`));
 ok('fra: positions snapped to OSM POIs', snapped.length > 0 && snapped.length >= branded.length * 0.8,
