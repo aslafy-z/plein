@@ -41,6 +41,7 @@ globalThis.fetch = async (url) => {
 // ── Bundle the TS providers into an importable ESM module ────────────────────
 const entry = `
 export { FraStationsProvider } from './src/data/fra/FraStationsProvider';
+export { IrveChargeProvider } from './src/data/irve/IrveChargeProvider';
 export { BanGeocodeProvider } from './src/data/fra/BanGeocodeProvider';
 export { RealRouteProvider } from './src/data/fra/OsrmRouteProvider';
 export { EspStationsProvider } from './src/data/esp/EspStationsProvider';
@@ -100,7 +101,25 @@ const statuses = withHours.map((s) => P.openStatus(s.hours)).filter(Boolean);
 ok('fra: open-status computable', statuses.length > 0,
   statuses.slice(0, 3).map((s) => s.label).join(' / '));
 
-// 2 — BAN geocoding
+// 2 — IRVE charge stations near Toulouse (bornes + €/kWh resolution)
+const irve = new P.IrveChargeProvider();
+const bornes = await irve.getChargeNear(TOULOUSE, 5);
+ok('irve: bornes within 5 km of Toulouse', bornes.length >= 10, `${bornes.length} stations`);
+ok('irve: coordinates all in France', bornes.every(inFrance));
+ok('irve: powers plausible (≤ 400 kW, some fast ≥ 50 kW)',
+  bornes.every((s) => s.maxPowerKw <= 400) && bornes.some((s) => s.maxPowerKw >= 50));
+ok('irve: charge points grouped into stations', bornes.some((s) => s.pdcCount > 1));
+const evPriced = bornes.filter((s) => s.price != null);
+ok('irve: €/kWh resolved on a fair share', evPriced.length >= bornes.length * 0.25,
+  `${evPriced.length}/${bornes.length} priced (${['free', 'declared', 'grid']
+    .map((src) => `${src}:${evPriced.filter((s) => s.price.source === src).length}`)
+    .join(' ')})`);
+ok('irve: resolved prices plausible', evPriced.every((s) => s.price.value >= 0 && s.price.value <= 2),
+  evPriced.slice(0, 3).map((s) => `${s.price.value} €/kWh (${s.name})`).join(' / '));
+const evHours = bornes.filter((s) => s.hours);
+ok('irve: opening hours parsed', evHours.length > 0, `${evHours.length}/${bornes.length} with hours`);
+
+// 3 — BAN geocoding
 const ban = new P.BanGeocodeProvider();
 const places = await ban.search('Bordeaux');
 ok('BAN: geocodes "Bordeaux"', places.length >= 1, places[0]?.label);

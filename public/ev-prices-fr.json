@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "note": "Prix ad-hoc publics (€/kWh TTC, paiement CB/app sans abonnement) des principaux réseaux de recharge français. Relevés à la main depuis les pages tarifaires publiques — mettre à jour `checkedAt` à chaque relevé ; `npm run check:ev-prices` refuse une grille trop ancienne. Appariement par préfixe d'id d'itinérance (FR + code opérateur AFIREV) puis par nom d'opérateur/enseigne normalisé (minuscules, sans accents ni espaces).",
+  "networks": [
+    { "name": "Tesla Supercharger", "prefixes": ["FRTSL"], "operators": ["tesla"], "acKwh": null, "dcKwh": 0.4, "source": "https://www.tesla.com/fr_fr/supercharger", "checkedAt": "2026-07-19" },
+    { "name": "Ionity", "prefixes": ["FRIOY"], "operators": ["ionity"], "acKwh": null, "dcKwh": 0.59, "source": "https://ionity.eu/fr/reseau-et-tarifs", "checkedAt": "2026-07-19" },
+    { "name": "Electra", "prefixes": ["FRELC"], "operators": ["electra"], "acKwh": null, "dcKwh": 0.49, "source": "https://www.go-electra.com/fr/", "checkedAt": "2026-07-19" },
+    { "name": "Fastned", "prefixes": ["FRFAS"], "operators": ["fastned"], "acKwh": null, "dcKwh": 0.59, "source": "https://www.fastned.nl/fr/tarifs", "checkedAt": "2026-07-19" },
+    { "name": "TotalEnergies", "prefixes": ["FRTCB"], "operators": ["totalenergies"], "acKwh": 0.45, "dcKwh": 0.55, "source": "https://services.totalenergies.fr/professionnels/mobilite-electrique", "checkedAt": "2026-07-19" },
+    { "name": "Allego", "prefixes": ["FRALL"], "operators": ["allego"], "acKwh": 0.45, "dcKwh": 0.6, "source": "https://www.allego.eu/fr-fr/consommateurs/tarifs", "checkedAt": "2026-07-19" },
+    { "name": "Engie Vianeo", "prefixes": ["FRVIA"], "operators": ["vianeo"], "acKwh": 0.35, "dcKwh": 0.55, "source": "https://www.engie-vianeo.fr", "checkedAt": "2026-07-19" },
+    { "name": "Izivia", "prefixes": [], "operators": ["izivia"], "acKwh": 0.39, "dcKwh": 0.55, "source": "https://izivia.com", "checkedAt": "2026-07-19" },
+    { "name": "Power Dot", "prefixes": [], "operators": ["powerdot"], "acKwh": 0.35, "dcKwh": 0.44, "source": "https://powerdot.fr", "checkedAt": "2026-07-19" },
+    { "name": "Lidl", "prefixes": [], "operators": ["lidl"], "acKwh": 0.29, "dcKwh": 0.4, "source": "https://www.lidl.fr", "checkedAt": "2026-07-19" },
+    { "name": "E.Leclerc", "prefixes": ["FRLE2"], "operators": ["leclerc"], "acKwh": 0.25, "dcKwh": 0.4, "source": "https://www.e.leclerc", "checkedAt": "2026-07-19" },
+    { "name": "Atlante", "prefixes": ["FRATL"], "operators": ["atlante"], "acKwh": null, "dcKwh": 0.49, "source": "https://atlante.energy/fr", "checkedAt": "2026-07-19" },
+    { "name": "Bump", "prefixes": ["FRBMP"], "operators": ["bump"], "acKwh": null, "dcKwh": 0.44, "source": "https://www.bump-charge.com", "checkedAt": "2026-07-19" },
+    { "name": "Driveco", "prefixes": [], "operators": ["driveco"], "acKwh": 0.35, "dcKwh": 0.45, "source": "https://driveco.com", "checkedAt": "2026-07-19" },
+    { "name": "Qovoltis", "prefixes": [], "operators": ["qovoltis"], "acKwh": 0.39, "dcKwh": null, "source": "https://www.qovoltis.com", "checkedAt": "2026-07-19" },
+    { "name": "Easycharge", "prefixes": [], "operators": ["easycharge"], "acKwh": 0.39, "dcKwh": 0.49, "source": "https://easycharge.vinci-energies.com", "checkedAt": "2026-07-19" },
+    { "name": "Métropolis", "prefixes": ["FRMET"], "operators": ["metropolis"], "acKwh": 0.42, "dcKwh": 0.55, "source": "https://www.metropolis-recharge.fr", "checkedAt": "2026-07-19" },
+    { "name": "Zunder", "prefixes": ["FRZUN"], "operators": ["zunder"], "acKwh": null, "dcKwh": 0.49, "source": "https://zunder.com/fr", "checkedAt": "2026-07-19" }
+  ]
+}

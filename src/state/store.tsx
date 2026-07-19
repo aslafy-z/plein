@@ -15,10 +15,15 @@ import type { GeoPoint } from '../lib/geo';
 import { cumulativeKm, haversineKm, nearestOnPolyline } from '../lib/geo';
 import {
   ALL_FUELS,
+  POWER_STEPS,
+  type ChargeStation,
+  type ConnectorId,
+  type EnergyMode,
   type VehicleId,
   type DataSourceId,
   type FuelId,
   type GeocodeResult,
+  type NearbyChargeStation,
   type NearbyStation,
   type Route,
   type RouteStation,
@@ -102,6 +107,15 @@ interface StationsState {
   refreshing: boolean;
 }
 
+interface ChargeState {
+  status: 'idle' | 'loading' | 'ready' | 'error';
+  data: ChargeStation[];
+  activeSource: DataSourceId;
+  fellBack: boolean;
+  fetchedAt?: number;
+  refreshing: boolean;
+}
+
 interface RouteState {
   status: 'idle' | 'loading' | 'ready' | 'error';
   route: Route | null;
@@ -123,6 +137,8 @@ interface PersistedSettings {
   startTankPct: number;
   radius: number;
   sourceId: DataSourceId;
+  /** Fuel prices (€/L) or charge prices (€/kWh) on the map */
+  mode: EnergyMode;
   onboarded: boolean;
   alerts: boolean;
   mapsSite: MapsSiteId;
@@ -148,6 +164,18 @@ export interface FavoriteStation {
   city?: string;
   lat: number;
   lng: number;
+}
+
+/** What « Y aller » needs — fuel stations and charge stations both qualify
+ * (charge stations pass their operator as `brand` for the POI search). */
+export interface MapsTarget {
+  name: string;
+  lat: number;
+  lng: number;
+  address?: string;
+  city?: string;
+  cp?: string;
+  brand?: string;
 }
 
 function loadPersisted(): Partial<PersistedSettings> {
@@ -182,6 +210,10 @@ export interface AppStore {
   back(): void;
   openStation(id: string): void;
 
+  // energy mode (fuel €/L ↔ charge €/kWh)
+  mode: EnergyMode;
+  setMode(m: EnergyMode): void;
+
   // fuel / filters
   fuel: FuelId;
   setFuel(f: FuelId): void;
@@ -198,6 +230,21 @@ export interface AppStore {
   filtersOpen: boolean;
   setFiltersOpen(open: boolean): void;
   resetFilters(): void;
+
+  // EV filters (session-only, like the service tags)
+  /** Selected connectors. Empty = every connector passes. */
+  connSel: ConnectorId[];
+  toggleConnector(c: ConnectorId): void;
+  /** Minimum station power (kW); 0 = no floor */
+  minPowerKw: number;
+  setMinPowerKw(kw: number): void;
+  /** Cycle the « puissance min » chip through POWER_STEPS */
+  cyclePower(): void;
+  evFreeOnly: boolean;
+  setEvFreeOnly(v: boolean): void;
+  /** Only stations with a resolved €/kWh price */
+  evPricedOnly: boolean;
+  setEvPricedOnly(v: boolean): void;
 
   // stations around me
   userPos: GeoPoint;
@@ -217,6 +264,9 @@ export interface AppStore {
   focusStationId: string | null;
   setFocusStation(id: string | null): void;
   stations: StationsState;
+  /** Charge stations of the area (loaded once the EV mode is entered) */
+  charge: ChargeState;
+  /** Reload whichever domain the current mode shows */
   reloadStations(): void;
 
   // favorites (Favoris tab)
@@ -281,7 +331,7 @@ export interface AppStore {
   // maps + toast
   toast: string | null;
   notify(msg: string): void;
-  openInMaps(target: Station | RouteStation): void;
+  openInMaps(target: MapsTarget): void;
   openTourInMaps(): void;
 
   // PWA install
@@ -372,6 +422,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return saved === 'fra' || saved === 'esp' || saved === 'demo' ? saved : 'auto';
   });
   const [mapsSite, setMapsSiteState] = useState<MapsSiteId>(persisted.mapsSite ?? 'google');
+  const [mode, setModeState] = useState<EnergyMode>(persisted.mode ?? 'fuel');
+  // EV filters — session-only, like the fuel service tags
+  const [connSel, setConnSel] = useState<ConnectorId[]>([]);
+  const [minPowerKw, setMinPowerKwState] = useState(0);
+  const [evFreeOnly, setEvFreeOnly] = useState(false);
+  const [evPricedOnly, setEvPricedOnly] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   // Start from the last known position so the per-area cache hits instantly
   const initialPos = persisted.lastPos ?? DEFAULT_POS;
@@ -404,6 +460,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [canInstall, setCanInstall] = useState(installReady());
   const [installDismissed, setInstallDismissed] = useState(persisted.installDismissed ?? false);
   const [stations, setStations] = useState<StationsState>({
+    status: 'idle',
+    data: [],
+    activeSource: sourceId,
+    fellBack: false,
+    refreshing: false,
+  });
+  const [charge, setCharge] = useState<ChargeState>({
     status: 'idle',
     data: [],
     activeSource: sourceId,
@@ -620,16 +683,104 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(t);
   }, [geoHold]);
 
+  // ── Charge stations of the area (EV mode) — same SWR mechanics ─────────────
+  const chargeReq = useRef(0);
+  const loadCharge = useCallback(async () => {
+    const reqId = ++chargeReq.current;
+    const cacheKey = `ev:${sourceId}`;
+    const cached = readStationsCache<ChargeStation>(cacheKey, searchPos, radius);
+    if (cached && cached.covers && Date.now() - cached.fetchedAt < STALE_MS) {
+      setCharge({
+        status: 'ready',
+        data: cached.stations,
+        activeSource: sourceId,
+        fellBack: false,
+        fetchedAt: cached.fetchedAt,
+        refreshing: false,
+      });
+      return;
+    }
+    if (cached) {
+      setCharge({
+        status: 'ready',
+        data: cached.stations,
+        activeSource: sourceId,
+        fellBack: false,
+        fetchedAt: cached.fetchedAt,
+        refreshing: true,
+      });
+    } else {
+      setCharge((s) => ({ ...s, status: 'loading', refreshing: false }));
+    }
+    try {
+      const data = await getProviders(sourceId).charge.getChargeNear(searchPos, MAX_RADIUS_KM, {
+        lowPriority: cached != null,
+      });
+      if (reqId !== chargeReq.current) return;
+      const fetchedAt = Date.now();
+      writeStationsCache(cacheKey, searchPos, MAX_RADIUS_KM, data, fetchedAt);
+      setCharge({
+        status: 'ready',
+        data,
+        activeSource: sourceId,
+        fellBack: false,
+        fetchedAt,
+        refreshing: false,
+      });
+    } catch {
+      if (reqId !== chargeReq.current) return;
+      if (cached) {
+        setCharge((s) => ({ ...s, refreshing: false }));
+        return;
+      }
+      if (sourceId !== 'demo') {
+        try {
+          const demo = await getProviders('demo').charge.getChargeNear(searchPos, MAX_RADIUS_KM);
+          if (reqId !== chargeReq.current) return;
+          setCharge({
+            status: 'ready',
+            data: demo,
+            activeSource: 'demo',
+            fellBack: true,
+            fetchedAt: Date.now(),
+            refreshing: false,
+          });
+          return;
+        } catch {
+          /* fall through */
+        }
+      }
+      if (reqId !== chargeReq.current) return;
+      setCharge({
+        status: 'error',
+        data: [],
+        activeSource: sourceId,
+        fellBack: false,
+        refreshing: false,
+      });
+    }
+  }, [sourceId, searchPos, radius]);
+
+  // Only fetched once the user enters the EV mode (then follows area moves)
+  useEffect(() => {
+    if (mode === 'ev') void loadCharge();
+  }, [mode, loadCharge]);
+
   // ── Auto-refresh: keep prices fresh while the app is open and online ───────
   const stationsRef = useRef(stations);
   stationsRef.current = stations;
+  const chargeStateRef = useRef(charge);
+  chargeStateRef.current = charge;
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
   useEffect(() => {
     const tick = () => {
       if (document.hidden || navigator.onLine === false) return;
-      const st = stationsRef.current;
+      const ev = modeRef.current === 'ev';
+      const st = ev ? chargeStateRef.current : stationsRef.current;
       if (st.status !== 'ready' || st.refreshing) return;
       if (!st.fetchedAt || Date.now() - st.fetchedAt < STALE_MS) return;
-      void loadStations();
+      void (ev ? loadCharge() : loadStations());
     };
     const iv = setInterval(tick, 60_000);
     const onVisible = () => {
@@ -642,7 +793,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('online', tick);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [loadStations]);
+  }, [loadStations, loadCharge]);
 
   // ── PWA install ────────────────────────────────────────────────────────────
   useEffect(() => subscribeInstall(() => setCanInstall(installReady())), []);
@@ -853,6 +1004,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     savePersisted({ mapsSite: s });
   }, []);
 
+  const setMode = useCallback((m: EnergyMode) => {
+    setModeState(m);
+    // Fuel and charge station ids live in different namespaces
+    setFocusStationId(null);
+    savePersisted({ mode: m });
+  }, []);
+
+  const toggleConnector = useCallback((c: ConnectorId) => {
+    setConnSel((sel) => (sel.includes(c) ? sel.filter((x) => x !== c) : [...sel, c]));
+  }, []);
+
+  const setMinPowerKw = useCallback((kw: number) => setMinPowerKwState(kw), []);
+
+  const cyclePower = useCallback(() => {
+    setMinPowerKwState((cur) => {
+      const idx = POWER_STEPS.indexOf(cur);
+      return POWER_STEPS[(idx + 1) % POWER_STEPS.length];
+    });
+  }, []);
+
   const toggleBrand = useCallback((label: string) => {
     setBrandSelState((sel) => {
       const next = sel.includes(label) ? sel.filter((b) => b !== label) : [...sel, label];
@@ -867,6 +1038,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     savePersisted({ brandSel: [] });
     setServiceTags({});
     setFuel('gazole');
+    setConnSel([]);
+    setMinPowerKwState(0);
+    setEvFreeOnly(false);
+    setEvPricedOnly(false);
   }, [setFuel, setRadius]);
 
   const searchPlaces = useCallback(
@@ -939,7 +1114,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const openInMaps = useCallback(
-    (target: Station) => {
+    (target: MapsTarget) => {
       // Android: geo: URI → the native maps-app chooser (Google Maps, Waze,
       // Organic Maps…). iOS/iPadOS: Apple Plans universal link. Elsewhere:
       // the web maps site chosen in Réglages.
@@ -1008,9 +1183,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       go,
       back,
       openStation,
+      mode,
+      setMode,
       fuel,
       setFuel,
       cycleFuel,
+      connSel,
+      toggleConnector,
+      minPowerKw,
+      setMinPowerKw,
+      cyclePower,
+      evFreeOnly,
+      setEvFreeOnly,
+      evPricedOnly,
+      setEvPricedOnly,
       sort,
       setSort,
       radius,
@@ -1037,7 +1223,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isFavorite: (id) => favorites.some((f) => f.id === id),
       toggleFavorite,
       stations,
-      reloadStations: () => void loadStations(),
+      charge,
+      reloadStations: () => void (mode === 'ev' ? loadCharge() : loadStations()),
       fromText,
       toText,
       fromPoint,
@@ -1090,10 +1277,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       finishOnboarding,
     }),
     [
-      screen, prevScreen, go, back, openStation, fuel, setFuel, cycleFuel, sort, radius, setRadius,
+      screen, prevScreen, go, back, openStation, mode, setMode, fuel, setFuel, cycleFuel,
+      connSel, toggleConnector, minPowerKw, setMinPowerKw, cyclePower,
+      evFreeOnly, evPricedOnly, sort, radius, setRadius,
       brandSel, toggleBrand, serviceTags, filtersOpen, resetFilters, userPos, geoStatus,
       requestGeolocation, searchPos, searchLabel, setSearchArea, resetSearchToUser,
-      focusStationId, favorites, toggleFavorite, stations, loadStations, fromText, toText, fromPoint, toPoint,
+      focusStationId, favorites, toggleFavorite, stations, charge, loadStations, loadCharge,
+      fromText, toText, fromPoint, toPoint,
       setFrom, setTo, searchPlaces, recents, hasTripHistory, routeReady, startRoute, editRoute,
       openRouteSearch, focusDestination, consumeFocusDestination,
       routeMode, routeState, tour, toggleTour, vehicle, setVehicle, tank, setTank, conso, setConso,
@@ -1219,7 +1409,10 @@ export interface PriceStats {
  */
 export function selectPriceStats(app: AppStore): PriceStats | null {
   const f = app.fuel;
-  const prices = selectVisible(app).map((s) => s.prices[f]!.value);
+  return priceStatsOf(selectVisible(app).map((s) => s.prices[f]!.value));
+}
+
+function priceStatsOf(prices: number[]): PriceStats | null {
   if (!prices.length) return null;
   let min = Infinity;
   let max = -Infinity;
@@ -1237,6 +1430,15 @@ export function selectPriceStats(app: AppStore): PriceStats | null {
     dealMax: min + Math.max(TIER_EPS, TIER_SPREAD * (mean - min)),
     highMin: max - Math.max(TIER_EPS, TIER_SPREAD * (max - mean)),
   };
+}
+
+/** Same tiering over the EV zone's resolved €/kWh (unknown prices excluded) */
+export function selectChargePriceStats(app: AppStore): PriceStats | null {
+  return priceStatsOf(
+    selectVisibleCharge(app)
+      .map((s) => s.price?.value)
+      .filter((v): v is number => v != null),
+  );
 }
 
 /** Tier of a price against the zone distribution — colors pins, dots and rows */
@@ -1264,6 +1466,75 @@ export function selectPriceRange(app: AppStore): { min: number; max: number } | 
     min: byPrice[0].prices[f]!.value,
     max: byPrice[byPrice.length - 1].prices[f]!.value,
   };
+}
+
+// ── EV selectors (charge stations — €/kWh domain) ────────────────────────────
+
+function chargePassesFilters(app: AppStore, s: ChargeStation): boolean {
+  const { connSel, minPowerKw, evFreeOnly, evPricedOnly } = app;
+  return (
+    (connSel.length === 0 || connSel.some((c) => (s.connectors[c] ?? 0) > 0)) &&
+    s.maxPowerKw >= minPowerKw &&
+    (!evFreeOnly || s.free) &&
+    (!evPricedOnly || s.price != null)
+  );
+}
+
+function enrichCharge(app: AppStore, s: ChargeStation): NearbyChargeStation {
+  const distKm = haversineKm(app.userPos, { lat: s.lat, lng: s.lng });
+  const searchKm = haversineKm(app.searchPos, { lat: s.lat, lng: s.lng });
+  return { ...s, distKm, searchKm, driveMin: Math.max(1, Math.round(distKm * 2)) };
+}
+
+/** Charge stations passing the filters, within the radius */
+export function selectVisibleCharge(app: AppStore): NearbyChargeStation[] {
+  return app.charge.data
+    .map((s) => enrichCharge(app, s))
+    .filter((s) => s.searchKm <= app.radius && chargePassesFilters(app, s));
+}
+
+/** Charge pins: every loaded station passing the filters (same rationale as
+ * selectMapStations — pins must not pop in/out while panning) */
+export function selectMapCharge(app: AppStore): NearbyChargeStation[] {
+  return app.charge.data
+    .map((s) => enrichCharge(app, s))
+    .filter((s) => chargePassesFilters(app, s));
+}
+
+/** Price ascending; unknown prices last, most powerful first among them */
+export function selectChargeByPrice(app: AppStore): NearbyChargeStation[] {
+  return [...selectVisibleCharge(app)].sort((a, b) => {
+    if (a.price != null && b.price != null) {
+      return a.price.value - b.price.value || b.maxPowerKw - a.maxPowerKw;
+    }
+    if (a.price != null) return -1;
+    if (b.price != null) return 1;
+    return b.maxPowerKw - a.maxPowerKw;
+  });
+}
+
+export function selectSortedCharge(app: AppStore): NearbyChargeStation[] {
+  if (app.sort === 'prix') return selectChargeByPrice(app);
+  return [...selectVisibleCharge(app)].sort((a, b) => a.distKm - b.distKm);
+}
+
+/** Cheapest priced station of the zone; most powerful one when no price is known */
+export function selectBestCharge(app: AppStore): NearbyChargeStation | null {
+  return selectChargeByPrice(app)[0] ?? null;
+}
+
+export function selectFocusCharge(app: AppStore): NearbyChargeStation | null {
+  if (!app.focusStationId) return null;
+  return selectMapCharge(app).find((s) => s.id === app.focusStationId) ?? null;
+}
+
+/** min/max among the stations with a known €/kWh (null when none has one) */
+export function selectChargePriceRange(app: AppStore): { min: number; max: number } | null {
+  const priced = selectVisibleCharge(app)
+    .map((s) => s.price?.value)
+    .filter((v): v is number => v != null);
+  if (!priced.length) return null;
+  return { min: Math.min(...priced), max: Math.max(...priced) };
 }
 
 /** Autonomy narrative for the route ribbon (depends on tank setting) */

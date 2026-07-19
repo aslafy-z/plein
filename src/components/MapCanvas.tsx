@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { C } from '../theme';
 import { haversineKm } from '../lib/geo';
+import { kwLabel } from '../lib/format';
 import { addDarkBasemap } from '../lib/tiles';
 import {
   useApp,
@@ -9,8 +10,13 @@ import {
   selectMapStations,
   selectCheapest,
   selectPriceStats,
+  selectChargePriceStats,
   priceTier,
+  selectVisibleCharge,
+  selectMapCharge,
+  selectBestCharge,
   type AppStore,
+  type PriceTier,
 } from '../state/store';
 
 /**
@@ -21,6 +27,66 @@ import {
  */
 const PIN_CAP = 15;
 
+interface PinData {
+  id: string;
+  lat: number;
+  lng: number;
+  /** Bubble text: "1,68" (€/L), "0,45" (€/kWh) or "150 kW" */
+  label: string;
+  /** Value the PIN_CAP cut ranks on — lower is better */
+  rank: number;
+  /** Zone price tier — colors the bubble/dot (unknown EV prices stay 'mid') */
+  tier: PriceTier;
+}
+
+/** The two domains never mix: fuel pins carry the €/L of the selected fuel,
+ * charge pins the €/kWh when known — power otherwise, ranked after every
+ * priced borne (most powerful first). */
+function pinData(app: AppStore): {
+  pins: PinData[];
+  bestId: string | null;
+  zoneIds: Set<string>;
+} {
+  if (app.mode === 'ev') {
+    const stats = selectChargePriceStats(app);
+    const pins = selectMapCharge(app).map((s) => ({
+      id: s.id,
+      lat: s.lat,
+      lng: s.lng,
+      label:
+        s.price != null
+          ? s.price.value.toFixed(2).replace('.', ',')
+          : s.maxPowerKw > 0
+            ? kwLabel(s.maxPowerKw)
+            : '⚡',
+      rank: s.price?.value ?? 10 + (400 - s.maxPowerKw) / 400,
+      tier: s.price != null ? priceTier(s.price.value, stats) : ('mid' as const),
+    }));
+    return {
+      pins,
+      bestId: selectBestCharge(app)?.id ?? null,
+      zoneIds: new Set(selectVisibleCharge(app).map((s) => s.id)),
+    };
+  }
+  // Pin & dot colors follow the zone's price tiers: « bons plans » in
+  // green (SEVERAL stations at near-identical low prices all stand out,
+  // not just the single cheapest), the priciest tier tinted orange.
+  const stats = selectPriceStats(app);
+  const pins = selectMapStations(app).map((s) => ({
+    id: s.id,
+    lat: s.lat,
+    lng: s.lng,
+    label: s.prices[app.fuel]!.value.toFixed(2).replace('.', ','),
+    rank: s.prices[app.fuel]!.value,
+    tier: priceTier(s.prices[app.fuel]!.value, stats),
+  }));
+  return {
+    pins,
+    bestId: selectCheapest(app)?.id ?? null,
+    zoneIds: new Set(selectVisible(app).map((s) => s.id)),
+  };
+}
+
 /**
  * Stations wearing a price bubble: the PIN_CAP cheapest of the EFFECTIVE
  * zone — the search circle intersected with the current view. When the
@@ -30,9 +96,11 @@ const PIN_CAP = 15;
  * the circle, then off-screen ones, only get the leftover bubbles when
  * the effective zone is sparse.
  */
-function pricedIds(app: AppStore, bounds: L.LatLngBounds | null): Set<string> {
-  const zoneIds = new Set(selectVisible(app).map((s) => s.id));
-  const pins = selectMapStations(app);
+function pricedIds(
+  pins: PinData[],
+  zoneIds: Set<string>,
+  bounds: L.LatLngBounds | null,
+): Set<string> {
   const rank = new Map(
     pins.map((s) => {
       const inView = bounds == null || bounds.contains([s.lat, s.lng]);
@@ -41,11 +109,7 @@ function pricedIds(app: AppStore, bounds: L.LatLngBounds | null): Set<string> {
   );
   return new Set(
     [...pins]
-      .sort(
-        (a, b) =>
-          rank.get(b.id)! - rank.get(a.id)! ||
-          a.prices[app.fuel]!.value - b.prices[app.fuel]!.value,
-      )
+      .sort((a, b) => rank.get(b.id)! - rank.get(a.id)! || a.rank - b.rank)
       .slice(0, PIN_CAP)
       .map((s) => s.id),
   );
@@ -53,6 +117,8 @@ function pricedIds(app: AppStore, bounds: L.LatLngBounds | null): Set<string> {
 
 export default function MapCanvas() {
   const app = useApp();
+  const ev = app.mode === 'ev';
+  const domain = ev ? app.charge : app.stations;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -213,33 +279,26 @@ export default function MapCanvas() {
     const layer = layerRef.current;
     if (!map || !layer) return;
 
-    const pins = selectMapStations(app);
-    const cheapest = selectCheapest(app);
-    // Pin & dot colors follow the zone's price tiers: « bons plans » in
-    // green (SEVERAL stations at near-identical low prices all stand out,
-    // not just the single cheapest), the priciest tier tinted orange.
-    const stats = selectPriceStats(app);
+    const { pins, bestId, zoneIds } = pinData(app);
     const markers = markersRef.current;
     const wanted = new Set<string>();
 
     // map.getBounds() is unusable before the first view is set — rank
     // without the view filter on that very first pass
-    const priced = pricedIds(app, lastBoundsRef.current ? map.getBounds() : null);
+    const priced = pricedIds(pins, zoneIds, lastBoundsRef.current ? map.getBounds() : null);
 
     for (const s of pins) {
-      const best = cheapest?.id === s.id;
+      const best = bestId === s.id;
       const focused = app.focusStationId === s.id;
       const dot = !priced.has(s.id) && !focused;
-      const price = s.prices[app.fuel]!.value;
-      const tier = priceTier(price, stats);
-      const deal = tier === 'deal';
-      const sig = `${price}|${tier}|${best}|${focused}|${dot}`;
+      const deal = s.tier === 'deal';
+      const sig = `${s.label}|${s.tier}|${best}|${focused}|${dot}`;
       wanted.add(s.id);
       const existing = markers.get(s.id);
       if (existing && existing.sig === sig) continue;
 
       const bg = deal ? '#3ddc84' : '#22282c';
-      const fg = deal ? '#08120c' : tier === 'high' ? '#e07a5f' : '#cfd6da';
+      const fg = deal ? '#08120c' : s.tier === 'high' ? '#e07a5f' : '#cfd6da';
       const big = best || focused;
       const font = big
         ? "700 15px 'Spline Sans Mono',monospace"
@@ -250,7 +309,7 @@ export default function MapCanvas() {
         ? `2px solid ${deal ? '#eafff3' : '#3ddc84'}`
         : deal
           ? '1px solid #3ddc84'
-          : tier === 'high'
+          : s.tier === 'high'
             ? '1px solid rgba(224,122,95,.35)'
             : '1px solid rgba(255,255,255,.08)';
       const shadow = focused
@@ -258,8 +317,7 @@ export default function MapCanvas() {
         : best
           ? 'drop-shadow(0 4px 12px rgba(61,220,132,.35))'
           : 'none';
-      const label = price.toFixed(2).replace('.', ',');
-      const tierClass = deal ? '--deal' : tier === 'high' ? '--high' : '';
+      const tierClass = deal ? '--deal' : s.tier === 'high' ? '--high' : '';
       const dotClass = `pin-dot${tierClass && ` pin-dot${tierClass}`}`;
       const bubbleClass = `pin-bubble${tierClass && ` pin-bubble${tierClass}`}`;
       const html = dot
@@ -267,7 +325,7 @@ export default function MapCanvas() {
         : `<div style="transform:translate(-50%,-100%);display:flex;flex-direction:column;` +
           `align-items:center;cursor:pointer;filter:${shadow}">` +
           `<div class="${bubbleClass}" style="background:${bg};color:${fg};font:${font};` +
-          `padding:${pad};border:${border}">${label}</div>` +
+          `padding:${pad};border:${border}">${s.label}</div>` +
           `<div class="pin-tip" style="border-top:7px solid ${bg}"></div></div>`;
       const icon = L.divIcon({ className: '', html, iconSize: [0, 0], iconAnchor: [0, 0] });
       // Deals float above their tier-mates (green dots above gray dots, green
@@ -296,7 +354,7 @@ export default function MapCanvas() {
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [app.stations.data, app.fuel, app.radius, app.brandSel, app.serviceTags, app.userPos, app.searchPos, app.focusStationId, viewTick]);
+  }, [app.stations.data, app.charge.data, app.mode, app.fuel, app.radius, app.brandSel, app.serviceTags, app.connSel, app.minPowerKw, app.evFreeOnly, app.evPricedOnly, app.userPos, app.searchPos, app.focusStationId, viewTick]);
 
   // ── Auto-fit (to the radius zone, not the whole fetched area) until the user
   // takes over — and never while a station is selected (don't yank the view).
@@ -308,7 +366,7 @@ export default function MapCanvas() {
     if (!map) return;
     if (userInteractedRef.current || app.focusStationId) return;
     programmaticUntil.current = Date.now() + 700;
-    const zone = selectVisible(app);
+    const zone = ev ? selectVisibleCharge(app) : selectVisible(app);
     const coords: L.LatLngExpression[] = [[app.searchPos.lat, app.searchPos.lng]];
     zone.forEach((s) => coords.push([s.lat, s.lng]));
     if (coords.length > 1) {
@@ -317,13 +375,14 @@ export default function MapCanvas() {
       map.setView([app.searchPos.lat, app.searchPos.lng], 13, { animate: false });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [app.stations.data, app.fuel, app.radius, app.brandSel, app.serviceTags, app.userPos, app.searchPos, app.focusStationId]);
+  }, [app.stations.data, app.charge.data, app.mode, app.fuel, app.radius, app.brandSel, app.serviceTags, app.connSel, app.minPowerKw, app.evFreeOnly, app.evPricedOnly, app.userPos, app.searchPos, app.focusStationId]);
 
   // ── Selecting a station (pin tap or sheet-list tap) pans the map onto it ──
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !app.focusStationId) return;
-    const s = selectMapStations(app).find((x) => x.id === app.focusStationId);
+    const source = ev ? selectMapCharge(app) : selectMapStations(app);
+    const s = source.find((x) => x.id === app.focusStationId);
     if (!s) return;
     programmaticUntil.current = Date.now() + 1200; // no auto-search, no circle glide
     map.panTo([s.lat, s.lng]);
@@ -334,14 +393,15 @@ export default function MapCanvas() {
   // the view. Circle on screen → the circle (like « Filtres · 30 »); circle
   // overflowing the screen (zoomed in) → its visible part, so the count
   // matches the dots the user can actually see.
+  const zoneStations = ev ? selectVisibleCharge(app) : selectVisible(app);
   let zoneInView = 0;
   if (mapRef.current && lastBoundsRef.current) {
     const bounds = mapRef.current.getBounds();
-    for (const s of selectVisible(app)) {
+    for (const s of zoneStations) {
       if (bounds.contains([s.lat, s.lng])) zoneInView++;
     }
   } else {
-    zoneInView = selectVisible(app).length;
+    zoneInView = zoneStations.length;
   }
   const zoneDots = Math.max(0, zoneInView - PIN_CAP);
 
@@ -350,7 +410,7 @@ export default function MapCanvas() {
       <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
 
       {/* Dense zone: tell that only the cheapest wear a price, the rest are dots */}
-      {app.stations.status !== 'loading' && zoneDots > 0 && (
+      {domain.status !== 'loading' && zoneDots > 0 && (
         <div
           data-testid="pin-cap-hint"
           style={{
@@ -378,13 +438,15 @@ export default function MapCanvas() {
               textAlign: 'center',
             }}
           >
-            Zone : les {PIN_CAP} moins chères · {zoneDots} en point{zoneDots > 1 ? 's' : ''}
+            {ev
+              ? `Zone : les ${PIN_CAP} meilleures bornes · ${zoneDots} en point${zoneDots > 1 ? 's' : ''}`
+              : `Zone : les ${PIN_CAP} moins chères · ${zoneDots} en point${zoneDots > 1 ? 's' : ''}`}
           </span>
         </div>
       )}
 
       {/* Loading indicator while the moved area fetches its stations */}
-      {app.stations.status === 'loading' && (
+      {domain.status === 'loading' && (
         <div
           style={{
             position: 'absolute',
@@ -409,7 +471,7 @@ export default function MapCanvas() {
               boxShadow: '0 8px 24px rgba(0,0,0,.5)',
             }}
           >
-            Recherche des stations…
+            {ev ? 'Recherche des bornes…' : 'Recherche des stations…'}
           </span>
         </div>
       )}
