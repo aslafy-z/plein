@@ -74,3 +74,39 @@ test('a dense zone shows its 15 cheapest as price pins, the rest as dots', async
   await expect(bubbles).toHaveCount(CAP + 1)
   await expect(dots).toHaveCount(TOTAL - CAP - 1)
 })
+
+test('when the circle overflows the screen, the visible part becomes the zone', async ({ page }) => {
+  await expect(page.locator('.pin-bubble')).toHaveCount(CAP)
+  await expect(page.getByTestId('pin-cap-hint')).toBeVisible()
+
+  // Zoom well into the circle (native double-click zoom): far fewer than CAP
+  // zone stations stay in view
+  const stage = await page.locator('.leaflet-container').first().boundingBox()
+  if (!stage) throw new Error('map container not found')
+  for (let i = 0; i < 5; i++) {
+    await page.mouse.dblclick(stage.x + stage.width / 2, stage.y + stage.height / 2)
+    await page.waitForTimeout(500)
+  }
+
+  // The visible part of the circle is now the zone: every station on screen
+  // wears a price bubble (the cap re-ranks to the view), no dot is left in
+  // sight, and the chip has nothing to announce
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const stage = document.querySelector('.leaflet-container')!.getBoundingClientRect()
+          const inView = (el: Element) => {
+            const r = el.getBoundingClientRect()
+            return r.right > stage.left && r.left < stage.right && r.bottom > stage.top && r.top < stage.bottom
+          }
+          return {
+            dots: [...document.querySelectorAll('.pin-dot')].filter(inView).length,
+            bubbles: [...document.querySelectorAll('.pin-bubble')].filter(inView).length,
+          }
+        }),
+      { timeout: 8000 },
+    )
+    .toMatchObject({ dots: 0 })
+  await expect(page.getByTestId('pin-cap-hint')).toBeHidden()
+})
