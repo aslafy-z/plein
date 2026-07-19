@@ -6,6 +6,13 @@ export function fmtPrice(v: number | null | undefined): string {
   return v.toFixed(2).replace('.', ',');
 }
 
+/** 150 -> "150 kW" ; 7.4 -> "7,4 kW" ; 0/unknown -> "— kW" */
+export function kwLabel(kw: number): string {
+  if (!kw || !isFinite(kw)) return '— kW';
+  const v = kw >= 10 ? String(Math.round(kw)) : String(kw).replace('.', ',');
+  return `${v} kW`;
+}
+
 /** 0.85 -> "850 m" ; 2.34 -> "2,3 km" */
 export function distLabel(km: number): string {
   if (km < 1) return `${Math.round(km * 1000)} m`;

@@ -29,7 +29,7 @@ const SOURCES: { id: DataSourceId; title: string; sub: string }[] = [
   {
     id: 'fra',
     title: 'prix-carburants.gouv.fr',
-    sub: 'temps réel · mis à jour toutes les 10 min',
+    sub: 'temps réel · bornes : base nationale IRVE',
   },
   {
     id: 'esp',
@@ -433,8 +433,10 @@ export default function Settings() {
             proviennent des déclarations officielles des stations et sont donnés à titre
             indicatif, sans garantie : nous ne pouvons pas les vérifier un par un, et il peut
             arriver qu'un prix ait changé le temps d'arriver à la pompe. Jetez-y un œil sur
-            place avant de faire le plein — le détour reste à votre appréciation. Et si un prix
-            vous semble faux, dites-le-nous juste en dessous 💚
+            place avant de faire le plein — le détour reste à votre appréciation. Côté
+            recharge, le prix au kWh est déclaré par l'opérateur ou relevé sur la grille
+            publique du réseau (provenance et date affichées) : le tarif à la borne fait foi.
+            Et si un prix vous semble faux, dites-le-nous juste en dessous 💚
           </div>
 
           <button
@@ -520,6 +522,10 @@ export default function Settings() {
           Prix : <a href="https://prix-carburants.gouv.fr" target="_blank" rel="noreferrer" style={{ color: C.ghost, textDecoration: 'underline' }}>prix-carburants.gouv.fr</a>
           {' '}· <a href="https://geoportalgasolineras.es" target="_blank" rel="noreferrer" style={{ color: C.ghost, textDecoration: 'underline' }}>geoportalgasolineras.es</a>
           {' '}· à titre indicatif · adresses : BAN / CartoCiudad · itinéraires : OSRM / Valhalla
+        </div>
+        <div>
+          bornes : <a href="https://www.data.gouv.fr/datasets/fichier-consolide-des-bornes-de-recharge-pour-vehicules-electriques/" target="_blank" rel="noreferrer" style={{ color: C.ghost, textDecoration: 'underline' }}>base nationale IRVE</a>
+          {' '}· prix recharge : opérateurs & grilles publiques
         </div>
         <div>
           cartes : © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" style={{ color: C.ghost, textDecoration: 'underline' }}>OpenStreetMap</a> · © CARTO

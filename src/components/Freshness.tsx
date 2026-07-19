@@ -20,7 +20,8 @@ export default function Freshness() {
     const iv = setInterval(tick, 30_000);
     return () => clearInterval(iv);
   }, []);
-  const { status, refreshing, fetchedAt } = app.stations;
+  // Follows whichever domain the map shows (fuel prices or charge stations)
+  const { status, refreshing, fetchedAt } = app.mode === 'ev' ? app.charge : app.stations;
   if (status !== 'ready') return null;
 
   if (refreshing) {

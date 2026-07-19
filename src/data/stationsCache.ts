@@ -7,26 +7,32 @@
 // does and the data is fresh, the store skips the network entirely: a slight
 // map move re-uses the stations we already have, like the basemap tiles.
 import { haversineKm, type GeoPoint } from '../lib/geo';
-import type { DataSourceId, Station } from './types';
+import type { Station } from './types';
+
+/** Cache key: the DataSourceId, prefixed by domain for charge stations
+ * ("gouv" = fuel, "ev:gouv" = charge) — the two datasets never mix. */
+export type CacheSource = string;
 
 const LS_KEY = 'plein.stations.cache.v1';
-const MAX_AREAS = 4;
+// Fuel and EV areas share the pool — big enough that toggling the mode over
+// the same place doesn't evict the other domain's areas.
+const MAX_AREAS = 6;
 /** Without containment, a cached area still paints when its center is close */
 const MATCH_KM = 3;
 /** Older than this → the UI flags the data as outdated */
 export const STALE_MS = 10 * 60_000;
 
 interface CacheEntry {
-  source: DataSourceId;
+  source: CacheSource;
   center: GeoPoint;
   /** Radius the fetch actually covered (absent on pre-existing entries) */
   fetchRadiusKm?: number;
   fetchedAt: number;
-  stations: Station[];
+  stations: unknown[];
 }
 
-export interface StationsCacheHit {
-  stations: Station[];
+export interface StationsCacheHit<T = Station> {
+  stations: T[];
   fetchedAt: number;
   /** The requested zone (center + radius) lies fully inside the cached area */
   covers: boolean;
@@ -54,11 +60,11 @@ function save(list: CacheEntry[]): void {
   }
 }
 
-export function readStationsCache(
-  source: DataSourceId,
+export function readStationsCache<T = Station>(
+  source: CacheSource,
   center: GeoPoint,
   radiusKm: number,
-): StationsCacheHit | null {
+): StationsCacheHit<T> | null {
   const entries = load().filter((e) => e.source === source);
   const covering = entries.find(
     (e) =>
@@ -67,7 +73,7 @@ export function readStationsCache(
   );
   if (covering) {
     return {
-      stations: covering.stations,
+      stations: covering.stations as T[],
       fetchedAt: covering.fetchedAt,
       covers: true,
       center: covering.center,
@@ -75,14 +81,14 @@ export function readStationsCache(
     };
   }
   const near = entries.find((e) => haversineKm(e.center, center) <= MATCH_KM);
-  return near ? { stations: near.stations, fetchedAt: near.fetchedAt, covers: false } : null;
+  return near ? { stations: near.stations as T[], fetchedAt: near.fetchedAt, covers: false } : null;
 }
 
-export function writeStationsCache(
-  source: DataSourceId,
+export function writeStationsCache<T = Station>(
+  source: CacheSource,
   center: GeoPoint,
   fetchRadiusKm: number,
-  stations: Station[],
+  stations: T[],
   fetchedAt: number,
 ): void {
   const rest = load().filter(

@@ -8,9 +8,14 @@ import { haversineKm } from '../lib/geo';
 import { openStatus } from '../lib/hours';
 import { addDarkBasemap } from '../lib/tiles';
 import Star from '../components/Star';
+import EvStationDetail from './EvStationDetail';
 
 /** Static mini-map centred on the station (replaces the prototype's photo slot) */
-function StationMiniMap({ station }: { station: Station }) {
+export function StationMiniMap({
+  station,
+}: {
+  station: Pick<Station, 'id' | 'lat' | 'lng' | 'init'>;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
 
@@ -60,16 +65,20 @@ export default function StationDetail() {
 
   const nearby = app.stations.data.find((x) => x.id === app.detailId);
   const routeSt = app.routeState.stations.find((x) => x.id === app.detailId);
+  const evSt = app.charge.data.find((x) => x.id === app.detailId);
   // Opened from the route ribbon (or only known along the route) → all
   // comparisons are route-relative, not home-radius-relative.
   const isRoute = routeSt != null && (app.prevScreen === 'route' || !nearby);
   const s = isRoute ? routeSt : (nearby ?? routeSt);
+  const missing = !s && !evSt;
 
   useEffect(() => {
-    if (!s) app.back();
+    if (missing) app.back();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s]);
+  }, [missing]);
 
+  // Charge stations have their own layout (€/kWh, connectors — no fuel table)
+  if (evSt && (app.mode === 'ev' || !s)) return <EvStationDetail s={evSt} />;
   if (!s) return null;
 
   const distKm = haversineKm(app.userPos, { lat: s.lat, lng: s.lng });
