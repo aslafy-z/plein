@@ -528,10 +528,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // nothing to fetch at all — slight map moves re-use the stations already
   // loaded, exactly like the prefetched basemap tiles.
   const stationsReq = useRef(0);
+  // Area whose stations currently sit in memory. Live circle drags update
+  // searchPos several times a second — when the zone still fits inside this
+  // area with fresh data there is nothing to load at all (no localStorage
+  // parse, no network): the client-side filters do all the work.
+  const loadedArea = useRef<{
+    source: DataSourceId;
+    center: GeoPoint;
+    radiusKm: number;
+    fetchedAt: number;
+  } | null>(null);
   const loadStations = useCallback(async () => {
+    const area = loadedArea.current;
+    if (
+      area &&
+      area.source === sourceId &&
+      Date.now() - area.fetchedAt < STALE_MS &&
+      haversineKm(area.center, searchPos) + radius <= area.radiusKm
+    ) {
+      return;
+    }
     const reqId = ++stationsReq.current;
     const cached = readStationsCache(sourceId, searchPos, radius);
     if (cached && cached.covers && Date.now() - cached.fetchedAt < STALE_MS) {
+      if (cached.center && cached.fetchRadiusKm != null) {
+        loadedArea.current = {
+          source: sourceId,
+          center: cached.center,
+          radiusKm: cached.fetchRadiusKm,
+          fetchedAt: cached.fetchedAt,
+        };
+      }
       setStations({
         status: 'ready',
         data: cached.stations,
@@ -563,6 +590,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (reqId !== stationsReq.current) return;
       const fetchedAt = Date.now();
       writeStationsCache(sourceId, searchPos, MAX_RADIUS_KM, data, fetchedAt);
+      loadedArea.current = { source: sourceId, center: searchPos, radiusKm: MAX_RADIUS_KM, fetchedAt };
       setStations({
         status: 'ready',
         data,
@@ -573,6 +601,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
     } catch {
       if (reqId !== stationsReq.current) return;
+      // Failed loads must not shadow future retries behind the fast path
+      loadedArea.current = null;
       // Refresh failed but the cache is on screen → keep it, flagged as outdated.
       if (cached) {
         setStations((s) => ({ ...s, refreshing: false }));

@@ -30,6 +30,10 @@ export interface StationsCacheHit {
   fetchedAt: number;
   /** The requested zone (center + radius) lies fully inside the cached area */
   covers: boolean;
+  /** Geometry of the covering area (set when `covers`) — lets the store
+      answer later containment checks in memory, without re-reading here */
+  center?: GeoPoint;
+  fetchRadiusKm?: number;
 }
 
 function load(): CacheEntry[] {
@@ -62,7 +66,13 @@ export function readStationsCache(
       haversineKm(e.center, center) + radiusKm <= e.fetchRadiusKm,
   );
   if (covering) {
-    return { stations: covering.stations, fetchedAt: covering.fetchedAt, covers: true };
+    return {
+      stations: covering.stations,
+      fetchedAt: covering.fetchedAt,
+      covers: true,
+      center: covering.center,
+      fetchRadiusKm: covering.fetchRadiusKm,
+    };
   }
   const near = entries.find((e) => haversineKm(e.center, center) <= MATCH_KM);
   return near ? { stations: near.stations, fetchedAt: near.fetchedAt, covers: false } : null;
