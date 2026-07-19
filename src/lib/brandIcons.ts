@@ -61,6 +61,21 @@ const BRAND_GROUPS: ReadonlyArray<BrandGroupDef> = [
   { label: 'Plenergy', match: /plenergy|plenoil/i },
   { label: 'Petroprix', match: /petroprix/i, icon: 'petroprix' },
   { label: 'Q8', match: /\bq8\b/i, icon: 'q8' },
+  { label: 'BonÀrea', match: /bonarea/i, icon: 'bonarea' },
+  // Esclatoil = les stations du groupe Bon Preu
+  { label: 'Esclatoil', match: /esclatoil|bon\s?preu/i, icon: 'esclatoil' },
+  { label: 'Alcampo', match: /alcampo/i, icon: 'alcampo' },
+  { label: 'Eroski', match: /eroski/i, icon: 'eroski' },
+  { label: 'Meroil', match: /meroil/i, icon: 'meroil' },
+  { label: 'Agla', match: /\bagla\b/i, icon: 'agla' },
+  { label: 'GasExpress', match: /gas\s?express/i, icon: 'gasexpress' },
+  { label: 'Beroil', match: /beroil/i, icon: 'beroil' },
+  { label: 'Petromiralles', match: /petromiralles/i, icon: 'petromiralles' },
+  { label: 'Campsa', match: /campsa/i },
+  { label: 'Valcarce', match: /valcarce/i },
+  { label: 'Disa', match: /\bdisa\b/i },
+  { label: 'Petrocat', match: /petrocat/i },
+  { label: 'HAM', match: /\bham\b/i },
 ];
 
 /** Every filter entry the app knows — drives the « hors zone » selector. */

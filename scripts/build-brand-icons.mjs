@@ -44,6 +44,17 @@ const ICONS = [
   // petroprix.es est hébergé chez OVH et sert le favicon OVH par défaut
   ['petroprix', 'petroprix.com'],
   ['q8', 'q8.it'],
+  ['bonarea', 'bonarea.com'],
+  // Esclatoil = les stations du groupe Bon Preu
+  ['esclatoil', 'bonpreuesclat.cat'],
+  ['meroil', 'meroil.es'],
+  ['alcampo', 'alcampo.es'],
+  ['eroski', 'eroski.es'],
+  ['agla', 'agla.es'],
+  ['gasexpress', 'gasexpress.es'],
+  ['beroil', 'beroil.es'],
+  ['petromiralles', 'petromiralles.com'],
+  // Campsa / Valcarce / Disa / Petrocat / HAM : pas de favicon exploitable
 ];
 
 const SIZE = 64;

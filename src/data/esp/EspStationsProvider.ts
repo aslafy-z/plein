@@ -117,6 +117,23 @@ const FUEL_COLS: ReadonlyArray<readonly [FuelId, string]> = [
   ['gplc', 'Precio Gases licuados del petróleo'],
 ];
 
+// The flux has no lavage/boutique-style service field, but it does list every
+// extra product on sale — shown as the « Services » of the detail screen.
+const EXTRA_PRODUCTS: ReadonlyArray<readonly [string, string]> = [
+  ['Precio Gasoleo Premium', 'Gazole Premium'],
+  ['Precio Gasoleo B', 'Gazole B (agricole)'],
+  ['Precio Adblue', 'AdBlue'],
+  ['Precio Gas Natural Comprimido', 'GNC — gaz naturel comprimé'],
+  ['Precio Gas Natural Licuado', 'GNL — gaz naturel liquéfié'],
+  ['Precio Biogas Natural Comprimido', 'BioGNC'],
+  ['Precio Biogas Natural Licuado', 'BioGNL'],
+  ['Precio Hidrogeno', 'Hydrogène'],
+  ['Precio Diésel Renovable', 'Diesel renouvelable (HVO)'],
+  ['Precio Gasolina Renovable', 'Essence renouvelable'],
+  ['Precio Biodiesel', 'Biodiesel'],
+  ['Precio Bioetanol', 'Bioéthanol'],
+];
+
 /** "19/07/2026 5:40:23" (header `Fecha`, Madrid time) → "2026-07-19T05:40:23" */
 function fechaToIso(fecha: string | undefined): string | undefined {
   const m = fecha?.match(/^(\d{2})\/(\d{2})\/(\d{4}) (\d{1,2}):(\d{2}):(\d{2})$/);
@@ -164,8 +181,11 @@ function parseHorario(v: unknown): StationHours | undefined {
 
 // ── Brands ───────────────────────────────────────────────────────────────────
 const BRAND_CATS: ReadonlyArray<readonly [RegExp, BrandCat]> = [
-  [/carrefour|alcampo|eroski|bonarea|e\.?\s?leclerc|esclatoil/i, 'gs'],
-  [/repsol|cepsa|moeve|galp|petronor|\bbp\b|shell|\bq8\b|avia|esso|tamoil|texaco/i, 'pet'],
+  [/carrefour|alcampo|eroski|bonarea|e\.?\s?leclerc|esclatoil|bon\s?preu/i, 'gs'],
+  [
+    /repsol|cepsa|moeve|galp|petronor|\bbp\b|shell|\bq8\b|avia|esso|tamoil|texaco|campsa|meroil|valcarce|\bdisa\b|petrocat|petromiralles|beroil|\bagla\b|gas\s?express|\bham\b/i,
+    'pet',
+  ],
 ];
 
 function catFor(brand: string): BrandCat {
@@ -206,6 +226,10 @@ function parseRecord(rec: Raw, updatedAt: string | undefined): Station | null {
   const address = toStr(rec['Dirección']) ?? '';
   const hours = parseHorario(rec['Horario']);
   const tags: ServiceTag[] = hours?.auto24 ? ['24/24'] : [];
+  // A price on an extra product means the station sells it
+  const services = EXTRA_PRODUCTS.filter(([col]) => toNum(rec[col]) != null).map(
+    ([, label]) => label,
+  );
   const id = toStr(rec['IDEESS']);
 
   return {
@@ -221,7 +245,7 @@ function parseRecord(rec: Raw, updatedAt: string | undefined): Station | null {
     cp: toStr(rec['C.P.']),
     prices,
     tags,
-    services: [],
+    services,
     // Autovías/autopistas are the Spanish motorway network
     highway: /autov[ií]a|autopista|\bAP-?\d/i.test(address),
     hours,

@@ -47,6 +47,7 @@ export { EspStationsProvider } from './src/data/esp/EspStationsProvider';
 export { CartoCiudadGeocodeProvider } from './src/data/esp/CartoCiudadGeocodeProvider';
 export { nearestOnPolyline, polylineLengthKm } from './src/lib/geo';
 export { openStatus } from './src/lib/hours';
+export { brandGroup, INDEPENDENT_GROUP } from './src/lib/brandIcons';
 `;
 const out = await build({
   stdin: { contents: entry, resolveDir: process.cwd(), loader: 'ts' },
@@ -148,6 +149,16 @@ ok('esp: opening hours parsed', espHours.length >= espNear.length * 0.5,
 const espStatuses = espHours.map((s) => P.openStatus(s.hours)).filter(Boolean);
 ok('esp: open-status computable', espStatuses.length > 0,
   espStatuses.slice(0, 3).map((s) => s.label).join(' / '));
+const espServed = espNear.filter((s) => s.services.length > 0);
+ok('esp: extra products exposed as services', espServed.length > 0,
+  `${espServed.length}/${espNear.length} · ex: ${espServed[0]?.services.slice(0, 3).join(' / ')}`);
+// Brand grouping coverage — most stations around Lleida must resolve to a
+// named « Marques » group (BonÀrea, Repsol…), not fall into Indépendants.
+const LLEIDA = { lat: 41.617, lng: 0.62 };
+const lleida = await esp.getStationsNear(LLEIDA, 25);
+const grouped = lleida.filter((s) => P.brandGroup(s.brand) !== P.INDEPENDENT_GROUP);
+ok('esp: Lleida brands resolve to filter groups', lleida.length >= 10 && grouped.length >= lleida.length * 0.5,
+  `${grouped.length}/${lleida.length} grouped`);
 
 // 6 — CartoCiudad geocoding
 const cartociudad = new P.CartoCiudadGeocodeProvider();
