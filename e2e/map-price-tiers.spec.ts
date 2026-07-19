@@ -1,6 +1,6 @@
 import { test, expect, gotoMap } from './fixtures'
 
-// Pin & dot colors follow the zone's price tiers: the « bon plan » tier
+// Pin & dot colors follow the loaded area's price tiers: the « bon plan » tier
 // (within 1 ct of the cheapest, widened to a quarter of the cheapest→average
 // gap) is green — SEVERAL stations at near-identical low prices are all
 // highlighted, not just the first — and the priciest tier is tinted orange.
