@@ -883,10 +883,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const isAndroid = /android/i.test(ua);
       const isIOS =
         /iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+      // A brand-matched station exists as a mapped POI: hand the maps app a
+      // text search (anchored on our coordinates) so it opens its own place
+      // card instead of a bare coordinate pin, which it never links to the
+      // POI. Unbranded stations keep the labeled pin — a text search for
+      // « Station » would be a lottery.
+      const poiQuery = target.brand
+        ? encodeURIComponent(
+            [target.brand, target.address, target.cp, target.city].filter(Boolean).join(' '),
+          )
+        : null;
       if (isAndroid) {
         showToast("Ouverture de l'app GPS…");
         const label = encodeURIComponent(target.name);
-        window.location.href = `geo:${target.lat},${target.lng}?q=${target.lat},${target.lng}(${label})`;
+        const q = poiQuery ?? `${target.lat},${target.lng}(${label})`;
+        window.location.href = `geo:${target.lat},${target.lng}?q=${q}`;
         return;
       }
       if (isIOS) {
@@ -895,7 +906,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
       showToast('Ouverture de Google Maps…');
-      const url = `https://www.google.com/maps/dir/?api=1&destination=${target.lat},${target.lng}&travelmode=driving`;
+      // Unlike geo:, the dir URL carries no coordinate anchor for a text
+      // search — only use it when a street address can disambiguate the query.
+      const destination = poiQuery && target.address ? poiQuery : `${target.lat},${target.lng}`;
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`;
       window.open(url, '_blank', 'noopener');
     },
     [showToast],
