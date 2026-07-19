@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { C } from '../theme';
 import { haversineKm } from '../lib/geo';
@@ -55,10 +55,6 @@ export default function MapCanvas() {
   const appRef = useRef(app);
   appRef.current = app;
 
-  // The pin-cap chip counts what is actually ON SCREEN — re-render on view
-  // changes so its numbers follow the pan/zoom
-  const [, setViewTick] = useState(0);
-
   const circleRef = useRef<L.Circle | null>(null);
   const userDotRef = useRef<L.Marker | null>(null);
   const markersRef = useRef(new Map<string, { marker: L.Marker; sig: string }>());
@@ -83,8 +79,6 @@ export default function MapCanvas() {
     };
     map.on('dragstart', markInteract);
     map.on('zoomstart', markInteract);
-
-    map.on('moveend zoomend', () => setViewTick((t) => t + 1));
 
     // While the USER pans, the zone circle glides with the screen center —
     // no more jumpy circle waiting for the debounce. Never during a zoom
@@ -288,34 +282,25 @@ export default function MapCanvas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [app.focusStationId]);
 
-  // Chip numbers: only the stations inside the CURRENT view — the fetched
-  // area is far larger than the screen, and counting it reads as nonsense
-  // (« 110 en points » with five dots visible)
-  let bubblesInView = 0;
-  let dotsInView = 0;
-  if (mapRef.current && app.stations.status !== 'loading') {
-    const bounds = mapRef.current.getBounds();
-    const priced = pricedIds(app);
-    for (const s of selectMapStations(app)) {
-      if (!bounds.contains([s.lat, s.lng])) continue;
-      if (priced.has(s.id) || s.id === app.focusStationId) bubblesInView++;
-      else dotsInView++;
-    }
-  }
+  // Chip numbers: scoped to the search circle, like every other count in the
+  // app (« Filtres · 30 », « 30 stations dans la zone »). Counting the whole
+  // screen or the fetched area reads as nonsense against what the user
+  // checks: the dots inside the circle.
+  const zoneDots = Math.max(0, selectVisible(app).length - PIN_CAP);
 
   return (
     <div style={{ position: 'absolute', inset: 0, background: C.mapBg }}>
       <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
 
-      {/* Dense area: tell that only the cheapest wear a price, the rest are dots */}
-      {app.stations.status !== 'loading' && dotsInView > 0 && (
+      {/* Dense zone: tell that only the cheapest wear a price, the rest are dots */}
+      {app.stations.status !== 'loading' && zoneDots > 0 && (
         <div
           data-testid="pin-cap-hint"
           style={{
             position: 'absolute',
-            // Clear of the recenter button (right) and the attribution line
-            left: 64,
-            right: 64,
+            // The centered pill stays clear of the recenter button (right)
+            left: 24,
+            right: 24,
             bottom: 26,
             display: 'flex',
             justifyContent: 'center',
@@ -336,11 +321,7 @@ export default function MapCanvas() {
               textAlign: 'center',
             }}
           >
-            {bubblesInView > 0
-              ? `${
-                  bubblesInView > 1 ? `Les ${bubblesInView} moins chères` : 'La moins chère'
-                } · ${dotsInView} en point${dotsInView > 1 ? 's' : ''}`
-              : 'Touchez un point pour son prix'}
+            Zone : les {PIN_CAP} moins chères · {zoneDots} en point{zoneDots > 1 ? 's' : ''}
           </span>
         </div>
       )}

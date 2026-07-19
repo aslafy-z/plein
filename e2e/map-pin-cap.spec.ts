@@ -60,11 +60,11 @@ test('a dense zone shows its 15 cheapest as price pins, the rest as dots', async
   const bestZonePrice = (1.6 + FAR * 0.01).toFixed(2).replace('.', ',')
   await expect(page.locator('.pin-bubble', { hasText: bestZonePrice })).toBeVisible()
 
-  // The passive chip counts what is ON SCREEN, not the whole fetched area:
-  // the view fits the zone (15 bubbles + 3 dots), the 4 far dots are outside
-  // it and must not inflate the count.
+  // The passive chip counts the ZONE (the circle), like every other count in
+  // the app — the 4 far dots and the rest of the fetched area must not
+  // inflate it: 18 in-zone stations → 15 bubbles + 3 dots.
   await expect(page.getByTestId('pin-cap-hint')).toContainText(
-    `Les ${CAP} moins chères · ${NEAR - CAP} en points`,
+    `Zone : les ${CAP} moins chères · ${NEAR - CAP} en points`,
   )
 
   // Tapping a dot selects the station and promotes it to a full price pin
