@@ -653,7 +653,9 @@ export default function MapSheet({
               const best = cheapest?.id === s.id;
               const isFocus = app.focusStationId === s.id;
               const price = s.prices[app.fuel]!.value;
-              const deal = priceTier(price, stats) === 'deal';
+              // Rows are zone stations — the zone floor applies (the cheapest
+              // of the circle is a bon plan even when the area has cheaper)
+              const deal = priceTier(price, stats, true) === 'deal';
               const delta = price - min;
               return (
                 <button

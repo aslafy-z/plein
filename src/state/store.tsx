@@ -1237,6 +1237,15 @@ export interface PriceStats {
   dealMax: number;
   /** Lower price bound of the expensive tier */
   highMin: number;
+  /**
+   * « Bon plan » floor for stations INSIDE the circle: the zone's cheapest
+   * and its near-identical peers (± 1 ct) stay green even when the wider
+   * loaded area hides a cheaper pump elsewhere — the pin must agree with
+   * the « la moins chère dans cette zone » card. Null when the circle is
+   * empty. Only in-zone stations use it, so a sparse circle still can't
+   * repaint the rest of the map.
+   */
+  zoneDealMax: number | null;
 }
 
 /**
@@ -1266,20 +1275,33 @@ export function selectPriceStats(app: AppStore): PriceStats | null {
     sum += p;
   }
   const mean = sum / prices.length;
+  let zoneMin = Infinity;
+  for (const s of selectVisible(app)) {
+    const p = s.prices[f]!.value;
+    if (p < zoneMin) zoneMin = p;
+  }
   return {
     min,
     max,
     mean,
     dealMax: min + Math.max(TIER_EPS, TIER_SPREAD * (mean - min)),
     highMin: max - Math.max(TIER_EPS, TIER_SPREAD * (max - mean)),
+    zoneDealMax: zoneMin === Infinity ? null : zoneMin + TIER_EPS,
   };
 }
 
-/** Tier of a price against the zone distribution — colors pins, dots and rows */
-export function priceTier(price: number, stats: PriceStats | null): PriceTier {
+/**
+ * Tier of a price against the area distribution — colors pins, dots and rows.
+ * `inZone` (station inside the search circle) unlocks the zone floor: the
+ * circle's cheapest and its ± 1 ct peers are « bons plans » even when the
+ * wider loaded area is cheaper somewhere else.
+ */
+export function priceTier(price: number, stats: PriceStats | null, inZone = false): PriceTier {
   if (!stats) return 'mid';
-  if (price <= stats.dealMax) return 'deal';
-  // A tight zone can make the two bounds overlap — being a bon plan wins
+  const dealMax =
+    inZone && stats.zoneDealMax != null ? Math.max(stats.dealMax, stats.zoneDealMax) : stats.dealMax;
+  if (price <= dealMax) return 'deal';
+  // A tight area can make the two bounds overlap — being a bon plan wins
   if (price >= stats.highMin && stats.highMin > stats.dealMax) return 'high';
   return 'mid';
 }
@@ -1289,7 +1311,7 @@ export function selectDeals(app: AppStore): NearbyStation[] {
   const stats = selectPriceStats(app);
   if (!stats) return [];
   const f = app.fuel;
-  return selectByPrice(app).filter((s) => s.prices[f]!.value <= stats.dealMax);
+  return selectByPrice(app).filter((s) => priceTier(s.prices[f]!.value, stats, true) === 'deal');
 }
 
 export function selectPriceRange(app: AppStore): { min: number; max: number } | null {

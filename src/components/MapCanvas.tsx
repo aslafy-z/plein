@@ -256,7 +256,8 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
     // the very stations drawn here — so the scale can't flip with the
     // circle: « bons plans » in green (SEVERAL stations at near-identical
     // low prices all stand out, not just the single cheapest), the
-    // priciest tier tinted orange.
+    // priciest tier tinted orange. In-zone stations also get the zone
+    // floor: the circle's cheapest stays green like its card in the sheet.
     const stats = selectPriceStats(app);
     const markers = markersRef.current;
     const wanted = new Set<string>();
@@ -270,7 +271,7 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
       const focused = app.focusStationId === s.id;
       const dot = !priced.has(s.id) && !focused;
       const price = s.prices[app.fuel]!.value;
-      const tier = priceTier(price, stats);
+      const tier = priceTier(price, stats, s.searchKm <= app.radius);
       const deal = tier === 'deal';
       const sig = `${price}|${tier}|${best}|${focused}|${dot}`;
       wanted.add(s.id);
