@@ -24,7 +24,7 @@ const SOURCES: { id: DataSourceId; title: string; sub: string }[] = [
   {
     id: 'auto',
     title: 'Automatique',
-    sub: 'France + Espagne combinées selon la zone affichée',
+    sub: 'France + Espagne + Andorre combinées selon la zone affichée',
   },
   {
     id: 'fra',
@@ -35,6 +35,11 @@ const SOURCES: { id: DataSourceId; title: string; sub: string }[] = [
     id: 'esp',
     title: 'geoportalgasolineras.es',
     sub: 'Espagne · officiel MITECO · toutes les 30 min',
+  },
+  {
+    id: 'and',
+    title: 'sig.govern.ad',
+    sub: 'Andorre · officiel Govern d’Andorra · prix déclarés par les stations',
   },
   {
     id: 'demo',

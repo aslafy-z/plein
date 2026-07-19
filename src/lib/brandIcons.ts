@@ -76,6 +76,9 @@ const BRAND_GROUPS: ReadonlyArray<BrandGroupDef> = [
   { label: 'Disa', match: /\bdisa\b/i },
   { label: 'Petrocat', match: /petrocat/i },
   { label: 'HAM', match: /\bham\b/i },
+  // Enseignes andorranes (source sig.govern.ad) — Elf, Cepsa, Repsol, Shell,
+  // BP, TotalEnergies, Meroil et Dyneff matchent déjà plus haut.
+  { label: 'Gasopas', match: /gasopas/i },
 ];
 
 /** Every filter entry the app knows — drives the « hors zone » selector. */

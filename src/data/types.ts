@@ -127,7 +127,7 @@ export interface RouteProvider {
 }
 
 // ── Source selection ─────────────────────────────────────────────────────────
-export type DataSourceId = 'auto' | 'fra' | 'esp' | 'demo';
+export type DataSourceId = 'auto' | 'fra' | 'esp' | 'and' | 'demo';
 
 export interface ProviderBundle {
   stations: StationsProvider;
