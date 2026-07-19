@@ -115,6 +115,8 @@ export default function MapCanvas() {
     // (pinch included): reprojecting the circle mid-animation fights the CSS
     // scale transform and draws it at the wrong size until release.
     let zooming = false;
+    /** true while invalidateSize() runs — its synthetic events are not pans */
+    let resizing = false;
     map.on('zoomstart', () => {
       zooming = true;
     });
@@ -128,6 +130,7 @@ export default function MapCanvas() {
     // skips loading when the area already in memory covers the new zone.
     let lastLiveSearch = 0;
     map.on('move', () => {
+      if (resizing) return; // container resize, not a pan — nothing moved
       if (!userInteractedRef.current || zooming) return;
       if (Date.now() < programmaticUntil.current) return; // pan-to-station, fits…
       const c = map.getCenter();
@@ -146,6 +149,7 @@ export default function MapCanvas() {
     // Moving the map away loads the stations of the new area automatically
     // (debounced; only for user-initiated moves, never programmatic fits)
     map.on('moveend', () => {
+      if (resizing) return; // container resize, not a pan — nothing moved
       if (!userInteractedRef.current) return;
       if (Date.now() < programmaticUntil.current) return;
       const c = map.getCenter();
@@ -165,10 +169,16 @@ export default function MapCanvas() {
     // appearing mid-pan…). Resizing Leaflet mid-drag re-pans the content —
     // and the circle — under the finger: defer it to the end of the gesture,
     // and once the user owns the view never let a resize pan the map at all.
+    // The synthetic move/moveend Leaflet fires during invalidateSize must
+    // never read as a user pan (flag above): re-anchoring the circle & the
+    // search area on the shifted viewport center moves the results, which
+    // resizes the sheet again — a self-sustaining oscillation.
     let resizePending = false;
     const applyResize = () => {
       resizePending = false;
+      resizing = true;
       map.invalidateSize({ pan: !userInteractedRef.current });
+      resizing = false;
     };
     map.on('dragend', () => {
       if (resizePending) applyResize();
