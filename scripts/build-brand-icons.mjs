@@ -41,7 +41,8 @@ const ICONS = [
   ['moeve', 'moeve.es'],
   ['galp', 'galp.com'],
   // Ballenoil / Plenergy serve no favicon — they keep the initials avatar
-  ['petroprix', 'petroprix.es'],
+  // petroprix.es est hébergé chez OVH et sert le favicon OVH par défaut
+  ['petroprix', 'petroprix.com'],
   ['q8', 'q8.it'],
 ];
 
