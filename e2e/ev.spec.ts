@@ -51,6 +51,25 @@ test('borne detail shows price provenance and charge points', async ({ page }) =
   await expect(page.getByRole('button', { name: 'Y aller' })).toBeVisible()
 })
 
+test('Réglages : la motorisation bascule le mode et montre les réglages batterie', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
+  await page.getByRole('button', { name: 'Réglages' }).click()
+  // Seeded in EV mode → the électrique chip is active, battery sliders shown
+  await expect(page.getByText('Motorisation')).toBeVisible()
+  await expect(page.getByText('Batterie')).toBeVisible()
+  await expect(page.getByText('55 kWh')).toBeVisible()
+  await expect(page.getByText('kWh/100 km')).toBeVisible()
+  // Thermal-only controls stay hidden in EV mode
+  await expect(page.getByText('Carburant par défaut')).toHaveCount(0)
+  await expect(page.getByText('Réservoir')).toHaveCount(0)
+  // Switching back to thermique restores them and the map follows
+  await page.getByRole('button', { name: '⛽ Thermique' }).click()
+  await expect(page.getByText('Carburant par défaut')).toBeVisible()
+  await page.getByRole('button', { name: 'Carte' }).click()
+  await expect(page.getByText('Gazole ↻')).toBeVisible()
+})
+
 test('mode toggle returns to fuel prices and back', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })

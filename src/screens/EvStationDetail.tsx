@@ -12,10 +12,6 @@ import { openStatus } from '../lib/hours';
 import Star from '../components/Star';
 import { StationMiniMap } from './StationDetail';
 
-/** Reference charge used for the « coût d'une charge » estimate (typical
- * 20 → 80 % session on a compact EV battery) */
-const TYPICAL_CHARGE_KWH = 40;
-
 const chipStyle: React.CSSProperties = {
   background: C.surface2,
   color: C.body,
@@ -36,6 +32,8 @@ export default function EvStationDetail({ s }: { s: ChargeStation }) {
   const driveMin = Math.max(1, Math.round(distKm * 2));
   const status = openStatus(s.hours);
   const price = s.price;
+  // A 20 → 80 % session on the battery configured in Réglages
+  const chargeKwh = Math.round(app.battery * 0.6);
 
   const sourceText =
     app.charge.activeSource === 'demo'
@@ -217,8 +215,8 @@ export default function EvStationDetail({ s }: { s: ChargeStation }) {
                 fontSize: 12.5,
               }}
             >
-              ≈ {fmtPrice(price.value * TYPICAL_CHARGE_KWH)} € pour une charge de{' '}
-              {TYPICAL_CHARGE_KWH} kWh
+              ≈ {fmtPrice(price.value * chargeKwh)} € pour une charge 20 → 80 % (
+              {chargeKwh} kWh sur votre batterie de {app.battery} kWh)
             </div>
           )}
           {price == null && s.pricingText && (
