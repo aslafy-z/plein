@@ -1,4 +1,4 @@
-// Live verification of the REAL data providers (fra flux, BAN, OSRM, esp flux, CartoCiudad) from
+// Live verification of the REAL data providers (fra flux, BAN, OSRM, esp flux, CartoCiudad, Photon) from
 // Node — proves the fetch + parsing path against the actual endpoints without
 // needing a browser (sandboxed browsers often can't reach the open internet).
 //
@@ -45,6 +45,7 @@ export { BanGeocodeProvider } from './src/data/fra/BanGeocodeProvider';
 export { RealRouteProvider } from './src/data/fra/OsrmRouteProvider';
 export { EspStationsProvider } from './src/data/esp/EspStationsProvider';
 export { CartoCiudadGeocodeProvider } from './src/data/esp/CartoCiudadGeocodeProvider';
+export { PhotonGeocodeProvider } from './src/data/eu/PhotonGeocodeProvider';
 export { AutoStationsProvider, AutoGeocodeProvider } from './src/data/auto/AutoProviders';
 export { nearestOnPolyline, polylineLengthKm } from './src/lib/geo';
 export { openStatus } from './src/lib/hours';
@@ -168,6 +169,17 @@ ok('CartoCiudad: geocodes "Zaragoza"', espPlaces.length >= 1, espPlaces[0]?.labe
 ok('CartoCiudad: plausible coordinates',
   espPlaces[0] && Math.abs(espPlaces[0].point.lat - 41.65) < 1 && Math.abs(espPlaces[0].point.lng + 0.88) < 1);
 
+// 6bis — Photon geocoding (pan-European coverage)
+const photon = new P.PhotonGeocodeProvider();
+const adPlaces = await photon.search('Andorre-la-Vieille');
+ok('Photon: geocodes "Andorre-la-Vieille"',
+  adPlaces.some((p) => Math.abs(p.point.lat - 42.51) < 0.5 && Math.abs(p.point.lng - 1.52) < 0.5),
+  adPlaces[0] ? `${adPlaces[0].label} · ${adPlaces[0].sublabel}` : 'none');
+const dePlaces = await photon.search('Munich');
+ok('Photon: geocodes "Munich" (Germany)',
+  dePlaces.some((p) => Math.abs(p.point.lat - 48.14) < 1 && Math.abs(p.point.lng - 11.58) < 1),
+  dePlaces[0] ? `${dePlaces[0].label} · ${dePlaces[0].sublabel}` : 'none');
+
 // 7 — stations along a Spanish route
 const GUADALAJARA = { lat: 40.6333, lng: -3.1669 };
 const espRoute = await osrm.getRoute(MADRID, GUADALAJARA);
@@ -192,6 +204,10 @@ const autoGeo = new P.AutoGeocodeProvider();
 const autoPlaces = await autoGeo.search('Girona');
 ok('auto: geocoder finds Spanish places', autoPlaces.some((p) => Math.abs(p.point.lat - 41.98) < 1 && Math.abs(p.point.lng - 2.82) < 1),
   autoPlaces.slice(0, 2).map((p) => p.label).join(' / '));
+const autoBerlin = await autoGeo.search('Berlin');
+ok('auto: geocoder finds German places (Photon)',
+  autoBerlin.some((p) => Math.abs(p.point.lat - 52.52) < 1 && Math.abs(p.point.lng - 13.4) < 1),
+  autoBerlin.slice(0, 2).map((p) => p.label).join(' / '));
 
 const failed = results.filter((r) => !r.pass);
 console.log(`\n${results.length - failed.length}/${results.length} live checks passed`);

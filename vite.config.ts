@@ -110,6 +110,7 @@ const API_UPSTREAMS: Record<string, string> = {
   valhalla: 'https://valhalla1.openstreetmap.de',
   esp: 'https://sedeaplicaciones.minetur.gob.es',
   cartociudad: 'https://www.cartociudad.es',
+  photon: 'https://photon.komoot.io',
 }
 
 function fetchJson(url: string): Promise<{ status: number; body: string }> {
@@ -136,7 +137,7 @@ function fetchJson(url: string): Promise<{ status: number; body: string }> {
 }
 
 function apiHandler(req: IncomingMessage, res: ServerResponse): void {
-  const m = (req.url ?? '').match(/^\/(fra|ban|osrm|valhalla|esp|cartociudad)(\/.*)$/)
+  const m = (req.url ?? '').match(/^\/(fra|ban|osrm|valhalla|esp|cartociudad|photon)(\/.*)$/)
   if (!m) {
     res.statusCode = 404
     res.end()
