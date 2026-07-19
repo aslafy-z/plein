@@ -25,6 +25,8 @@ const PIN_CAP = 15;
 const LIVE_SEARCH_MS = 250;
 /** Live drifts smaller than this (km) don't change the results — skip them */
 const LIVE_SEARCH_MIN_KM = 0.1;
+/** Per-move decay of the circle↔center gap left over when a pan begins */
+const OFFSET_DECAY = 0.8;
 
 /**
  * Stations wearing a price bubble: the PIN_CAP cheapest of the EFFECTIVE
@@ -88,6 +90,9 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
   const lastBoundsRef = useRef('');
 
   const circleRef = useRef<L.Circle | null>(null);
+  /** Pixel gap between the drawn circle and the viewport center when a pan
+      begins (auto-fit never centers on searchPos), absorbed over the pan */
+  const circleOffsetRef = useRef({ x: 0, y: 0 });
   const userDotRef = useRef<L.Marker | null>(null);
   const markersRef = useRef(new Map<string, { marker: L.Marker; sig: string }>());
 
@@ -112,6 +117,18 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
     map.on('dragstart', markInteract);
     map.on('zoomstart', markInteract);
 
+    // The glide below keeps the circle on the viewport center, but when a
+    // pan BEGINS the circle usually isn't there: the load auto-fit centers
+    // the view on the zone bounds, not on searchPos (same after a
+    // pan-to-station). Snapping it onto the center at the first move event
+    // was a visible jump — measure the gap here and absorb it gradually.
+    map.on('dragstart', () => {
+      if (!circleRef.current) return;
+      const p = map.latLngToContainerPoint(circleRef.current.getLatLng());
+      const mid = map.getSize().divideBy(2);
+      circleOffsetRef.current = { x: p.x - mid.x, y: p.y - mid.y };
+    });
+
     map.on('moveend zoomend', () => {
       const key = map.getBounds().toBBoxString();
       if (key !== lastBoundsRef.current) {
@@ -130,7 +147,10 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
     });
     map.on('zoomend', () => {
       zooming = false;
-      if (userInteractedRef.current) circleRef.current?.setLatLng(map.getCenter());
+      if (userInteractedRef.current) {
+        circleOffsetRef.current = { x: 0, y: 0 };
+        circleRef.current?.setLatLng(map.getCenter());
+      }
     });
     // Results follow the circle LIVE while the finger drags (throttled):
     // the bottom card, the list and the chips update during the pan, not
@@ -140,7 +160,20 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
     map.on('move', () => {
       if (!userInteractedRef.current || zooming) return;
       if (Date.now() < programmaticUntil.current) return; // pan-to-station, fits…
-      const c = map.getCenter();
+      // Absorb the gap left at dragstart over the first frames of the pan
+      // instead of snapping the circle onto the exact center (visible jerk).
+      const off = circleOffsetRef.current;
+      off.x *= OFFSET_DECAY;
+      off.y *= OFFSET_DECAY;
+      if (Math.abs(off.x) < 0.5 && Math.abs(off.y) < 0.5) {
+        off.x = 0;
+        off.y = 0;
+      }
+      const mid = map.getSize().divideBy(2);
+      const c =
+        off.x || off.y
+          ? map.containerPointToLatLng(L.point(mid.x + off.x, mid.y + off.y))
+          : map.getCenter();
       circleRef.current?.setLatLng(c);
       const now = Date.now();
       if (now - lastLiveSearch < LIVE_SEARCH_MS) return;
@@ -158,7 +191,8 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
     map.on('moveend', () => {
       if (!userInteractedRef.current) return;
       if (Date.now() < programmaticUntil.current) return;
-      const c = map.getCenter();
+      // Sync on the DRAWN circle — it may still carry a start-of-pan offset
+      const c = circleRef.current?.getLatLng() ?? map.getCenter();
       const cur = appRef.current;
       const drift = haversineKm({ lat: c.lat, lng: c.lng }, cur.searchPos);
       // Live tracking leaves at most a throttle-tick of lag — this settle
@@ -185,6 +219,7 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
       // refs survive StrictMode remounts — drop everything tied to the dead map
       markersRef.current.clear();
       circleRef.current = null;
+      circleOffsetRef.current = { x: 0, y: 0 };
       userDotRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -217,6 +252,7 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
       // Mid-gesture the glide handler owns the position — snapping back to
       // the (throttled) searchPos would rubber-band the circle backwards
       if (!userInteractedRef.current) {
+        circleOffsetRef.current = { x: 0, y: 0 };
         circleRef.current.setLatLng([app.searchPos.lat, app.searchPos.lng]);
       }
       circleRef.current.setRadius(app.radius * 1000);
