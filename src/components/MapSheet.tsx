@@ -707,8 +707,10 @@ export default function MapSheet({
               const isFocus = app.focusStationId === s.id;
               const price = effectivePrice(s, app.fuel)!.value;
               // Rows are zone stations — the zone floor applies (the cheapest
-              // of the circle is a bon plan even when the area has cheaper)
-              const deal = priceTier(price, stats, true) === 'deal';
+              // of the circle is a bon plan even when the area has cheaper).
+              // The recommended row is highlighted like a deal whatever its
+              // tier, so it matches its card — without moving the tier bounds.
+              const deal = priceTier(price, stats, true) === 'deal' || recoRow;
               const delta = (priceCents(price) - priceCents(min)) / 100;
               return (
                 <button

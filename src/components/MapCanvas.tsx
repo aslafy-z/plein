@@ -372,7 +372,9 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
       const dot = !priced.has(s.id) && !focused;
       const price = effectivePrice(s, app.fuel)!.value;
       const tier = priceTier(price, stats, s.searchKm <= app.radius);
-      const deal = tier === 'deal';
+      // The recommended pin wears the deal green whatever its tier — it must
+      // agree with its green sheet card
+      const deal = tier === 'deal' || best;
       const sig = `${price}|${tier}|${best}|${focused}|${dot}`;
       wanted.add(s.id);
       const existing = markers.get(s.id);

@@ -1341,12 +1341,13 @@ export interface PriceStats {
   highMin: number;
   /**
    * « Bon plan » floor for stations INSIDE the circle: the zone's cheapest
-   * and its near-identical peers (± 1 ct), plus the RECOMMENDED station
-   * (best effective price — it can sit a few cents above the sticker
-   * minimum), stay green even when the wider loaded area hides a cheaper
-   * pump elsewhere — the pins must agree with the sheet card. Null when the
-   * circle is empty. Only in-zone stations use it, so a sparse circle still
-   * can't repaint the rest of the map.
+   * and its near-identical peers (± 1 ct) stay green even when the wider
+   * loaded area hides a cheaper pump elsewhere. Null when the circle is
+   * empty. Only in-zone stations use it, so a sparse circle still can't
+   * repaint the rest of the map. The RECOMMENDED station (best effective
+   * price — its sticker price can sit well above the minimum) is greened
+   * individually by the map and the list, NOT via this bound: raising the
+   * zone threshold to its price would turn most of the zone green.
    */
   zoneDealMax: number | null;
 }
@@ -1383,15 +1384,13 @@ export function selectPriceStats(app: AppStore): PriceStats | null {
     const p = effectivePrice(s, f)!.value;
     if (p < zoneMin) zoneMin = p;
   }
-  const reco = selectRecommended(app);
-  const zoneFloor = Math.max(zoneMin, reco ? effectivePrice(reco, f)!.value : zoneMin);
   return {
     min,
     max,
     mean,
     dealMax: min + Math.max(TIER_EPS, TIER_SPREAD * (mean - min)),
     highMin: max - Math.max(TIER_EPS, TIER_SPREAD * (max - mean)),
-    zoneDealMax: zoneMin === Infinity ? null : zoneFloor + TIER_EPS,
+    zoneDealMax: zoneMin === Infinity ? null : zoneMin + TIER_EPS,
   };
 }
 
