@@ -47,7 +47,7 @@ export default function Onboarding() {
           maxWidth: 300,
         }}
       >
-        Les prix de 11 000 stations en France, comparés autour de vous et sur vos trajets.
+        Les prix des stations en France, en Espagne et en Andorre, comparés autour de vous et sur vos trajets.
       </div>
 
       {/* Steps */}

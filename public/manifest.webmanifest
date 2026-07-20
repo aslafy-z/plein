@@ -1,7 +1,7 @@
 {
   "name": "Plein. — le plein au juste prix",
   "short_name": "Plein.",
-  "description": "Les prix des stations-service en France, comparés autour de vous et sur vos trajets.",
+  "description": "Les prix des stations-service en France, en Espagne et en Andorre, comparés autour de vous et sur vos trajets.",
   "id": "/",
   "start_url": "/",
   "scope": "/",
