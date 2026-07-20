@@ -1259,8 +1259,49 @@ export function selectSorted(app: AppStore): NearbyStation[] {
   return [...selectVisible(app)].sort((a, b) => a.distKm - b.distKm);
 }
 
+/** Cheapest STICKER price of the zone — labels (« meilleur prix ») and deltas */
 export function selectCheapest(app: AppStore): NearbyStation | null {
   return selectByPrice(app)[0] ?? null;
+}
+
+/**
+ * Per-litre price with the trip to the pump folded in: the fuel burnt driving
+ * there and back (conso & réservoir des Réglages) is bought at that station's
+ * own price — what a full tank ACTUALLY costs per litre. Shared by the map
+ * recommendation and the « Recommandé » sort of the Favoris.
+ */
+export function effectiveLiterPrice(app: AppStore, price: number, distKm: number): number {
+  return price * (1 + (distKm * 2 * app.conso) / 100 / app.tank);
+}
+
+/**
+ * Effective prices within this margin (cents) count as equal — feeds go
+ * stale for days and distances are crow-flies, a cent of effective gap is
+ * noise, not a reason to drive farther.
+ */
+const RECO_TIE_CENTS = 1;
+
+/**
+ * Station crowned by the collapsed sheet card: the best DEAL, not the best
+ * sticker price. Ranked on the effective per-litre price — a station a few
+ * cents dearer but several km closer wins when the longer drive burns more
+ * than it saves. Effective prices within RECO_TIE_CENTS are a tie and the
+ * NEAREST tied station is picked, which also preserves selectByPrice's rule
+ * that the recommendation never sends the user farther for a price
+ * difference they cannot even see.
+ */
+export function selectRecommended(app: AppStore): NearbyStation | null {
+  const f = app.fuel;
+  const zone = selectVisible(app);
+  const eff = (s: NearbyStation) =>
+    priceCents(effectiveLiterPrice(app, effectivePrice(s, f)!.value, s.distKm));
+  let min = Infinity;
+  for (const s of zone) min = Math.min(min, eff(s));
+  let pick: NearbyStation | null = null;
+  for (const s of zone) {
+    if (eff(s) - min <= RECO_TIE_CENTS && (!pick || s.distKm < pick.distKm)) pick = s;
+  }
+  return pick;
 }
 
 /**
@@ -1300,11 +1341,12 @@ export interface PriceStats {
   highMin: number;
   /**
    * « Bon plan » floor for stations INSIDE the circle: the zone's cheapest
-   * and its near-identical peers (± 1 ct) stay green even when the wider
-   * loaded area hides a cheaper pump elsewhere — the pin must agree with
-   * the « la moins chère dans cette zone » card. Null when the circle is
-   * empty. Only in-zone stations use it, so a sparse circle still can't
-   * repaint the rest of the map.
+   * and its near-identical peers (± 1 ct), plus the RECOMMENDED station
+   * (best effective price — it can sit a few cents above the sticker
+   * minimum), stay green even when the wider loaded area hides a cheaper
+   * pump elsewhere — the pins must agree with the sheet card. Null when the
+   * circle is empty. Only in-zone stations use it, so a sparse circle still
+   * can't repaint the rest of the map.
    */
   zoneDealMax: number | null;
 }
@@ -1341,13 +1383,15 @@ export function selectPriceStats(app: AppStore): PriceStats | null {
     const p = effectivePrice(s, f)!.value;
     if (p < zoneMin) zoneMin = p;
   }
+  const reco = selectRecommended(app);
+  const zoneFloor = Math.max(zoneMin, reco ? effectivePrice(reco, f)!.value : zoneMin);
   return {
     min,
     max,
     mean,
     dealMax: min + Math.max(TIER_EPS, TIER_SPREAD * (mean - min)),
     highMin: max - Math.max(TIER_EPS, TIER_SPREAD * (max - mean)),
-    zoneDealMax: zoneMin === Infinity ? null : zoneMin + TIER_EPS,
+    zoneDealMax: zoneMin === Infinity ? null : zoneFloor + TIER_EPS,
   };
 }
 

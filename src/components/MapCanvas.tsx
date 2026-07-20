@@ -7,7 +7,7 @@ import {
   useApp,
   selectVisible,
   selectMapStations,
-  selectCheapest,
+  selectRecommended,
   selectPriceStats,
   effectivePrice,
   priceTier,
@@ -349,7 +349,9 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
     if (!map || !layer) return;
 
     const pins = selectMapStations(app);
-    const cheapest = selectCheapest(app);
+    // The emphasized pin mirrors the sheet card: best effective price
+    // (round-trip fuel counted), not always the lowest sticker price
+    const reco = selectRecommended(app);
     // Pin & dot colors follow the price tiers of the whole loaded area —
     // the very stations drawn here — so the scale can't flip with the
     // circle: « bons plans » in green (SEVERAL stations at near-identical
@@ -365,7 +367,7 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
     const priced = pricedIds(app, lastBoundsRef.current ? map.getBounds() : null);
 
     for (const s of pins) {
-      const best = cheapest?.id === s.id;
+      const best = reco?.id === s.id;
       const focused = app.focusStationId === s.id;
       const dot = !priced.has(s.id) && !focused;
       const price = effectivePrice(s, app.fuel)!.value;

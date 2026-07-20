@@ -5,6 +5,7 @@ import {
   useApp,
   selectSorted,
   selectCheapest,
+  selectRecommended,
   selectPriceRange,
   selectPriceStats,
   selectDeals,
@@ -62,8 +63,12 @@ export default function MapSheet({
 }) {
   const app = useApp();
   const cheapest = selectCheapest(app);
+  // The card crowns the best DEAL (effective price, round-trip fuel counted)
+  // — not always the lowest sticker price when a closer pump beats it
+  const reco = selectRecommended(app);
+  const recoIsCheapest = reco == null || cheapest == null || reco.id === cheapest.id;
   const focused = selectFocusStation(app);
-  const shown = focused ?? cheapest;
+  const shown = focused ?? reco;
   const rows = selectSorted(app);
   const range = selectPriceRange(app);
   // « Bons plans » (near-identical low prices): the collapsed card still
@@ -449,9 +454,8 @@ export default function MapSheet({
                 >
                   {focused
                     ? 'Station sélectionnée'
-                    : app.searchedAway
-                      ? 'La moins chère dans cette zone'
-                      : 'La moins chère près de vous'}
+                    : (recoIsCheapest ? 'La moins chère' : 'Le meilleur choix') +
+                      (app.searchedAway ? ' dans cette zone' : ' près de vous')}
                 </span>
                 {focused && (
                   <button
@@ -697,6 +701,9 @@ export default function MapSheet({
             )}
             {rows.map((s) => {
               const best = cheapest?.id === s.id;
+              // Recommended over the sticker-cheapest (closer, better
+              // effective price) — flagged so its row explains the card
+              const recoRow = !best && reco?.id === s.id;
               const isFocus = app.focusStationId === s.id;
               const price = effectivePrice(s, app.fuel)!.value;
               // Rows are zone stations — the zone floor applies (the cheapest
@@ -760,9 +767,11 @@ export default function MapSheet({
                           precision these prices are simply equal, say nothing */}
                       {best
                         ? 'meilleur prix'
-                        : deal
-                          ? `bon plan${Math.abs(delta) >= 0.005 ? ` · +${fmtPrice(delta)}` : ''}`
-                          : `+${fmtPrice(delta)}`}
+                        : recoRow
+                          ? `recommandée · +${fmtPrice(delta)}`
+                          : deal
+                            ? `bon plan${Math.abs(delta) >= 0.005 ? ` · +${fmtPrice(delta)}` : ''}`
+                            : `+${fmtPrice(delta)}`}
                     </div>
                   </div>
                 </button>

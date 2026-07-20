@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { C, mono } from '../theme';
 import { FUEL_LABELS } from '../data/types';
-import { useApp, effectivePrice, type FavoriteStation } from '../state/store';
+import { useApp, effectivePrice, effectiveLiterPrice, type FavoriteStation } from '../state/store';
 import { fmtPrice, distLabel, agoLabel, plural } from '../lib/format';
 import { openStatus } from '../lib/hours';
 import { haversineKm } from '../lib/geo';
@@ -28,9 +28,9 @@ export default function FavoritesScreen() {
 
   // « Recommandé » : prix effectif au litre en comptant le carburant brûlé
   // pour l'aller-retour (conso & réservoir des Réglages) — meilleur rapport
-  // prix / distance, pas juste le litre affiché le moins cher.
-  const effective = (price: number, distKm: number) =>
-    price * (1 + (distKm * 2 * app.conso) / 100 / app.tank);
+  // prix / distance, pas juste le litre affiché le moins cher. Même notion
+  // que la station mise en avant sur la carte.
+  const effective = (price: number, distKm: number) => effectiveLiterPrice(app, price, distKm);
 
   const rows = app.favorites.map((f) => {
     const live = app.stations.data.find((s) => s.id === f.id);
