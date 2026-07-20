@@ -37,7 +37,10 @@ autour de vous et le long de vos trajets, en France, en Espagne et en Andorre.
   comparent d'un seul coup d'œil.
 - 📋 **Liste de la zone** — tirez le volet du bas : toutes les stations visibles,
   triables par prix ou distance, les bons plans surlignés, synchronisées avec la
-  carte.
+  carte. La station mise en avant est le **meilleur choix réel** : le carburant
+  brûlé pour l'aller-retour (conso et réservoir des Réglages) est compté, donc
+  une station un peu plus chère mais bien plus proche peut battre la moins
+  chère affichée.
 - 🛣️ **Comparateur de trajet** — départ « Ma position » ou n'importe quelle
   adresse, autocomplétion, carte du corridor et **arrêt conseillé** selon
   3 stratégies (meilleur compromis · prix le plus bas · détour minimal), avec
@@ -67,8 +70,9 @@ autour de vous et le long de vos trajets, en France, en Espagne et en Andorre.
 1. Ouvrez **[plein.zadkiel.fr](https://plein.zadkiel.fr)** (le déploiement officiel).
 2. Autorisez la géolocalisation — ou continuez sans, et cherchez une ville, en
    France, en Espagne ou en Andorre.
-3. Choisissez votre carburant en haut de la carte : la station la moins chère
-   apparaît dans le volet du bas, **Y aller** lance le guidage.
+3. Choisissez votre carburant en haut de la carte : le meilleur choix (prix ET
+   distance, détour compté) apparaît dans le volet du bas, **Y aller** lance le
+   guidage.
 4. Avant de partir loin, onglet **Trajet** : saisissez la destination et
    comparez les stations le long du parcours.
 5. Sur mobile, installez l'app (bannière d'installation ou
