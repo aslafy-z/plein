@@ -87,6 +87,9 @@ export class AutoStationsProvider implements StationsProvider {
 
 // ── Geocoding ────────────────────────────────────────────────────────────────
 const MAX_RESULTS = 6;
+// Once one country has actual results, the laggards get this long to land
+// before being dropped from this round of suggestions.
+const SLOW_SOURCE_GRACE_MS = 1500;
 
 export class AutoGeocodeProvider implements GeocodeProvider {
   private readonly ban = new BanGeocodeProvider();
@@ -94,17 +97,47 @@ export class AutoGeocodeProvider implements GeocodeProvider {
   private readonly and = new AndGeocodeProvider();
 
   async search(query: string): Promise<GeocodeResult[]> {
-    const [fr, es, ad] = await Promise.allSettled([
+    // One slow geocoder must not hold the suggestions hostage (CartoCiudad
+    // has spells where it only answers after its 6 s timeout, which used to
+    // make the whole search look dead): a source still pending after the
+    // grace simply counts as empty for this keystroke.
+    const settled: (PromiseSettledResult<GeocodeResult[]> | undefined)[] = [];
+    const wrapped = [
       this.ban.search(query),
       this.cartociudad.search(query),
       this.and.search(query),
-    ]);
-    if (fr.status === 'rejected' && es.status === 'rejected' && ad.status === 'rejected') {
+    ].map((p, i) =>
+      p.then(
+        (value) => {
+          settled[i] = { status: 'fulfilled', value };
+          return value;
+        },
+        (reason: unknown) => {
+          settled[i] = { status: 'rejected', reason };
+          return null;
+        },
+      ),
+    );
+    let graceTimer: ReturnType<typeof setTimeout> | undefined;
+    const grace = new Promise<void>((resolve) => {
+      for (const w of wrapped) {
+        void w.then((value) => {
+          if (value && value.length > 0 && graceTimer === undefined) {
+            graceTimer = setTimeout(resolve, SLOW_SOURCE_GRACE_MS);
+          }
+        });
+      }
+    });
+    await Promise.race([Promise.all(wrapped), grace]);
+    clearTimeout(graceTimer);
+
+    const [fr, es, ad] = settled;
+    if (fr?.status === 'rejected' && es?.status === 'rejected' && ad?.status === 'rejected') {
       throw fr.reason;
     }
-    const a = fr.status === 'fulfilled' ? fr.value : [];
-    const b = es.status === 'fulfilled' ? es.value : [];
-    const c = ad.status === 'fulfilled' ? ad.value : [];
+    const a = fr?.status === 'fulfilled' ? fr.value : [];
+    const b = es?.status === 'fulfilled' ? es.value : [];
+    const c = ad?.status === 'fulfilled' ? ad.value : [];
     // Interleave (France first, then Andorra, then Spain) so every country
     // stays visible in the top 6
     const out: GeocodeResult[] = [];
