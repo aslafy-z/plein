@@ -1270,8 +1270,41 @@ export function selectCheapest(app: AppStore): NearbyStation | null {
  * own price — what a full tank ACTUALLY costs per litre. Shared by the map
  * recommendation and the « Recommandé » sort of the Favoris.
  */
-export function effectiveLiterPrice(app: AppStore, price: number, distKm: number): number {
+export function effectiveLiterPrice(
+  app: Pick<AppStore, 'conso' | 'tank'>,
+  price: number,
+  distKm: number,
+): number {
   return price * (1 + (distKm * 2 * app.conso) / 100 / app.tank);
+}
+
+// ── Favoris sorting ──────────────────────────────────────────────────────────
+export type FavSort = 'reco' | 'prix' | 'dist';
+
+/**
+ * Order the Favoris rows. « Recommandé » ranks on the effective per-litre
+ * price (fuel burnt to get there included — same notion as the map card);
+ * « Prix » keeps the raw sticker order; rows without a live price (area not
+ * loaded) always sink to the bottom, sorted by distance.
+ */
+export function sortFavoriteRows<T extends { price: number | null; distKm: number }>(
+  rows: T[],
+  sort: FavSort,
+  app: Pick<AppStore, 'conso' | 'tank'>,
+): T[] {
+  return [...rows].sort((a, b) => {
+    if (sort === 'dist') return a.distKm - b.distKm;
+    if (sort === 'prix') {
+      if (a.price == null && b.price == null) return a.distKm - b.distKm;
+      if (a.price == null) return 1;
+      if (b.price == null) return -1;
+      return a.price - b.price;
+    }
+    const ea = a.price != null ? effectiveLiterPrice(app, a.price, a.distKm) : Infinity;
+    const eb = b.price != null ? effectiveLiterPrice(app, b.price, b.distKm) : Infinity;
+    if (ea === eb) return a.distKm - b.distKm;
+    return ea - eb;
+  });
 }
 
 /**
