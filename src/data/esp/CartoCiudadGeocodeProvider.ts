@@ -7,7 +7,9 @@ import type { GeocodeProvider, GeocodeResult } from '../types';
 
 const BASE =
   (IS_DEV ? '/proxy/cartociudad' : 'https://www.cartociudad.es') + '/geocoder/api/geocoder';
-const TIMEOUT_MS = 6000;
+// The geocoder goes through slow spells (whole seconds per request); a short
+// timeout turned those into a dead Spanish search, so give it real room.
+const TIMEOUT_MS = 10_000;
 const MIN_QUERY = 3;
 const MAX_RESULTS = 4;
 
