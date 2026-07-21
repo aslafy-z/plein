@@ -1,14 +1,18 @@
 import { useState } from 'react';
 import { C, mono } from '../theme';
 import { FUEL_LABELS } from '../data/types';
-import { useApp, effectivePrice, effectiveLiterPrice, type FavoriteStation } from '../state/store';
+import {
+  useApp,
+  effectivePrice,
+  sortFavoriteRows,
+  type FavoriteStation,
+  type FavSort,
+} from '../state/store';
 import { fmtPrice, distLabel, agoLabel, plural } from '../lib/format';
 import { openStatus } from '../lib/hours';
 import { haversineKm } from '../lib/geo';
 import BrandAvatar from '../components/BrandAvatar';
 import Star from '../components/Star';
-
-type FavSort = 'reco' | 'prix' | 'dist';
 
 const SORTS: [FavSort, string][] = [
   ['reco', 'Recommandé'],
@@ -26,12 +30,6 @@ export default function FavoritesScreen() {
   const app = useApp();
   const [sort, setSort] = useState<FavSort>('reco');
 
-  // « Recommandé » : prix effectif au litre en comptant le carburant brûlé
-  // pour l'aller-retour (conso & réservoir des Réglages) — meilleur rapport
-  // prix / distance, pas juste le litre affiché le moins cher. Même notion
-  // que la station mise en avant sur la carte.
-  const effective = (price: number, distKm: number) => effectiveLiterPrice(app, price, distKm);
-
   const rows = app.favorites.map((f) => {
     const live = app.stations.data.find((s) => s.id === f.id);
     const price = (live && effectivePrice(live, app.fuel)?.value) ?? null;
@@ -39,19 +37,10 @@ export default function FavoritesScreen() {
     return { f, live, price, distKm };
   });
 
-  const favs = [...rows].sort((a, b) => {
-    if (sort === 'dist') return a.distKm - b.distKm;
-    if (sort === 'prix') {
-      if (a.price == null && b.price == null) return a.distKm - b.distKm;
-      if (a.price == null) return 1;
-      if (b.price == null) return -1;
-      return a.price - b.price;
-    }
-    const ea = a.price != null ? effective(a.price, a.distKm) : Infinity;
-    const eb = b.price != null ? effective(b.price, b.distKm) : Infinity;
-    if (ea === eb) return a.distKm - b.distKm;
-    return ea - eb;
-  });
+  // « Recommandé » : prix effectif au litre en comptant le carburant brûlé
+  // pour l'aller-retour (conso & réservoir des Réglages) — même notion que
+  // la station mise en avant sur la carte.
+  const favs = sortFavoriteRows(rows, sort, app);
 
   const locate = (f: FavoriteStation) => {
     app.setSearchArea({ lat: f.lat, lng: f.lng }, f.name);
