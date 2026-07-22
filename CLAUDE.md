@@ -22,6 +22,8 @@ npm run build       # tsc + vite build
   autonomy…) and the `src/lib/` helpers are all pure functions — prefer a
   unit test over an e2e test whenever the behavior is computable without a
   browser.
+- CI (`.github/workflows/e2e.yml`) runs typecheck + unit tests and the
+  Playwright suite on every PR and on pushes to `main`.
 - **E2e tests (Playwright)** live in `e2e/` and cover UI wiring only. They
   run against the deterministic offline demo dataset
   (`src/data/demo/demoData.ts`, centred on Toulouse) via the `seed` fixture

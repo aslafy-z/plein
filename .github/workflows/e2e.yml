@@ -1,12 +1,14 @@
-# Runs the Playwright e2e suite (e2e/, playwright.config.ts):
+# Runs the test suites:
+# - unit: tsc typecheck + Vitest (src/**/*.test.ts) — fast, no browser
+# - e2e:  Playwright suite (e2e/, playwright.config.ts) against the Vite dev
+#         server (started automatically by Playwright's webServer) with the
+#         deterministic demo data source
+# on:
 # - pull requests   → every push to a PR branch
 # - push on main    → guards what actually deploys
 #
-# The suite runs against the Vite dev server (started automatically by
-# Playwright's webServer) with the deterministic demo data source.
-#
 # Actions are pinned by commit SHA (tag in comment).
-name: E2E
+name: Tests
 
 on:
   push:
@@ -21,6 +23,19 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 20
