@@ -5,6 +5,7 @@ import { haversineKm, lerpPoint, nearestOnPolyline, polylineLengthKm } from '../
 import type {
   GeocodeProvider,
   GeocodeResult,
+  ReachInfo,
   Route,
   RouteOptions,
   RouteProvider,
@@ -149,5 +150,15 @@ export class DemoRouteProvider implements RouteProvider {
     const avgKmh = options.avoidMotorway ? 75 : 110;
     const durationMin = (distanceKm / avgKmh) * 60 + 15;
     return { distanceKm, durationMin, polyline };
+  }
+
+  // Same fictional road factor as getRoute, at ~40 km/h city driving — the
+  // demo exercises the road-distance pipeline offline and deterministically.
+  async getReachMatrix(from: GeoPoint, targets: GeoPoint[]): Promise<Array<ReachInfo | null>> {
+    await delay(150);
+    return targets.map((t) => {
+      const distanceKm = haversineKm(from, t) * 1.25;
+      return { distanceKm, durationMin: distanceKm * 1.5 };
+    });
   }
 }

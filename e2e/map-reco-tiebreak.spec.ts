@@ -44,6 +44,8 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/brands-fra.json', (route) =>
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
+  // No road matrix → the crow-flies distances this spec's numbers are built on
+  await page.route('**/proxy/osrm/**', (route) => route.abort())
   await gotoMap(page)
 })
 

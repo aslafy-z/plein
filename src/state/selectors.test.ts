@@ -52,6 +52,7 @@ function app(over: Partial<AppStore> = {}): AppStore {
     searchPos: BASE,
     focusStationId: null,
     stations: { status: 'ready', data: [], activeSource: 'demo', fellBack: false, refreshing: false },
+    roadReach: {},
     conso: 6.5,
     tank: 50,
     startTankPct: 70,
@@ -140,6 +141,29 @@ describe('selectByPrice / selectRecommended', () => {
     expect(selectByPrice(a)[0].id).toBe('far-cheap')
     // …but the recommendation counts the fuel burnt to get there
     expect(selectRecommended(a)?.id).toBe('near-deal')
+  })
+
+  it('ranks on road distances when the reach matrix knows the stations', () => {
+    // « bridge » looks closest as the crow flies (2,2 km) and is sticker-
+    // cheapest, but the river makes it 12 km by road; « direct » is 3,5 km.
+    // Effective: 1,85 × (1 + 24×0,0013) ≈ 1,908 vs 1,87 × (1 + 7×0,0013) ≈ 1,887
+    const data = [
+      station({ id: 'bridge', ...north(2.2), prices: gazole(1.85) }),
+      station({ id: 'direct', ...north(3.3), prices: gazole(1.87) }),
+    ]
+    const stations = { status: 'ready', data, activeSource: 'demo', fellBack: false, refreshing: false } as AppStore['stations']
+    // Crow-flies fallback (no matrix): the bridge station looks like the deal
+    expect(selectRecommended(app({ stations }))?.id).toBe('bridge')
+    const withRoads = app({
+      stations,
+      roadReach: {
+        bridge: { distanceKm: 12, durationMin: 15 },
+        direct: { distanceKm: 3.5, durationMin: 6 },
+      },
+    })
+    expect(selectRecommended(withRoads)?.id).toBe('direct')
+    // The displayed distance is the road one, not the crow-flies estimate
+    expect(selectVisible(withRoads).find((s) => s.id === 'direct')?.distKm).toBe(3.5)
   })
 })
 
