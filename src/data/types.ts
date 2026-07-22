@@ -60,7 +60,7 @@ export interface Station {
 
 /** A station enriched with position-relative info */
 export interface NearbyStation extends Station {
-  /** km from the user's position (displayed) */
+  /** km from the user's position (road distance when known, crow-flies otherwise) */
   distKm: number;
   /** km from the search area center (drives the radius filter) */
   searchKm: number;
@@ -122,8 +122,20 @@ export interface RouteOptions {
   vehicle?: VehicleId;
 }
 
+/** Road distance & drive time to one target of a reach matrix */
+export interface ReachInfo {
+  distanceKm: number;
+  durationMin: number;
+}
+
 export interface RouteProvider {
   getRoute(from: GeoPoint, to: GeoPoint, options?: RouteOptions): Promise<Route>;
+  /**
+   * Road distance/time from one origin to many targets in a single matrix
+   * call. `null` per target when unroutable. Optional — sources without a
+   * routing backend (demo) keep crow-flies distances.
+   */
+  getReachMatrix?(from: GeoPoint, targets: GeoPoint[]): Promise<Array<ReachInfo | null>>;
 }
 
 // ── Source selection ─────────────────────────────────────────────────────────

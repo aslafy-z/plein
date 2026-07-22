@@ -21,6 +21,7 @@ import {
   type FuelPrice,
   type GeocodeResult,
   type NearbyStation,
+  type ReachInfo,
   type Route,
   type RouteStation,
   type ServiceTag,
@@ -56,6 +57,12 @@ const DEFAULT_START_TANK_PCT = 70;
 const EUR_PER_DETOUR_MIN = 0.35;
 /** Minutes spent actually refuelling at a stop */
 const REFUEL_MIN = 4;
+/**
+ * Stations covered by one road-distance matrix call, nearest first. Far
+ * stations keep the crow-flies fallback — beyond that rank the road detail
+ * can't flip the recommendation, and public OSRM caps table sizes anyway.
+ */
+const ROAD_REACH_MAX = 60;
 
 export type Screen =
   | 'onboarding'
@@ -219,6 +226,9 @@ export interface AppStore {
   setFocusStation(id: string | null): void;
   stations: StationsState;
   reloadStations(): void;
+  /** Road distance & drive time per station id — stations absent from the
+      map fall back to crow-flies distances everywhere they're displayed */
+  roadReach: Record<string, ReachInfo>;
 
   // favorites (Favoris tab)
   favorites: FavoriteStation[];
@@ -653,6 +663,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(t);
   }, [geoHold]);
 
+  // ── Road distances (single OSRM table call, crow-flies as fallback) ────────
+  // Crow-flies underestimates every trip (rivers, ring roads…) and distorts
+  // the effective-price ranking. One matrix request fills real road km and
+  // drive minutes for the stations nearest the user; everything else — and
+  // any network failure — keeps the crow-flies numbers.
+  const [roadReach, setRoadReach] = useState<Record<string, ReachInfo>>({});
+  const reachKey = useRef<string | null>(null);
+  useEffect(() => {
+    const provider = getProviders(stations.activeSource).route;
+    if (!provider.getReachMatrix || !stations.data.length) return;
+    const candidates = stations.data
+      .map((s) => ({ s, crowKm: haversineKm(userPos, { lat: s.lat, lng: s.lng }) }))
+      // When the user searches a faraway area, its stations are not "near me"
+      // in any sense worth a routing call — they keep crow-flies distances
+      .filter((c) => c.crowKm <= MAX_RADIUS_KM)
+      .sort((a, b) => a.crowKm - b.crowKm)
+      .slice(0, ROAD_REACH_MAX)
+      .map((c) => c.s);
+    if (!candidates.length) return;
+    // ~100 m position granularity: a GPS jitter must not refetch the matrix
+    const key = [
+      stations.activeSource,
+      userPos.lat.toFixed(3),
+      userPos.lng.toFixed(3),
+      ...candidates.map((s) => s.id),
+    ].join('|');
+    if (key === reachKey.current) return;
+    reachKey.current = key;
+    provider
+      .getReachMatrix(
+        userPos,
+        candidates.map((s) => ({ lat: s.lat, lng: s.lng })),
+      )
+      .then((reach) => {
+        if (reachKey.current !== key) return;
+        const next: Record<string, ReachInfo> = {};
+        candidates.forEach((s, i) => {
+          const r = reach[i];
+          if (r) next[s.id] = r;
+        });
+        setRoadReach(next);
+      })
+      .catch(() => {
+        // Crow-flies stays on screen; clearing the key lets the next data
+        // refresh retry instead of pinning the failure until the user moves
+        if (reachKey.current === key) reachKey.current = null;
+      });
+  }, [stations.activeSource, stations.data, userPos]);
+
   // ── Auto-refresh: keep prices fresh while the app is open and online ───────
   const stationsRef = useRef(stations);
   stationsRef.current = stations;
@@ -1074,6 +1133,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toggleFavorite,
       stations,
       reloadStations: () => void loadStations(),
+      roadReach,
       fromText,
       toText,
       fromPoint,
@@ -1129,7 +1189,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       screen, prevScreen, go, back, openStation, fuel, setFuel, cycleFuel, sort, radius, setRadius,
       brandSel, toggleBrand, serviceTags, filtersOpen, resetFilters, userPos, geoStatus,
       requestGeolocation, searchPos, searchLabel, setSearchArea, resetSearchToUser,
-      focusStationId, favorites, toggleFavorite, stations, loadStations, fromText, toText, fromPoint, toPoint,
+      focusStationId, favorites, toggleFavorite, stations, roadReach, loadStations, fromText, toText, fromPoint, toPoint,
       setFrom, setTo, searchPlaces, recents, hasTripHistory, routeReady, startRoute, editRoute,
       openRouteSearch, focusDestination, consumeFocusDestination,
       routeMode, routeState, tour, toggleTour, vehicle, setVehicle, tank, setTank, conso, setConso,
@@ -1178,17 +1238,30 @@ export function effectivePrice(s: Station, fuel: FuelId): FuelPrice | undefined 
   return f ? s.prices[f] : undefined;
 }
 
+/**
+ * Distance/time enrichment shared by the zone and map selectors: real road
+ * numbers when the reach matrix knows the station, crow-flies (and the
+ * ~60 km/h heuristic) otherwise. The radius filter always uses crow-flies
+ * from the search center — it describes the search area, not a drive.
+ */
+function enrichDistance(app: AppStore, s: Station): NearbyStation {
+  const crowKm = haversineKm(app.userPos, { lat: s.lat, lng: s.lng });
+  const searchKm = haversineKm(app.searchPos, { lat: s.lat, lng: s.lng });
+  const reach = app.roadReach[s.id];
+  return {
+    ...s,
+    distKm: reach?.distanceKm ?? crowKm,
+    searchKm,
+    driveMin: Math.max(1, Math.round(reach ? reach.durationMin : crowKm * 2)),
+  };
+}
+
 /** Stations passing the current filters, enriched with distance, for a given fuel */
 export function selectVisibleForFuel(app: AppStore, fuel: FuelId): NearbyStation[] {
-  const { stations, userPos, searchPos, radius, brandSel, serviceTags } = app;
+  const { stations, radius, brandSel, serviceTags } = app;
   const wantedTags = (Object.keys(serviceTags) as ServiceTag[]).filter((t) => serviceTags[t]);
   return stations.data
-    .map((s) => {
-      // Displayed distance is from the user; the radius applies to the search area
-      const distKm = haversineKm(userPos, { lat: s.lat, lng: s.lng });
-      const searchKm = haversineKm(searchPos, { lat: s.lat, lng: s.lng });
-      return { ...s, distKm, searchKm, driveMin: Math.max(1, Math.round(distKm * 2)) };
-    })
+    .map((s) => enrichDistance(app, s))
     .filter(
       (s) =>
         s.searchKm <= radius &&
@@ -1225,14 +1298,10 @@ export function selectZoneFuels(app: AppStore): FuelId[] {
  * indicator of the « cheapest near you » zone.
  */
 export function selectMapStations(app: AppStore): NearbyStation[] {
-  const { stations, userPos, searchPos, brandSel, serviceTags, fuel } = app;
+  const { stations, brandSel, serviceTags, fuel } = app;
   const wantedTags = (Object.keys(serviceTags) as ServiceTag[]).filter((t) => serviceTags[t]);
   return stations.data
-    .map((s) => {
-      const distKm = haversineKm(userPos, { lat: s.lat, lng: s.lng });
-      const searchKm = haversineKm(searchPos, { lat: s.lat, lng: s.lng });
-      return { ...s, distKm, searchKm, driveMin: Math.max(1, Math.round(distKm * 2)) };
-    })
+    .map((s) => enrichDistance(app, s))
     .filter(
       (s) =>
         effectivePrice(s, fuel) != null &&
@@ -1309,8 +1378,9 @@ export function sortFavoriteRows<T extends { price: number | null; distKm: numbe
 
 /**
  * Effective prices within this margin (cents) count as equal — feeds go
- * stale for days and distances are crow-flies, a cent of effective gap is
- * noise, not a reason to drive farther.
+ * stale for days and distances fall back to crow-flies until the road
+ * matrix lands, a cent of effective gap is noise, not a reason to drive
+ * farther.
  */
 const RECO_TIE_CENTS = 1;
 

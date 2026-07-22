@@ -72,8 +72,9 @@ export default function StationDetail() {
 
   if (!s) return null;
 
-  const distKm = haversineKm(app.userPos, { lat: s.lat, lng: s.lng });
-  const driveMin = Math.max(1, Math.round(distKm * 2));
+  const reach = app.roadReach[s.id];
+  const distKm = reach?.distanceKm ?? haversineKm(app.userPos, { lat: s.lat, lng: s.lng });
+  const driveMin = Math.max(1, Math.round(reach ? reach.durationMin : distKm * 2));
   const placeChip = isRoute
     ? `KM ${routeSt!.kmAlong} · ${routeSt!.detourMin === 0 ? 'sans détour' : `détour +${routeSt!.detourMin} min`}`
     : `${distLabel(distKm)} · ${durationLabel(driveMin)}`;

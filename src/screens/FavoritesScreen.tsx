@@ -33,7 +33,7 @@ export default function FavoritesScreen() {
   const rows = app.favorites.map((f) => {
     const live = app.stations.data.find((s) => s.id === f.id);
     const price = (live && effectivePrice(live, app.fuel)?.value) ?? null;
-    const distKm = haversineKm(app.userPos, f);
+    const distKm = app.roadReach[f.id]?.distanceKm ?? haversineKm(app.userPos, f);
     return { f, live, price, distKm };
   });
 

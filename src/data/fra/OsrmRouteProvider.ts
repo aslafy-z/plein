@@ -4,10 +4,11 @@
 //   costing options support use_highways / use_tolls.
 import { IS_DEV } from '../../lib/env';
 import type { GeoPoint } from '../../lib/geo';
-import type { Route, RouteOptions, RouteProvider } from '../types';
+import type { ReachInfo, Route, RouteOptions, RouteProvider } from '../types';
 
-const OSRM_BASE =
-  (IS_DEV ? '/proxy/osrm' : 'https://router.project-osrm.org') + '/route/v1/driving';
+const OSRM_ROOT = IS_DEV ? '/proxy/osrm' : 'https://router.project-osrm.org';
+const OSRM_BASE = OSRM_ROOT + '/route/v1/driving';
+const OSRM_TABLE_BASE = OSRM_ROOT + '/table/v1/driving';
 const VALHALLA_BASE = (IS_DEV ? '/proxy/valhalla' : 'https://valhalla1.openstreetmap.de') + '/route';
 const TIMEOUT_MS = 12000;
 
@@ -46,6 +47,40 @@ async function osrmRoute(from: GeoPoint, to: GeoPoint): Promise<Route> {
     durationMin: (route.duration ?? 0) / 60,
     polyline,
   };
+}
+
+// ── OSRM table (one-to-many road distances) ──────────────────────────────────
+interface OsrmTableResponse {
+  code?: string;
+  durations?: Array<Array<number | null>>;
+  distances?: Array<Array<number | null>>;
+}
+
+async function osrmReachMatrix(
+  from: GeoPoint,
+  targets: GeoPoint[],
+): Promise<Array<ReachInfo | null>> {
+  if (!targets.length) return [];
+  // 5 decimals ≈ 1 m — keeps the URL short with dozens of coordinates
+  const coords = [from, ...targets]
+    .map((p) => `${p.lng.toFixed(5)},${p.lat.toFixed(5)}`)
+    .join(';');
+  const url = `${OSRM_TABLE_BASE}/${coords}?sources=0&annotations=duration,distance`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+  if (!res.ok) throw new Error(`OSRM HTTP ${res.status}`);
+  const json = (await res.json()) as OsrmTableResponse;
+  // Row 0 covers every coordinate, origin included — targets start at column 1
+  const durations = json.durations?.[0];
+  const distances = json.distances?.[0];
+  if (json.code !== 'Ok' || !durations || !distances)
+    throw new Error(`OSRM table code ${json.code ?? 'unknown'}`);
+  return targets.map((_, i) => {
+    const meters = distances[i + 1];
+    const seconds = durations[i + 1];
+    return meters != null && seconds != null
+      ? { distanceKm: meters / 1000, durationMin: seconds / 60 }
+      : null;
+  });
 }
 
 // ── Valhalla ─────────────────────────────────────────────────────────────────
@@ -123,5 +158,11 @@ export class RealRouteProvider implements RouteProvider {
       return valhallaRoute(from, to, options);
     }
     return osrmRoute(from, to);
+  }
+
+  // Road-class / vehicle nuances shift a short hop by seconds, not km — the
+  // plain car profile is accurate enough for every profile here.
+  getReachMatrix(from: GeoPoint, targets: GeoPoint[]): Promise<Array<ReachInfo | null>> {
+    return osrmReachMatrix(from, targets);
   }
 }
