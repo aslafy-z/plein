@@ -19,7 +19,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: e2e-${{ github.ref }}
+  group: tests-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
