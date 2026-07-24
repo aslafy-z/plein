@@ -8,6 +8,7 @@ import { IS_DEV } from '../../lib/env';
 import type { GeoPoint } from '../../lib/geo';
 import { haversineKm, nearestOnPolyline } from '../../lib/geo';
 import type { DayHours, StationHours } from '../../lib/hours';
+import { zonedTimeToMs } from '../../lib/time';
 import type {
   BrandCat,
   FuelId,
@@ -134,11 +135,26 @@ const EXTRA_PRODUCTS: ReadonlyArray<readonly [string, string]> = [
   ['Precio Bioetanol', 'Bioéthanol'],
 ];
 
-/** "19/07/2026 5:40:23" (header `Fecha`, Madrid time) → "2026-07-19T05:40:23" */
-function fechaToIso(fecha: string | undefined): string | undefined {
+/**
+ * "19/07/2026 5:40:23" (header `Fecha`) → "2026-07-19T03:40:23.000Z".
+ *
+ * The ministry stamps the flux with a peninsular wall clock and no offset —
+ * whichever province was queried, Canaries included. Resolve it in
+ * Europe/Madrid so the freshness labels hold on a device in any zone.
+ */
+export function fechaToIso(fecha: string | undefined): string | undefined {
   const m = fecha?.match(/^(\d{2})\/(\d{2})\/(\d{4}) (\d{1,2}):(\d{2}):(\d{2})$/);
   if (!m) return undefined;
-  return `${m[3]}-${m[2]}-${m[1]}T${m[4].padStart(2, '0')}:${m[5]}:${m[6]}`;
+  const ms = zonedTimeToMs(
+    'Europe/Madrid',
+    Number(m[3]),
+    Number(m[2]),
+    Number(m[1]),
+    Number(m[4]),
+    Number(m[5]),
+    Number(m[6]),
+  );
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : undefined;
 }
 
 // ── Opening hours ────────────────────────────────────────────────────────────
