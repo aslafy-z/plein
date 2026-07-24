@@ -13,7 +13,9 @@ export default function Toast() {
         left: '50%',
         bottom: 96,
         transform: 'translateX(-50%)',
-        zIndex: 50,
+        // Above every overlay: the fiche (1200) and the filters sheet (1100)
+        // are full-screen, and a toast fired from either was drawn behind them.
+        zIndex: 2000,
         background: C.ink,
         color: C.bg,
         fontSize: 13,
