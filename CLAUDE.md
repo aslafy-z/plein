@@ -52,23 +52,25 @@ npm run build       # tsc + vite build
 `npm run e2e` is fast on a local machine, but painfully slow on Claude Code
 cloud sessions — a full run there can eat most of a turn. So:
 
-- **On Claude Code cloud (or any remote/sandboxed session): prefer CI.** Push
+- **On Claude Code cloud (the sandboxed remote session — that's where you are
+  if `npx playwright test` can't find its pinned browser): prefer CI.** Push
   the branch and let the `e2e` job in `.github/workflows/tests.yml` run the
   Playwright suite, then watch the run to completion and read the result
   (`playwright-report/` is uploaded as an artifact on failure). Treat the CI
   run as the verification step — don't call the change verified until the job
-  is green, and iterate by pushing fixes rather than by re-running locally.
-  Running one narrowly-targeted spec locally to debug a specific failure is
-  fine; running the whole suite is not.
-- **Locally: just run `npm run e2e`.** Typecheck and unit tests (`npm run
-  typecheck`, `npm test`) stay local everywhere — they're cheap.
+  is green, and iterate by pushing fixes rather than by re-running in the
+  session. Running one narrowly-targeted spec in-session to debug a specific
+  failure is fine; running the whole suite is not.
+- **On a real local machine: just run `npm run e2e`.** Typecheck and unit
+  tests (`npm run typecheck`, `npm test`) stay in-session everywhere — they're
+  cheap.
 
-### Playwright in sandboxes
+### Playwright in the sandbox
 
-If you do need a local run in a sandboxed session, the pinned Playwright
-browser build is often absent (`Executable doesn't exist … Please run npx
-playwright install`). Do NOT download browsers; point the config at the
-pre-installed system Chromium instead:
+For those narrow in-session runs, the pinned Playwright browser build is
+absent from the Claude Code cloud sandbox (`Executable doesn't exist … Please
+run npx playwright install`). Do NOT download browsers; point the config at
+the pre-installed system Chromium instead:
 
 ```sh
 PLEIN_CHROMIUM=$(which chromium || echo /opt/pw-browsers/chromium) npx playwright test
