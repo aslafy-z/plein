@@ -5,6 +5,7 @@ import {
   lerpPoint,
   nearestOnPolyline,
   polylineLengthKm,
+  radiusBounds,
   samplePolyline,
   type GeoPoint,
 } from './geo'
@@ -24,6 +25,39 @@ describe('haversineKm', () => {
 
   it('is symmetric', () => {
     expect(haversineKm(TOULOUSE, BORDEAUX)).toBeCloseTo(haversineKm(BORDEAUX, TOULOUSE), 10)
+  })
+})
+
+describe('radiusBounds', () => {
+  it('encloses the circle exactly on both axes', () => {
+    const box = radiusBounds(TOULOUSE, 10)
+    // North/south edges sit at the radius, east/west too (widest at the center
+    // latitude — the box is the circumscribed one, no slack)
+    expect(haversineKm(TOULOUSE, { lat: box.north, lng: TOULOUSE.lng })).toBeCloseTo(10, 2)
+    expect(haversineKm(TOULOUSE, { lat: box.south, lng: TOULOUSE.lng })).toBeCloseTo(10, 2)
+    expect(haversineKm(TOULOUSE, { lat: TOULOUSE.lat, lng: box.east })).toBeCloseTo(10, 1)
+    expect(haversineKm(TOULOUSE, { lat: TOULOUSE.lat, lng: box.west })).toBeCloseTo(10, 1)
+  })
+
+  it('scales with the radius — a wider search frames a wider box', () => {
+    const small = radiusBounds(TOULOUSE, 5)
+    const big = radiusBounds(TOULOUSE, 25)
+    expect(big.north - big.south).toBeCloseTo(5 * (small.north - small.south), 6)
+    expect(big.east - big.west).toBeCloseTo(5 * (small.east - small.west), 6)
+  })
+
+  it('widens the longitude span with latitude', () => {
+    const south = radiusBounds({ lat: 0, lng: 0 }, 10)
+    const north = radiusBounds({ lat: 60, lng: 0 }, 10)
+    expect(north.north - north.south).toBeCloseTo(south.north - south.south, 6)
+    // cos(60°) = 0.5 → twice the degrees of longitude for the same km
+    expect(north.east - north.west).toBeCloseTo(2 * (south.east - south.west), 6)
+  })
+
+  it('stays a valid box at the poles', () => {
+    const box = radiusBounds({ lat: 90, lng: 0 }, 25)
+    expect(box.north).toBe(90)
+    expect(box.east - box.west).toBeLessThanOrEqual(360)
   })
 })
 
