@@ -87,6 +87,46 @@ test('the reco and distances follow the road matrix, not crow-flies', async ({ p
   await expect(rows.nth(1)).toContainText('recommandée · +0,02')
 })
 
+// The matrix resolves AFTER the stations landed and the map settled — nothing
+// else changes at that moment. The emphasized pin is rebuilt by an effect, the
+// sheet card by a plain render: the two must still crown the same station.
+test('the emphasized pin follows a matrix landing after the map settled', async ({ page }) => {
+  let releaseMatrix = () => {}
+  const held = new Promise<void>((resolve) => {
+    releaseMatrix = resolve
+  })
+  await page.route('**/proxy/osrm/table/**', async (route) => {
+    await held
+    await route.fulfill({
+      json: {
+        code: 'Ok',
+        durations: [[0, 240, 900, 360]],
+        distances: [[0, 2000, 12000, 3500]],
+      },
+    })
+  })
+  await page.goto('/')
+
+  // Crow-flies phase: Rivegauche is both sticker-cheapest and recommended, so
+  // it wears the only green bubble
+  await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
+  const deals = page.locator('.pin-bubble--deal')
+  await expect(deals).toHaveCount(1)
+  await expect(deals).toHaveText('1,85')
+  // Let the load auto-fit finish: a pan/zoom of its own would rebuild the pins
+  // and mask a missing dependency
+  await page.waitForTimeout(1000)
+
+  releaseMatrix()
+
+  // No pan, no filter, no fuel switch: the pins must follow the matrix on
+  // their own. Rivegauche keeps the green of the cheapest sticker price,
+  // Rivedroite takes the recommendation green.
+  await expect(page.getByText('Le meilleur choix près de vous')).toBeVisible()
+  await expect(page.locator('.pin-bubble--deal', { hasText: '1,87' })).toHaveCount(1)
+  await expect(deals).toHaveCount(2)
+})
+
 test('crow-flies fallback when the road matrix is unreachable', async ({ page }) => {
   await page.route('**/proxy/osrm/**', (route) => route.abort())
   await page.goto('/')
