@@ -93,11 +93,11 @@ jobs:
             if (!aliasUrl && versionUrl) {
               aliasUrl = versionUrl.replace(/^https:\/\/[^-.]+/, `https://${alias}`);
             }
-            // GitHub keeps target/rel on <a>, so the links open in a new tab.
-            const link = (u) => `<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`;
+            // Plain links: GitHub's comment sanitizer drops `target` from <a>,
+            // so a new tab can't be forced from here.
             const lines = [];
-            if (versionUrl) lines.push(`🚀 **Preview of this commit**: ${link(versionUrl)}`);
-            if (aliasUrl) lines.push(`🔗 **Stable branch endpoint**: ${link(aliasUrl)}`);
+            if (versionUrl) lines.push(`🚀 **Preview of this commit**: ${versionUrl}`);
+            if (aliasUrl) lines.push(`🔗 **Stable branch endpoint**: ${aliasUrl}`);
             const body = lines.length
               ? `${marker}\n${lines.join('\n\n')}\n\n_Version alias \`${alias}\` · commit ${context.payload.pull_request.head.sha.slice(0, 7)}_`
               : `${marker}\n⚠️ Preview uploaded but no URL found in the wrangler output — check the job logs.`;
