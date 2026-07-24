@@ -9,11 +9,14 @@ import {
   roadReachOf,
   selectAutonomy,
   selectByPrice,
+  selectMapStations,
+  selectPriceRange,
   selectPriceStats,
   selectRecommended,
   selectRouteAnalysis,
   selectVisible,
   selectZoneBrandCounts,
+  selectZoneDelta,
   selectZoneFuels,
   sortFavoriteRows,
   type AppStore,
@@ -299,6 +302,55 @@ describe('selectPriceStats / priceTier', () => {
     expect(priceTier(2.05, stats, false)).toBe('mid')
     expect(priceTier(1.9, stats, false)).toBe('mid')
     expect(priceTier(2.1, stats, false)).toBe('high')
+  })
+})
+
+// ── « vs the zone » chip of the sheet card ───────────────────────────────────
+describe('selectZoneDelta', () => {
+  const withData = (prices: number[], positions: ReturnType<typeof north>[], over: Partial<AppStore> = {}) =>
+    app({
+      stations: {
+        status: 'ready',
+        data: prices.map((p, i) => station({ id: `s${i}`, ...positions[i], prices: gazole(p) })),
+        activeSource: 'demo',
+        fellBack: false,
+        refreshing: false,
+      },
+      ...over,
+    })
+
+  const shown = (a: AppStore, id: string) => selectMapStations(a).find((s) => s.id === id)!
+
+  it("shows the zone spread on the circle's cheapest, the gap to it on the others", () => {
+    const a = withData([1.7, 1.75, 1.9], [north(1), north(2), north(3)])
+    // The cheapest saves the whole zone spread (« −0,20 €/L »)…
+    expect(selectZoneDelta(a, shown(a, 's0'))?.best).toBe(true)
+    expect(selectZoneDelta(a, shown(a, 's0'))?.amount).toBeCloseTo(0.2, 10)
+    // …the others state what they cost more than it
+    expect(selectZoneDelta(a, shown(a, 's1'))?.best).toBe(false)
+    expect(selectZoneDelta(a, shown(a, 's1'))?.amount).toBeCloseTo(0.05, 10)
+    expect(selectZoneDelta(a, shown(a, 's2'))?.amount).toBeCloseTo(0.2, 10)
+  })
+
+  it('compares at displayed precision, never a tenth-of-a-cent artifact', () => {
+    // 1,896 and 1,904 both read « 1,90 € » — the chip must read « +0,00 »
+    const a = withData([1.896, 1.904], [north(1), north(2)])
+    expect(selectZoneDelta(a, shown(a, 's1'))).toEqual({ amount: 0, best: false })
+  })
+
+  it('says nothing when the search circle is empty', () => {
+    // A tapped pin keeps its card even outside the radius (pins are not
+    // radius-limited) — with no zone, « +1,67 €/L » would just be the price
+    const a = withData([1.67], [north(30)])
+    expect(selectPriceRange(a)).toBeNull()
+    expect(selectZoneDelta(a, shown(a, 's0'))).toBeNull()
+  })
+
+  it('says nothing for a station selected outside a non-empty circle', () => {
+    const a = withData([1.8, 1.6], [north(2), north(30)])
+    expect(selectZoneDelta(a, shown(a, 's0'))).toEqual({ amount: 0, best: true })
+    expect(selectZoneDelta(a, shown(a, 's1'))).toBeNull()
+    expect(selectZoneDelta(a, null)).toBeNull()
   })
 })
 

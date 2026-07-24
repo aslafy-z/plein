@@ -8,6 +8,7 @@ import {
   selectRecommended,
   selectPriceRange,
   selectPriceStats,
+  selectZoneDelta,
   selectDeals,
   selectFocusStation,
   selectZoneFuels,
@@ -76,7 +77,6 @@ export default function MapSheet({
   const stats = selectPriceStats(app);
   const dealCount = selectDeals(app).length;
   const min = range?.min ?? 0;
-  const max = range?.max ?? 0;
   const loading = app.stations.status === 'loading' || app.stations.status === 'idle';
 
   const hasCard = shown != null;
@@ -364,11 +364,10 @@ export default function MapSheet({
   const stateKey = hasCard ? 'card' : loading ? 'loading' : 'empty';
   const height = expanded && hasCard ? expandedH : (collapsedH ?? undefined);
 
-  const isBest = shown != null && cheapest?.id === shown.id;
-  const shownPrice = (shown && effectivePrice(shown, app.fuel)?.value) || 0;
-  // Deltas at DISPLAYED precision: what the user reads is (price shown) −
-  // (min shown), never a tenth-of-a-cent artifact off by one
-  const shownDelta = (priceCents(shownPrice) - priceCents(min)) / 100;
+  // « vs the zone » chip: null when the card has no zone to compare against
+  // (empty circle, or a station selected outside it) — then no chip at all,
+  // « +1,67 €/L » against a nonexistent floor is just the price again
+  const zoneDelta = selectZoneDelta(app, shown);
 
   return (
     <div
@@ -537,24 +536,25 @@ export default function MapSheet({
                 >
                   Y aller · {durationLabel(shown.driveMin)}
                 </button>
-                <div
-                  style={{
-                    width: 100,
-                    background: C.surface3,
-                    color: C.body,
-                    fontSize: 14,
-                    fontWeight: 600,
-                    borderRadius: 24,
-                    padding: '13px 0',
-                    textAlign: 'center',
-                    border: `1px solid ${C.border09}`,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {isBest
-                    ? `−${fmtPrice((priceCents(max) - priceCents(min)) / 100)} €/L`
-                    : `${shownDelta >= 0 ? '+' : '−'}${fmtPrice(Math.abs(shownDelta))} €/L`}
-                </div>
+                {zoneDelta != null && (
+                  <div
+                    data-testid="zone-delta"
+                    style={{
+                      width: 100,
+                      background: C.surface3,
+                      color: C.body,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      borderRadius: 24,
+                      padding: '13px 0',
+                      textAlign: 'center',
+                      border: `1px solid ${C.border09}`,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {`${zoneDelta.best ? '−' : '+'}${fmtPrice(zoneDelta.amount)} €/L`}
+                  </div>
+                )}
               </div>
             </div>
           ) : loading ? (

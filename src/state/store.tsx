@@ -1580,6 +1580,40 @@ export function selectPriceRange(app: AppStore): { min: number; max: number } | 
   return { min, max };
 }
 
+export interface ZoneDelta {
+  /** €/L, never negative — the sign the card prints comes from `best` */
+  amount: number;
+  /**
+   * true: the station IS the circle's cheapest, `amount` is the zone spread
+   * it saves against the priciest pump around (« −0,20 €/L »); false:
+   * `amount` is what it costs MORE than the circle's cheapest (« +0,05 €/L »).
+   */
+  best: boolean;
+}
+
+/**
+ * « vs the zone » figure of the sheet card, compared at DISPLAYED precision
+ * (what the user reads is price shown − min shown, never a tenth-of-a-cent
+ * artifact off by one).
+ *
+ * Null when there is nothing to compare against, and the card must then say
+ * nothing: an EMPTY circle (a selected pin keeps its card even when the
+ * radius holds no station — pins are not radius-limited, see
+ * selectMapStations) or a station selected OUTSIDE the circle, which has no
+ * « zone » to be cheap or dear in either.
+ */
+export function selectZoneDelta(app: AppStore, station: NearbyStation | null): ZoneDelta | null {
+  if (!station) return null;
+  const range = selectPriceRange(app);
+  if (!range || station.searchKm > app.radius) return null;
+  const min = priceCents(range.min);
+  if (selectCheapest(app)?.id === station.id) {
+    return { amount: (priceCents(range.max) - min) / 100, best: true };
+  }
+  const price = effectivePrice(station, app.fuel)?.value ?? 0;
+  return { amount: (priceCents(price) - min) / 100, best: false };
+}
+
 /** Autonomy narrative for the route ribbon (depends on tank setting) */
 export function selectAutonomy(app: AppStore): { autonomyKm: number; limitKm: number } {
   const autonomyKm = Math.round(((app.tank * (app.startTankPct / 100)) / app.conso) * 100);
