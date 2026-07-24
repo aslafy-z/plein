@@ -60,30 +60,51 @@ button {
   animation: sheet-swap 0.22s ease;
 }
 
-/* First-run affordance: the collapsed map sheet grows and settles twice, so
-   the newcomer sees the list can be pulled up. Height (not transform) — the
-   sheet stays glued to the bottom edge and the bounce previews the gesture
-   itself. `--sheet-h` mirrors the inline height the animation overrides. */
+/* First-run affordance: the collapsed map sheet bounces, so the newcomer sees
+   the list can be pulled up. Height (not transform) — the sheet stays glued to
+   the bottom edge and the bounce previews the gesture itself. `--sheet-h`
+   mirrors the inline height the animation overrides.
+
+   A ball settling on a floor, not a sine wave: the closed height is the
+   floor, so every excursion goes up. Each apex is decelerated into and each
+   fall accelerates out of it (per-segment easing — a single ease-in-out over
+   the whole thing reads as a stretch), and both the amplitude and the period
+   decay so the sheet visibly runs out of energy. */
 @keyframes sheet-hint {
+  /* the tug — quick pickup, decelerating into the apex */
   0% {
     height: var(--sheet-h);
+    animation-timing-function: cubic-bezier(0.16, 0.68, 0.32, 1);
   }
-  20% {
-    height: calc(var(--sheet-h) + 42px);
+  /* fall: gravity, accelerating all the way down */
+  27% {
+    height: calc(var(--sheet-h) + 54px);
+    animation-timing-function: cubic-bezier(0.55, 0.09, 0.68, 0.53);
   }
-  44% {
+  /* first rebound — a third of the height, shorter */
+  53% {
     height: var(--sheet-h);
+    animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
-  60% {
+  68% {
     height: calc(var(--sheet-h) + 18px);
+    animation-timing-function: cubic-bezier(0.55, 0.09, 0.68, 0.53);
   }
-  80%,
+  /* last rebound — barely there, then still */
+  83% {
+    height: var(--sheet-h);
+    animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  92% {
+    height: calc(var(--sheet-h) + 5px);
+    animation-timing-function: cubic-bezier(0.55, 0.09, 0.68, 0.53);
+  }
   100% {
     height: var(--sheet-h);
   }
 }
 .sheet-hint {
-  animation: sheet-hint 1.5s ease-in-out 0.45s;
+  animation: sheet-hint 1.05s linear 0.5s;
 }
 
 /* Subtle scrollbars on desktop */

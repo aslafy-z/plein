@@ -15,7 +15,7 @@ test.describe('a newcomer', () => {
     // The hint is spent: a reload lands on the same map without it
     await page.reload()
     await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
-    await page.waitForTimeout(1000) // past the hint's delay + duration
+    await page.waitForTimeout(2000) // past the hint's delay + duration
     await expect(page.locator('.sheet-hint')).toHaveCount(0)
   })
 })
@@ -27,7 +27,7 @@ test.describe('a returning user', () => {
   test('never sees the hint', async ({ page }) => {
     await page.goto('/')
     await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(2000)
     await expect(page.locator('.sheet-hint')).toHaveCount(0)
   })
 })
