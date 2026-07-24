@@ -44,12 +44,34 @@ function fraCoversAlong(polyline: GeoPoint[], corridorKm: number): boolean {
 }
 
 // ── Stations ─────────────────────────────────────────────────────────────────
+// Every source caps its own near-query (300 in fra and esp), but the merge used
+// to just concatenate them: a zone where two coverage areas overlap — Le
+// Perthus, Irún, the Pas de la Case, i.e. exactly what « auto » exists for —
+// returned up to ~660 stations where a single source returns 300. That payload
+// then flows through every selector pass, the marker diff in MapCanvas and the
+// JSON.stringify of writeStationsCache, so the merge caps like a source does.
+const NEAR_CAP = 300;
+
 async function mergeSettled(tasks: Promise<Station[]>[]): Promise<Station[]> {
   if (tasks.length === 0) return [];
   const settled = await Promise.allSettled(tasks);
   const ok = settled.filter((s): s is PromiseFulfilledResult<Station[]> => s.status === 'fulfilled');
   if (ok.length === 0) throw (settled[0] as PromiseRejectedResult).reason;
   return ok.flatMap((s) => s.value);
+}
+
+/**
+ * Keep the `cap` stations nearest to `center`, mirroring what each source
+ * already does on its own result set. Below the cap the list is returned
+ * untouched, so a single-source zone keeps the exact order its source chose.
+ */
+export function capNearest(stations: Station[], center: GeoPoint, cap = NEAR_CAP): Station[] {
+  if (stations.length <= cap) return stations;
+  return stations
+    .map((st) => ({ st, distKm: haversineKm(center, { lat: st.lat, lng: st.lng }) }))
+    .sort((a, b) => a.distKm - b.distKm)
+    .slice(0, cap)
+    .map(({ st }) => st);
 }
 
 export class AutoStationsProvider implements StationsProvider {
@@ -73,9 +95,16 @@ export class AutoStationsProvider implements StationsProvider {
     if (fraCoversNear(center, radiusKm)) tasks.push(this.fra.getStationsNear(center, radiusKm, opts));
     if (espCoversNear(center, radiusKm)) tasks.push(this.esp.getStationsNear(center, radiusKm, opts));
     if (andCoversNear(center, radiusKm)) tasks.push(this.and.getStationsNear(center, radiusKm, opts));
-    return mergeSettled(tasks);
+    return capNearest(await mergeSettled(tasks), center);
   }
 
+  // No cap on the corridor, deliberately: unlike a disc, a route has no centre
+  // to rank against — the natural key (distance to the polyline) would thin the
+  // widest part of the corridor rather than its far end, and a positional cut
+  // would simply truncate the route. No single source caps its corridor either
+  // (fra bounds it per sample point, esp and and by the corridor itself), so
+  // « auto » would be the only source silently dropping stations off a long
+  // route. The corridor is already narrow enough to keep the payload sane.
   async getStationsAlong(polyline: GeoPoint[], corridorKm: number): Promise<Station[]> {
     const tasks: Promise<Station[]>[] = [];
     if (fraCoversAlong(polyline, corridorKm)) tasks.push(this.fra.getStationsAlong(polyline, corridorKm));
