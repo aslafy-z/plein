@@ -706,16 +706,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const reachKey = useRef<string | null>(null);
   useEffect(() => {
     const provider = getProviders(stations.activeSource).route;
-    if (!provider.getReachMatrix || !stations.data.length) return;
-    const candidates = stations.data
-      .map((s) => ({ s, crowKm: haversineKm(userPos, { lat: s.lat, lng: s.lng }) }))
-      // When the user searches a faraway area, its stations are not "near me"
-      // in any sense worth a routing call — they keep crow-flies distances
-      .filter((c) => c.crowKm <= MAX_RADIUS_KM)
-      .sort((a, b) => a.crowKm - b.crowKm)
-      .slice(0, ROAD_REACH_MAX)
-      .map((c) => c.s);
-    if (!candidates.length) return;
+    // Nothing measurable this round → drop what the last round measured. Those
+    // numbers were measured from a position the user may since have left, and
+    // keeping them would show distances from there; crow-flies is the honest
+    // degradation. The key goes too, so the very same set can be measured
+    // again once it becomes reachable.
+    const dropReach = () => {
+      reachKey.current = null;
+      setRoadReach((prev) => (Object.keys(prev).length ? {} : prev));
+    };
+    if (!provider.getReachMatrix || !stations.data.length) {
+      dropReach();
+      return;
+    }
+    const candidates = selectReachCandidates(stations.data, userPos);
+    if (!candidates.length) {
+      dropReach();
+      return;
+    }
     // ~100 m position granularity: a GPS jitter must not refetch the matrix
     const key = [
       stations.activeSource,
@@ -1281,6 +1289,21 @@ export function effectiveFuel(s: Station, fuel: FuelId): FuelId | null {
 export function effectivePrice(s: Station, fuel: FuelId): FuelPrice | undefined {
   const f = effectiveFuel(s, fuel);
   return f ? s.prices[f] : undefined;
+}
+
+/**
+ * Stations worth one road-matrix call: the ROAD_REACH_MAX nearest ones, and
+ * only those within MAX_RADIUS_KM of the user. When the user searches a
+ * faraway area, its stations are not "near me" in any sense worth a routing
+ * call — they keep crow-flies distances and the list comes back empty.
+ */
+export function selectReachCandidates(stations: Station[], userPos: GeoPoint): Station[] {
+  return stations
+    .map((s) => ({ s, crowKm: haversineKm(userPos, { lat: s.lat, lng: s.lng }) }))
+    .filter((c) => c.crowKm <= MAX_RADIUS_KM)
+    .sort((a, b) => a.crowKm - b.crowKm)
+    .slice(0, ROAD_REACH_MAX)
+    .map((c) => c.s);
 }
 
 /**
