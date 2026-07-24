@@ -38,22 +38,79 @@ export interface StationsCacheHit {
   fetchRadiusKm?: number;
 }
 
+// The blob is several hundred KB (4 areas × up to a few hundred stations, each
+// with prices, tags, services and an hours tree). Parsing it on every read and
+// serializing it on every write blocked the main thread exactly when the new
+// stations were being painted. So the parsed list lives in memory — reads and
+// writes touch it directly — and only the JSON.stringify + setItem is queued,
+// on idle, coalesced: the cache is best-effort, nothing waits on it.
+let areas: CacheEntry[] | null = null;
+/** Cancels the queued write, when one is queued */
+let cancelQueued: (() => void) | null = null;
+/** Idle callbacks can starve on a busy tab — write out within 2s regardless */
+const FLUSH_TIMEOUT_MS = 2_000;
+
 function load(): CacheEntry[] {
+  if (areas) return areas;
   try {
     const raw = localStorage.getItem(LS_KEY);
     const list = raw ? (JSON.parse(raw) as CacheEntry[]) : [];
-    return Array.isArray(list) ? list : [];
+    areas = Array.isArray(list) ? list : [];
   } catch {
-    return [];
+    areas = [];
   }
+  return areas;
 }
 
-function save(list: CacheEntry[]): void {
+function write(): void {
+  if (!areas) return;
   try {
-    localStorage.setItem(LS_KEY, JSON.stringify(list));
+    localStorage.setItem(LS_KEY, JSON.stringify(areas));
   } catch {
     /* quota / private mode — cache is best-effort */
   }
+}
+
+interface IdleHost {
+  requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+  cancelIdleCallback?: (handle: number) => void;
+}
+
+function queueWrite(): void {
+  // Already queued → that callback serializes whatever `areas` holds by then
+  if (cancelQueued) return;
+  const host = globalThis as IdleHost;
+  const run = () => {
+    cancelQueued = null;
+    write();
+  };
+  if (typeof host.requestIdleCallback === 'function') {
+    const handle = host.requestIdleCallback(run, { timeout: FLUSH_TIMEOUT_MS });
+    cancelQueued = () => host.cancelIdleCallback?.(handle);
+  } else {
+    const handle = setTimeout(run, 0);
+    cancelQueued = () => clearTimeout(handle);
+  }
+}
+
+/** Writes the pending blob out now — a tab going away may never idle again. */
+export function flushStationsCache(): void {
+  if (!cancelQueued) return;
+  cancelQueued();
+  cancelQueued = null;
+  write();
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', flushStationsCache);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushStationsCache();
+  });
+  // Another tab refreshed an area — drop our copy so the next read re-parses.
+  // Not while a write is queued: ours is the newer one, it wins.
+  window.addEventListener('storage', (e) => {
+    if ((e.key === LS_KEY || e.key === null) && !cancelQueued) areas = null;
+  });
 }
 
 export function readStationsCache(
@@ -90,5 +147,6 @@ export function writeStationsCache(
   const rest = load().filter(
     (e) => !(e.source === source && haversineKm(e.center, center) <= MATCH_KM),
   );
-  save([{ source, center, fetchRadiusKm, fetchedAt, stations }, ...rest].slice(0, MAX_AREAS));
+  areas = [{ source, center, fetchRadiusKm, fetchedAt, stations }, ...rest].slice(0, MAX_AREAS);
+  queueWrite();
 }
