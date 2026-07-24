@@ -9,7 +9,9 @@
 import { haversineKm, type GeoPoint } from '../lib/geo';
 import type { DataSourceId, Station } from './types';
 
-const LS_KEY = 'plein.stations.cache.v1';
+// v2: French ids gained their `fra-` prefix — v1 blobs hold the bare ones and
+// would paint stations that no longer match favorites or /station/<id> links.
+const LS_KEY = 'plein.stations.cache.v2';
 const MAX_AREAS = 4;
 /** Without containment, a cached area still paints when its center is close */
 const MATCH_KM = 3;
