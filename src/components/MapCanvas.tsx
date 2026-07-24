@@ -403,7 +403,10 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
       const label = price.toFixed(2).replace('.', ',');
       const tierClass = deal ? '--deal' : tier === 'high' ? '--high' : '';
       const dotClass = `pin-dot${tierClass && ` pin-dot${tierClass}`}`;
-      const bubbleClass = `pin-bubble${tierClass && ` pin-bubble${tierClass}`}`;
+      // `--reco` carries no style (the emphasis is inline above) — it names the
+      // crowned pin so the e2e suite can check it agrees with the sheet card
+      const bubbleClass =
+        `pin-bubble${tierClass && ` pin-bubble${tierClass}`}` + (best ? ' pin-bubble--reco' : '');
       const html = dot
         ? `<div style="transform:translate(-50%,-50%)"><div class="${dotClass}"></div></div>`
         : `<div style="transform:translate(-50%,-100%);display:flex;flex-direction:column;` +
@@ -437,8 +440,12 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
       }
     }
 
+    // roadReach/conso/tank feed selectRecommended (effective price over the
+    // ROAD distance): the OSRM matrix lands a few hundred ms after the
+    // stations, and without them the crowned pin kept the crow-flies pick
+    // while the sheet card — a plain render — already showed the road one.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [app.stations.data, app.fuel, app.radius, app.brandSel, app.serviceTags, app.userPos, app.searchPos, app.focusStationId, viewTick]);
+  }, [app.stations.data, app.fuel, app.radius, app.brandSel, app.serviceTags, app.userPos, app.searchPos, app.focusStationId, app.roadReach, app.conso, app.tank, viewTick]);
 
   // ── Auto-fit (to the radius zone, not the whole fetched area) until the user
   // takes over — and never while a station is selected (don't yank the view).
@@ -464,6 +471,9 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
     } else {
       map.setView([app.searchPos.lat, app.searchPos.lng], 13, { animate: false });
     }
+    // No roadReach/conso/tank here on purpose: selectVisible only filters on
+    // searchKm (crow-flies from the search center), so the fitted zone cannot
+    // move when the road matrix lands. Add them the day it reads a road number.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [app.stations.data, app.fuel, app.radius, app.brandSel, app.serviceTags, app.userPos, app.searchPos, app.focusStationId, bottomInset]);
 

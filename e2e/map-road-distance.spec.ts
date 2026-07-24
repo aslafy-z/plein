@@ -87,6 +87,39 @@ test('the reco and distances follow the road matrix, not crow-flies', async ({ p
   await expect(rows.nth(1)).toContainText('recommandée · +0,02')
 })
 
+test('the crowned pin follows the matrix landing after the stations', async ({ page }) => {
+  // The matrix answers only once the map already drew its crow-flies pins —
+  // the real timing (OSRM lands a few hundred ms after the flux). Nothing
+  // else changes at that moment: no pan, no filter, no fuel switch.
+  let release = () => {}
+  const gate = new Promise<void>((r) => (release = r))
+  await page.route('**/proxy/osrm/table/**', async (route) => {
+    await gate
+    await route.fulfill({
+      json: {
+        code: 'Ok',
+        durations: [[0, 240, 900, 360]],
+        distances: [[0, 2000, 12000, 3500]],
+      },
+    })
+  })
+  await page.goto('/')
+
+  // Crow-flies: Rivegauche (1,85 € at ~2,2 km) is crowned on the map and card
+  await expect(page.locator('.pin-bubble--reco')).toHaveText('1,85', { timeout: 15_000 })
+  await expect(page.getByText('Station · Rivegauche').first()).toBeVisible()
+  // Let the load auto-fit finish its zoom animation: its trailing moveend
+  // would otherwise re-run the pins effect for us and hide the missing deps
+  await page.waitForTimeout(1500)
+
+  release()
+
+  // Road distances land → the crown moves to Rivedroite on BOTH, in step
+  await expect(page.locator('.pin-bubble--reco')).toHaveText('1,87')
+  await expect(page.getByText('Station · Rivedroite').first()).toBeVisible()
+  await expect(page.locator('.pin-bubble--reco')).toHaveCount(1)
+})
+
 test('crow-flies fallback when the road matrix is unreachable', async ({ page }) => {
   await page.route('**/proxy/osrm/**', (route) => route.abort())
   await page.goto('/')
