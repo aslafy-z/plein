@@ -335,6 +335,16 @@ function navFromPath(path: string): { screen: Screen; detailId: string | null } 
   return { screen: 'map', detailId: null };
 }
 
+/** What the app stores in `history.state` for each of its own entries */
+type NavHistoryState = {
+  plein?: boolean;
+  screen?: Screen;
+  detailId?: string | null;
+  filtersOpen?: boolean;
+  /** 0 = the entry the app was opened on (nothing of ours to pop below it) */
+  idx?: number;
+};
+
 const Ctx = createContext<AppStore | null>(null);
 
 // ── Provider component ───────────────────────────────────────────────────────
@@ -492,6 +502,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // system back button walks screens instead of leaving the app.
   const popNavRef = useRef(false);
   const lastNavScreenRef = useRef<Screen | null>(null);
+  // Set when the next nav must swap the current entry instead of stacking one
+  // (see `back()`: leaving a URL that can't be popped).
+  const replaceNavRef = useRef(false);
 
   useEffect(() => {
     const onPop = (e: PopStateEvent) => {
@@ -515,13 +528,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const state = { plein: true, screen, detailId, filtersOpen };
     const fromPop = popNavRef.current;
     popNavRef.current = false;
     const cameFrom = lastNavScreenRef.current;
     lastNavScreenRef.current = screen;
+    const replaceAsked = replaceNavRef.current;
+    replaceNavRef.current = false;
     if (fromPop) return;
-    const cur = window.history.state as typeof state | null;
+    const cur = window.history.state as NavHistoryState | null;
     if (
       cur?.plein &&
       cur.screen === screen &&
@@ -531,7 +545,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     const path = pathFor(screen, detailId);
     // First entry — and leaving onboarding must not be back-navigable
-    if (!cur?.plein || cameFrom === 'onboarding') window.history.replaceState(state, '', path);
+    const replace = !cur?.plein || cameFrom === 'onboarding' || replaceAsked;
+    // How deep the app is in ITS OWN history: entry 0 is the one the app was
+    // opened on, and popping it would leave the app entirely.
+    const idx = replace ? (cur?.plein ? (cur.idx ?? 0) : 0) : (cur?.idx ?? 0) + 1;
+    const state: NavHistoryState = { plein: true, screen, detailId, filtersOpen, idx };
+    if (replace) window.history.replaceState(state, '', path);
     else window.history.pushState(state, '', path);
   }, [screen, detailId, filtersOpen]);
 
@@ -862,9 +881,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const back = useCallback(() => {
-    const cur = window.history.state as { plein?: boolean; screen?: Screen } | null;
-    if (cur?.plein && cur.screen === 'detail') window.history.back();
-    else setScreen(prevScreen);
+    const cur = window.history.state as NavHistoryState | null;
+    if (cur?.plein && cur.screen === 'detail') {
+      if ((cur.idx ?? 0) > 0) {
+        window.history.back();
+        return;
+      }
+      // Entry 0: the app was opened directly on this fiche (deep link, fresh
+      // tab) — popping would leave the app. Swap the entry in place instead,
+      // so Back can't walk right back onto the URL we just left.
+      replaceNavRef.current = true;
+    }
+    setScreen(prevScreen);
   }, [prevScreen]);
 
   // Closing the filters sheet from the UI pops the entry its opening pushed,
