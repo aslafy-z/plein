@@ -22,7 +22,8 @@ Cloudflare Workers. UI copy is French — keep it that way.
 ```sh
 npm run typecheck   # tsc -b --noEmit
 npm test            # vitest unit tests (src/**/*.test.ts, node env)
-npm run e2e         # Playwright (starts the Vite dev server itself)
+npm run e2e         # Playwright (starts the Vite dev server itself) — see
+                    # "Where to run the e2e suite" before running this
 npm run build       # tsc + vite build
 ```
 
@@ -46,12 +47,28 @@ npm run build       # tsc + vite build
   `**/brands-fra.json` with `page.route`. The fixture fails any test whose
   page logs a console error.
 
-## Playwright in sandboxes
+## Where to run the e2e suite
 
-The pinned Playwright browser build is often absent in sandboxed/CI-like
-environments (`Executable doesn't exist … Please run npx playwright
-install`). Do NOT download browsers; point the config at the pre-installed
-system Chromium instead:
+`npm run e2e` is fast on a local machine, but painfully slow on Claude Code
+cloud sessions — a full run there can eat most of a turn. So:
+
+- **On Claude Code cloud (or any remote/sandboxed session): prefer CI.** Push
+  the branch and let the `e2e` job in `.github/workflows/tests.yml` run the
+  Playwright suite, then watch the run to completion and read the result
+  (`playwright-report/` is uploaded as an artifact on failure). Treat the CI
+  run as the verification step — don't call the change verified until the job
+  is green, and iterate by pushing fixes rather than by re-running locally.
+  Running one narrowly-targeted spec locally to debug a specific failure is
+  fine; running the whole suite is not.
+- **Locally: just run `npm run e2e`.** Typecheck and unit tests (`npm run
+  typecheck`, `npm test`) stay local everywhere — they're cheap.
+
+### Playwright in sandboxes
+
+If you do need a local run in a sandboxed session, the pinned Playwright
+browser build is often absent (`Executable doesn't exist … Please run npx
+playwright install`). Do NOT download browsers; point the config at the
+pre-installed system Chromium instead:
 
 ```sh
 PLEIN_CHROMIUM=$(which chromium || echo /opt/pw-browsers/chromium) npx playwright test
