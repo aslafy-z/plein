@@ -1,0 +1,97 @@
+# Deletes the preview versions of a closed pull request, so the `pr-<n>`
+# aliases uploaded by Deploy don't pile up on the Worker.
+#
+# Lives outside deploy.yml on purpose: merging a PR fires `push` on main and
+# `pull_request: closed` in the same second, and two runs of the SAME workflow
+# share a concurrency group. This cleanup — which cancels what it supersedes —
+# used to kill the production deploy on its way in. A workflow of its own puts
+# it in a group of its own.
+#
+# Required repository secrets:
+#   CLOUDFLARE_API_TOKEN   — API token with the "Edit Cloudflare Workers" template
+#   CLOUDFLARE_ACCOUNT_ID  — Cloudflare account id (dashboard → Workers & Pages)
+#
+# Actions are pinned by commit SHA (tag in comment).
+name: Deploy cleanup
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+
+concurrency:
+  # One cleanup at a time per PR; never cancelled — a half-done sweep leaves
+  # orphan versions behind.
+  group: deploy-cleanup-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  cleanup-preview:
+    # Forked PRs never got a preview (no secrets), so they have none to drop.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Delete the preview versions and their PR comment
+        uses: actions/github-script@d746ffe35508b1917358783b479e04febd2b8f71 # v9.0.0
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        with:
+          script: |
+            // Must match `name` in wrangler.jsonc.
+            const worker = 'plein';
+            const alias = `pr-${context.issue.number}`;
+            const base = `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/workers`;
+            const cf = async (path, method = 'GET') => {
+              const res = await fetch(`${base}/${path}`, {
+                method,
+                headers: { Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}` },
+              });
+              return res.json();
+            };
+
+            // A version that is (or was) deployed stays, whatever alias it carries:
+            // deleting one would break production or the ability to roll back to it.
+            const deployments = await cf(`scripts/${worker}/deployments`);
+            const deployed = new Set(
+              (deployments.result?.deployments ?? []).flatMap((d) =>
+                d.versions.map((v) => v.version_id),
+              ),
+            );
+
+            const doomed = [];
+            for (let page = 1; page <= 20; page++) {
+              const { result } = await cf(`workers/${worker}/versions?per_page=100&page=${page}`);
+              if (!result?.length) break;
+              for (const v of result) {
+                if (v.annotations?.['workers/alias'] === alias && !deployed.has(v.id)) {
+                  doomed.push(v.id);
+                }
+              }
+            }
+
+            let deleted = 0;
+            for (const id of doomed) {
+              const res = await cf(`workers/${worker}/versions/${id}`, 'DELETE');
+              if (res.success) deleted += 1;
+              else core.warning(`${id}: ${JSON.stringify(res.errors)}`);
+            }
+            core.info(`${alias}: deleted ${deleted}/${doomed.length} preview version(s)`);
+
+            // The URL it advertised is dead, so the comment is now misleading.
+            const marker = '<!-- plein-preview-url -->';
+            const { data: comments } = await github.rest.issues.listComments({
+              ...context.repo, issue_number: context.issue.number, per_page: 100,
+            });
+            const stale = comments.filter(
+              (c) => c.user.type === 'Bot' && c.body.includes(marker),
+            );
+            for (const c of stale) {
+              await github.rest.issues.deleteComment({ ...context.repo, comment_id: c.id });
+            }

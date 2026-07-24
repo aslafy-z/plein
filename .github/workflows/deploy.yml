@@ -2,7 +2,8 @@
 # - push on main  → production deploy (custom domain plein.zadkiel.fr)
 # - pull requests → preview version (URL pr-<n>-plein.<subdomain>.workers.dev,
 #   requires `preview_urls: true` in wrangler.jsonc), posted as a PR comment.
-# - closed PRs    → the preview versions are deleted, so aliases don't pile up.
+# - closed PRs    → their preview versions are deleted by deploy-cleanup.yml,
+#   which stays a workflow apart so its run can't cancel a production deploy.
 #
 # Required repository secrets:
 #   CLOUDFLARE_API_TOKEN   — API token with the "Edit Cloudflare Workers" template
@@ -15,8 +16,6 @@ on:
   push:
     branches: [main]
   pull_request:
-    # `closed` is not a default type; it drives the preview cleanup job below.
-    types: [opened, synchronize, reopened, closed]
   # Manual re-deploy of production (Actions → Deploy → Run workflow), for the
   # rare cases where an event is lost or a deploy must be re-kicked as-is.
   workflow_dispatch:
@@ -53,7 +52,6 @@ jobs:
     # Forked PRs don't get secrets — only same-repo PRs deploy a preview.
     if: >
       github.event_name == 'pull_request' &&
-      github.event.action != 'closed' &&
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -117,75 +115,3 @@ jobs:
               await github.rest.issues.deleteComment({ ...context.repo, comment_id: c.id });
             }
             await github.rest.issues.createComment({ ...context.repo, issue_number: context.issue.number, body });
-
-  cleanup-preview:
-    # Merged or abandoned, a closed PR keeps no preview. Wrangler cannot delete
-    # an alias, so we delete the versions carrying it through the Workers API.
-    if: >
-      github.event_name == 'pull_request' &&
-      github.event.action == 'closed' &&
-      github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - name: Delete the preview versions and their PR comment
-        uses: actions/github-script@d746ffe35508b1917358783b479e04febd2b8f71 # v9.0.0
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        with:
-          script: |
-            // Must match `name` in wrangler.jsonc.
-            const worker = 'plein';
-            const alias = `pr-${context.issue.number}`;
-            const base = `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/workers`;
-            const cf = async (path, method = 'GET') => {
-              const res = await fetch(`${base}/${path}`, {
-                method,
-                headers: { Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}` },
-              });
-              return res.json();
-            };
-
-            // A version that is (or was) deployed stays, whatever alias it carries:
-            // deleting one would break production or the ability to roll back to it.
-            const deployments = await cf(`scripts/${worker}/deployments`);
-            const deployed = new Set(
-              (deployments.result?.deployments ?? []).flatMap((d) =>
-                d.versions.map((v) => v.version_id),
-              ),
-            );
-
-            const doomed = [];
-            for (let page = 1; page <= 20; page++) {
-              const { result } = await cf(`workers/${worker}/versions?per_page=100&page=${page}`);
-              if (!result?.length) break;
-              for (const v of result) {
-                if (v.annotations?.['workers/alias'] === alias && !deployed.has(v.id)) {
-                  doomed.push(v.id);
-                }
-              }
-            }
-
-            let deleted = 0;
-            for (const id of doomed) {
-              const res = await cf(`workers/${worker}/versions/${id}`, 'DELETE');
-              if (res.success) deleted += 1;
-              else core.warning(`${id}: ${JSON.stringify(res.errors)}`);
-            }
-            core.info(`${alias}: deleted ${deleted}/${doomed.length} preview version(s)`);
-
-            // The URL it advertised is dead, so the comment is now misleading.
-            const marker = '<!-- plein-preview-url -->';
-            const { data: comments } = await github.rest.issues.listComments({
-              ...context.repo, issue_number: context.issue.number, per_page: 100,
-            });
-            const stale = comments.filter(
-              (c) => c.user.type === 'Bot' && c.body.includes(marker),
-            );
-            for (const c of stale) {
-              await github.rest.issues.deleteComment({ ...context.repo, comment_id: c.id });
-            }
