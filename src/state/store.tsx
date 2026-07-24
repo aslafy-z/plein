@@ -30,6 +30,7 @@ import {
 import { getProviders } from '../data/providers';
 import { brandGroup } from '../lib/brandIcons';
 import { readStationsCache, writeStationsCache, STALE_MS } from '../data/stationsCache';
+import { normalizeStationId, stationCountry } from '../data/stationIds';
 import {
   installReady,
   isStandalone,
@@ -330,7 +331,9 @@ function navFromPath(path: string): { screen: Screen; detailId: string | null } 
   if (path.startsWith('/route')) return { screen: 'routeSetup', detailId: null };
   if (path.startsWith('/settings')) return { screen: 'settings', detailId: null };
   if (path.startsWith('/station/')) {
-    return { screen: 'detail', detailId: decodeURIComponent(path.slice('/station/'.length)) };
+    // Bookmarks predating the `fra-` prefix still carry a bare French id
+    const id = normalizeStationId(decodeURIComponent(path.slice('/station/'.length)));
+    return { screen: 'detail', detailId: id };
   }
   return { screen: 'map', detailId: null };
 }
@@ -413,7 +416,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     persisted.onboarded === true && persisted.geoGranted === true && 'geolocation' in navigator,
   );
 
-  const [favorites, setFavorites] = useState<FavoriteStation[]>(persisted.favorites ?? []);
+  // Favorites pinned before the `fra-` prefix hold bare French ids — migrate
+  // them, or they would stop matching the stations we load (star, sort, fiche).
+  const [favorites, setFavorites] = useState<FavoriteStation[]>(() =>
+    (persisted.favorites ?? []).map((f) => ({ ...f, id: normalizeStationId(f.id) })),
+  );
   const toggleFavorite = useCallback((s: FavoriteStation) => {
     setFavorites((prev) => {
       const next = prev.some((f) => f.id === s.id)
@@ -1251,11 +1258,8 @@ export function useApp(): AppStore {
  */
 export function effectiveFuel(s: Station, fuel: FuelId): FuelId | null {
   if (s.prices[fuel] != null) return fuel;
-  if (
-    fuel === 'e10' &&
-    s.prices.sp95 != null &&
-    (s.id.startsWith('esp-') || s.id.startsWith('and-'))
-  ) {
+  const country = stationCountry(s.id);
+  if (fuel === 'e10' && s.prices.sp95 != null && (country === 'esp' || country === 'and')) {
     return 'sp95';
   }
   return null;

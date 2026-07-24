@@ -291,7 +291,9 @@ function parseRecord(rec: Raw): Station | null {
   const id = toStr(rec.id) ?? `${coords.lat.toFixed(5)},${coords.lng.toFixed(5)}`;
   const pretty = ville ? titleCase(ville) : '';
   return {
-    id,
+    // Prefixed like the Spanish and Andorran ones — the « Automatique »
+    // source mixes the three and reads the country off the id
+    id: `fra-${id}`,
     name: pretty ? `Station · ${pretty}` : 'Station',
     init: (ville.slice(0, 2) || 'ST').toUpperCase(),
     brand: undefined,

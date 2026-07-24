@@ -3,6 +3,7 @@ import L from 'leaflet';
 import { C, mono } from '../theme';
 import { ALL_FUELS, MAIN_FUELS, FUEL_LABELS, type FuelId, type Station } from '../data/types';
 import { useApp, selectVisibleForFuel, effectivePrice, priceCents, roadReachOf } from '../state/store';
+import { stationCountry } from '../data/stationIds';
 import { fmtPrice, distLabel, agoLabel, durationLabel } from '../lib/format';
 import { haversineKm } from '../lib/geo';
 import { openStatus } from '../lib/hours';
@@ -150,15 +151,8 @@ export default function StationDetail() {
   const activeSource = isRoute
     ? (app.routeState.fellBack ? 'demo' : app.sourceId)
     : app.stations.activeSource;
-  // The auto source mixes countries — attribute per station (foreign ids are prefixed)
-  const stationSource =
-    activeSource === 'auto'
-      ? s.id.startsWith('esp-')
-        ? 'esp'
-        : s.id.startsWith('and-')
-          ? 'and'
-          : 'fra'
-      : activeSource;
+  // The auto source mixes countries — attribute per station (ids are prefixed)
+  const stationSource = activeSource === 'auto' ? (stationCountry(s.id) ?? 'fra') : activeSource;
   const footerText =
     s.confirmations != null
       ? `Mis à jour ${agoLabel(mostRecent)} · confirmé par ${s.confirmations} conducteurs`
