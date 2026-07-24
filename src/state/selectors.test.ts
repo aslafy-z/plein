@@ -10,9 +10,13 @@ import {
   roadReachOf,
   selectAutonomy,
   selectByPrice,
+  selectCheapest,
+  selectDeals,
+  selectFocusStation,
   selectMapStations,
   selectPriceRange,
   selectPriceStats,
+  selectSorted,
   selectReachCandidates,
   selectRecommended,
   selectRouteAnalysis,
@@ -188,6 +192,78 @@ describe('selectVisible', () => {
     const a = app({ stations: { status: 'ready', data: [esp], activeSource: 'esp', fellBack: false, refreshing: false } })
     expect(selectZoneFuels(a)).toEqual(['sp95'])
   })
+
+  it('selectZoneFuels lists every fuel of the zone, in the fuel order, filters applied', () => {
+    const data = [
+      station({ id: 'a', ...north(1), prices: { gazole: { value: 1.7 }, e85: { value: 0.9 } }, brand: 'Shell' }),
+      station({ id: 'b', ...north(2), prices: { sp98: { value: 1.9 } }, tags: ['Lavage'] }),
+      // Out of the radius — its GPL must not join the list
+      station({ id: 'c', ...north(30), prices: { gplc: { value: 0.99 } } }),
+    ]
+    const base = app({ stations: { status: 'ready', data, activeSource: 'demo', fellBack: false, refreshing: false } })
+    expect(selectZoneFuels(base)).toEqual(['gazole', 'sp98', 'e85'])
+    // …and the brand/service filters narrow it like any other zone selector
+    expect(selectZoneFuels(app({ ...base, brandSel: ['Shell'] }))).toEqual(['gazole', 'e85'])
+    expect(selectZoneFuels(app({ ...base, serviceTags: { Lavage: true } }))).toEqual(['sp98'])
+  })
+})
+
+// ── Memoization ──────────────────────────────────────────────────────────────
+describe('selector memoization', () => {
+  /** A store whose `stations.data` counts how many times it is walked */
+  function counting(data: Station[]) {
+    const counter = { passes: 0 }
+    const stations = {
+      status: 'ready',
+      get data() {
+        counter.passes++
+        return data
+      },
+      activeSource: 'demo',
+      fellBack: false,
+      refreshing: false,
+    } as AppStore['stations']
+    return { store: app({ stations }), counter }
+  }
+
+  const ZONE = [
+    station({ id: 'near', ...north(1), prices: gazole(1.7), brand: 'Shell' }),
+    station({ id: 'mid', ...north(3), prices: gazole(1.8) }),
+    station({ id: 'off-map', ...north(30), prices: gazole(1.6) }),
+  ]
+
+  it('walks stations.data once per store identity, whatever the screen asks for', () => {
+    const { store, counter } = counting(ZONE)
+    // Roughly what one MapSheet + MapCanvas render pass costs
+    selectVisible(store)
+    selectSorted(store)
+    selectCheapest(store)
+    selectRecommended(store)
+    selectMapStations(store)
+    selectPriceStats(store)
+    selectPriceRange(store)
+    selectDeals(store)
+    selectZoneFuels(store)
+    selectZoneBrandCounts(store)
+    selectFocusStation(store)
+    expect(counter.passes).toBe(1)
+  })
+
+  it('hands back the same array so callers can compare by reference', () => {
+    const { store } = counting(ZONE)
+    expect(selectVisible(store)).toBe(selectVisible(store))
+    expect(selectMapStations(store)).toBe(selectMapStations(store))
+    expect(selectPriceStats(store)).toBe(selectPriceStats(store))
+  })
+
+  it('recomputes for a new store object — the cache never outlives its inputs', () => {
+    const { store, counter } = counting(ZONE)
+    expect(selectVisible(store).map((s) => s.id)).toEqual(['near', 'mid'])
+    // Same data, widened radius: a fresh store object is a fresh answer
+    const wider = app({ ...store, radius: 40 })
+    expect(selectVisible(wider).map((s) => s.id)).toEqual(['near', 'mid', 'off-map'])
+    expect(counter.passes).toBe(2)
+  })
 })
 
 // ── Ranking & recommendation ─────────────────────────────────────────────────
@@ -358,6 +434,16 @@ describe('selectPriceStats / priceTier', () => {
     expect(priceTier(2.05, stats, false)).toBe('mid')
     expect(priceTier(1.9, stats, false)).toBe('mid')
     expect(priceTier(2.1, stats, false)).toBe('high')
+  })
+
+  it('selectDeals reads the same tiers whether the stats are handed to it or not', () => {
+    const a = withData([1.6, 1.61, 1.75, 1.85])
+    const deals = selectDeals(a)
+    expect(deals.map((s) => s.id)).toEqual(['s0', 's1'])
+    expect(selectDeals(a, selectPriceStats(a)).map((s) => s.id)).toEqual(deals.map((s) => s.id))
+    // No distribution at all (empty map) → nothing is a « bon plan »
+    expect(selectDeals(a, null)).toEqual([])
+    expect(selectDeals(app())).toEqual([])
   })
 })
 
