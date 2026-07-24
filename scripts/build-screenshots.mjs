@@ -99,9 +99,6 @@ try {
   await page.locator('[aria-label="Carte de la station"]').waitFor({ timeout: 30_000 });
   await page.waitForLoadState('networkidle').catch(() => {});
   await page.waitForTimeout(3000);
-  // Shot full screen like the other two: the README lines them up side by
-  // side, so they must share the same dimensions. A station with few services
-  // leaves dead space under the CTA — that is the screen as it renders.
   await shoot(page, 'station');
   await page.goBack();
 
