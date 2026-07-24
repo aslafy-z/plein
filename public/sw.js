@@ -11,14 +11,20 @@ const TILE_CACHE = 'plein-tiles-v1';
 const TILE_HOSTS = ['basemaps.cartocdn.com', 'tile.openstreetmap.org'];
 // ~256×256 PNGs are small; 600 tiles ≈ a handful of city neighbourhoods
 const TILE_MAX_ENTRIES = 600;
+// Build output is content-hashed: every deploy adds a fresh set of URLs that
+// never overwrite the previous one, so without a cap the asset cache would
+// keep every build ever visited. Entries go in in deploy order, so evicting
+// the head drops the oldest deploy first; a current asset that gets evicted
+// is simply refetched once.
+const ASSET_MAX_ENTRIES = 100;
 
 const isTileRequest = (url) =>
   TILE_HOSTS.some((h) => url.hostname === h || url.hostname.endsWith('.' + h));
 
 // cache.keys() preserves insertion order → dropping the head is FIFO eviction
-async function trimTileCache(cache) {
+async function trimCache(cache, max) {
   const keys = await cache.keys();
-  const excess = keys.length - TILE_MAX_ENTRIES;
+  const excess = keys.length - max;
   if (excess > 0) await Promise.all(keys.slice(0, excess).map((k) => cache.delete(k)));
 }
 
@@ -31,7 +37,7 @@ async function tileFromCacheFirst(event, req) {
   // those are the ones we actually get in prod, so cache them too.
   if (res.ok || res.type === 'opaque') {
     const copy = res.clone();
-    event.waitUntil(cache.put(req, copy).then(() => trimTileCache(cache)));
+    event.waitUntil(cache.put(req, copy).then(() => trimCache(cache, TILE_MAX_ENTRIES)));
   }
   return res;
 }
@@ -71,7 +77,10 @@ self.addEventListener('fetch', (event) => {
         const hit = await cache.match(req);
         if (hit) return hit;
         const res = await fetch(req);
-        if (res.ok) cache.put(req, res.clone());
+        if (res.ok) {
+          const copy = res.clone();
+          event.waitUntil(cache.put(req, copy).then(() => trimCache(cache, ASSET_MAX_ENTRIES)));
+        }
         return res;
       }),
     );
@@ -83,8 +92,16 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(req)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(SHELL_CACHE).then((cache) => cache.put('/', copy));
+          // fetch() only rejects on a network failure: a 500 from the edge or a
+          // maintenance page resolves like any other response. Caching one would
+          // overwrite the good shell and make the error page *the* offline
+          // experience until the next successful navigation.
+          if (res.ok) {
+            const copy = res.clone();
+            // Not floating: the worker may be killed as soon as the response is
+            // returned, and the write has to survive that.
+            event.waitUntil(caches.open(SHELL_CACHE).then((cache) => cache.put('/', copy)));
+          }
           return res;
         })
         .catch(async () => (await caches.match('/')) ?? Response.error()),
