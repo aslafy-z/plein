@@ -21,12 +21,15 @@ test('the zoom follows the search radius', async ({ page }) => {
     let last = Number.NaN
     let level = Number.NaN
     // Leaflet keeps the outgoing level's tiles during the fit animation —
-    // wait for two identical readings before trusting one
+    // wait for two identical readings before trusting one. The reading is
+    // recorded BEFORE the assertion: throwing first would leave `last` at NaN
+    // for every retry, and no two readings could ever match.
     await expect(async () => {
       const z = await tileZoom(page)
-      expect(z === last && z !== previous).toBe(true)
+      const settledOn = z === last && z !== previous
       level = z
       last = z
+      expect(settledOn).toBe(true)
     }).toPass()
     return level
   }

@@ -43,8 +43,11 @@ test('a slight pan re-uses the fetched area instead of refetching', async ({ pag
   expect(initialCalls).toBeGreaterThan(0)
 
   // Pan until the app leaves « near you » mode (= the pan triggered a station
-  // reload via setSearchArea), like map.spec.ts does. The total drift stays a
-  // few km — far inside the fresh 25 km fetched area, so zero new requests.
+  // reload via setSearchArea), like map.spec.ts does. The drag is deliberately
+  // short: the auto-fit frames the 5 km circle around z11, where a screen-wide
+  // drag crosses ~27 km and would land outside the fetched area — a legitimate
+  // refetch, and nothing left to prove. ~130 px ≈ 10 km keeps the moved zone
+  // (drift + radius) inside the fresh 25 km area, so zero new requests.
   const zone = page
     .getByText('La moins chère dans cette zone')
     .or(page.getByText('Aucune station ne correspond'))
@@ -53,9 +56,9 @@ test('a slight pan re-uses the fetched area instead of refetching', async ({ pag
   const cx = box.x + box.width / 2
   const cy = box.y + box.height / 2
   for (let i = 0; i < 6 && !(await zone.first().isVisible()); i++) {
-    await page.mouse.move(cx + 130, cy + 100)
+    await page.mouse.move(cx + 50, cy + 40)
     await page.mouse.down()
-    await page.mouse.move(cx - 140, cy - 110, { steps: 8 })
+    await page.mouse.move(cx - 50, cy - 40, { steps: 8 })
     await page.mouse.up()
     await page.waitForTimeout(700) // moveend debounce (350 ms) + reload window
   }

@@ -175,7 +175,12 @@ test('the user zoom survives a detail round-trip via the back button', async ({ 
   await expect(page.locator('[aria-label="Carte de la station"]')).toBeVisible()
   await page.goBack()
 
-  await expect(page.getByText(/La moins chère/).first()).toBeVisible({ timeout: 15_000 })
+  // Back on the map — the card's kicker depends on where the zoomed view
+  // landed (the cheapest station of the zone is not always the recommended
+  // one), and which of the two shows is not what this test is about
+  await expect(
+    page.getByText(/La moins chère|Le meilleur choix/).first(),
+  ).toBeVisible({ timeout: 15_000 })
   await expect(async () => {
     expect(await zoom()).toBe(zoomed)
   }).toPass()

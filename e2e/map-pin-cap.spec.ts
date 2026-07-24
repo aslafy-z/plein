@@ -67,9 +67,22 @@ test('a dense zone shows its 15 cheapest as price pins, the rest as dots', async
     `Zone : les ${CAP} moins chères · ${NEAR - CAP} en points`,
   )
 
-  // Tapping a dot selects the station and promotes it to a full price pin
-  // (the last dot is an in-zone one — the far ones may sit outside the view)
-  await dots.last().click()
+  // Tapping a dot selects the station and promotes it to a full price pin.
+  // In a zone this dense a neighbouring bubble can cover a dot whole, so take
+  // the last dot that is actually reachable — with at least one, the promotion
+  // is observable, and a zone where none is tappable is the real failure.
+  await expect(async () => {
+    const n = await dots.count()
+    for (let i = n - 1; i >= 0; i--) {
+      try {
+        await dots.nth(i).click({ timeout: 1000 })
+        return
+      } catch {
+        /* covered by an overlapping price bubble — try the one below */
+      }
+    }
+    throw new Error('every dot is covered by a bubble — none is tappable')
+  }).toPass()
   await expect(page.getByText('Station sélectionnée')).toBeVisible()
   await expect(bubbles).toHaveCount(CAP + 1)
   await expect(dots).toHaveCount(TOTAL - CAP - 1)
