@@ -13,6 +13,7 @@
     "verify:live": "node scripts/live-providers.mjs",
     "build:brands": "node scripts/build-brand-index.mjs",
     "build:icons": "node scripts/build-brand-icons.mjs",
+    "build:screenshots": "node scripts/build-screenshots.mjs",
     "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
@@ -29,6 +30,7 @@
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^6.0.3",
     "esbuild": "^0.28.1",
+    "sharp": "^0.35.2",
     "typescript": "^5.6.3",
     "vite": "^8.1.4",
     "vitest": "^4.1.10",
