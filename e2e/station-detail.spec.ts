@@ -32,3 +32,17 @@ test('the fiche shows every fuel, its rank in the zone and the savings math', as
   await expect(page.getByText('Gonflage')).toBeVisible()
   await expect(page.getByText('Lavage')).toBeVisible()
 })
+
+test('the fiche pin wears the enseigne logo, initials only without one', async ({ page }) => {
+  await page.goto('/station/su')
+  await expect(page.getByText('Station U · Croix-Blanche')).toBeVisible({ timeout: 15_000 })
+
+  const pin = page.locator('[aria-label="Carte de la station"] .pin-bubble')
+  await expect(pin).toHaveCount(1)
+  await expect(pin.locator('div')).toHaveCSS('background-image', /brand-icons\/u\.png/)
+
+  // Garage Morel is independent: no logo to show, so the initials stay
+  await page.goto('/station/mo')
+  await expect(page.getByText('Garage Morel')).toBeVisible({ timeout: 15_000 })
+  await expect(page.locator('[aria-label="Carte de la station"] .pin-bubble')).toHaveText('GM')
+})
