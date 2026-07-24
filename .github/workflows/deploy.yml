@@ -80,14 +80,26 @@ jobs:
         with:
           script: |
             const marker = '<!-- plein-preview-url -->';
-            let url = process.env.DEPLOYMENT_URL || '';
-            if (!url) {
-              // Fallback: wrangler prints the preview/alias URLs in its output
-              const m = (process.env.COMMAND_OUTPUT || '').match(/https:\/\/[^\s]*workers\.dev[^\s]*/g);
-              if (m) url = m[m.length - 1];
+            const alias = `pr-${context.issue.number}`;
+            // wrangler prints both the version URL (<hash>-plein…) and, with
+            // --preview-alias, the stable alias URL (pr-<n>-plein…).
+            const printed = (process.env.COMMAND_OUTPUT || '')
+              .match(/https:\/\/[^\s)]*workers\.dev[^\s)]*/g) || [];
+            const isAlias = (u) => u.startsWith(`https://${alias}-`);
+            let versionUrl = process.env.DEPLOYMENT_URL || '';
+            if (!versionUrl) versionUrl = printed.filter((u) => !isAlias(u)).pop() || '';
+            // Fallback: the alias URL is the version URL with its hash label swapped.
+            let aliasUrl = printed.find(isAlias) || '';
+            if (!aliasUrl && versionUrl) {
+              aliasUrl = versionUrl.replace(/^https:\/\/[^-.]+/, `https://${alias}`);
             }
-            const body = url
-              ? `${marker}\n🚀 **Preview** : ${url}\n\n_Version alias \`pr-${context.issue.number}\` · commit ${context.payload.pull_request.head.sha.slice(0, 7)}_`
+            // GitHub keeps target/rel on <a>, so the links open in a new tab.
+            const link = (u) => `<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`;
+            const lines = [];
+            if (versionUrl) lines.push(`🚀 **Preview de ce commit** : ${link(versionUrl)}`);
+            if (aliasUrl) lines.push(`🔗 **Endpoint stable de la branche** : ${link(aliasUrl)}`);
+            const body = lines.length
+              ? `${marker}\n${lines.join('\n\n')}\n\n_Version alias \`${alias}\` · commit ${context.payload.pull_request.head.sha.slice(0, 7)}_`
               : `${marker}\n⚠️ Preview uploadée mais URL introuvable dans la sortie wrangler — voir les logs du job.`;
             const { data: comments } = await github.rest.issues.listComments({
               ...context.repo, issue_number: context.issue.number, per_page: 100,
