@@ -183,10 +183,20 @@ export default function StationDetail() {
 
   return (
     <div
-      style={{ position: 'absolute', inset: 0, background: '#101214', zIndex: 1200, overflow: 'auto' }}
+      style={{
+        position: 'absolute',
+        inset: 0,
+        background: '#101214',
+        zIndex: 1200,
+        overflow: 'auto',
+        // Column layout so the CTA can be pushed to the bottom on a short
+        // fiche (margin-top: auto) and stick there on a long one
+        display: 'flex',
+        flexDirection: 'column',
+      }}
     >
       {/* Header mini-map */}
-      <div style={{ position: 'relative', height: 160, background: C.mapBg }}>
+      <div style={{ position: 'relative', height: 160, flexShrink: 0, background: C.mapBg }}>
         <StationMiniMap station={s} />
         <button
           onClick={() => {
@@ -283,7 +293,7 @@ export default function StationDetail() {
         </button>
       </div>
 
-      <div style={{ padding: '18px 20px 26px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <div style={{ padding: '18px 20px 8px', display: 'flex', flexDirection: 'column', gap: 18 }}>
         {/* Title + chips */}
         <div>
           <div style={{ color: C.ink, fontSize: 21, fontWeight: 700 }}>{s.name}</div>
@@ -466,7 +476,21 @@ export default function StationDetail() {
           </div>
         </div>
 
-        {/* CTA */}
+      </div>
+
+      {/* CTA — sticky so the primary action stays reachable on a fiche long
+          enough to scroll (many fuels, many services), and pushed to the
+          bottom edge by margin-top: auto when the fiche is shorter than the
+          screen. The gradient keeps the content readable as it passes under. */}
+      <div
+        style={{
+          position: 'sticky',
+          bottom: 0,
+          marginTop: 'auto',
+          padding: '14px 20px calc(18px + env(safe-area-inset-bottom, 0px))',
+          background: 'linear-gradient(to top, #101214 62%, #10121400)',
+        }}
+      >
         <button
           onClick={() => app.openInMaps(s)}
           style={{
