@@ -12,6 +12,7 @@ export default function PlaceSearch() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<GeocodeResult[]>([]);
+  const [searching, setSearching] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const reqId = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -25,25 +26,36 @@ export default function PlaceSearch() {
     clearTimeout(timer.current);
     if (text.trim().length < 3) {
       setSuggestions([]);
+      setSearching(false);
       return;
     }
     const id = ++reqId.current;
+    // The spinner covers the debounce too: from the typist's point of view the
+    // search is already under way, and geocoders can take seconds to answer.
+    setSearching(true);
     timer.current = setTimeout(() => {
       app
         .searchPlaces(text)
         .then((res) => {
-          if (id === reqId.current) setSuggestions(res);
+          if (id !== reqId.current) return;
+          setSuggestions(res);
+          setSearching(false);
         })
         .catch(() => {
-          if (id === reqId.current) setSuggestions([]);
+          if (id !== reqId.current) return;
+          setSuggestions([]);
+          setSearching(false);
         });
     }, 300);
   };
 
   const close = () => {
+    clearTimeout(timer.current);
+    reqId.current++;
     setOpen(false);
     setQuery('');
     setSuggestions([]);
+    setSearching(false);
   };
 
   const pickArea = (r: GeocodeResult) => {
@@ -181,6 +193,16 @@ export default function PlaceSearch() {
             padding: 0,
           }}
         />
+        {searching && (
+          <span
+            className="spin"
+            role="status"
+            aria-label="Recherche en cours…"
+            style={{ flexShrink: 0, color: C.accent, fontSize: 14, lineHeight: 1 }}
+          >
+            ↻
+          </span>
+        )}
         <button
           onClick={close}
           aria-label="Fermer la recherche"
