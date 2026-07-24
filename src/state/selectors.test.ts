@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { FuelId, RouteStation, Station } from '../data/types'
 import {
+  CROW_ROAD_FACTOR,
   effectiveFuel,
   effectivePrice,
   priceCents,
   priceTier,
+  roadReachOf,
   selectAutonomy,
   selectByPrice,
   selectPriceStats,
@@ -208,6 +210,48 @@ describe('selectByPrice / selectRecommended', () => {
     expect(selectRecommended(withRoads)?.id).toBe('direct')
     // The displayed distance is the road one, not the crow-flies estimate
     expect(selectVisible(withRoads).find((s) => s.id === 'direct')?.distKm).toBe(3.5)
+  })
+
+  it('never ranks a matrix-covered station against a raw crow-flies one', () => {
+    // The matrix only covers the nearest stations: « measured » is 3 km out
+    // as the crow flies and known to be 3,5 km by road, « missed » sits 24 km
+    // out with no matrix row. On raw crow-flies « missed » wins the reco
+    // (1,75 × (1 + 24×0,0026) ≈ 1,859 vs 1,877 €/L) — but 24 km of straight
+    // line is ~31 road km, and at that scale it loses (≈ 1,892 €/L).
+    const data = [
+      station({ id: 'measured', ...north(3), prices: gazole(1.86) }),
+      station({ id: 'missed', ...north(24), prices: gazole(1.75) }),
+    ]
+    const a = app({
+      radius: 25,
+      stations: { status: 'ready', data, activeSource: 'demo', fellBack: false, refreshing: false },
+      roadReach: { measured: { distanceKm: 3.5, durationMin: 6 } },
+    })
+    expect(selectRecommended(a)?.id).toBe('measured')
+
+    const missed = selectVisible(a).find((s) => s.id === 'missed')!
+    // …because the uncovered station is compared on the road scale too
+    expect(missed.distKm).toBeCloseTo(missed.searchKm * CROW_ROAD_FACTOR, 10)
+    // The radius filter stays crow-flies: 24 km out is still inside the 25 km
+    // search area even though the road estimate reads ~31 km
+    expect(missed.searchKm).toBeLessThan(25)
+    expect(missed.distKm).toBeGreaterThan(25)
+  })
+})
+
+// ── Road-distance scale ──────────────────────────────────────────────────────
+describe('roadReachOf', () => {
+  it('measures when the matrix covered the station, estimates otherwise', () => {
+    expect(roadReachOf(10, { distanceKm: 12.4, durationMin: 21 })).toEqual({
+      distKm: 12.4,
+      driveMin: 21,
+    })
+    // No matrix row → crow-flies lifted onto the road scale, never raw
+    const est = roadReachOf(10)
+    expect(est.distKm).toBeCloseTo(10 * CROW_ROAD_FACTOR, 10)
+    expect(est.driveMin).toBe(20)
+    // A pump across the street still reads as a minute away
+    expect(roadReachOf(0.1).driveMin).toBe(1)
   })
 })
 
