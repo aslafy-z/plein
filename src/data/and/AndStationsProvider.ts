@@ -226,11 +226,25 @@ export function groupStations(features: unknown[]): Station[] {
 }
 
 // ── Country fetch (memoized) ─────────────────────────────────────────────────
-let cache: { fetchedAt: number; stations: Station[] } | null = null;
+// The memo holds the *promise*, not the resolved list, so callers that arrive
+// while the request is still in flight (map + route computed together, a pan
+// landing mid-fetch, the « auto » source near the border) share it instead of
+// each starting their own download.
+let cache: { fetchedAt: number; stations: Promise<Station[]> } | null = null;
 
-async function fetchCountry(lowPriority = false): Promise<Station[]> {
+function fetchCountry(lowPriority = false): Promise<Station[]> {
   if (cache && Date.now() - cache.fetchedAt < CACHE_MS) return cache.stations;
 
+  const stations = loadCountry(lowPriority);
+  cache = { fetchedAt: Date.now(), stations };
+  // A failed fetch must retry on the next query, not stick for CACHE_MS.
+  stations.catch(() => {
+    if (cache?.stations === stations) cache = null;
+  });
+  return stations;
+}
+
+async function loadCountry(lowPriority: boolean): Promise<Station[]> {
   const params = new URLSearchParams({
     where: '1=1',
     outFields: 'idIPE,idProducte,PREU,DataInici,NOM,Parroquia,Codi_parroquia',
@@ -248,9 +262,7 @@ async function fetchCountry(lowPriority = false): Promise<Station[]> {
   // ArcGIS reports failures inside a 200 response
   if (json.error || !Array.isArray(json.features)) throw new Error('and flux rejected the query');
 
-  const stations = groupStations(json.features);
-  cache = { fetchedAt: Date.now(), stations };
-  return stations;
+  return groupStations(json.features);
 }
 
 // ── Provider ─────────────────────────────────────────────────────────────────

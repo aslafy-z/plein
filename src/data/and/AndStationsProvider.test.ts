@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { groupStations } from './AndStationsProvider'
+import type { GeoPoint } from '../../lib/geo'
 
 // The IPE flux returns one row per station × product; only some rows are
 // guaranteed to carry the station footprint polygon.
@@ -111,5 +112,84 @@ describe('groupStations', () => {
       { attributes: { idIPE: 12, idProducte: 6, PREU: 1.5 }, geometry: { rings: RINGS } },
     ])
     expect(stations).toEqual([])
+  })
+})
+
+// ── Country memo ─────────────────────────────────────────────────────────────
+const ANDORRA: GeoPoint = { lat: 42.52, lng: 1.61 }
+const BODY = { features: [row(12, 6, 1.5, { geometry: { rings: RINGS } })] }
+
+/** A `fetch` whose responses only land when the test says so. */
+function deferredFetch() {
+  const pending: Array<{ settle: (fail?: boolean) => void }> = []
+  const mock = vi.fn(
+    () =>
+      new Promise<Response>((resolve, reject) => {
+        pending.push({
+          settle: (fail) =>
+            fail
+              ? reject(new Error('boom'))
+              : resolve({ ok: true, status: 200, json: async () => BODY } as Response),
+        })
+      }),
+  )
+  vi.stubGlobal('fetch', mock)
+  return {
+    mock,
+    settleAll: async (fail = false) => {
+      for (const p of pending.splice(0)) p.settle(fail)
+      await Promise.resolve()
+    },
+  }
+}
+
+async function freshProvider() {
+  vi.resetModules()
+  const mod = await import('./AndStationsProvider')
+  return new mod.AndStationsProvider()
+}
+
+describe('country fetch memo', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('hands the in-flight request to a concurrent caller', async () => {
+    const provider = await freshProvider()
+    const { mock, settleAll } = deferredFetch()
+
+    const near = provider.getStationsNear(ANDORRA, 25)
+    const along = provider.getStationsAlong([ANDORRA, { lat: 42.55, lng: 1.65 }], 25)
+    expect(mock).toHaveBeenCalledTimes(1)
+
+    await settleAll()
+    expect(await near).toHaveLength(1)
+    expect(await along).toHaveLength(1)
+  })
+
+  it('reuses the memo once the response has landed', async () => {
+    const provider = await freshProvider()
+    const { mock, settleAll } = deferredFetch()
+
+    const first = provider.getStationsNear(ANDORRA, 25)
+    await settleAll()
+    await first
+
+    await provider.getStationsNear(ANDORRA, 25)
+    expect(mock).toHaveBeenCalledTimes(1)
+  })
+
+  it('evicts a failed fetch so the next query retries', async () => {
+    const provider = await freshProvider()
+    const { mock, settleAll } = deferredFetch()
+
+    const first = provider.getStationsNear(ANDORRA, 25)
+    await settleAll(true)
+    await expect(first).rejects.toThrow()
+
+    const second = provider.getStationsNear(ANDORRA, 25)
+    expect(mock).toHaveBeenCalledTimes(2)
+    await settleAll()
+    await second
   })
 })

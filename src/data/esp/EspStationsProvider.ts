@@ -298,12 +298,28 @@ export function espCoversAlong(polyline: GeoPoint[], corridorKm: number): boolea
   return provincesAlong(polyline, corridorKm).length > 0;
 }
 
-const provinceCache = new Map<string, { fetchedAt: number; stations: Station[] }>();
+// The memo holds the *promise*, not the resolved list: a province weighs
+// hundreds of KB to a few MB, and callers overlap easily (map + route computed
+// together, a pan landing while the previous query runs, the « auto » source
+// resolving several provinces near the border). Caching the value only would
+// let every caller that arrives before the response lands start its own
+// download.
+const provinceCache = new Map<string, { fetchedAt: number; stations: Promise<Station[]> }>();
 
-async function fetchProvince(id: string, lowPriority = false): Promise<Station[]> {
+function fetchProvince(id: string, lowPriority = false): Promise<Station[]> {
   const hit = provinceCache.get(id);
   if (hit && Date.now() - hit.fetchedAt < CACHE_MS) return hit.stations;
 
+  const stations = loadProvince(id, lowPriority);
+  provinceCache.set(id, { fetchedAt: Date.now(), stations });
+  // A failed fetch must retry on the next query, not stick for CACHE_MS.
+  stations.catch(() => {
+    if (provinceCache.get(id)?.stations === stations) provinceCache.delete(id);
+  });
+  return stations;
+}
+
+async function loadProvince(id: string, lowPriority: boolean): Promise<Station[]> {
   const res = await fetch(ENDPOINT + id, {
     signal: AbortSignal.timeout(TIMEOUT_MS),
     priority: lowPriority ? 'low' : 'auto',
@@ -321,7 +337,6 @@ async function fetchProvince(id: string, lowPriority = false): Promise<Station[]
       if (st) stations.push(st);
     }
   }
-  provinceCache.set(id, { fetchedAt: Date.now(), stations });
   return stations;
 }
 
