@@ -30,6 +30,22 @@ const LIVE_SEARCH_MIN_KM = 0.1;
 const OFFSET_DECAY = 0.8;
 
 /**
+ * Leaflet sizes the SVG holding the vector layers to the viewport (+10%) and
+ * only re-clips it on `moveend`. Ordinary paths don't care — they keep their
+ * layer coordinates while the pane slides under the finger — but the search
+ * circle glides with the screen center, so mid-drag it walks out of that
+ * frozen box and gets sliced by its edges: a straight cut across the zone,
+ * the circle seemingly unable to leave an invisible rectangle. Re-running the
+ * renderer's own clip pass on every move frame keeps the box on the live
+ * view. `_update()` is Leaflet's internal `moveend` handler (v1.9) — optional
+ * call so a rename would only bring the old clipping back, never a crash.
+ */
+function reclipRenderer(map: L.Map, layer: L.Path) {
+  const renderer = map.getRenderer(layer) as L.Renderer & { _update?: () => void };
+  renderer._update?.();
+}
+
+/**
  * View kept across unmounts. Opening a station detail (or another tab)
  * unmounts the whole map; without this, coming back rebuilt it on the
  * default zoom + auto-fit and threw away the user's pan/zoom. Only
@@ -205,6 +221,11 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
     // skips loading when the area already in memory covers the new zone.
     let lastLiveSearch = 0;
     map.on('move', () => {
+      // Re-clip on EVERY frame, before any early return: even when the circle
+      // stands still (programmatic pan, auto-fit) the frozen box drifts with
+      // the map and drags its edges — and the cut they make in a circle wider
+      // than the screen — into view.
+      if (circleRef.current) reclipRenderer(map, circleRef.current);
       if (!userInteractedRef.current || zooming) return;
       if (Date.now() < programmaticUntil.current) return; // pan-to-station, fits…
       // Absorb the gap left at dragstart over the first frames of the pan
