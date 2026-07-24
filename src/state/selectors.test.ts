@@ -12,6 +12,7 @@ import {
   selectMapStations,
   selectPriceRange,
   selectPriceStats,
+  selectReachCandidates,
   selectRecommended,
   selectRouteAnalysis,
   selectVisible,
@@ -255,6 +256,36 @@ describe('roadReachOf', () => {
     expect(est.driveMin).toBe(20)
     // A pump across the street still reads as a minute away
     expect(roadReachOf(0.1).driveMin).toBe(1)
+  })
+})
+
+describe('selectReachCandidates', () => {
+  it('keeps the nearest stations within the search radius, nearest first', () => {
+    const data = [
+      station({ id: 'far', ...north(9) }),
+      station({ id: 'close', ...north(1) }),
+      station({ id: 'mid', ...north(4) }),
+    ]
+    expect(selectReachCandidates(data, BASE).map((s) => s.id)).toEqual(['close', 'mid', 'far'])
+  })
+
+  it('comes back empty when every station sits beyond the search radius', () => {
+    // Searching a faraway area: nothing is "near me" — no routing call is
+    // worth it, and the caller must fall back to crow-flies rather than keep
+    // the previous area's measurements (they were taken from another position)
+    const data = [station({ id: 'a', ...north(40) }), station({ id: 'b', ...north(120) })]
+    expect(selectReachCandidates(data, BASE)).toEqual([])
+    expect(selectReachCandidates([], BASE)).toEqual([])
+  })
+
+  it('caps the set at one matrix call', () => {
+    const data = Array.from({ length: 80 }, (_, i) =>
+      station({ id: `s${i}`, ...north(20 - i * 0.1) }),
+    )
+    const picked = selectReachCandidates(data, BASE)
+    expect(picked).toHaveLength(60)
+    // …the 60 nearest, not the first 60 of the input
+    expect(picked[0].id).toBe('s79')
   })
 })
 
