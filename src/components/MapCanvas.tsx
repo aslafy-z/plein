@@ -3,6 +3,7 @@ import L from 'leaflet';
 import { C } from '../theme';
 import { haversineKm, type GeoPoint } from '../lib/geo';
 import { addDarkBasemap } from '../lib/tiles';
+import ShareIcon from './ShareIcon';
 import {
   useApp,
   selectVisible,
@@ -149,6 +150,12 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
       map.setView(saved.center, saved.zoom, { animate: false });
       userInteractedRef.current = saved.userInteracted;
       restoredViewRef.current = true;
+    } else if (savedView == null && app.mapZoom != null) {
+      // First mount of the session with a zoom already known = the app was
+      // opened on a shared link. Its framing is the point of the link, so
+      // auto-fit must not re-frame the zone over it.
+      map.setView([app.searchPos.lat, app.searchPos.lng], app.mapZoom, { animate: false });
+      userInteractedRef.current = true;
     } else {
       map.setView([app.searchPos.lat, app.searchPos.lng], 13);
     }
@@ -193,6 +200,9 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
     });
 
     map.on('moveend zoomend', () => {
+      // The shareable URL carries the zoom — the center comes from searchPos,
+      // which the pan handlers below keep in sync
+      appRef.current.setMapZoom(map.getZoom());
       const key = map.getBounds().toBBoxString();
       if (key !== lastBoundsRef.current) {
         lastBoundsRef.current = key;
@@ -607,6 +617,34 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
           </span>
         </div>
       )}
+
+      {/* Share the view — same picto and same share path as a station fiche.
+          The URL already carries the view, but an installed PWA has no
+          address bar to copy it from. Rides the map's control column so it
+          stays clear of the sheet whatever its height. */}
+      <button
+        onClick={() => app.shareMapView()}
+        aria-label="Partager cette vue"
+        title="Partager cette vue"
+        style={{
+          position: 'absolute',
+          right: 14,
+          ...bottomEdge,
+          bottom: bottomEdge.bottom + 52,
+          width: 44,
+          height: 44,
+          borderRadius: '50%',
+          background: C.surface2,
+          border: `1px solid ${C.border09}`,
+          boxShadow: '0 6px 18px rgba(0,0,0,.45)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+        }}
+      >
+        <ShareIcon color={C.ink} size={18} />
+      </button>
 
       {/* Recenter on the user */}
       <button

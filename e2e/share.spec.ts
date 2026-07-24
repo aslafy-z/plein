@@ -1,6 +1,6 @@
-import { test, expect } from './fixtures'
+import { test, expect, gotoMap } from './fixtures'
 
-// Sharing a fiche: the system sheet wherever the browser has one, the
+// Sharing a fiche — or the map view itself: the system sheet wherever the browser has one, the
 // clipboard everywhere else. Playwright's Chromium implements neither
 // `navigator.share` nor a share sheet, so both sides are stubbed before boot.
 
@@ -112,4 +112,35 @@ test('with neither API the button says so instead of failing silently', async ({
   await page.getByRole('button', { name: 'Partager la station' }).click()
 
   await expectToastOnTop(page, 'Partage indisponible sur cet appareil')
+})
+
+test('the map share button hands the current view to the native sheet', async ({ page }) => {
+  await stubSharing(page)
+  await gotoMap(page)
+  await page.waitForTimeout(700) // let the throttled URL write settle
+
+  await page.getByRole('button', { name: 'Partager cette vue' }).click()
+
+  const sheet = await shared(page)
+  expect(sheet).toHaveLength(1)
+  const data = sheet[0] as { title: string; text: string; url: string }
+  // The link is the very one the address bar carries
+  expect(data.url).toBe(page.url())
+  expect(data.url).toContain('f=gazole')
+  expect(data.title).toBe('Plein. — Gazole dans cette zone')
+  expect(await copied(page)).toEqual([])
+})
+
+test('without the Web Share API the map link goes to the clipboard', async ({ page }) => {
+  await stubSharing(page)
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'share', { configurable: true, value: undefined })
+  })
+  await gotoMap(page)
+  await page.waitForTimeout(700) // let the throttled URL write settle
+
+  await page.getByRole('button', { name: 'Partager cette vue' }).click()
+
+  await expect(page.getByRole('status').filter({ hasText: 'Lien copié' })).toBeVisible()
+  expect(await copied(page)).toEqual([page.url()])
 })

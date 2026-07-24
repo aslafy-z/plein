@@ -1,8 +1,9 @@
-// Sharing a station fiche — the payload handed to the Web Share API (or, when
-// it is missing, to the clipboard).
+// Sharing — the payloads handed to the Web Share API (or, when it is missing,
+// to the clipboard): a station fiche, and the map view itself.
 import { fmtPrice } from './format';
+import { mapUrlQuery, type MapUrlView } from './mapUrl';
 
-export type StationShareData = {
+export type ShareData = {
   title: string;
   text: string;
   url: string;
@@ -15,6 +16,10 @@ export type ShareableStation = {
   city?: string;
 };
 
+function base(origin: string): string {
+  return origin.replace(/\/+$/, '');
+}
+
 /**
  * Deep link + wording for a station. `origin` is `location.origin`; the path
  * is the same /station/:id the app already boots on, so a shared link opens
@@ -24,11 +29,30 @@ export function stationShareData(
   station: ShareableStation,
   origin: string,
   price?: { fuelLabel: string; value: number } | null,
-): StationShareData {
-  const url = `${origin.replace(/\/+$/, '')}/station/${encodeURIComponent(station.id)}`;
+): ShareData {
+  const url = `${base(origin)}/station/${encodeURIComponent(station.id)}`;
   const where = station.city ? ` (${station.city})` : '';
   const text = price
     ? `${station.name}${where} — ${price.fuelLabel} à ${fmtPrice(price.value)} €/L sur Plein.`
     : `${station.name}${where} sur Plein.`;
   return { title: `Plein. — ${station.name}`, text, url };
+}
+
+/**
+ * Deep link + wording for the map itself: the query string carries the area,
+ * the zoom and the filters, so the link reopens the very same view. `place`
+ * is the searched place name when there is one — a free pan has none.
+ */
+export function mapViewShareData(
+  view: MapUrlView,
+  origin: string,
+  ctx: { fuelLabel: string; place?: string | null },
+): ShareData {
+  const url = `${base(origin)}/${mapUrlQuery(view)}`;
+  const where = ctx.place ? `autour de ${ctx.place}` : 'dans cette zone';
+  return {
+    title: `Plein. — ${ctx.fuelLabel} ${where}`,
+    text: `Les prix du ${ctx.fuelLabel} ${where} sur Plein.`,
+    url,
+  };
 }

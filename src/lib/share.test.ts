@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { stationShareData } from './share'
+import { mapViewShareData, stationShareData } from './share'
+import type { MapUrlView } from './mapUrl'
 
 describe('stationShareData', () => {
   it('links to the /station/:id deep link the app boots on', () => {
@@ -30,5 +31,38 @@ describe('stationShareData', () => {
   it('stays readable without a price or a city', () => {
     const d = stationShareData({ id: 'su', name: 'Station U' }, 'https://plein.app')
     expect(d.text).toBe('Station U sur Plein.')
+  })
+})
+
+describe('mapViewShareData', () => {
+  const VIEW: MapUrlView = {
+    center: { lat: 43.6047, lng: 1.4442 },
+    zoom: 14,
+    fuel: 'gazole',
+    radius: 5,
+    brands: [],
+    services: [],
+  }
+
+  it('links to the map view itself, filters included', () => {
+    const d = mapViewShareData({ ...VIEW, services: ['24/24'] }, 'https://plein.app', {
+      fuelLabel: 'Gazole',
+    })
+    expect(d.url).toBe('https://plein.app/?ll=43.6047,1.4442&z=14&f=gazole&r=5&s=24%2F24')
+  })
+
+  it('names the searched place when there is one', () => {
+    const d = mapViewShareData(VIEW, 'https://plein.app', {
+      fuelLabel: 'E85',
+      place: 'Toulouse',
+    })
+    expect(d.title).toBe('Plein. — E85 autour de Toulouse')
+    expect(d.text).toBe('Les prix du E85 autour de Toulouse sur Plein.')
+  })
+
+  it('falls back on the zone after a free pan', () => {
+    const d = mapViewShareData(VIEW, 'https://plein.app/', { fuelLabel: 'Gazole', place: null })
+    expect(d.text).toBe('Les prix du Gazole dans cette zone sur Plein.')
+    expect(d.url).toBe('https://plein.app/?ll=43.6047,1.4442&z=14&f=gazole&r=5')
   })
 })
