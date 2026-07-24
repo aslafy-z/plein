@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import { C, mono } from '../theme';
 import { ALL_FUELS, FUEL_LABELS, SERVICE_TAGS } from '../data/types';
-import { useApp, selectVisible } from '../state/store';
-import { haversineKm } from '../lib/geo';
+import { useApp, selectVisible, selectZoneBrandCounts } from '../state/store';
 import {
-  brandGroup,
   brandIconSrc,
   INDEPENDENT_GROUP,
   KNOWN_BRAND_GROUPS,
@@ -28,20 +26,17 @@ export default function FiltersSheet() {
 
   // Brand groups present in the zone with their station count, most frequent
   // first; brandless stations count as « Indépendants & autres », pinned last
-  // so the tail never buries the real enseignes.
-  const counts = new Map<string, number>();
-  for (const s of app.stations.data) {
-    if (haversineKm(app.searchPos, { lat: s.lat, lng: s.lng }) <= app.radius) {
-      const g = brandGroup(s.brand);
-      counts.set(g, (counts.get(g) ?? 0) + 1);
-    }
-  }
+  // so the tail never buries the real enseignes. The count answers « how many
+  // stations do I get if I pick this brand » — it therefore honours the fuel
+  // and service filters, and only ignores the brand selection itself.
+  const counts = selectZoneBrandCounts(app);
   const zoneBrands = [...counts.entries()].sort((a, b) => {
     if (a[0] === INDEPENDENT_GROUP) return 1;
     if (b[0] === INDEPENDENT_GROUP) return -1;
     return b[1] - a[1] || a[0].localeCompare(b[0]);
   });
-  // Every known group absent from the zone stays selectable — the selection
+  // Every known group with nothing to show here — outside the radius, or
+  // ruled out by the fuel/service filters — stays selectable: the selection
   // is persisted across areas and sessions, and prepares the next trip.
   const outOfZone = KNOWN_BRAND_GROUPS.filter((g) => !counts.has(g));
 
@@ -266,7 +261,7 @@ export default function FiltersSheet() {
                   {outOfZone.length > 0 && (
                     <>
                       <div style={{ fontSize: 11.5, color: C.faint, margin: '10px 0 8px' }}>
-                        Hors de la zone — pour un prochain trajet
+                        Aucune station ici avec ces filtres — pour un prochain trajet
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
                         {outOfZone.map((brand) => {

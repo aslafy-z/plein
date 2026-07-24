@@ -11,6 +11,7 @@ import {
   selectRecommended,
   selectRouteAnalysis,
   selectVisible,
+  selectZoneBrandCounts,
   selectZoneFuels,
   sortFavoriteRows,
   type AppStore,
@@ -106,6 +107,49 @@ describe('selectVisible', () => {
     expect(
       selectVisible(app({ ...base, brandSel: ['Indépendants & autres'] })).map((s) => s.id),
     ).toEqual(['mid'])
+  })
+
+  it('counts brand groups over the fuel/service filters, ignoring only the brand selection', () => {
+    const brands = [
+      station({ id: 'i1', ...north(1), prices: gazole(1.7), tags: ['Lavage'], brand: 'Intermarché' }),
+      // Same brand, but sells no gazole → must not inflate the Intermarché row
+      station({ id: 'i2', ...north(1), prices: { e85: { value: 0.9 } }, brand: 'Intermarché' }),
+      // Right fuel, no « Lavage » → drops out as soon as the service is asked
+      station({ id: 'i3', ...north(2), prices: gazole(1.8), brand: 'Intermarché' }),
+      station({ id: 's1', ...north(2), prices: gazole(1.9), tags: ['Lavage'], brand: 'Shell' }),
+      // Out of the radius → counted nowhere
+      station({ id: 's2', ...north(12), prices: gazole(1.6), tags: ['Lavage'], brand: 'Shell' }),
+      station({ id: 'x1', ...north(3), prices: gazole(1.75), tags: ['Lavage'] }),
+    ]
+    const base = app({
+      stations: { status: 'ready', data: brands, activeSource: 'demo', fellBack: false, refreshing: false },
+    })
+    expect([...selectZoneBrandCounts(base).entries()].sort()).toEqual([
+      ['Indépendants & autres', 1],
+      ['Intermarché', 2],
+      ['Shell', 1],
+    ])
+    // A selected brand never shrinks the other rows…
+    expect([...selectZoneBrandCounts(app({ ...base, brandSel: ['Shell'] })).entries()].sort()).toEqual([
+      ['Indépendants & autres', 1],
+      ['Intermarché', 2],
+      ['Shell', 1],
+    ])
+    // …but a service filter does, and every row stays reachable
+    const washed = app({ ...base, serviceTags: { Lavage: true } })
+    expect([...selectZoneBrandCounts(washed).entries()].sort()).toEqual([
+      ['Indépendants & autres', 1],
+      ['Intermarché', 1],
+      ['Shell', 1],
+    ])
+    // A fuel nobody serves here empties the list rather than promising rows
+    expect([...selectZoneBrandCounts(app({ ...base, fuel: 'e85' })).entries()]).toEqual([
+      ['Intermarché', 1],
+    ])
+    // The count of a group always equals what selecting it yields
+    for (const [group, n] of selectZoneBrandCounts(washed)) {
+      expect(selectVisible(app({ ...washed, brandSel: [group] })).length).toBe(n)
+    }
   })
 
   it('selectZoneFuels only names fuels the pumps actually serve (no SP95 fallback)', () => {
