@@ -99,12 +99,10 @@ try {
   await page.locator('[aria-label="Carte de la station"]').waitFor({ timeout: 30_000 });
   await page.waitForLoadState('networkidle').catch(() => {});
   await page.waitForTimeout(3000);
-  // The fiche is shorter than the viewport for a station with few services —
-  // clip it just under the CTA so the README row doesn't show dead space.
-  const cta = await page.getByRole('button', { name: 'Y aller' }).first().boundingBox();
-  await shoot(page, 'station', {
-    clip: { x: 0, y: 0, width: VIEWPORT.width, height: Math.ceil(cta.y + cta.height + 20) },
-  });
+  // Shot full screen like the other two: the README lines them up side by
+  // side, so they must share the same dimensions. A station with few services
+  // leaves dead space under the CTA — that is the screen as it renders.
+  await shoot(page, 'station');
   await page.goBack();
 
   // ── Route screen: Toulouse → Nantes ──
