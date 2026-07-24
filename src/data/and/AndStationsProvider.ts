@@ -148,12 +148,13 @@ function centroidOf(rings: unknown): GeoPoint | null {
   return Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : null;
 }
 
-function groupStations(features: unknown[]): Station[] {
+export function groupStations(features: unknown[]): Station[] {
   interface Acc {
     nom: string;
     parroquia: string;
     cp?: string;
-    point: GeoPoint;
+    /** Filled by the first row carrying a usable ring; no point, no station */
+    point: GeoPoint | null;
     prices: Partial<Record<FuelId, FuelPrice>>;
     services: Map<number, string>;
   }
@@ -167,20 +168,17 @@ function groupStations(features: unknown[]): Station[] {
     const nom = toStr(a.NOM);
     if (id == null || !nom) continue;
 
+    // Buffer prices whatever the row's geometry: one row per station × product,
+    // and the rings may only show up on a later row (or never).
     let acc = byId.get(id);
     if (!acc) {
-      const point = centroidOf(geometry?.rings);
-      if (!point) continue;
-      acc = {
-        nom,
-        parroquia: toStr(a.Parroquia) ?? '',
-        cp: toStr(a.Codi_parroquia),
-        point,
-        prices: {},
-        services: new Map(),
-      };
+      acc = { nom, parroquia: '', point: null, prices: {}, services: new Map() };
       byId.set(id, acc);
     }
+    // Location and parish come from whichever row carries them
+    if (!acc.point) acc.point = centroidOf(geometry?.rings);
+    if (!acc.parroquia) acc.parroquia = toStr(a.Parroquia) ?? '';
+    if (!acc.cp) acc.cp = toStr(a.Codi_parroquia);
 
     const product = toNum(a.idProducte);
     const price = toNum(a.PREU);
@@ -199,6 +197,8 @@ function groupStations(features: unknown[]): Station[] {
   for (const [id, acc] of byId) {
     // Heating-oil distributors ride the same flux — no road fuel, no station
     if (!Object.keys(acc.prices).length) continue;
+    // No row ever carried a usable ring: nothing to place on the map
+    if (!acc.point) continue;
     const banner = BANNERS.find(([re]) => re.test(acc.nom));
     const name = tidyName(acc.nom);
     // AdBlue / Gasoil millorat ≈ the French « additifs » services (same rule
@@ -234,6 +234,8 @@ async function fetchCountry(lowPriority = false): Promise<Station[]> {
   const params = new URLSearchParams({
     where: '1=1',
     outFields: 'idIPE,idProducte,PREU,DataInici,NOM,Parroquia,Codi_parroquia',
+    // ArcGIS defaults it to true, but the centroid depends on it — be explicit
+    returnGeometry: 'true',
     outSR: '4326',
     f: 'json',
   });
