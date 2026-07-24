@@ -55,6 +55,27 @@ function StationMiniMap({ station }: { station: Station }) {
   );
 }
 
+/** Cold load of /station/:id — the fiche has nothing to draw yet */
+function StationDetailPending() {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        background: '#101214',
+        zIndex: 1200,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: C.mut,
+        fontSize: 13,
+      }}
+    >
+      Chargement de la station…
+    </div>
+  );
+}
+
 export default function StationDetail() {
   const app = useApp();
 
@@ -65,12 +86,20 @@ export default function StationDetail() {
   const isRoute = routeSt != null && (app.prevScreen === 'route' || !nearby);
   const s = isRoute ? routeSt : (nearby ?? routeSt);
 
-  useEffect(() => {
-    if (!s) app.back();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s]);
+  // A deep link (/station/:id) boots with `stations.data` still empty: the
+  // station is only really unknown once the sources it could come from have
+  // settled, otherwise the guard below would back out of every cold load.
+  const pending =
+    app.stations.status === 'idle' ||
+    app.stations.status === 'loading' ||
+    app.routeState.status === 'loading';
 
-  if (!s) return null;
+  useEffect(() => {
+    if (!s && !pending) app.back();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s, pending]);
+
+  if (!s) return pending ? <StationDetailPending /> : null;
 
   const { distKm, driveMin } = roadReachOf(
     haversineKm(app.userPos, { lat: s.lat, lng: s.lng }),
