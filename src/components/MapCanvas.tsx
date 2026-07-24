@@ -437,14 +437,21 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
       }
     }
 
+    // roadReach/conso/tank feed selectRecommended (effective price over the
+    // road distance): the matrix lands a few hundred ms AFTER the stations, so
+    // without them the emphasized pin kept the crow-flies pick while the sheet
+    // card — a plain render — already showed the road-aware one.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [app.stations.data, app.fuel, app.radius, app.brandSel, app.serviceTags, app.userPos, app.searchPos, app.focusStationId, viewTick]);
+  }, [app.stations.data, app.fuel, app.radius, app.brandSel, app.serviceTags, app.userPos, app.searchPos, app.focusStationId, app.roadReach, app.conso, app.tank, viewTick]);
 
   // ── Auto-fit (to the radius zone, not the whole fetched area) until the user
   // takes over — and never while a station is selected (don't yank the view).
   // Own effect WITHOUT the view tick: re-fitting after every pan/zoom would
   // fight the user's gesture (and revert it whenever it lands inside the
-  // post-fit programmatic window).
+  // post-fit programmatic window). Also without roadReach/conso/tank: the
+  // fitted zone is selectVisible, filtered on the CROW-FLIES searchKm, so the
+  // road matrix landing cannot change it — and re-fitting on it would move the
+  // view under the user for nothing.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
