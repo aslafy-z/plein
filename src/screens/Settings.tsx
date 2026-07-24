@@ -13,6 +13,9 @@ const SECTION_LABEL: React.CSSProperties = {
   marginBottom: 10,
 };
 
+/** Credits links — dimmer than the body text, they sit in the footer */
+const CREDIT_LINK: React.CSSProperties = { color: C.ghost, textDecoration: 'underline' };
+
 const GEO_STATUS_LABELS = {
   granted: 'activée — la carte suit votre position',
   denied: 'refusée pour ce site',
@@ -521,13 +524,25 @@ export default function Settings() {
             zadkiel.fr
           </a>
         </div>
+        {/* Credits, one line per country so each flux is named where it applies */}
         <div>
-          Prix : <a href="https://prix-carburants.gouv.fr" target="_blank" rel="noreferrer" style={{ color: C.ghost, textDecoration: 'underline' }}>prix-carburants.gouv.fr</a>
-          {' '}· <a href="https://geoportalgasolineras.es" target="_blank" rel="noreferrer" style={{ color: C.ghost, textDecoration: 'underline' }}>geoportalgasolineras.es</a>
-          {' '}· à titre indicatif · adresses : BAN / CartoCiudad · itinéraires : OSRM / Valhalla
+          Prix France :{' '}
+          <a href="https://prix-carburants.gouv.fr" target="_blank" rel="noreferrer" style={CREDIT_LINK}>prix-carburants.gouv.fr</a>
+          {' '}· adresses : BAN
         </div>
         <div>
-          cartes : © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" style={{ color: C.ghost, textDecoration: 'underline' }}>OpenStreetMap</a> · © CARTO
+          Prix Espagne :{' '}
+          <a href="https://geoportalgasolineras.es" target="_blank" rel="noreferrer" style={CREDIT_LINK}>geoportalgasolineras.es</a>
+          {' '}· adresses : CartoCiudad
+        </div>
+        <div>
+          Prix Andorre :{' '}
+          <a href="https://sig.govern.ad/IPE/PreusCarburants" target="_blank" rel="noreferrer" style={CREDIT_LINK}>sig.govern.ad</a>
+          {' '}· © Govern d'Andorra · adresses : IDE Andorra
+        </div>
+        <div>
+          Prix à titre indicatif · itinéraires : OSRM / Valhalla · cartes : ©{' '}
+          <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" style={CREDIT_LINK}>OpenStreetMap</a> · © CARTO
         </div>
         <div>
           Plein. · version{' '}

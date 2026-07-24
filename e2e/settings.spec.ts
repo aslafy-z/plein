@@ -12,6 +12,19 @@ test('settings expose fuel, vehicle, consumption and data source', async ({ page
   await expect(page.getByText('Made with ❤️ in Toulouse')).toBeVisible()
 })
 
+test('credits name the price source of each covered country', async ({ page }) => {
+  await gotoMap(page)
+  await page.getByText('Réglages', { exact: true }).click()
+
+  await expect(page.getByText('Prix France :')).toBeVisible()
+  await expect(page.getByText('Prix Espagne :')).toBeVisible()
+  await expect(page.getByText('Prix Andorre :')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'sig.govern.ad' })).toHaveAttribute(
+    'href',
+    'https://sig.govern.ad/IPE/PreusCarburants',
+  )
+})
+
 test('tank size setting shows the chosen value', async ({ page }) => {
   await gotoMap(page)
   await page.getByText('Réglages', { exact: true }).click()

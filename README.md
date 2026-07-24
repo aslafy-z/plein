@@ -86,14 +86,37 @@ Aucun compte, aucun tracker : vos favoris et réglages restent dans votre naviga
 
 ## 📊 Sources de données
 
+Chaque pays couvert a ses propres flux officiels — prix et géocodage — que
+l'app choisit selon la zone affichée (source *Automatique*). Le reste
+(itinéraires, fonds de carte) est commun aux trois.
+
+### 🇫🇷 France
+
 | Donnée | Source | Licence |
 | --- | --- | --- |
 | Prix des carburants & horaires | [Prix des carburants — flux temps réel](https://data.economie.gouv.fr/explore/dataset/prix-des-carburants-en-france-flux-instantane-v2/) (data.economie.gouv.fr) | Licence Ouverte / Open Licence |
-| Prix des carburants en Espagne | [Precios de carburantes](https://geoportalgasolineras.es) (sedeaplicaciones.minetur.gob.es, MITECO) | Datos abiertos |
-| Prix des carburants en Andorre | [Preus dels carburants](https://sig.govern.ad/IPE/PreusCarburants) (sig.govern.ad, Govern d'Andorra — Oficina de l'energia i del canvi climàtic) | © Govern d'Andorra |
-| Géocodage & autocomplétion | [Base Adresse Nationale](https://adresse.data.gouv.fr/) (api-adresse.data.gouv.fr) · [CartoCiudad](https://www.cartociudad.es) pour l'Espagne · Nomenclàtor & géocodeur IDE (sig.govern.ad) pour l'Andorre | Licence Ouverte / Open Licence · CC BY 4.0 · © Govern d'Andorra |
-| Calcul d'itinéraires | [OSRM](https://project-osrm.org/) (serveur démo) | Données © OpenStreetMap |
-| Enseignes des stations | [OpenStreetMap](https://www.openstreetmap.org/) (index statique généré) | ODbL |
+| Enseignes des stations | [OpenStreetMap](https://www.openstreetmap.org/) (index statique généré, rapproché des stations par proximité) | ODbL |
+| Géocodage & autocomplétion | [Base Adresse Nationale](https://adresse.data.gouv.fr/) (api-adresse.data.gouv.fr) | Licence Ouverte / Open Licence |
+
+### 🇪🇸 Espagne
+
+| Donnée | Source | Licence |
+| --- | --- | --- |
+| Prix des carburants, horaires & enseignes | [Precios de carburantes](https://geoportalgasolineras.es) (sedeaplicaciones.minetur.gob.es, MITECO) — l'enseigne (*rótulo*) est portée par le flux | Datos abiertos |
+| Géocodage & autocomplétion | [CartoCiudad](https://www.cartociudad.es) (IGN) | CC BY 4.0 |
+
+### 🇦🇩 Andorre
+
+| Donnée | Source | Licence |
+| --- | --- | --- |
+| Prix des carburants & enseignes | [Preus dels carburants](https://sig.govern.ad/IPE/PreusCarburants) (sig.govern.ad, Govern d'Andorra — Oficina de l'energia i del canvi climàtic) — l'enseigne est déduite du nom de la station ; le flux ne porte ni adresse ni horaires | © Govern d'Andorra |
+| Géocodage & autocomplétion | Nomenclàtor (gazetteer officiel) & LocatorIDE (sig.govern.ad, IDE Andorra) | © Govern d'Andorra |
+
+### Communs aux trois pays
+
+| Donnée | Source | Licence |
+| --- | --- | --- |
+| Calcul d'itinéraires | [OSRM](https://project-osrm.org/) (serveur démo) · [Valhalla](https://valhalla.github.io/valhalla/) (serveur public FOSSGIS) pour « éviter autoroutes / péages » | Données © OpenStreetMap |
 | Fonds de carte | [CARTO](https://carto.com/attributions) dark · données © contributeurs [OpenStreetMap](https://www.openstreetmap.org/copyright) | — |
 
 L'app n'a **aucun backend** : le navigateur interroge directement ces services
