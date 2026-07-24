@@ -7,6 +7,7 @@ import { stationCountry } from '../data/stationIds';
 import { fmtPrice, distLabel, agoLabel, durationLabel } from '../lib/format';
 import { haversineKm } from '../lib/geo';
 import { openStatus } from '../lib/hours';
+import { brandIconSrc } from '../lib/brandIcons';
 import { addDarkBasemap } from '../lib/tiles';
 import Star from '../components/Star';
 import ShareIcon from '../components/ShareIcon';
@@ -30,11 +31,22 @@ function StationMiniMap({ station }: { station: Station }) {
     });
     map.setView([station.lat, station.lng], 15);
     addDarkBasemap(map);
+    // The enseigne's logo on a white tile identifies the station far better
+    // than its initials; brands we have no logo for keep the initials bubble.
+    const iconSrc = brandIconSrc(station.brand ?? station.name);
+    const bubble = iconSrc
+      ? `<div class="pin-bubble" style="background:#fff;border:1px solid #3ddc84;` +
+        `width:34px;height:34px;display:flex;align-items:center;justify-content:center">` +
+        // background-image rather than <img>: a missing file leaves the white
+        // tile instead of a broken-image glyph.
+        `<div style="width:23px;height:23px;background:url('${iconSrc}') center/contain no-repeat"></div>` +
+        `</div>`
+      : `<div class="pin-bubble" style="background:#3ddc84;color:#08120c;` +
+        `font:700 13px 'Spline Sans Mono',monospace;padding:5px 9px;border:1px solid #3ddc84">` +
+        `${station.init}</div>`;
     const html =
       `<div style="transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center">` +
-      `<div class="pin-bubble" style="background:#3ddc84;color:#08120c;` +
-      `font:700 13px 'Spline Sans Mono',monospace;padding:5px 9px;border:1px solid #3ddc84">` +
-      `${station.init}</div>` +
+      bubble +
       `<div class="pin-tip" style="border-top:6px solid #3ddc84"></div></div>`;
     L.marker([station.lat, station.lng], {
       icon: L.divIcon({ className: '', html, iconSize: [0, 0], iconAnchor: [0, 0] }),
