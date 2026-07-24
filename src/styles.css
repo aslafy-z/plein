@@ -60,6 +60,32 @@ button {
   animation: sheet-swap 0.22s ease;
 }
 
+/* First-run affordance: the collapsed map sheet grows and settles twice, so
+   the newcomer sees the list can be pulled up. Height (not transform) — the
+   sheet stays glued to the bottom edge and the bounce previews the gesture
+   itself. `--sheet-h` mirrors the inline height the animation overrides. */
+@keyframes sheet-hint {
+  0% {
+    height: var(--sheet-h);
+  }
+  20% {
+    height: calc(var(--sheet-h) + 42px);
+  }
+  44% {
+    height: var(--sheet-h);
+  }
+  60% {
+    height: calc(var(--sheet-h) + 18px);
+  }
+  80%,
+  100% {
+    height: var(--sheet-h);
+  }
+}
+.sheet-hint {
+  animation: sheet-hint 1.5s ease-in-out 0.45s;
+}
+
 /* Subtle scrollbars on desktop */
 ::-webkit-scrollbar {
   width: 8px;
@@ -218,7 +244,8 @@ button {
 
 @media (prefers-reduced-motion: reduce) {
   .anim-sheet,
-  .anim-fade {
+  .anim-fade,
+  .sheet-hint {
     animation: none;
   }
 }

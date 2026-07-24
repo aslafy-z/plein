@@ -155,6 +155,10 @@ interface PersistedSettings {
   favorites: FavoriteStation[];
   /** Selected brand labels in the filters (empty/absent = every brand) */
   brandSel: string[];
+  /** Armed by onboarding, spent the first time the map sheet can bounce to
+      show it pulls up — absent for anyone who onboarded before the hint
+      existed, so it only ever plays for newcomers */
+  sheetHint: boolean;
 }
 
 export interface FavoriteStation {
@@ -317,6 +321,9 @@ export interface AppStore {
 
   // onboarding
   finishOnboarding(withGeoloc: boolean): void;
+  /** true until the map sheet has played its « you can pull me up » bounce */
+  sheetHint: boolean;
+  consumeSheetHint(): void;
 }
 
 // ── URL routing (tabs survive a refresh) ────────────────────────────────────
@@ -462,6 +469,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return next;
     });
   }, []);
+  // Pull-up hint on the map sheet: armed when onboarding ends, spent as soon
+  // as it plays (persisted, so quitting before the stations land keeps it)
+  const [sheetHint, setSheetHint] = useState<boolean>(persisted.sheetHint ?? false);
+  const consumeSheetHint = useCallback(() => {
+    setSheetHint(false);
+    savePersisted({ sheetHint: false });
+  }, []);
+
   const [recents, setRecents] = useState(persisted.recents ?? DEFAULT_RECENTS);
   const [hasTripHistory, setHasTripHistory] = useState(persisted.recents != null);
   const [canInstall, setCanInstall] = useState(installReady());
@@ -1274,7 +1289,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const finishOnboarding = useCallback(
     (withGeoloc: boolean) => {
-      savePersisted({ onboarded: true });
+      savePersisted({ onboarded: true, sheetHint: true });
+      setSheetHint(true);
       if (withGeoloc) requestGeolocation();
       else setGeoStatus('denied');
       // Land on whatever the opened URL asked for — the map is just the
@@ -1379,6 +1395,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       shareStation,
       shareMapView,
       finishOnboarding,
+      sheetHint,
+      consumeSheetHint,
     }),
     [
       screen, prevScreen, go, back, openStation, fuel, setFuel, cycleFuel, sort, radius, setRadius,
@@ -1394,6 +1412,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       bgloc, setBgloc, sourceId, setSourceId, mapsSite, setMapsSite, detailId, toast, showToast,
       canInstall, installDismissed, promptInstall, dismissInstallBanner, persisted.lastPos,
       openInMaps, openTourInMaps, shareStation, shareMapView, finishOnboarding,
+      sheetHint, consumeSheetHint,
     ],
   );
 
