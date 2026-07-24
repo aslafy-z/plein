@@ -1278,6 +1278,23 @@ export function selectVisible(app: AppStore): NearbyStation[] {
 }
 
 /**
+ * Station count per brand group inside the zone, for the « Distributeurs »
+ * rows. Counted with `brandSel` ignored — so the list doesn't collapse as
+ * brands are picked — but WITH the fuel and service filters applied: a row
+ * promising « 3 » must deliver 3 stations once selected, never an empty map.
+ * A group with nothing to show here is simply absent from the result — the
+ * sheet lists it among the brands kept for a next trip.
+ */
+export function selectZoneBrandCounts(app: AppStore): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const s of selectVisible({ ...app, brandSel: [] })) {
+    const g = brandGroup(s.brand);
+    counts.set(g, (counts.get(g) ?? 0) + 1);
+  }
+  return counts;
+}
+
+/**
  * Fuels actually sold in the zone (radius + brand/service filters). Drives
  * the empty state when the selected fuel isn't sold at all — E10 and E85
  * barely exist outside France (nowhere in Andorra, a handful of Spanish

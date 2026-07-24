@@ -32,6 +32,25 @@ test('service filters narrow the live count and Réinitialiser restores it', asy
   await expect(page.getByText('Voir 6 stations')).toBeVisible()
 })
 
+test('brand rows count with the other filters applied, never promising an empty map', async ({ page }) => {
+  await page.getByText('Filtres · 6').click()
+  // 4 of the 6 zone stations sell E85 — BP · Rocade Est and Garage Morel don't
+  await page.getByRole('button', { name: 'E85', exact: true }).click()
+  await expect(page.getByText('Voir 4 stations')).toBeVisible()
+
+  await page.getByRole('button', { name: /^Distributeurs/ }).click()
+  // BP's only zone station has no E85 pump: the row leaves the counted list
+  // for the « prochain trajet » chips instead of advertising « 1 »
+  await expect(page.getByRole('button', { name: 'BP 1' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'BP', exact: true })).toBeVisible()
+
+  // …and a counted row delivers exactly the stations it announces
+  const total = page.getByRole('button', { name: 'TotalEnergies 1' })
+  await expect(total).toBeVisible()
+  await total.click()
+  await expect(page.getByText('Voir 1 station', { exact: true })).toBeVisible()
+})
+
 test('a fuel nobody sells in the zone names itself and offers what IS sold', async ({ page }) => {
   // No station within 5 km sells GPLc (the demo GPLc pumps sit farther out)
   await page.getByText('Filtres · 6').click()
