@@ -187,6 +187,64 @@ function savePersisted(p: Partial<PersistedSettings>) {
   }
 }
 
+/**
+ * Mirror one slice of state into the persisted blob whenever it changes.
+ *
+ * React treats `useState` updaters as pure and may run them more than once —
+ * StrictMode does it deliberately, and the same guarantee is what lets React
+ * discard and replay a render. So state that has to survive a reload but whose
+ * next value is computed from the previous one persists here, from an effect,
+ * instead of from inside the updater.
+ *
+ * The mount pass writes nothing: it would only echo back what we just loaded,
+ * and it would materialise the storage key for someone who never touched a
+ * setting (a `?fuel=` link, for instance, stays a one-off).
+ */
+function usePersisted<K extends keyof PersistedSettings>(key: K, value: PersistedSettings[K]) {
+  const last = useRef(value);
+  useEffect(() => {
+    if (Object.is(last.current, value)) return;
+    last.current = value;
+    savePersisted({ [key]: value } as Partial<PersistedSettings>);
+  }, [key, value]);
+}
+
+// ── Pure state updaters ──────────────────────────────────────────────────────
+// Exported so they can be unit-tested for what the setters rely on: they
+// compute the next value from the previous one and do nothing else, so running
+// them twice is indistinguishable from running them once.
+
+/** Star `s`, or unstar it when it is already pinned */
+export function toggleFavoriteIn(
+  prev: FavoriteStation[],
+  s: FavoriteStation,
+): FavoriteStation[] {
+  return prev.some((f) => f.id === s.id) ? prev.filter((f) => f.id !== s.id) : [...prev, s];
+}
+
+/** Fuel that follows `cur` in the cycling order of the map's fuel chip */
+export function nextFuelAfter(cur: FuelId): FuelId {
+  return ALL_FUELS[(ALL_FUELS.indexOf(cur) + 1) % ALL_FUELS.length];
+}
+
+/** Select `label` in the brand filter, or deselect it when already selected */
+export function toggleBrandIn(sel: string[], label: string): string[] {
+  return sel.includes(label) ? sel.filter((b) => b !== label) : [...sel, label];
+}
+
+/**
+ * Prepend a trip to the « Récents » history. Without real history yet, the
+ * default suggestions are dropped rather than pushed down.
+ */
+export function pushRecentIn(
+  prev: PersistedSettings['recents'],
+  entry: PersistedSettings['recents'][number],
+  hasTripHistory: boolean,
+): PersistedSettings['recents'] {
+  const base = hasTripHistory ? prev : [];
+  return [entry, ...base.filter((r) => r.label !== entry.label)].slice(0, MAX_RECENTS);
+}
+
 /** Destination suggestions shown until the user has real trip history */
 export const DEFAULT_RECENTS: PersistedSettings['recents'] = [
   { label: 'Toulouse', sublabel: 'Haute-Garonne', point: { lat: 43.6047, lng: 1.4442 } },
@@ -384,7 +442,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     persisted.onboarded ? initialNav.screen : 'onboarding',
   );
   const [prevScreen, setPrevScreen] = useState<Screen>('map');
-  const [fuel, setFuelState] = useState<FuelId>(initialMap.fuel ?? persisted.fuel ?? 'gazole');
+  const [fuel, setFuel] = useState<FuelId>(initialMap.fuel ?? persisted.fuel ?? 'gazole');
+  usePersisted('fuel', fuel);
   const [sort, setSort] = useState<SortMode>('prix');
   const [radius, setRadiusState] = useState<number>(
     initialMap.radius != null
@@ -396,6 +455,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [brandSel, setBrandSelState] = useState<string[]>(() => [
     ...new Set((initialMap.brands ?? persisted.brandSel ?? []).map(brandGroup)),
   ]);
+  usePersisted('brandSel', brandSel);
   const [serviceTags, setServiceTags] = useState<Partial<Record<ServiceTag, boolean>>>(() =>
     Object.fromEntries((initialMap.services ?? []).map((t) => [t, true])),
   );
@@ -460,14 +520,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [favorites, setFavorites] = useState<FavoriteStation[]>(() =>
     (persisted.favorites ?? []).map((f) => ({ ...f, id: normalizeStationId(f.id) })),
   );
+  usePersisted('favorites', favorites);
   const toggleFavorite = useCallback((s: FavoriteStation) => {
-    setFavorites((prev) => {
-      const next = prev.some((f) => f.id === s.id)
-        ? prev.filter((f) => f.id !== s.id)
-        : [...prev, s];
-      savePersisted({ favorites: next });
-      return next;
-    });
+    setFavorites((prev) => toggleFavoriteIn(prev, s));
   }, []);
   // Pull-up hint on the map sheet: armed when onboarding ends, spent as soon
   // as it plays (persisted, so quitting before the stations land keeps it)
@@ -479,6 +534,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const [recents, setRecents] = useState(persisted.recents ?? DEFAULT_RECENTS);
   const [hasTripHistory, setHasTripHistory] = useState(persisted.recents != null);
+  usePersisted('recents', recents);
   const [canInstall, setCanInstall] = useState(installReady());
   const [installDismissed, setInstallDismissed] = useState(persisted.installDismissed ?? false);
   const [stations, setStations] = useState<StationsState>({
@@ -887,12 +943,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         sublabel: `${Math.round(distanceKm)} km · fait le ${date}`,
         point,
       };
-      setRecents((prev) => {
-        const base = hasTripHistory ? prev : [];
-        const next = [entry, ...base.filter((r) => r.label !== label)].slice(0, MAX_RECENTS);
-        savePersisted({ recents: next });
-        return next;
-      });
+      setRecents((prev) => pushRecentIn(prev, entry, hasTripHistory));
       setHasTripHistory(true);
     },
     [hasTripHistory],
@@ -1005,18 +1056,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     else setFiltersOpen(open);
   }, []);
 
-  const setFuel = useCallback((f: FuelId) => {
-    setFuelState(f);
-    savePersisted({ fuel: f });
-  }, []);
-
   const cycleFuel = useCallback(() => {
-    setFuelState((cur) => {
-      const idx = ALL_FUELS.indexOf(cur);
-      const next = ALL_FUELS[(idx + 1) % ALL_FUELS.length];
-      savePersisted({ fuel: next });
-      return next;
-    });
+    setFuel(nextFuelAfter);
   }, []);
 
   const setRadius = useCallback((r: number) => {
@@ -1040,8 +1081,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setTankState(preset.tank);
     setConsoState(preset.conso);
     // A moto runs on SP95-E10, not gazole — the fuel follows the profile
-    setFuelState(preset.fuel);
-    savePersisted({ vehicle: v, tank: preset.tank, conso: preset.conso, fuel: preset.fuel });
+    setFuel(preset.fuel);
+    // `fuel` rides along through `usePersisted`
+    savePersisted({ vehicle: v, tank: preset.tank, conso: preset.conso });
   }, []);
 
   const setAvoidMotorway = useCallback((v: boolean) => {
@@ -1080,17 +1122,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toggleBrand = useCallback((label: string) => {
-    setBrandSelState((sel) => {
-      const next = sel.includes(label) ? sel.filter((b) => b !== label) : [...sel, label];
-      savePersisted({ brandSel: next });
-      return next;
-    });
+    setBrandSelState((sel) => toggleBrandIn(sel, label));
   }, []);
 
   const resetFilters = useCallback(() => {
     setRadius(5);
     setBrandSelState([]);
-    savePersisted({ brandSel: [] });
     setServiceTags({});
     setFuel('gazole');
   }, [setFuel, setRadius]);
