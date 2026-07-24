@@ -67,7 +67,11 @@ export function samplePolyline(line: GeoPoint[], everyKm: number): GeoPoint[] {
       next += everyKm;
     }
   }
-  samples.push(line[line.length - 1]);
+  const last = line[line.length - 1];
+  const tail = samples[samples.length - 1];
+  // The loop above may already have emitted the final vertex — appending it a
+  // second time would cost a redundant query and understate the sample spacing.
+  if (tail.lat !== last.lat || tail.lng !== last.lng) samples.push(last);
   return samples;
 }
 

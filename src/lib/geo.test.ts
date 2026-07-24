@@ -60,4 +60,26 @@ describe('polyline helpers', () => {
     expect(samples.length).toBeGreaterThan(3)
     expect(samples.length).toBeLessThan(10)
   })
+
+  it('samplePolyline never emits the last vertex twice', () => {
+    // The loop reaches the final vertex while a sample is still due, so it
+    // pushes it — the tail must not then be appended a second time.
+    const clustered = [0, 0.05, 1].map((t) => lerpPoint(TOULOUSE, BORDEAUX, t))
+    const samples = samplePolyline(clustered, 50)
+    expect(samples).toEqual([clustered[0], clustered[2]])
+  })
+
+  it('samplePolyline emits no consecutive duplicates for any spacing', () => {
+    const dense = Array.from({ length: 101 }, (_, i) => lerpPoint(TOULOUSE, BORDEAUX, i / 100))
+    const total = polylineLengthKm(dense)
+    for (const everyKm of [1, 5, 17, total / 8, total / 3, total, total * 2]) {
+      const samples = samplePolyline(dense, everyKm)
+      expect(samples[0]).toEqual(dense[0])
+      expect(samples[samples.length - 1]).toEqual(dense[dense.length - 1])
+      const dupes = samples.filter(
+        (p, i) => i > 0 && p.lat === samples[i - 1].lat && p.lng === samples[i - 1].lng,
+      )
+      expect(dupes).toEqual([])
+    }
+  })
 })
