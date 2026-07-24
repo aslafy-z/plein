@@ -22,7 +22,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.44.0",
+    "@cloudflare/vite-plugin": "^1.47.0",
     "@playwright/test": "^1.61.1",
     "@types/node": "^26.1.1",
     "@types/react": "^18.3.12",
@@ -32,7 +32,7 @@
     "typescript": "^5.6.3",
     "vite": "^8.1.4",
     "vitest": "^4.1.10",
-    "wrangler": "^4.110.0"
+    "wrangler": "^4.114.0"
   },
   "allowScripts": {
     "esbuild@0.28.1": true
