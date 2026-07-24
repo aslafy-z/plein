@@ -16,6 +16,7 @@ import { cumulativeKm, haversineKm, nearestOnPolyline } from '../lib/geo';
 import {
   ALL_FUELS,
   FUEL_LABELS,
+  SERVICE_TAGS,
   type VehicleId,
   type DataSourceId,
   type FuelId,
@@ -30,7 +31,8 @@ import {
 } from '../data/types';
 import { getProviders } from '../data/providers';
 import { brandGroup } from '../lib/brandIcons';
-import { stationShareData } from '../lib/share';
+import { mapUrlQuery, parseMapUrl } from '../lib/mapUrl';
+import { mapViewShareData, stationShareData, type ShareData } from '../lib/share';
 import { readStationsCache, writeStationsCache, STALE_MS } from '../data/stationsCache';
 import { normalizeStationId, stationCountry } from '../data/stationIds';
 import {
@@ -67,6 +69,8 @@ const REFUEL_MIN = 4;
  * which keeps them on the same scale as the measured ones.
  */
 const ROAD_REACH_MAX = 60;
+/** Min pause between two URL rewrites while the map view moves */
+const MAP_URL_MIN_MS = 500;
 
 export type Screen =
   | 'onboarding'
@@ -228,6 +232,9 @@ export interface AppStore {
   /** Station highlighted on the map & shown in the map bottom-sheet card */
   focusStationId: string | null;
   setFocusStation(id: string | null): void;
+  /** Leaflet zoom mirrored in the URL (null until the map has settled) */
+  mapZoom: number | null;
+  setMapZoom(z: number): void;
   stations: StationsState;
   reloadStations(): void;
   /** Road distance & drive time per station id — stations absent from the
@@ -299,6 +306,8 @@ export interface AppStore {
   openInMaps(target: Station | RouteStation): void;
   openTourInMaps(): void;
   shareStation(target: Station | RouteStation): void;
+  /** Share the map as it stands — same link the address bar carries */
+  shareMapView(): void;
 
   // PWA install
   installReady: boolean;
@@ -361,19 +370,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // A link followed by someone who hasn't onboarded yet: the walkthrough comes
   // first, so the destination is parked here and restored when it ends.
   const pendingNav = useRef(persisted.onboarded ? null : initialNav);
+  // A shared map link (`/?ll=…&z=…&f=…&r=…`) wins over the persisted settings:
+  // whoever opens it must see the view that was shared, not their own.
+  const initialMap = useRef(parseMapUrl(window.location.search)).current;
   const [screen, setScreen] = useState<Screen>(
     persisted.onboarded ? initialNav.screen : 'onboarding',
   );
   const [prevScreen, setPrevScreen] = useState<Screen>('map');
-  const [fuel, setFuelState] = useState<FuelId>(persisted.fuel ?? 'gazole');
+  const [fuel, setFuelState] = useState<FuelId>(initialMap.fuel ?? persisted.fuel ?? 'gazole');
   const [sort, setSort] = useState<SortMode>('prix');
-  const [radius, setRadiusState] = useState<number>(persisted.radius ?? 5);
+  const [radius, setRadiusState] = useState<number>(
+    initialMap.radius != null
+      ? Math.min(initialMap.radius, MAX_RADIUS_KM)
+      : (persisted.radius ?? 5),
+  );
   // Persisted selections may predate a grouping change ("Total", "Esso
   // Express"…) — remap them onto the current canonical groups.
   const [brandSel, setBrandSelState] = useState<string[]>(() => [
-    ...new Set((persisted.brandSel ?? []).map(brandGroup)),
+    ...new Set((initialMap.brands ?? persisted.brandSel ?? []).map(brandGroup)),
   ]);
-  const [serviceTags, setServiceTags] = useState<Partial<Record<ServiceTag, boolean>>>({});
+  const [serviceTags, setServiceTags] = useState<Partial<Record<ServiceTag, boolean>>>(() =>
+    Object.fromEntries((initialMap.services ?? []).map((t) => [t, true])),
+  );
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [routeMode, setRouteMode] = useState<RouteMode>('compromis');
   const [tour, setTour] = useState<Record<string, boolean>>({});
@@ -410,16 +428,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const initialPos = persisted.lastPos ?? DEFAULT_POS;
   const [userPos, setUserPos] = useState<GeoPoint>(initialPos);
   const [geoStatus, setGeoStatus] = useState<AppStore['geoStatus']>('pending');
-  // Search area: follows the user's position until they search elsewhere on the map
-  const [searchPos, setSearchPos] = useState<GeoPoint>(initialPos);
+  // Search area: follows the user's position until they search elsewhere on
+  // the map — or until a shared link says which area to open on.
+  const [searchPos, setSearchPos] = useState<GeoPoint>(initialMap.center ?? initialPos);
   const [searchLabel, setSearchLabel] = useState<string | null>(null);
   const [focusStationId, setFocusStationId] = useState<string | null>(null);
-  const searchMovedRef = useRef(false);
+  // A link-provided area counts as « searched elsewhere »: the geolocation fix
+  // landing right after must move the user dot, not the shared view.
+  const searchMovedRef = useRef(initialMap.center != null);
+  const [mapZoom, setMapZoomState] = useState<number | null>(initialMap.zoom);
   // Geolocation worked last session → hold the initial stations fetch until
   // the fresh fix lands (or a short fallback delay), so the app loads the
-  // right area once instead of fetching the stale area and jumping.
+  // right area once instead of fetching the stale area and jumping. A shared
+  // link already names its area: nothing to wait for.
   const [geoHold, setGeoHold] = useState<boolean>(
-    persisted.onboarded === true && persisted.geoGranted === true && 'geolocation' in navigator,
+    initialMap.center == null &&
+      persisted.onboarded === true &&
+      persisted.geoGranted === true &&
+      'geolocation' in navigator,
   );
 
   // Favorites pinned before the `fra-` prefix hold bare French ids — migrate
@@ -496,6 +522,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     savePersisted({ lastPos: p });
   }, []);
 
+  // Leaflet owns the zoom; the store only mirrors it into the shareable URL
+  const setMapZoom = useCallback((z: number) => {
+    setMapZoomState((prev) => (prev === z ? prev : z));
+  }, []);
+
   const resetSearchToUser = useCallback(() => {
     searchMovedRef.current = false;
     setSearchPos(userPos);
@@ -540,6 +571,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
+  // The map view + its filters, as they appear in the URL. Panning rewrites
+  // this several times a second (the circle tracks the finger) — the write
+  // itself is throttled below.
+  const mapQuery = useMemo(
+    () =>
+      mapUrlQuery({
+        center: searchPos,
+        zoom: mapZoom,
+        fuel,
+        radius,
+        brands: brandSel,
+        services: SERVICE_TAGS.filter((t) => serviceTags[t]),
+      }),
+    [searchPos, mapZoom, fuel, radius, brandSel, serviceTags],
+  );
+  // Browsers cap history writes (Safari: ~100 per 30 s) — a live pan would
+  // blow through it, so map-params updates are throttled. Real navigations
+  // always land immediately.
+  const urlWrite = useRef<{ at: number; timer?: ReturnType<typeof setTimeout> }>({ at: 0 });
+  useEffect(() => () => clearTimeout(urlWrite.current.timer), []);
+
   useEffect(() => {
     const fromPop = popNavRef.current;
     popNavRef.current = false;
@@ -547,29 +599,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
     lastNavScreenRef.current = screen;
     const replaceAsked = replaceNavRef.current;
     replaceNavRef.current = false;
+    // A pending map-params write must never land on the entry we just moved to
+    clearTimeout(urlWrite.current.timer);
     if (fromPop) return;
     // Onboarding parks the URL instead of rewriting it to `/`: a refresh in the
     // middle of the walkthrough must not cost the link the user followed. The
     // first nav after it replaces this entry (`cameFrom === 'onboarding'`).
     if (screen === 'onboarding') return;
     const cur = window.history.state as NavHistoryState | null;
-    if (
-      cur?.plein &&
+    // Same screen: only the map's own params can differ, and they are worth a
+    // URL update (the address bar stays a link to what is on screen) but never
+    // a history entry.
+    const sameNav =
+      !!cur?.plein &&
       cur.screen === screen &&
       (cur.detailId ?? null) === detailId &&
-      !!cur.filtersOpen === filtersOpen
-    )
-      return;
-    const path = pathFor(screen, detailId);
+      !!cur.filtersOpen === filtersOpen;
+    const url = pathFor(screen, detailId) + (screen === 'map' ? mapQuery : '');
+    if (sameNav && url === window.location.pathname + window.location.search) return;
     // First entry — and leaving onboarding must not be back-navigable
-    const replace = !cur?.plein || cameFrom === 'onboarding' || replaceAsked;
+    const replace = !cur?.plein || cameFrom === 'onboarding' || replaceAsked || sameNav;
     // How deep the app is in ITS OWN history: entry 0 is the one the app was
     // opened on, and popping it would leave the app entirely.
     const idx = replace ? (cur?.plein ? (cur.idx ?? 0) : 0) : (cur?.idx ?? 0) + 1;
     const state: NavHistoryState = { plein: true, screen, detailId, filtersOpen, idx };
-    if (replace) window.history.replaceState(state, '', path);
-    else window.history.pushState(state, '', path);
-  }, [screen, detailId, filtersOpen]);
+    const write = () => {
+      urlWrite.current.at = Date.now();
+      if (replace) window.history.replaceState(state, '', url);
+      else window.history.pushState(state, '', url);
+    };
+    const wait = sameNav ? MAP_URL_MIN_MS - (Date.now() - urlWrite.current.at) : 0;
+    if (wait <= 0) write();
+    else urlWrite.current.timer = setTimeout(write, wait);
+  }, [screen, detailId, filtersOpen, mapQuery]);
 
   // ── Stations near me (fetch at MAX radius, filter client-side) ─────────────
   // Stale-while-revalidate: a cached area paints instantly (refreshing: true)
@@ -1154,15 +1216,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [showToast],
   );
 
-  const shareStation = useCallback(
-    (target: Station) => {
-      const priced = effectiveFuel(target, fuel);
-      const value = priced ? target.prices[priced]?.value : undefined;
-      const data = stationShareData(
-        target,
-        window.location.origin,
-        priced && value != null ? { fuelLabel: FUEL_LABELS[priced], value } : null,
-      );
+  /** Hand a link to the system sheet, clipboard otherwise — every share goes through here */
+  const share = useCallback(
+    (data: ShareData) => {
       // navigator.share must be reached from the click itself: awaiting
       // anything first spends the transient activation and iOS Safari refuses.
       if (navigator.share) {
@@ -1176,8 +1232,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       copyShareLink(data.url);
     },
-    [copyShareLink, fuel],
+    [copyShareLink],
   );
+
+  const shareStation = useCallback(
+    (target: Station) => {
+      const priced = effectiveFuel(target, fuel);
+      const value = priced ? target.prices[priced]?.value : undefined;
+      share(
+        stationShareData(
+          target,
+          window.location.origin,
+          priced && value != null ? { fuelLabel: FUEL_LABELS[priced], value } : null,
+        ),
+      );
+    },
+    [fuel, share],
+  );
+
+  /**
+   * Share the map as it stands. In a standalone PWA there is no address bar
+   * to copy the link from, so it is rebuilt from the state — same query the
+   * URL carries, same share path as a station fiche.
+   */
+  const shareMapView = useCallback(() => {
+    share(
+      mapViewShareData(
+        {
+          center: searchPos,
+          zoom: mapZoom,
+          fuel,
+          radius,
+          brands: brandSel,
+          services: SERVICE_TAGS.filter((t) => serviceTags[t]),
+        },
+        window.location.origin,
+        { fuelLabel: FUEL_LABELS[fuel], place: searchLabel },
+      ),
+    );
+  }, [brandSel, fuel, mapZoom, radius, searchLabel, searchPos, serviceTags, share]);
 
   const finishOnboarding = useCallback(
     (withGeoloc: boolean) => {
@@ -1226,6 +1319,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       resetSearchToUser,
       focusStationId,
       setFocusStation: setFocusStationId,
+      mapZoom,
+      setMapZoom,
       favorites,
       isFavorite: (id) => favorites.some((f) => f.id === id),
       toggleFavorite,
@@ -1282,13 +1377,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       openInMaps,
       openTourInMaps,
       shareStation,
+      shareMapView,
       finishOnboarding,
     }),
     [
       screen, prevScreen, go, back, openStation, fuel, setFuel, cycleFuel, sort, radius, setRadius,
       brandSel, toggleBrand, serviceTags, filtersOpen, resetFilters, userPos, geoStatus,
       requestGeolocation, searchPos, searchLabel, setSearchArea, resetSearchToUser,
-      focusStationId, favorites, toggleFavorite, stations, roadReach, loadStations, fromText, toText, fromPoint, toPoint,
+      focusStationId, mapZoom, setMapZoom,
+      favorites, toggleFavorite, stations, roadReach, loadStations, fromText, toText, fromPoint, toPoint,
       setFrom, setTo, searchPlaces, recents, hasTripHistory, routeReady, startRoute, editRoute,
       openRouteSearch, focusDestination, consumeFocusDestination,
       routeMode, routeState, tour, toggleTour, vehicle, setVehicle, tank, setTank, conso, setConso,
@@ -1296,7 +1393,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setFiltersOpenNav, alerts, setAlerts,
       bgloc, setBgloc, sourceId, setSourceId, mapsSite, setMapsSite, detailId, toast, showToast,
       canInstall, installDismissed, promptInstall, dismissInstallBanner, persisted.lastPos,
-      openInMaps, openTourInMaps, shareStation, finishOnboarding,
+      openInMaps, openTourInMaps, shareStation, shareMapView, finishOnboarding,
     ],
   );
 

@@ -28,7 +28,8 @@ test('an unknown station falls back to the map without leaving the app', async (
   await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
   expect(new URL(page.url()).pathname).toBe('/')
   // The dead URL was swapped, not stacked: Back must not walk onto it again
-  await expect(page).toHaveURL(/localhost:5173\/$/)
+  // (the map carries its shareable view in the query string)
+  await expect(page).toHaveURL(/localhost:5173\/(\?.*)?$/)
 })
 
 test('back from a deep-linked fiche returns to the map, in-app', async ({ page }) => {

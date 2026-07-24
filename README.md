@@ -61,6 +61,10 @@ autour de vous et le long de vos trajets, en France, en Espagne et en Andorre.
 - 🧭 **« Y aller »** — ouvre la fiche du lieu dans votre app GPS : choix de
   l'app sur Android (`geo:`), Plans sur iOS, Google Maps sur desktop ; tournée
   multi-arrêts possible.
+- 🔗 **Lien partageable** — l'adresse de la page suit la carte (zone affichée,
+  zoom, carburant, rayon et filtres) : le bouton *Partager* envoie un lien qui
+  rouvre exactement la même vue chez qui le reçoit — pratique pour dire « le
+  plein est là ». Les fiches station gardent leur lien direct `/station/:id`.
 - 📱 **PWA installable et tolérante au hors-ligne** — ajoutez-la à l'écran
   d'accueil ; les dernières zones consultées et les tuiles de carte restent
   disponibles sans réseau, avec indicateur d'ancienneté des prix.
