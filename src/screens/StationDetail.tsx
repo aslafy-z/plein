@@ -9,6 +9,7 @@ import { haversineKm } from '../lib/geo';
 import { openStatus } from '../lib/hours';
 import { addDarkBasemap } from '../lib/tiles';
 import Star from '../components/Star';
+import ShareIcon from '../components/ShareIcon';
 
 /** Static mini-map centred on the station (replaces the prototype's photo slot) */
 function StationMiniMap({ station }: { station: Station }) {
@@ -218,6 +219,26 @@ export default function StationDetail() {
           }}
         >
           ←
+        </button>
+        {/* Share the fiche — native sheet where it exists, clipboard elsewhere */}
+        <button
+          onClick={() => app.shareStation(s)}
+          aria-label="Partager la station"
+          style={{
+            position: 'absolute',
+            right: 62,
+            top: 14,
+            width: 40,
+            height: 40,
+            borderRadius: '50%',
+            background: '#101214d9',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+        >
+          <ShareIcon color={C.ink} size={18} />
         </button>
         {/* Pin to Favoris */}
         <button

@@ -15,6 +15,7 @@ import type { GeoPoint } from '../lib/geo';
 import { cumulativeKm, haversineKm, nearestOnPolyline } from '../lib/geo';
 import {
   ALL_FUELS,
+  FUEL_LABELS,
   type VehicleId,
   type DataSourceId,
   type FuelId,
@@ -29,6 +30,7 @@ import {
 } from '../data/types';
 import { getProviders } from '../data/providers';
 import { brandGroup } from '../lib/brandIcons';
+import { stationShareData } from '../lib/share';
 import { readStationsCache, writeStationsCache, STALE_MS } from '../data/stationsCache';
 import { normalizeStationId, stationCountry } from '../data/stationIds';
 import {
@@ -296,6 +298,7 @@ export interface AppStore {
   notify(msg: string): void;
   openInMaps(target: Station | RouteStation): void;
   openTourInMaps(): void;
+  shareStation(target: Station | RouteStation): void;
 
   // PWA install
   installReady: boolean;
@@ -1137,6 +1140,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
     window.open(url, '_blank', 'noopener');
   }, [fromPoint, routeState.stations, showToast, toPoint, tour]);
 
+  const copyShareLink = useCallback(
+    (url: string) => {
+      if (!navigator.clipboard) {
+        showToast('Partage indisponible sur cet appareil');
+        return;
+      }
+      navigator.clipboard.writeText(url).then(
+        () => showToast('Lien copié'),
+        () => showToast('Partage indisponible sur cet appareil'),
+      );
+    },
+    [showToast],
+  );
+
+  const shareStation = useCallback(
+    (target: Station) => {
+      const priced = effectiveFuel(target, fuel);
+      const value = priced ? target.prices[priced]?.value : undefined;
+      const data = stationShareData(
+        target,
+        window.location.origin,
+        priced && value != null ? { fuelLabel: FUEL_LABELS[priced], value } : null,
+      );
+      // navigator.share must be reached from the click itself: awaiting
+      // anything first spends the transient activation and iOS Safari refuses.
+      if (navigator.share) {
+        navigator.share(data).catch((err: unknown) => {
+          // Dismissing the system sheet rejects with AbortError — that is the
+          // user changing their mind, not a failure to fall back from.
+          if ((err as DOMException)?.name === 'AbortError') return;
+          copyShareLink(data.url);
+        });
+        return;
+      }
+      copyShareLink(data.url);
+    },
+    [copyShareLink, fuel],
+  );
+
   const finishOnboarding = useCallback(
     (withGeoloc: boolean) => {
       savePersisted({ onboarded: true });
@@ -1239,6 +1281,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       notify: showToast,
       openInMaps,
       openTourInMaps,
+      shareStation,
       finishOnboarding,
     }),
     [
@@ -1253,7 +1296,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setFiltersOpenNav, alerts, setAlerts,
       bgloc, setBgloc, sourceId, setSourceId, mapsSite, setMapsSite, detailId, toast, showToast,
       canInstall, installDismissed, promptInstall, dismissInstallBanner, persisted.lastPos,
-      openInMaps, openTourInMaps, finishOnboarding,
+      openInMaps, openTourInMaps, shareStation, finishOnboarding,
     ],
   );
 
