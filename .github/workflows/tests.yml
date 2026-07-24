@@ -2,7 +2,7 @@
 # - unit: tsc typecheck + Vitest (src/**/*.test.ts) — fast, no browser
 # - e2e:  Playwright suite (e2e/, playwright.config.ts) against the Vite dev
 #         server (started automatically by Playwright's webServer) with the
-#         deterministic demo data source
+#         deterministic demo data source, split across shards (one runner each)
 # on:
 # - pull requests   → every push to a PR branch
 # - push on main    → guards what actually deploys
@@ -39,6 +39,14 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Sharded across runners rather than crammed into more workers on one:
+    # Playwright defaults to cores/2 (= 2 on a 4-vCPU runner) and this suite
+    # measures animations and map settle times, so extra workers on the same
+    # cores buy speed with flakiness. Each shard gets its own machine.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -49,11 +57,11 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
       - name: Run e2e tests
-        run: npx playwright test
+        run: npx playwright test --shard=${{ matrix.shard }}/${{ strategy.job-total }}
       - name: Upload report on failure
         if: failure()
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
-          name: playwright-report
+          name: playwright-report-shard-${{ matrix.shard }}
           path: playwright-report/
           retention-days: 7
