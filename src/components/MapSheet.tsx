@@ -34,6 +34,8 @@ const FLING_WINDOW_MS = 100;
 /** Pointer parked longer than this before release → the fling is cancelled */
 const FLING_HOLD_MS = 150;
 const TRANSITION = 'height .3s cubic-bezier(.4,0,.2,1)';
+/** Rows needed under the card before the first-run pull-up hint is worth it */
+const HINT_MIN_ROWS = 2;
 
 /**
  * Bottom sheet over the map. Collapsed: the cheapest (or map-selected)
@@ -111,6 +113,28 @@ export default function MapSheet({
     collapsedH ?? 0,
     Math.min(Math.round(stageH * EXPAND_RATIO), stageH - 64),
   );
+
+  // ── First-run pull-up hint ────────────────────────────────────────────────
+  // Nothing says the card sits on top of a list. So the very first time a
+  // newcomer's zone holds more than one station, the collapsed sheet bounces
+  // up and settles: the gesture is shown rather than explained. Once only —
+  // the store spends the flag as soon as it plays.
+  const [hinting, setHinting] = useState(false);
+  const hintPlayed = useRef(false);
+  const armHint =
+    app.sheetHint && !expanded && hasCard && collapsedH != null && rows.length >= HINT_MIN_ROWS;
+  const consumeSheetHint = app.consumeSheetHint;
+  useEffect(() => {
+    if (!armHint || hintPlayed.current) return;
+    hintPlayed.current = true;
+    setHinting(true);
+    consumeSheetHint();
+  }, [armHint, consumeSheetHint]);
+  // A keyboard/AT toggle takes the pointer path's shortcut: the bounce must
+  // not keep overriding the height of a sheet that is opening for real
+  useEffect(() => {
+    if (expanded) setHinting(false);
+  }, [expanded]);
 
   // ── Gesture engine ─────────────────────────────────────────────────────────
   // During a drag the height is written straight onto the DOM node inside a
@@ -195,6 +219,9 @@ export default function MapSheet({
     (y: number, t: number) => {
       const el = rootRef.current;
       if (!el || !dims.current.canDrag || g.current.active) return;
+      // The hint animation overrides the inline height — a drag starting mid
+      // bounce would look stuck, so the hand always wins over the demo
+      setHinting(false);
       g.current = {
         ...g.current,
         active: true,
@@ -372,6 +399,11 @@ export default function MapSheet({
   return (
     <div
       ref={rootRef}
+      className={hinting ? 'sheet-hint' : undefined}
+      // Bubbled ends belong to the swapping card, not to the bounce
+      onAnimationEnd={(e) => {
+        if (e.target === e.currentTarget) setHinting(false);
+      }}
       style={{
         position: 'absolute',
         left: 0,
@@ -385,6 +417,8 @@ export default function MapSheet({
         borderRadius: '24px 24px 0 0',
         boxShadow: '0 -10px 30px rgba(0,0,0,.45)',
         height,
+        // The hint keyframes bounce off this, the height they override
+        ...(hinting ? { ['--sheet-h' as string]: `${height ?? 0}px` } : null),
         transition: TRANSITION,
       }}
     >
