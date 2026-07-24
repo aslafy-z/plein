@@ -355,6 +355,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const persisted = useRef(loadPersisted()).current;
 
   const initialNav = navFromPath(window.location.pathname);
+  // A link followed by someone who hasn't onboarded yet: the walkthrough comes
+  // first, so the destination is parked here and restored when it ends.
+  const pendingNav = useRef(persisted.onboarded ? null : initialNav);
   const [screen, setScreen] = useState<Screen>(
     persisted.onboarded ? initialNav.screen : 'onboarding',
   );
@@ -542,6 +545,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const replaceAsked = replaceNavRef.current;
     replaceNavRef.current = false;
     if (fromPop) return;
+    // Onboarding parks the URL instead of rewriting it to `/`: a refresh in the
+    // middle of the walkthrough must not cost the link the user followed. The
+    // first nav after it replaces this entry (`cameFrom === 'onboarding'`).
+    if (screen === 'onboarding') return;
     const cur = window.history.state as NavHistoryState | null;
     if (
       cur?.plein &&
@@ -1127,7 +1134,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       savePersisted({ onboarded: true });
       if (withGeoloc) requestGeolocation();
       else setGeoStatus('denied');
-      setScreen('map');
+      // Land on whatever the opened URL asked for — the map is just the
+      // default when the app was opened on `/`.
+      const target = pendingNav.current;
+      pendingNav.current = null;
+      setDetailId(target?.detailId ?? null);
+      setScreen(target?.screen ?? 'map');
     },
     [requestGeolocation],
   );
