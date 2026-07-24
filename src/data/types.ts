@@ -60,7 +60,7 @@ export interface Station {
 
 /** A station enriched with position-relative info */
 export interface NearbyStation extends Station {
-  /** km from the user's position (road distance when known, crow-flies otherwise) */
+  /** road km from the user's position (measured when known, estimated from crow-flies otherwise) */
   distKm: number;
   /** km from the search area center (drives the radius filter) */
   searchKm: number;

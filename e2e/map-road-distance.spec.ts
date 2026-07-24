@@ -8,7 +8,8 @@ import { test, expect } from './fixtures'
 //   effective Rivegauche 1,850 × (1 + 24×6,5/100/50)  ≈ 1,908 €/L
 //   effective Rivedroite 1,870 × (1 +  7×6,5/100/50)  ≈ 1,887 €/L
 // → the road-aware reco is Rivedroite, 2 ct beyond the 1-ct tie margin.
-// When the matrix is unreachable, crow-flies takes over and Rivegauche wins.
+// When the matrix is unreachable, every station falls back to the same
+// crow-flies × CROW_ROAD_FACTOR estimate and Rivegauche wins.
 
 test.use({ seed: { sourceId: 'fra', onboarded: true, radius: 25 } })
 
@@ -91,8 +92,10 @@ test('crow-flies fallback when the road matrix is unreachable', async ({ page })
   await page.route('**/proxy/osrm/**', (route) => route.abort())
   await page.goto('/')
 
-  // Without road knowledge Rivegauche is closest AND sticker-cheapest
+  // Without road knowledge Rivegauche is closest AND sticker-cheapest. Its
+  // 2,2 km of straight line are shown as the ~2,9 km they really cost to
+  // drive — the same scale the matrix would have returned.
   await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
   await expect(page.getByText('Station · Rivegauche').first()).toBeVisible()
-  await expect(page.getByText('2,2 km').first()).toBeVisible()
+  await expect(page.getByText('2,9 km').first()).toBeVisible()
 })

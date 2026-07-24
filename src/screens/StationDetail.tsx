@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { C, mono } from '../theme';
 import { ALL_FUELS, MAIN_FUELS, FUEL_LABELS, type FuelId, type Station } from '../data/types';
-import { useApp, selectVisibleForFuel, effectivePrice, priceCents } from '../state/store';
+import { useApp, selectVisibleForFuel, effectivePrice, priceCents, roadReachOf } from '../state/store';
 import { fmtPrice, distLabel, agoLabel, durationLabel } from '../lib/format';
 import { haversineKm } from '../lib/geo';
 import { openStatus } from '../lib/hours';
@@ -72,9 +72,10 @@ export default function StationDetail() {
 
   if (!s) return null;
 
-  const reach = app.roadReach[s.id];
-  const distKm = reach?.distanceKm ?? haversineKm(app.userPos, { lat: s.lat, lng: s.lng });
-  const driveMin = Math.max(1, Math.round(reach ? reach.durationMin : distKm * 2));
+  const { distKm, driveMin } = roadReachOf(
+    haversineKm(app.userPos, { lat: s.lat, lng: s.lng }),
+    app.roadReach[s.id],
+  );
   const placeChip = isRoute
     ? `KM ${routeSt!.kmAlong} · ${routeSt!.detourMin === 0 ? 'sans détour' : `détour +${routeSt!.detourMin} min`}`
     : `${distLabel(distKm)} · ${durationLabel(driveMin)}`;

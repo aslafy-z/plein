@@ -4,6 +4,7 @@ import { FUEL_LABELS } from '../data/types';
 import {
   useApp,
   effectivePrice,
+  roadReachOf,
   sortFavoriteRows,
   type FavoriteStation,
   type FavSort,
@@ -33,7 +34,7 @@ export default function FavoritesScreen() {
   const rows = app.favorites.map((f) => {
     const live = app.stations.data.find((s) => s.id === f.id);
     const price = (live && effectivePrice(live, app.fuel)?.value) ?? null;
-    const distKm = app.roadReach[f.id]?.distanceKm ?? haversineKm(app.userPos, f);
+    const { distKm } = roadReachOf(haversineKm(app.userPos, f), app.roadReach[f.id]);
     return { f, live, price, distKm };
   });
 

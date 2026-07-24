@@ -58,9 +58,10 @@ const EUR_PER_DETOUR_MIN = 0.35;
 /** Minutes spent actually refuelling at a stop */
 const REFUEL_MIN = 4;
 /**
- * Stations covered by one road-distance matrix call, nearest first. Far
- * stations keep the crow-flies fallback — beyond that rank the road detail
- * can't flip the recommendation, and public OSRM caps table sizes anyway.
+ * Stations covered by one road-distance matrix call, nearest first. Public
+ * OSRM caps table sizes, so a dense zone always holds more stations than one
+ * call can measure; the rest fall back to the CROW_ROAD_FACTOR estimate,
+ * which keeps them on the same scale as the measured ones.
  */
 const ROAD_REACH_MAX = 60;
 
@@ -663,11 +664,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(t);
   }, [geoHold]);
 
-  // ── Road distances (single OSRM table call, crow-flies as fallback) ────────
+  // ── Road distances (single OSRM table call, estimate as fallback) ─────────
   // Crow-flies underestimates every trip (rivers, ring roads…) and distorts
   // the effective-price ranking. One matrix request fills real road km and
   // drive minutes for the stations nearest the user; everything else — and
-  // any network failure — keeps the crow-flies numbers.
+  // any network failure — falls back to the CROW_ROAD_FACTOR estimate.
   const [roadReach, setRoadReach] = useState<Record<string, ReachInfo>>({});
   const reachKey = useRef<string | null>(null);
   useEffect(() => {
@@ -1239,21 +1240,42 @@ export function effectivePrice(s: Station, fuel: FuelId): FuelPrice | undefined 
 }
 
 /**
- * Distance/time enrichment shared by the zone and map selectors: real road
- * numbers when the reach matrix knows the station, crow-flies (and the
- * ~60 km/h heuristic) otherwise. The radius filter always uses crow-flies
- * from the search center — it describes the search area, not a drive.
+ * Crow-flies → road distance. A real drive runs 20–40 % longer than the
+ * straight line (rivers, ring roads, one-ways). Only the ROAD_REACH_MAX
+ * nearest stations get measured road numbers; without this factor the others
+ * would be ranked — and shown — on a shorter scale than the measured ones and
+ * would steal a recommendation they don't deserve.
+ */
+export const CROW_ROAD_FACTOR = 1.3;
+/** ~40 km/h door-to-pump, for stations the reach matrix did not cover */
+const FALLBACK_MIN_PER_KM = 1.5;
+
+/**
+ * Distance & drive time to a station, ALWAYS on the road scale: measured
+ * numbers when the reach matrix covered it, an estimate derived from
+ * crow-flies otherwise. The two must never be mixed — the effective-price
+ * ranking compares them against each other.
+ */
+export function roadReachOf(
+  crowKm: number,
+  reach?: ReachInfo,
+): { distKm: number; driveMin: number } {
+  const distKm = reach?.distanceKm ?? crowKm * CROW_ROAD_FACTOR;
+  return {
+    distKm,
+    driveMin: Math.max(1, Math.round(reach ? reach.durationMin : distKm * FALLBACK_MIN_PER_KM)),
+  };
+}
+
+/**
+ * Distance/time enrichment shared by the zone and map selectors. The radius
+ * filter always uses crow-flies from the search center — it describes the
+ * search area, not a drive.
  */
 function enrichDistance(app: AppStore, s: Station): NearbyStation {
   const crowKm = haversineKm(app.userPos, { lat: s.lat, lng: s.lng });
   const searchKm = haversineKm(app.searchPos, { lat: s.lat, lng: s.lng });
-  const reach = app.roadReach[s.id];
-  return {
-    ...s,
-    distKm: reach?.distanceKm ?? crowKm,
-    searchKm,
-    driveMin: Math.max(1, Math.round(reach ? reach.durationMin : crowKm * 2)),
-  };
+  return { ...s, ...roadReachOf(crowKm, app.roadReach[s.id]), searchKm };
 }
 
 /** Stations passing the current filters, enriched with distance, for a given fuel */
@@ -1378,9 +1400,8 @@ export function sortFavoriteRows<T extends { price: number | null; distKm: numbe
 
 /**
  * Effective prices within this margin (cents) count as equal — feeds go
- * stale for days and distances fall back to crow-flies until the road
- * matrix lands, a cent of effective gap is noise, not a reason to drive
- * farther.
+ * stale for days and distances are only estimated until the road matrix
+ * lands, a cent of effective gap is noise, not a reason to drive farther.
  */
 const RECO_TIE_CENTS = 1;
 
