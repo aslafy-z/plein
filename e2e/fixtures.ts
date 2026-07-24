@@ -40,4 +40,21 @@ export async function gotoMap(page: import('@playwright/test').Page) {
   await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
 }
 
+/**
+ * Current zoom level, read from the tile URLs (…/{z}/{x}/{y}.png). Max across
+ * the tiles: during (and right after) an animation Leaflet still holds the
+ * outgoing level's tiles, so a settle-and-retry is the caller's job.
+ */
+export async function tileZoom(page: import('@playwright/test').Page) {
+  const srcs = await page
+    .locator('.leaflet-tile')
+    .evaluateAll((els) => els.map((el) => (el as HTMLImageElement).src))
+  const zooms = srcs
+    .map((s) => s.match(/\/(\d+)\/\d+\/\d+(?:@2x)?\.png/))
+    .filter((m): m is RegExpMatchArray => m != null)
+    .map((m) => Number(m[1]))
+  if (!zooms.length) throw new Error('no tiles on the map')
+  return Math.max(...zooms)
+}
+
 export { expect }

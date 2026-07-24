@@ -17,6 +17,28 @@ export function haversineKm(a: GeoPoint, b: GeoPoint): number {
   return 2 * R_EARTH_KM * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
+/**
+ * Smallest lat/lng box enclosing the circle of `radiusKm` around `center`.
+ * Framing the map on it turns the zoom into a direct reading of the radius.
+ */
+export function radiusBounds(
+  center: GeoPoint,
+  radiusKm: number,
+): { south: number; west: number; north: number; east: number } {
+  const dLat = ((radiusKm / R_EARTH_KM) * 180) / Math.PI;
+  // Meridians converge with latitude, so the same km spans more degrees of
+  // longitude the further north we are — and everything at the poles, hence
+  // the half-turn cap.
+  const cos = Math.cos((center.lat * Math.PI) / 180);
+  const dLng = Math.min(180, dLat / Math.max(cos, 1e-6));
+  return {
+    south: Math.max(-90, center.lat - dLat),
+    north: Math.min(90, center.lat + dLat),
+    west: center.lng - dLng,
+    east: center.lng + dLng,
+  };
+}
+
 /** Total length of a polyline in km */
 export function polylineLengthKm(line: GeoPoint[]): number {
   let d = 0;

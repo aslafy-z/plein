@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { C } from '../theme';
-import { haversineKm, type GeoPoint } from '../lib/geo';
+import { haversineKm, radiusBounds, type GeoPoint } from '../lib/geo';
 import { addDarkBasemap } from '../lib/tiles';
 import ShareIcon from './ShareIcon';
 import {
@@ -475,35 +475,33 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [app.stations.data, app.fuel, app.radius, app.brandSel, app.serviceTags, app.userPos, app.searchPos, app.focusStationId, app.roadReach, app.conso, app.tank, viewTick]);
 
-  // ── Auto-fit (to the radius zone, not the whole fetched area) until the user
-  // takes over — and never while a station is selected (don't yank the view).
+  // ── Auto-fit on the SEARCH CIRCLE itself until the user takes over — and
+  // never while a station is selected (don't yank the view). Framing the
+  // circle rather than the stations inside it makes the zoom answer « how far
+  // am I looking? »: searching a place now lands on the radius the user asked
+  // for, where fitting the stations zoomed straight past it whenever they
+  // clustered near the center, and an empty zone fell back to a fixed level
+  // whatever the radius said.
   // Own effect WITHOUT the view tick: re-fitting after every pan/zoom would
   // fight the user's gesture (and revert it whenever it lands inside the
-  // post-fit programmatic window). Also without roadReach/conso/tank: the
-  // fitted zone is selectVisible, filtered on the CROW-FLIES searchKm, so the
-  // road matrix landing cannot change it — and re-fitting on it would move the
-  // view under the user for nothing.
+  // post-fit programmatic window). The circle depends on nothing but the
+  // search area, so the station data landing (or the filters moving) no
+  // longer re-frames anything either.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     if (userInteractedRef.current || app.focusStationId) return;
     programmaticUntil.current = Date.now() + 700;
-    const zone = selectVisible(app);
-    const coords: L.LatLngExpression[] = [[app.searchPos.lat, app.searchPos.lng]];
-    zone.forEach((s) => coords.push([s.lat, s.lng]));
-    if (coords.length > 1) {
-      // The sheet overlays the map bottom — pad the fit so the zone lands
-      // in the VISIBLE part, above the collapsed sheet
-      map.fitBounds(L.latLngBounds(coords), {
-        paddingTopLeft: [40, 40],
-        paddingBottomRight: [40, 40 + insetRef.current],
-        maxZoom: 15,
-      });
-    } else {
-      map.setView([app.searchPos.lat, app.searchPos.lng], 13, { animate: false });
-    }
+    const box = radiusBounds(app.searchPos, app.radius);
+    // The sheet overlays the map bottom — pad the fit so the zone lands
+    // in the VISIBLE part, above the collapsed sheet
+    map.fitBounds(L.latLngBounds([box.south, box.west], [box.north, box.east]), {
+      paddingTopLeft: [40, 40],
+      paddingBottomRight: [40, 40 + insetRef.current],
+      maxZoom: 15,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [app.stations.data, app.fuel, app.radius, app.brandSel, app.serviceTags, app.userPos, app.searchPos, app.focusStationId, bottomInset]);
+  }, [app.searchPos, app.radius, app.focusStationId, bottomInset]);
 
   // ── Selecting a station (pin tap or sheet-list tap) pans the map onto it ──
   useEffect(() => {
