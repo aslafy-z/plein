@@ -23,7 +23,7 @@ import {
 import { IS_ANDROID, IS_IOS } from '../lib/env';
 import type { GeoPoint } from '../lib/geo';
 import { m } from '../paraglide/messages.js';
-import { cumulativeKm, haversineKm, nearestOnPolyline } from '../lib/geo';
+import { haversineKm } from '../lib/geo';
 import {
   ALL_FUELS,
   SERVICE_TAGS,
@@ -47,6 +47,7 @@ import { CROW_ROAD_FACTOR, effectiveLiterPrice, usableRangeKm } from '../lib/fue
 import {
   estimatePlanLegs,
   matrixPlanLegs,
+  projectCorridor,
   selectRouteCandidates,
   type PlanLegs,
   type RouteCandidate,
@@ -1059,29 +1060,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const bundle = getProviders(src);
         const route = await bundle.route.getRoute(from, to, { avoidMotorway, avoidToll, vehicle });
         const raw = await bundle.stations.getStationsAlong(route.polyline, 5);
-        const cum = cumulativeKm(route.polyline);
-        // Projections live on the route's own distance scale: a simplified
-        // polyline (the demo draws straight lines) measures shorter than the
-        // road distance it claims, and the autonomy limit is on road km.
-        const polyLen = cum[cum.length - 1] || 1;
-        const scale = route.distanceKm > 0 ? route.distanceKm / polyLen : 1;
         // The whole corridor is kept: the optimizer picks its own bounded,
         // geographically distributed candidate set (lib/routeCandidates) —
         // capping here on price destroyed coverage at the start of long routes.
-        const enriched: RouteStation[] = raw
-          .map((st) => {
-            const near = nearestOnPolyline({ lat: st.lat, lng: st.lng }, route.polyline, cum);
-            return {
-              ...st,
-              kmAlong: Math.round(near.alongKm * scale),
-              // Estimated access: crow-flies lifted to the road scale, ~40 km/h,
-              // there and back — display fallback until routed legs exist
-              detourMin:
-                near.distKm < 0.4
-                  ? 0
-                  : Math.max(1, Math.round(near.distKm * CROW_ROAD_FACTOR * 1.5 * 2)),
-            };
-          })
+        // This is also the ONE place the corridor gets projected (see
+        // projectCorridor): measuring is O(stations × polyline vertices), far
+        // too expensive for a selector that reruns on every store update.
+        const enriched: RouteStation[] = projectCorridor(route, raw)
           .filter((st) => st.kmAlong > 1 && st.kmAlong < route.distanceKm - 1)
           .sort((a, b) => a.kmAlong - b.kmAlong);
         return { route, stations: enriched };
@@ -2340,8 +2325,7 @@ export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
     .filter((c) => !planIds.has(c.station.id))
     .sort((a, b) => a.priceMilli - b.priceMilli || (a.station.id < b.station.id ? -1 : 1))
     .slice(0, MAX_ALTERNATIVES)
-    .map((c) => byId.get(c.station.id))
-    .filter((s): s is RouteStation => s != null)
+    .map((c) => c.station)
     .sort((a, b) => a.kmAlong - b.kmAlong);
 
   const picked = routeState.stations.filter((s) => app.plannedStops[s.id]);

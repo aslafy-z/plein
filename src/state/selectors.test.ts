@@ -542,8 +542,9 @@ describe('sortFavoriteRows', () => {
 })
 
 // ── Route analysis ───────────────────────────────────────────────────────────
-// Corridor stations carry REAL coordinates: the plan pipeline projects them
-// onto the route polyline itself — kmAlong/detourMin are display metadata.
+// Corridor stations carry REAL coordinates AND their projection: the app
+// measures kmAlong/offRouteKm once when the route loads (projectCorridor), and
+// the plan pipeline reads those fields rather than projecting again.
 const ROUTE_KM = 260
 const routeLine = () =>
   Array.from({ length: 53 }, (_, i) => north((ROUTE_KM / 52) * i))
@@ -558,6 +559,7 @@ const corridorStation = (
   lat: BASE.lat + kmAlong / 111,
   lng: BASE.lng + offKm / (111 * Math.cos((BASE.lat * Math.PI) / 180)),
   kmAlong,
+  offRouteKm: offKm,
   detourMin: Math.round(offKm * 4),
 })
 
