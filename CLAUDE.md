@@ -8,7 +8,8 @@ lives only in `messages/fr.json`.
 ## Language
 
 - **French is the source locale and lives in exactly one place**:
-  `messages/fr.json`. `messages/en.json` and `messages/es.json` translate it.
+  `messages/fr.json`. `messages/en.json`, `messages/es.json` and
+  `messages/ca.json` (Catalan, the language of Andorra) translate it.
   **No bare string literal reaches JSX** — labels, empty states, toasts,
   `aria-label`s, `placeholder`s, `title`s all come from a message function.
 - **Everything else is English**: type names, union literal values, object

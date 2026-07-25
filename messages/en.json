@@ -364,6 +364,7 @@
   "locale_name_fr": "French",
   "locale_name_en": "English",
   "locale_name_es": "Spanish",
+  "locale_name_ca": "Catalan",
   "settings_routes_section": "Routes",
   "settings_maps_site": "Site used by « Go there »",
   "settings_maps_site_hint": "the site the « Go there » button opens",

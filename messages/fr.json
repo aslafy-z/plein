@@ -364,6 +364,7 @@
   "locale_name_fr": "Français",
   "locale_name_en": "English",
   "locale_name_es": "Español",
+  "locale_name_ca": "Catalan",
   "settings_routes_section": "Itinéraires",
   "settings_maps_site": "Site pour « Y aller »",
   "settings_maps_site_hint": "site ouvert par le bouton « Y aller »",

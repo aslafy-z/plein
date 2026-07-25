@@ -34,6 +34,19 @@ test('the chosen language reaches the map chips and the sheet card', async ({ pa
   await expect(page.getByText('The cheapest near you')).toBeVisible()
 })
 
+test('Catalan — the language of Andorra — reaches every screen', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
+  await page.getByRole('button', { name: 'Réglages', exact: true }).click()
+  await page.getByRole('button', { name: 'Català', exact: true }).click()
+
+  await expect(page.getByText('Configuració', { exact: true }).first()).toBeVisible()
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ca')
+
+  await page.getByRole('button', { name: 'Mapa', exact: true }).click()
+  await expect(page.getByText('La més barata a prop teu')).toBeVisible()
+})
+
 test.describe('browser detection', () => {
   // No explicit choice in the blob, and a browser that asks for Spanish
   test.use({ locale: 'es-ES', seed: { sourceId: 'demo', onboarded: true, locale: null } })
