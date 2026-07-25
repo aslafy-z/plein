@@ -1,8 +1,10 @@
 import { useApp } from '../state/store';
+import { useIsDesktop } from '../lib/layout';
 import { C } from '../theme';
 
 export default function Toast() {
   const { toast } = useApp();
+  const desktop = useIsDesktop();
   if (!toast) return null;
   return (
     <div
@@ -11,7 +13,9 @@ export default function Toast() {
       style={{
         position: 'absolute',
         left: '50%',
-        bottom: 96,
+        // Clear of the tab bar on a phone; there is none on desktop, so the
+        // toast sits on the bottom edge where a desktop notice belongs
+        bottom: desktop ? 28 : 96,
         transform: 'translateX(-50%)',
         // Above every overlay: the fiche (1200) and the filters sheet (1100)
         // are full-screen, and a toast fired from either was drawn behind them.

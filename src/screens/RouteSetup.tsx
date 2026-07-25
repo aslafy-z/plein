@@ -3,6 +3,7 @@ import { C, ctaStyle, mono, stickyBarStyle } from '../theme';
 import { type GeocodeResult } from '../data/types';
 import { dayMonthLabel } from '../lib/format';
 import { fuelLabel, placeSublabel } from '../lib/labels';
+import { CONTENT_MAX_WIDTH, useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
 import { useApp, routeFromLabel, type RecentPlace } from '../state/store';
 
@@ -10,6 +11,7 @@ type Field = 'from' | 'to';
 
 export default function RouteSetup() {
   const app = useApp();
+  const desktop = useIsDesktop();
   const { toText, fuel, tank } = app;
 
   const [focused, setFocused] = useState<Field | null>(null);
@@ -135,13 +137,18 @@ export default function RouteSetup() {
         minHeight: 0,
         overflow: 'auto',
         boxSizing: 'border-box',
+        // A form, so a centered reading column rather than full bleed — two
+        // address fields spread over 1400px are harder to fill, not easier
+        maxWidth: CONTENT_MAX_WIDTH,
+        width: '100%',
+        margin: '0 auto',
         // Column layout so the CTA can be pushed to the bottom on a short form
         // (margin-top: auto) and stick there once the form scrolls
         display: 'flex',
         flexDirection: 'column',
       }}
     >
-      <div style={{ padding: '16px 20px 4px' }}>
+      <div style={{ padding: desktop ? '26px 32px 4px' : '16px 20px 4px' }}>
         <div style={{ fontSize: 24, fontWeight: 800, color: C.ink }}>{m.route_setup_title()}</div>
         <div style={{ fontSize: 13, color: C.mut, marginTop: 4 }}>{m.route_setup_subtitle()}</div>
 
@@ -341,7 +348,13 @@ export default function RouteSetup() {
       {/* CTA — sticky like the fiche station's « Y aller »: the primary action
           stays reachable while the form scrolls. The NavBar below already
           carries the safe-area inset, so this bar doesn't add its own. */}
-      <div style={stickyBarStyle(false)}>
+      <div
+        style={{
+          ...stickyBarStyle(false),
+          // Line the CTA up with the form's own gutter, which is wider here
+          ...(desktop ? { padding: '14px 32px 26px' } : null),
+        }}
+      >
         <button onClick={() => app.startRoute()} disabled={!canGo} style={ctaStyle(canGo)}>
           {m.route_compare_cta()}
         </button>

@@ -3,12 +3,14 @@ import { C, ctaStyle, mono } from '../theme';
 import { ALL_FUELS, SERVICE_TAGS } from '../data/types';
 import { useApp, selectVisible, selectZoneBrandCounts } from '../state/store';
 import { brandGroupLabel, fuelLabel, serviceTagLabel } from '../lib/labels';
+import { useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
 import {
   brandIconSrc,
   INDEPENDENT_BRAND_ID,
   KNOWN_BRAND_GROUPS,
 } from '../lib/brandIcons';
+import Dialog from '../components/Dialog';
 
 const sectionLabel = {
   fontSize: 12,
@@ -20,11 +22,14 @@ const sectionLabel = {
 
 export default function FiltersSheet() {
   const app = useApp();
+  const desktop = useIsDesktop();
   const nbVisible = selectVisible(app).length;
   const knowsBrands = app.stations.data.some((s) => s.brand != null);
   // The brand list is collapsed by default so a brand-rich zone doesn't
   // stretch the sheet — the header always shows what's selected.
   const [brandsOpen, setBrandsOpen] = useState(false);
+
+  const close = () => app.setFiltersOpen(false);
 
   // Brand groups present in the zone with their station count, most frequent
   // first; brandless stations count as the « independent » group, pinned last
@@ -50,10 +55,320 @@ export default function FiltersSheet() {
           ? ` ${m.filters_brands_more({ count: app.brandSel.length - 2 })}`
           : '');
 
+  // The filters themselves — identical in the phone's bottom sheet and in the
+  // desktop dialog; only the frame around them changes.
+  const body = (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span style={{ fontSize: 20, fontWeight: 800, color: C.ink, flex: 1 }}>{m.filters_title()}</span>
+        <button
+          onClick={() => app.resetFilters()}
+          style={{ fontSize: 13, fontWeight: 700, color: C.accent }}
+        >
+          {m.filters_reset()}
+        </button>
+        {/* A sheet is dismissed by its handle, a dialog by a cross */}
+        {desktop && (
+          <button
+            onClick={close}
+            aria-label={m.filters_close_aria()}
+            title={m.filters_close_aria()}
+            style={{ color: C.mut, fontSize: 16, fontWeight: 700, padding: '0 2px' }}
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
+      {/* Carburant */}
+      <div>
+        <div style={{ ...sectionLabel, marginBottom: 10 }}>{m.filters_fuel_section()}</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {ALL_FUELS.map((f) => {
+            const on = app.fuel === f;
+            return (
+              <button
+                key={f}
+                onClick={() => app.setFuel(f)}
+                style={{
+                  background: on ? C.accent : 'transparent',
+                  color: on ? C.onAccent : C.body,
+                  fontSize: 13.5,
+                  fontWeight: 700,
+                  padding: '9px 15px',
+                  borderRadius: 18,
+                  border: `1px solid ${on ? C.accent : C.border12}`,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {fuelLabel(f)}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Rayon */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
+          <span style={{ ...sectionLabel, flex: 1 }}>{m.filters_radius_section()}</span>
+          <span style={{ font: mono(700, 15), color: C.ink }}>{app.radius} km</span>
+        </div>
+        <input
+          type="range"
+          min={1}
+          max={25}
+          step={1}
+          value={app.radius}
+          onChange={(e) => app.setRadius(+e.target.value)}
+          style={{ width: '100%', cursor: 'pointer' }}
+        />
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: 11.5,
+            color: C.faint,
+            marginTop: 2,
+          }}
+        >
+          <span>{m.unit_kilometres({ km: 1 })}</span>
+          <span>{m.unit_kilometres({ km: 25 })}</span>
+        </div>
+      </div>
+
+      {/* Distributeurs — accordion, collapsed by default */}
+      <div>
+        {knowsBrands ? (
+          <>
+            <button
+              onClick={() => setBrandsOpen((o) => !o)}
+              aria-expanded={brandsOpen}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}
+            >
+              <span style={sectionLabel}>{m.filters_brands_section()}</span>
+              <span
+                style={{
+                  flex: 1,
+                  textAlign: 'right',
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  color: app.brandSel.length ? C.accent : C.faint,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {brandSummary}
+              </span>
+              <span
+                aria-hidden
+                style={{
+                  color: C.mut,
+                  fontSize: 12,
+                  transform: brandsOpen ? 'rotate(180deg)' : 'none',
+                  transition: 'transform .15s',
+                }}
+              >
+                ▾
+              </span>
+            </button>
+            {brandsOpen && (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ fontSize: 12, color: C.faint, marginBottom: 6 }}>
+                  {m.filters_brands_hint()}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {zoneBrands.map(([brand, count]) => {
+                    const on = app.brandSel.includes(brand);
+                    const icon = brandIconSrc(brand);
+                    return (
+                      <button
+                        key={brand}
+                        onClick={() => app.toggleBrand(brand)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 12,
+                          padding: '7px 2px',
+                          width: '100%',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: 20,
+                            height: 20,
+                            borderRadius: 6,
+                            background: on ? C.accent : 'transparent',
+                            border: `2px solid ${on ? C.accent : 'rgba(255,255,255,.25)'}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: C.onAccent,
+                            fontSize: 12,
+                            fontWeight: 800,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {on ? '✓' : ''}
+                        </div>
+                        {icon && (
+                          <img
+                            src={icon}
+                            alt=""
+                            width={18}
+                            height={18}
+                            style={{
+                              objectFit: 'contain',
+                              background: '#fff',
+                              borderRadius: 5,
+                              padding: 1,
+                              flexShrink: 0,
+                            }}
+                          />
+                        )}
+                        <span
+                          style={{
+                            fontSize: 15,
+                            color: C.ink,
+                            fontWeight: 600,
+                            flex: 1,
+                            textAlign: 'left',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {brandGroupLabel(brand)}
+                        </span>
+                        <span style={{ fontSize: 12, color: C.faint }}>{count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {outOfZone.length > 0 && (
+                  <>
+                    <div style={{ fontSize: 11.5, color: C.faint, margin: '10px 0 8px' }}>
+                      {m.filters_brands_out_of_zone()}
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+                      {outOfZone.map((brand) => {
+                        const on = app.brandSel.includes(brand);
+                        const icon = brandIconSrc(brand);
+                        return (
+                          <button
+                            key={brand}
+                            onClick={() => app.toggleBrand(brand)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              background: on ? C.accentSoft14 : 'transparent',
+                              color: on ? C.accent : C.body,
+                              fontSize: 12.5,
+                              fontWeight: 600,
+                              padding: '6px 11px',
+                              borderRadius: 15,
+                              border: `1px solid ${on ? C.accentBorderStrong : C.border12}`,
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {icon && (
+                              <img
+                                src={icon}
+                                alt=""
+                                width={14}
+                                height={14}
+                                style={{
+                                  objectFit: 'contain',
+                                  background: '#fff',
+                                  borderRadius: 4,
+                                  padding: 1,
+                                }}
+                              />
+                            )}
+                            {brandGroupLabel(brand)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div style={{ ...sectionLabel, marginBottom: 6 }}>{m.filters_brands_section()}</div>
+            <div style={{ fontSize: 12, color: C.faint }}>{m.filters_brands_unknown()}</div>
+          </>
+        )}
+      </div>
+
+      {/* Services */}
+      <div>
+        <div style={{ ...sectionLabel, marginBottom: 10 }}>{m.filters_services_section()}</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {SERVICE_TAGS.map((t) => {
+            const on = !!app.serviceTags[t];
+            return (
+              <button
+                key={t}
+                onClick={() => app.toggleServiceTag(t)}
+                style={{
+                  background: on ? C.accent : 'transparent',
+                  color: on ? C.onAccent : C.body,
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  padding: '9px 15px',
+                  borderRadius: 18,
+                  border: `1px solid ${on ? C.accent : C.border12}`,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {t === 'open24h' ? m.service_open24h_filter() : serviceTagLabel(t)}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <button
+        onClick={close}
+        style={{ ...ctaStyle(), boxShadow: '0 6px 16px rgba(61,220,132,.25)' }}
+      >
+        {m.filters_apply({ count: nbVisible })}
+      </button>
+    </>
+  );
+
+  if (desktop) {
+    return (
+      <Dialog
+        onClose={close}
+        label={m.filters_title()}
+        scrimLabel={m.filters_close_overlay_aria()}
+        maxWidth={540}
+        zIndex={1100}
+      >
+        <div
+          style={{
+            padding: '22px 24px 24px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 18,
+          }}
+        >
+          {body}
+        </div>
+      </Dialog>
+    );
+  }
+
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 1100 }}>
       <button
-        onClick={() => app.setFiltersOpen(false)}
+        onClick={close}
         aria-label={m.filters_close_overlay_aria()}
         style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.55)', width: '100%' }}
       />
@@ -75,7 +390,7 @@ export default function FiltersSheet() {
         }}
       >
         <button
-          onClick={() => app.setFiltersOpen(false)}
+          onClick={close}
           aria-label={m.filters_close_aria()}
           style={{
             width: 36,
@@ -85,276 +400,7 @@ export default function FiltersSheet() {
             margin: '0 auto',
           }}
         />
-
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <span style={{ fontSize: 20, fontWeight: 800, color: C.ink, flex: 1 }}>{m.filters_title()}</span>
-          <button
-            onClick={() => app.resetFilters()}
-            style={{ fontSize: 13, fontWeight: 700, color: C.accent }}
-          >
-            {m.filters_reset()}
-          </button>
-        </div>
-
-        {/* Carburant */}
-        <div>
-          <div style={{ ...sectionLabel, marginBottom: 10 }}>{m.filters_fuel_section()}</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {ALL_FUELS.map((f) => {
-              const on = app.fuel === f;
-              return (
-                <button
-                  key={f}
-                  onClick={() => app.setFuel(f)}
-                  style={{
-                    background: on ? C.accent : 'transparent',
-                    color: on ? C.onAccent : C.body,
-                    fontSize: 13.5,
-                    fontWeight: 700,
-                    padding: '9px 15px',
-                    borderRadius: 18,
-                    border: `1px solid ${on ? C.accent : C.border12}`,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {fuelLabel(f)}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Rayon */}
-        <div>
-          <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
-            <span style={{ ...sectionLabel, flex: 1 }}>{m.filters_radius_section()}</span>
-            <span style={{ font: mono(700, 15), color: C.ink }}>{app.radius} km</span>
-          </div>
-          <input
-            type="range"
-            min={1}
-            max={25}
-            step={1}
-            value={app.radius}
-            onChange={(e) => app.setRadius(+e.target.value)}
-            style={{ width: '100%', cursor: 'pointer' }}
-          />
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: 11.5,
-              color: C.faint,
-              marginTop: 2,
-            }}
-          >
-            <span>{m.unit_kilometres({ km: 1 })}</span>
-            <span>{m.unit_kilometres({ km: 25 })}</span>
-          </div>
-        </div>
-
-        {/* Distributeurs — accordion, collapsed by default */}
-        <div>
-          {knowsBrands ? (
-            <>
-              <button
-                onClick={() => setBrandsOpen((o) => !o)}
-                aria-expanded={brandsOpen}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}
-              >
-                <span style={sectionLabel}>{m.filters_brands_section()}</span>
-                <span
-                  style={{
-                    flex: 1,
-                    textAlign: 'right',
-                    fontSize: 12.5,
-                    fontWeight: 600,
-                    color: app.brandSel.length ? C.accent : C.faint,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {brandSummary}
-                </span>
-                <span
-                  aria-hidden
-                  style={{
-                    color: C.mut,
-                    fontSize: 12,
-                    transform: brandsOpen ? 'rotate(180deg)' : 'none',
-                    transition: 'transform .15s',
-                  }}
-                >
-                  ▾
-                </span>
-              </button>
-              {brandsOpen && (
-                <div style={{ marginTop: 8 }}>
-                  <div style={{ fontSize: 12, color: C.faint, marginBottom: 6 }}>
-                    {m.filters_brands_hint()}
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {zoneBrands.map(([brand, count]) => {
-                      const on = app.brandSel.includes(brand);
-                      const icon = brandIconSrc(brand);
-                      return (
-                        <button
-                          key={brand}
-                          onClick={() => app.toggleBrand(brand)}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 12,
-                            padding: '7px 2px',
-                            width: '100%',
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: 20,
-                              height: 20,
-                              borderRadius: 6,
-                              background: on ? C.accent : 'transparent',
-                              border: `2px solid ${on ? C.accent : 'rgba(255,255,255,.25)'}`,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              color: C.onAccent,
-                              fontSize: 12,
-                              fontWeight: 800,
-                              flexShrink: 0,
-                            }}
-                          >
-                            {on ? '✓' : ''}
-                          </div>
-                          {icon && (
-                            <img
-                              src={icon}
-                              alt=""
-                              width={18}
-                              height={18}
-                              style={{
-                                objectFit: 'contain',
-                                background: '#fff',
-                                borderRadius: 5,
-                                padding: 1,
-                                flexShrink: 0,
-                              }}
-                            />
-                          )}
-                          <span
-                            style={{
-                              fontSize: 15,
-                              color: C.ink,
-                              fontWeight: 600,
-                              flex: 1,
-                              textAlign: 'left',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            {brandGroupLabel(brand)}
-                          </span>
-                          <span style={{ fontSize: 12, color: C.faint }}>{count}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {outOfZone.length > 0 && (
-                    <>
-                      <div style={{ fontSize: 11.5, color: C.faint, margin: '10px 0 8px' }}>
-                        {m.filters_brands_out_of_zone()}
-                      </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-                        {outOfZone.map((brand) => {
-                          const on = app.brandSel.includes(brand);
-                          const icon = brandIconSrc(brand);
-                          return (
-                            <button
-                              key={brand}
-                              onClick={() => app.toggleBrand(brand)}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 6,
-                                background: on ? C.accentSoft14 : 'transparent',
-                                color: on ? C.accent : C.body,
-                                fontSize: 12.5,
-                                fontWeight: 600,
-                                padding: '6px 11px',
-                                borderRadius: 15,
-                                border: `1px solid ${on ? C.accentBorderStrong : C.border12}`,
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {icon && (
-                                <img
-                                  src={icon}
-                                  alt=""
-                                  width={14}
-                                  height={14}
-                                  style={{
-                                    objectFit: 'contain',
-                                    background: '#fff',
-                                    borderRadius: 4,
-                                    padding: 1,
-                                  }}
-                                />
-                              )}
-                              {brandGroupLabel(brand)}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              <div style={{ ...sectionLabel, marginBottom: 6 }}>{m.filters_brands_section()}</div>
-              <div style={{ fontSize: 12, color: C.faint }}>{m.filters_brands_unknown()}</div>
-            </>
-          )}
-        </div>
-
-        {/* Services */}
-        <div>
-          <div style={{ ...sectionLabel, marginBottom: 10 }}>{m.filters_services_section()}</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {SERVICE_TAGS.map((t) => {
-              const on = !!app.serviceTags[t];
-              return (
-                <button
-                  key={t}
-                  onClick={() => app.toggleServiceTag(t)}
-                  style={{
-                    background: on ? C.accent : 'transparent',
-                    color: on ? C.onAccent : C.body,
-                    fontSize: 13.5,
-                    fontWeight: 600,
-                    padding: '9px 15px',
-                    borderRadius: 18,
-                    border: `1px solid ${on ? C.accent : C.border12}`,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {t === 'open24h' ? m.service_open24h_filter() : serviceTagLabel(t)}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <button
-          onClick={() => app.setFiltersOpen(false)}
-          style={{ ...ctaStyle(), boxShadow: '0 6px 16px rgba(61,220,132,.25)' }}
-        >
-          {m.filters_apply({ count: nbVisible })}
-        </button>
+        {body}
       </div>
     </div>
   );

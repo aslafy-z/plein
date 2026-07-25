@@ -2,14 +2,23 @@ import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { C } from '../theme';
 import { SERVICE_TAGS } from '../data/types';
 import { fuelLabel } from '../lib/labels';
+import { useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
 import { useApp, selectVisible } from '../state/store';
 import MapCanvas from '../components/MapCanvas';
 import MapSheet from '../components/MapSheet';
+import ZonePanel from '../components/ZonePanel';
 import PlaceSearch from '../components/PlaceSearch';
+
+/** The map's floating controls never grow past this: a search field dragged
+    across a window is unreadable, and the width belongs to the map. Applies
+    from the first pixel a phone doesn't need it — a tablet stretched the bar
+    just as badly as a desktop did. */
+const OVERLAY_MAX_WIDTH = 460;
 
 export default function MapScreen() {
   const app = useApp();
+  const desktop = useIsDesktop();
 
   const visible = selectVisible(app);
   const nbVisible = visible.length;
@@ -23,6 +32,8 @@ export default function MapScreen() {
   // times (a sheet growing/shrinking must never resize Leaflet — that moves
   // the view under the user). Only the controls riding the map's bottom edge
   // (recenter button, pills, attribution) slide up with the collapsed sheet.
+  // On desktop the zone sits BESIDE the map instead, so there is no inset at
+  // all and Leaflet's own size is already the right one.
   const stageRef = useRef<HTMLDivElement>(null);
   const [stageH, setStageH] = useState(0);
   const [sheetInset, setSheetInset] = useState(0);
@@ -50,14 +61,31 @@ export default function MapScreen() {
   };
 
   return (
-    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+    <div
+      style={{
+        flex: 1,
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: desktop ? 'row' : 'column',
+      }}
+    >
+      {/* Desktop: the leading station card and the zone list, docked, always open */}
+      {desktop && <ZonePanel />}
+
       <div
         ref={stageRef}
-        style={{ position: 'relative', flex: 1, minHeight: 0, overflow: 'hidden', background: C.mapBg }}
+        style={{
+          position: 'relative',
+          flex: 1,
+          minWidth: 0,
+          minHeight: 0,
+          overflow: 'hidden',
+          background: C.mapBg,
+        }}
       >
-        {/* Map area — always the full stage; the sheet overlays it */}
+        {/* Map area — always the full stage; on a phone the sheet overlays it */}
         <div style={{ position: 'absolute', inset: 0 }}>
-          <MapCanvas bottomInset={sheetInset} />
+          <MapCanvas bottomInset={desktop ? 0 : sheetInset} />
 
           {/* Top overlay controls */}
           <div
@@ -66,6 +94,7 @@ export default function MapScreen() {
               left: 16,
               right: 16,
               top: 14,
+              maxWidth: OVERLAY_MAX_WIDTH,
               zIndex: 1000,
               display: 'flex',
               flexDirection: 'column',
@@ -78,6 +107,7 @@ export default function MapScreen() {
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 onClick={() => app.cycleFuel()}
+                title={m.map_cycle_fuel_title()}
                 style={{
                   ...chipBase,
                   background: C.accent,
@@ -89,6 +119,7 @@ export default function MapScreen() {
               </button>
               <button
                 onClick={() => app.setFiltersOpen(true)}
+                title={m.filters_title()}
                 style={{
                   ...chipBase,
                   background: C.surface2,
@@ -102,6 +133,7 @@ export default function MapScreen() {
               <button
                 onClick={() => app.setFiltersOpen(true)}
                 aria-label={m.map_filters_aria({ count: nbVisible })}
+                title={m.filters_title()}
                 style={{
                   ...chipBase,
                   display: 'flex',
@@ -161,6 +193,7 @@ export default function MapScreen() {
                 <button
                   onClick={() => app.dismissInstallBanner()}
                   aria-label={m.map_install_dismiss()}
+                  title={m.map_install_dismiss()}
                   style={{
                     ...chipBase,
                     fontSize: 12,
@@ -178,8 +211,9 @@ export default function MapScreen() {
           </div>
         </div>
 
-        {/* List open → the visible map dims and a tap on it closes the sheet */}
-        {sheetOpen && (
+        {/* List open → the visible map dims and a tap on it closes the sheet.
+            Phone only: the docked panel never covers the map. */}
+        {!desktop && sheetOpen && (
           <button
             onClick={() => setSheetOpen(false)}
             aria-label={m.map_close_list()}
@@ -195,12 +229,14 @@ export default function MapScreen() {
         )}
 
         {/* Bottom sheet — swipe it (card, list at top, or handle) or tap the handle */}
-        <MapSheet
-          stageH={stageH}
-          onCollapsedHeight={onCollapsedHeight}
-          expanded={sheetOpen}
-          onExpandedChange={setSheetOpen}
-        />
+        {!desktop && (
+          <MapSheet
+            stageH={stageH}
+            onCollapsedHeight={onCollapsedHeight}
+            expanded={sheetOpen}
+            onExpandedChange={setSheetOpen}
+          />
+        )}
       </div>
     </div>
   );
