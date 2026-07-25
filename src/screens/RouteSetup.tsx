@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { C, ctaStyle, mono, stickyBarStyle } from '../theme';
 import { type GeocodeResult } from '../data/types';
+import { type GeoPoint } from '../lib/geo';
 import { dayMonthLabel } from '../lib/format';
 import { fuelLabel, placeSublabel } from '../lib/labels';
 import { m } from '../paraglide/messages.js';
@@ -13,6 +14,14 @@ export default function RouteSetup() {
   const { toText, fuel, tank } = app;
 
   const [focused, setFocused] = useState<Field | null>(null);
+  /**
+   * « Ma position » is a value, not a placeholder — the departure field says
+   * where the route starts from. Its ✕ therefore frees the field for typing
+   * rather than changing anything: the departure only really moves once
+   * another place is typed or picked, and a field left empty says « Ma
+   * position » again as soon as it loses the focus.
+   */
+  const [fromCleared, setFromCleared] = useState(false);
   const [suggestions, setSuggestions] = useState<GeocodeResult[]>([]);
   const [searching, setSearching] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -78,24 +87,30 @@ export default function RouteSetup() {
     if (field === 'from') {
       if (text.trim()) app.setFrom(text);
       else app.useCurrentPositionAsStart();
+      // …while the field itself stays empty: deleting the last character must
+      // not put « Ma position » back under the cursor.
+      setFromCleared(!text.trim());
     } else app.setTo(text);
     setFocused(field);
     runSearch(text);
   };
 
-  const pick = (field: Field, r: GeocodeResult) => {
+  const pick = (field: Field, r: { label: string; point: GeoPoint }) => {
     if (field === 'from') app.setFrom(r.label, r.point);
     else app.setTo(r.label, r.point);
     cancelSearch();
     setFocused(null);
+    setFromCleared(false);
   };
 
-  // Emptying a field from its ✕ means the same as emptying it by hand: the
-  // departure falls back to « wherever I am », the destination to nothing. The
-  // input keeps the focus so the next destination can be typed straight away.
+  // Emptying a field from its ✕: the destination goes back to nothing, the
+  // departure back to « Ma position » — shown as an empty field so another
+  // departure can be typed straight away, the input keeping the focus.
   const clear = (field: Field) => {
-    if (field === 'from') app.useCurrentPositionAsStart();
-    else app.setTo('');
+    if (field === 'from') {
+      app.useCurrentPositionAsStart();
+      setFromCleared(true);
+    } else app.setTo('');
     cancelSearch();
     setFocused(field);
     (field === 'from' ? fromInputRef : toInputRef).current?.focus();
@@ -248,14 +263,16 @@ export default function RouteSetup() {
             <input
               ref={fromInputRef}
               type="text"
-              value={routeFromLabel(app)}
+              value={fromCleared ? '' : routeFromLabel(app)}
               placeholder={m.route_from_placeholder()}
               onFocus={() => setFocused('from')}
+              // Left empty, the field says again what the route really departs
+              // from — the user's position.
+              onBlur={() => setFromCleared(false)}
               onChange={(e) => onChange('from', e.target.value)}
               style={inputStyle}
             />
-            {/* « Ma position » is the empty state, not something to clear */}
-            {controls('from', !app.fromIsCurrentPosition)}
+            {controls('from', !fromCleared && routeFromLabel(app).length > 0)}
           </div>
           {dropdown('from')}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0' }}>
@@ -292,7 +309,10 @@ export default function RouteSetup() {
             {app.recents.map((r, i) => (
               <button
                 key={`${r.label}-${i}`}
-                onClick={() => app.setTo(r.label, r.point)}
+                // A recent place fills the field being edited — the departure
+                // when that is what the user just tapped into, the destination
+                // otherwise (which is where the screen starts).
+                onClick={() => pick(focused ?? 'to', r)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',

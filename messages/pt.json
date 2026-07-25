@@ -246,7 +246,7 @@
   "route_from_current_position": "A minha posição",
   "route_from_placeholder": "Partida",
   "route_to_placeholder": "Destino",
-  "route_from_clear_aria": "Voltar a partir da minha posição",
+  "route_from_clear_aria": "Apagar a partida",
   "route_to_clear_aria": "Apagar o destino",
   "route_search_in_progress": "A procurar…",
   "route_recents": "Recentes",

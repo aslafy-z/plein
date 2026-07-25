@@ -3,6 +3,7 @@ import { ALL_FUELS } from '../data/types'
 import {
   nextFuelAfter,
   pushRecentIn,
+  pushTripIn,
   toggleBrandIn,
   toggleFavoriteIn,
   type FavoriteStation,
@@ -77,6 +78,23 @@ describe('pushRecentIn', () => {
   })
 })
 
+describe('pushTripIn', () => {
+  it('puts the destination on top and keeps the departure right under it', () => {
+    const next = pushTripIn([], [trip('Albi'), trip('Pau')], true)
+    expect(next.map((r) => r.label)).toEqual(['Pau', 'Albi'])
+  })
+
+  it('drops the default suggestions once, not once per endpoint', () => {
+    const next = pushTripIn([trip('Toulouse')], [trip('Albi'), trip('Pau')], false)
+    expect(next.map((r) => r.label)).toEqual(['Pau', 'Albi'])
+  })
+
+  it('records a trip departing from the user position as its destination alone', () => {
+    const next = pushTripIn([trip('Albi')], [trip('Pau')], true)
+    expect(next.map((r) => r.label)).toEqual(['Pau', 'Albi'])
+  })
+})
+
 // ── Purity ───────────────────────────────────────────────────────────────────
 // These four feed `useState` updaters, which React may invoke more than once
 // for a single call — StrictMode does it deliberately, and the same guarantee
@@ -99,6 +117,7 @@ describe('state updaters stay pure', () => {
       nextFuelAfter('diesel'),
       toggleBrandIn(['TotalEnergies'], 'Leclerc'),
       pushRecentIn([trip('Albi')], trip('Pau'), true).map((r) => r.label),
+      pushTripIn([trip('Albi')], [trip('Pau'), trip('Foix')], true).map((r) => r.label),
     ]
 
     // A double invocation is indistinguishable from a single one

@@ -1,14 +1,15 @@
 import { test, expect, gotoMap } from './fixtures'
 
 // The route setup fields behave like the map's place search: a spinner from the
-// first keystroke until the geocoder answers, and a ✕ that empties the field —
-// the departure falling back to « Ma position », the destination to nothing.
+// first keystroke until the geocoder answers, and a ✕ that empties the field.
+// « Ma position » is a value the departure carries, so its ✕ frees the field
+// for typing — an empty departure still means « wherever I am ».
 
 test.use({
   seed: { sourceId: 'fra', onboarded: true, lastPos: { lat: 43.6047, lng: 1.4442 } },
 })
 
-test('les champs du trajet montrent la recherche en cours et s\'effacent', async ({ page }) => {
+test('the route fields show the search in progress and clear themselves', async ({ page }) => {
   await page.route('**/proxy/fra/**', (route) =>
     route.fulfill({
       json: {
@@ -53,10 +54,13 @@ test('les champs du trajet montrent la recherche en cours et s\'effacent', async
   const departure = page.locator('input[placeholder="Départ"]')
   const destination = page.locator('input[placeholder="Destination"]')
   const clearDestination = page.getByRole('button', { name: 'Effacer la destination' })
-  const clearDeparture = page.getByRole('button', { name: 'Repartir de ma position' })
+  const clearDeparture = page.getByRole('button', { name: 'Effacer le départ' })
 
   await expect(spinner).toBeHidden()
   await expect(clearDestination).toBeHidden()
+  // « Ma position » is a value the field carries, so it has its ✕ right away
+  await expect(departure).toHaveValue('Ma position')
+  await expect(clearDeparture).toBeVisible()
 
   // ── Destination: spinner while the geocoder answers, then the ✕ ──
   await destination.fill('Bordeaux')
@@ -72,14 +76,19 @@ test('les champs du trajet montrent la recherche en cours et s\'effacent', async
   // Clearing drops the pending search with the suggestions
   await expect(page.getByText('Bordeaux centre')).toBeHidden()
 
-  // ── Departure: « Ma position » is the empty state, so no ✕ until typing ──
-  await expect(departure).toHaveValue('Ma position')
+  // ── Departure: its ✕ frees the field for typing ──
+  await clearDeparture.click()
+  await expect(departure).toHaveValue('')
   await expect(clearDeparture).toBeHidden()
 
   await departure.fill('Bordeaux')
   await expect(clearDeparture).toBeVisible()
 
-  await clearDeparture.click()
+  // Emptied by hand, the field stays empty under the cursor…
+  await departure.fill('')
+  await expect(departure).toHaveValue('')
+  // …and says « Ma position » again once it loses the focus, which is where
+  // the route really departs from.
+  await destination.click()
   await expect(departure).toHaveValue('Ma position')
-  await expect(clearDeparture).toBeHidden()
 })
