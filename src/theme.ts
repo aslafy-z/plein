@@ -1,5 +1,7 @@
 // Plein. design tokens — from the Claude Design prototype (« Cap nuit » dark system)
 
+import type { CSSProperties } from 'react';
+
 export const C = {
   bg: '#101214', // app background
   bgDeep: '#0d0f11', // page backdrop (desktop)
@@ -44,3 +46,35 @@ export const FONT = {
 /** Price in mono accent, e.g. font: mono(700, 22) */
 export const mono = (weight: number, sizePx: number) =>
   `${weight} ${sizePx}px ${FONT.mono}`;
+
+/**
+ * Primary CTA button — one single look across the app (onboarding, filtres,
+ * itinéraire, fiche station). Spread it and override only what a screen really
+ * needs (a shadow, a margin), so the type never drifts screen to screen.
+ */
+export const ctaStyle = (enabled = true): CSSProperties => ({
+  width: '100%',
+  background: enabled ? C.accent : C.surface3,
+  color: enabled ? C.onAccent : C.faint,
+  fontSize: 15.5,
+  fontWeight: 800,
+  borderRadius: 26,
+  padding: '16px 0',
+  textAlign: 'center',
+  cursor: enabled ? 'pointer' : 'default',
+});
+
+/**
+ * Bar holding a sticky CTA at the bottom of a scrolling screen: it stays
+ * reachable on a long page and sits on the bottom edge on a short one
+ * (margin-top: auto). The gradient keeps content readable as it passes under.
+ */
+export const stickyBarStyle = (safeArea = true): CSSProperties => ({
+  position: 'sticky',
+  bottom: 0,
+  marginTop: 'auto',
+  padding: safeArea
+    ? '14px 20px calc(18px + env(safe-area-inset-bottom, 0px))'
+    : '14px 20px 16px',
+  background: `linear-gradient(to top, ${C.bg} 62%, ${C.bg}00)`,
+});

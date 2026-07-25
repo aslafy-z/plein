@@ -1,5 +1,5 @@
 import { useApp } from '../state/store';
-import { C, mono } from '../theme';
+import { C, ctaStyle, mono } from '../theme';
 import { LogoLockup } from '../components/Logo';
 
 const STEPS: { n: string; title: string; sub: string }[] = [
@@ -108,16 +108,7 @@ export default function Onboarding() {
 
         <button
           onClick={() => app.finishOnboarding(true)}
-          style={{
-            width: '100%',
-            background: C.accent,
-            color: C.onAccent,
-            fontSize: 15.5,
-            fontWeight: 800,
-            borderRadius: 26,
-            padding: '16px 0',
-            textAlign: 'center',
-          }}
+          style={ctaStyle()}
         >
           Commencer
         </button>

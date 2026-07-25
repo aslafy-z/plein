@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { C, mono } from '../theme';
+import { C, ctaStyle, mono } from '../theme';
 import { ALL_FUELS, FUEL_LABELS, SERVICE_TAGS } from '../data/types';
 import { useApp, selectVisible, selectZoneBrandCounts } from '../state/store';
 import {
@@ -349,17 +349,7 @@ export default function FiltersSheet() {
 
         <button
           onClick={() => app.setFiltersOpen(false)}
-          style={{
-            width: '100%',
-            background: C.accent,
-            color: C.onAccent,
-            fontSize: 15.5,
-            fontWeight: 800,
-            borderRadius: 26,
-            padding: '16px 0',
-            textAlign: 'center',
-            boxShadow: '0 6px 16px rgba(61,220,132,.25)',
-          }}
+          style={{ ...ctaStyle(), boxShadow: '0 6px 16px rgba(61,220,132,.25)' }}
         >
           Voir {nbVisible} station{nbVisible === 1 ? '' : 's'}
         </button>
