@@ -17,6 +17,21 @@
 // Physical totals are computed first; strategy scoring is applied on top and
 // never leaks into the displayed monetary amounts. Fuel present at departure
 // is a sunk input — it is never priced at any station.
+//
+// Two objective terms keep the optimum humane:
+// - RESIDUAL FUEL CREDIT: fuel still in the tank at the destination is an
+//   asset, not waste — the objective credits it at the cheapest candidate
+//   price of the route. Without it the solver values arriving empty and
+//   spawns absurd 0.5 L top-up stops whose only purpose is to shave the
+//   reserve overcarry of a long final leg.
+// - STOP COST: the price strategy's primary objective is money and its time
+//   tie-break only fires on exact ties, so without a monetary cost per stop
+//   a saving of a few cents justifies an extra halt. Each stop carries its
+//   own time valued at the shared value-of-time (REFUEL_STOP_MIN ×
+//   VALUE_OF_TIME_CENTS_PER_MIN ≈ 1.40 €) inside the price objective — the
+//   balanced and detour strategies already price the stop through their
+//   time term. Both terms shape the RANKING only: displayed totals remain
+//   the litres actually bought at the pump.
 import {
   REFUEL_STOP_MIN,
   RESERVE_FRACTION,
@@ -124,6 +139,12 @@ const EPS = 1e-9;
 const ORIGIN = -1;
 /** Negative extras larger than this are shown, not hidden — only rounding noise is clamped */
 const ROUNDING_CLAMP_MIN = -2;
+/**
+ * Objective cost of one stop for the PRICE strategy, in 1/20-cent money
+ * units: the stop's own duration valued at the shared value of time. Never
+ * displayed, never part of totalPurchaseCostCents.
+ */
+const PRICE_STOP_COST = REFUEL_STOP_MIN * VALUE_OF_TIME_CENTS_PER_MIN * 20;
 
 /** Additive cost components every DP state carries (all integers) */
 interface CostTuple {
@@ -267,7 +288,9 @@ export function planRoute(input: OptimizerInput): RoutePlan {
     // stop that justifies it. A visit therefore charges the stop time, and a
     // stop the user did not pin must buy at least one fuel unit to exist.
     const stopAt = (a: ArriveState, f: number): DepartState => ({
-      money: a.money,
+      // The price strategy pays the stop in money (see PRICE_STOP_COST);
+      // balanced and detour pay it through the time term below.
+      money: a.money + (strategy === 'price' ? PRICE_STOP_COST : 0),
       timeTenths: a.timeTenths + REFUEL_STOP_MIN * 10,
       distHundredths: a.distHundredths,
       stops: a.stops + 1,
@@ -317,13 +340,26 @@ export function planRoute(input: OptimizerInput): RoutePlan {
   }
 
   // ── Best terminal state ─────────────────────────────────────────────────────
+  // The residual fuel credit only matters here: mid-route states are always
+  // compared at the SAME fuel level, so crediting the destination fuel at the
+  // cheapest candidate price cannot break the DP's optimality — it only
+  // decides which arrival fuel level actually wins. Credited at the cheapest
+  // price, banking extra litres at that very station is objective-neutral and
+  // the tie-breaks (first-found, lowest fuel) keep purchases minimal.
+  const creditMilli = input.stations.length
+    ? Math.min(...input.stations.map((s) => s.priceMilli))
+    : 0;
   let best: ArriveState | undefined;
+  let bestAdjusted: CostTuple | undefined;
   let bestFuel = 0;
   const destRow = arrive[DEST];
   for (let f = 0; f <= tankUnits; f++) {
     const s = destRow[f];
-    if (s && (!best || better(s, best))) {
+    if (!s) continue;
+    const adjusted: CostTuple = { ...s, money: s.money - creditMilli * f };
+    if (!bestAdjusted || better(adjusted, bestAdjusted)) {
       best = s;
+      bestAdjusted = adjusted;
       bestFuel = f;
     }
   }

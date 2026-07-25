@@ -387,6 +387,40 @@ describe('determinism', () => {
   })
 })
 
+// ── Residual fuel value & stop cost (the 0.5 L micro-stop regression) ────────
+describe('no absurd micro-stops', () => {
+  // Regression shaped like a real Toulouse → Lille run: 896 km, 35 L on
+  // board, a fair station a third in and an expensive one near the end. The
+  // solver used to add a 0.5 L stop at the expensive pump purely to shave
+  // the reserve overcarry of the long final leg — because it valued arrival
+  // fuel at zero. The residual credit and the price strategy's stop cost
+  // must keep the plan at one honest fill.
+  const spec: Spec = {
+    routeKm: 896,
+    startFuel: 35,
+    stations: [
+      { id: 'fair-mid-route', km: 371, price: 1.99, off: 1 },
+      { id: 'expensive-late', km: 804, price: 2.1, off: 0 },
+    ],
+  }
+
+  it.each(['price', 'balanced', 'detour'] as const)(
+    '%s: one fill, no 0.5 L top-up at the expensive pump',
+    (strategy) => {
+      const plan = planRoute(buildInput({ ...spec, strategy }))
+      expect(plan.stops.map((s) => s.stationId)).toEqual(['fair-mid-route'])
+      expect(plan.stops[0].purchasedLitres).toBeGreaterThan(20)
+    },
+  )
+
+  it('fuel left at destination is an asset, not a reason to stop again', () => {
+    const plan = planRoute(buildInput({ ...spec, strategy: 'price' }))
+    // The single fill honours the reserve of the 525 km final leg, so the
+    // vehicle arrives with a real margin instead of planned-empty.
+    expect(plan.destinationFuelLitres).toBeGreaterThan(5)
+  })
+})
+
 // ── 14. Estimated quality flows through ──────────────────────────────────────
 describe('estimated fallback', () => {
   it('a plan built on geometric legs is marked estimated', () => {

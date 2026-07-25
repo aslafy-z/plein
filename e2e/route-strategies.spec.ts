@@ -21,20 +21,12 @@ test.describe('with a 20 % departure tank', () => {
   test('the strategy chips swap the displayed plan', async ({ page }) => {
     await computeBordeauxRoute(page)
 
-    // Meilleur compromis (default) → a single stop, price AND detour weighed
+    // Meilleur compromis (default) → a single stop, price AND detour weighed,
+    // stating the litres to buy there
     await expect(page.getByText('Arrêt conseillé')).toBeVisible({ timeout: 30_000 })
     await expect(page.getByRole('button', { name: /^Fiche de/ })).toContainText(
       "Leclerc · Valence-d'Agen",
     )
-
-    // Prix le + bas → two stops in driving order: a top-up at Valence, the
-    // bulk at Langon — with litres and cost per stop
-    await page.getByText('Prix le + bas').click()
-    await expect(page.getByText('Arrêt 1/2')).toBeVisible()
-    await expect(page.getByText('Arrêt 2/2')).toBeVisible()
-    const stops = page.getByRole('button', { name: /^Fiche de/ })
-    await expect(stops.nth(0)).toContainText("Leclerc · Valence-d'Agen")
-    await expect(stops.nth(1)).toContainText('Super U · Langon')
     await expect(page.getByText(/L à acheter/).first()).toBeVisible()
 
     // Détour min. → the on-motorway station wins despite its price
@@ -45,6 +37,19 @@ test.describe('with a 20 % departure tank', () => {
 
     // The demo source has no routing matrix → the plan says so
     await expect(page.getByTestId('plan-estimated')).toBeVisible()
+  })
+})
+
+test.describe('with a small 15 L tank', () => {
+  test.use({ seed: { sourceId: 'demo', onboarded: true, tank: 15, startTankPct: 20 } })
+
+  test('a multi-stop plan renders in driving order', async ({ page }) => {
+    await computeBordeauxRoute(page)
+    await expect(page.getByText('Arrêt 1/2')).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByText('Arrêt 2/2')).toBeVisible()
+    const stops = page.getByRole('button', { name: /^Fiche de/ })
+    await expect(stops.nth(0)).toContainText('Total Access · Tournefeuille')
+    await expect(stops.nth(1)).toContainText("Leclerc · Valence-d'Agen")
   })
 })
 
@@ -75,12 +80,12 @@ test('a low departure tank caps the autonomy and plans reachable stops in order'
   await expect(page.getByText('Réservoir 10 % · autonomie ≈ 77 km')).toBeVisible({
     timeout: 30_000,
   })
-  // The plan MUST open before the limit: Grisolles (KM ~43), then Langon
-  await expect(page.getByText('Arrêt 1/2')).toBeVisible()
-  const stops = page.getByRole('button', { name: /^Fiche de/ })
-  await expect(stops.nth(0)).toContainText('Intermarché · Grisolles')
-  await expect(stops.nth(1)).toContainText('Super U · Langon')
-  // The dry-point marker sits on the timeline between the two
+  // The plan MUST open before the limit: Grisolles (KM ~43), one honest fill
+  await expect(page.getByText('Arrêt conseillé')).toBeVisible()
+  await expect(page.getByRole('button', { name: /^Fiche de/ })).toContainText(
+    'Intermarché · Grisolles',
+  )
+  // The dry-point marker still sits on the timeline
   await expect(page.getByText(/limite d'autonomie/)).toBeVisible()
 })
 

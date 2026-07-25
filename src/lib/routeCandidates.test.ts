@@ -248,21 +248,20 @@ describe('demo corridor (Toulouse → Bordeaux)', () => {
     expect(plan.totalPurchaseCostCents).toBe(0)
   })
 
-  it('a 10 % tank forces a plan, and the strategies diverge', () => {
+  it('a 10 % tank forces a plan opening at the one reachable station', () => {
     const names = (strategy: 'balanced' | 'price' | 'detour') =>
       planFor(strategy, 10).stops.map((s) => s.stationId)
-    // Pinned so the e2e specs can assert the same stations by name; if the
-    // demo dataset moves, update both together.
+    // One reachable opener + a fill that covers the rest: every strategy
+    // lands on the same single stop. Pinned so the e2e specs can assert the
+    // same stations by name; if the demo dataset moves, update both together.
     expect(names('balanced')).toMatchInlineSnapshot(`
       [
         "r-grisolles",
-        "r-langon",
       ]
     `)
     expect(names('price')).toMatchInlineSnapshot(`
       [
         "r-grisolles",
-        "r-langon",
       ]
     `)
     expect(names('detour')).toMatchInlineSnapshot(`
@@ -283,12 +282,25 @@ describe('demo corridor (Toulouse → Bordeaux)', () => {
     expect(names('price')).toMatchInlineSnapshot(`
       [
         "r-valence",
-        "r-langon",
       ]
     `)
     expect(names('detour')).toMatchInlineSnapshot(`
       [
         "r-a62",
+      ]
+    `)
+  })
+
+  it('a small tank must chain two stops — rendered in driving order', () => {
+    // 15 L tank at 20 %: no single stop can cover the remaining ~220 km, so
+    // the plan chains a near-Toulouse opener with a mid-corridor fill.
+    const plan = planFor('balanced', 20, { tank: 15, consumption: 6.5 })
+    expect(plan.status).toBe('planned')
+    expect(plan.stops.length).toBeGreaterThanOrEqual(2)
+    expect(plan.stops.map((s) => s.stationId)).toMatchInlineSnapshot(`
+      [
+        "tac",
+        "r-valence",
       ]
     `)
   })

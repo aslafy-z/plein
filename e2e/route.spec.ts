@@ -26,9 +26,9 @@ test('route comparison: ribbon, tour, station detail and history', async ({ page
   await expect(page.locator('[aria-label="Carte du trajet"]')).toBeVisible()
   await expect(page.getByText(/à acheter/).first()).toBeVisible()
 
-  // strategy switch → the price plan chains two stops
+  // strategy switch → the plan recomputes (same single fill here)
   await page.getByText('Prix le + bas').click()
-  await expect(page.getByText('Arrêt 1/2')).toBeVisible()
+  await expect(page.getByText('Arrêt conseillé')).toBeVisible()
 
   // add the first planned stop to the tour
   await page.getByRole('button', { name: 'Ajouter à la tournée' }).first().click()
