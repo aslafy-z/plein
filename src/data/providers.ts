@@ -7,6 +7,8 @@ import { EspStationsProvider } from './esp/EspStationsProvider';
 import { CartoCiudadGeocodeProvider } from './esp/CartoCiudadGeocodeProvider';
 import { AndStationsProvider } from './and/AndStationsProvider';
 import { AndGeocodeProvider } from './and/AndGeocodeProvider';
+import { PrtStationsProvider } from './prt/PrtStationsProvider';
+import { PhotonGeocodeProvider } from './prt/PhotonGeocodeProvider';
 import { AutoGeocodeProvider, AutoStationsProvider } from './auto/AutoProviders';
 import {
   DemoGeocodeProvider,
@@ -44,6 +46,14 @@ function createBundle(id: DataSourceId): ProviderBundle {
       stations: new AndStationsProvider(),
       geocode: new AndGeocodeProvider(),
       // OSRM / Valhalla public servers cover Andorra too (OSM-based)
+      route: new RealRouteProvider(),
+    };
+  }
+  if (id === 'prt') {
+    return {
+      stations: new PrtStationsProvider(),
+      geocode: new PhotonGeocodeProvider(),
+      // OSRM / Valhalla public servers cover Portugal too
       route: new RealRouteProvider(),
     };
   }

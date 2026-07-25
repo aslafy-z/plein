@@ -21,6 +21,8 @@ import { EspStationsProvider, espCoversAlong, espCoversNear } from '../esp/EspSt
 import { CartoCiudadGeocodeProvider } from '../esp/CartoCiudadGeocodeProvider';
 import { AndStationsProvider, andCoversAlong, andCoversNear } from '../and/AndStationsProvider';
 import { AndGeocodeProvider } from '../and/AndGeocodeProvider';
+import { PrtStationsProvider, prtCoversAlong, prtCoversNear } from '../prt/PrtStationsProvider';
+import { PhotonGeocodeProvider } from '../prt/PhotonGeocodeProvider';
 import { mergeByKind } from '../geocodeRank';
 
 // ── French flux coverage ─────────────────────────────────────────────────────
@@ -84,6 +86,7 @@ export class AutoStationsProvider implements StationsProvider {
   private readonly fra = new FraStationsProvider();
   private readonly esp = new EspStationsProvider();
   private readonly and = new AndStationsProvider();
+  private readonly prt = new PrtStationsProvider();
 
   async getStationsNear(
     center: GeoPoint,
@@ -94,6 +97,7 @@ export class AutoStationsProvider implements StationsProvider {
     if (fraCoversNear(center, radiusKm)) tasks.push(this.fra.getStationsNear(center, radiusKm, opts));
     if (espCoversNear(center, radiusKm)) tasks.push(this.esp.getStationsNear(center, radiusKm, opts));
     if (andCoversNear(center, radiusKm)) tasks.push(this.and.getStationsNear(center, radiusKm, opts));
+    if (prtCoversNear(center, radiusKm)) tasks.push(this.prt.getStationsNear(center, radiusKm, opts));
     return capNearest(await mergeSettled(tasks), center);
   }
 
@@ -109,13 +113,14 @@ export class AutoStationsProvider implements StationsProvider {
     if (fraCoversAlong(polyline, corridorKm)) tasks.push(this.fra.getStationsAlong(polyline, corridorKm));
     if (espCoversAlong(polyline, corridorKm)) tasks.push(this.esp.getStationsAlong(polyline, corridorKm));
     if (andCoversAlong(polyline, corridorKm)) tasks.push(this.and.getStationsAlong(polyline, corridorKm));
+    if (prtCoversAlong(polyline, corridorKm)) tasks.push(this.prt.getStationsAlong(polyline, corridorKm));
     return mergeSettled(tasks);
   }
 }
 
 // ── Geocoding ────────────────────────────────────────────────────────────────
 // The suggestion list scrolls, so it is worth carrying more than a screenful —
-// three countries answering at once fill six rows with their first hits alone.
+// four countries answering at once fill six rows with their first hits alone.
 const MAX_RESULTS = 15;
 // Once one country has actual results, the laggards get this long to land
 // before being dropped from this round of suggestions.
@@ -125,19 +130,19 @@ export class AutoGeocodeProvider implements GeocodeProvider {
   private readonly ban = new BanGeocodeProvider();
   private readonly cartociudad = new CartoCiudadGeocodeProvider();
   private readonly and = new AndGeocodeProvider();
+  private readonly photon = new PhotonGeocodeProvider();
 
   async search(query: string): Promise<GeocodeResult[]> {
+    // Queried, and interleaved below, in this order: France, Andorra,
+    // Portugal, Spain — so no country fills the visible rows on its own.
+    const sources = [this.ban, this.and, this.photon, this.cartociudad];
     // One slow geocoder must not hold the suggestions hostage (CartoCiudad
     // has spells where it only answers after its 6 s timeout, which used to
     // make the whole search look dead): a source still pending after the
     // grace simply counts as empty for this keystroke.
     const settled: (PromiseSettledResult<GeocodeResult[]> | undefined)[] = [];
-    const wrapped = [
-      this.ban.search(query),
-      this.cartociudad.search(query),
-      this.and.search(query),
-    ].map((p, i) =>
-      p.then(
+    const wrapped = sources.map((source, i) =>
+      source.search(query).then(
         (value) => {
           settled[i] = { status: 'fulfilled', value };
           return value;
@@ -161,16 +166,17 @@ export class AutoGeocodeProvider implements GeocodeProvider {
     await Promise.race([Promise.all(wrapped), grace]);
     clearTimeout(graceTimer);
 
-    const [fr, es, ad] = settled;
-    if (fr?.status === 'rejected' && es?.status === 'rejected' && ad?.status === 'rejected') {
-      throw fr.reason;
+    // A source still pending is a hole in `settled`, not a rejection — only a
+    // round where every source actually failed is a failed search.
+    const outcomes = sources.map((_, i) => settled[i]);
+    const failures = outcomes.filter((s) => s?.status === 'rejected');
+    if (failures.length === outcomes.length) {
+      throw (failures[0] as PromiseRejectedResult).reason;
     }
-    const a = fr?.status === 'fulfilled' ? fr.value : [];
-    const b = es?.status === 'fulfilled' ? es.value : [];
-    const c = ad?.status === 'fulfilled' ? ad.value : [];
-    // Localities of all three countries first, then their streets, then their
-    // house numbers; inside one kind the sources interleave (France first,
-    // then Andorra, then Spain) so every country stays visible at the top.
-    return mergeByKind([a, c, b]).slice(0, MAX_RESULTS);
+    // Localities of all four countries first, then their streets, then their
+    // house numbers; inside one kind the sources interleave in `sources` order
+    // so every country stays visible at the top.
+    const lists = outcomes.map((s) => (s?.status === 'fulfilled' ? s.value : []));
+    return mergeByKind(lists).slice(0, MAX_RESULTS);
   }
 }

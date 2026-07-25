@@ -185,7 +185,9 @@ export default function StationDetail() {
         ? 'geoportalgasolineras.es'
         : stationSource === 'and'
           ? m.detail_source_and()
-          : null;
+          : stationSource === 'prt'
+            ? 'precoscombustiveis.dgeg.gov.pt'
+            : null;
   const footerText =
     s.confirmations != null
       ? m.detail_footer_confirmed({ ago, count: s.confirmations })

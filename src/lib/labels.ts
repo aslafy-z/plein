@@ -62,18 +62,29 @@ export function brandGroupLabel(group: string): string {
 /**
  * Where a search result is, in one line. Most sources spell it out themselves
  * — « Gironde », « Girona » — and that proper noun passes straight through.
- * Andorra's returns the parish alone, so the app names the country, and it has
- * to follow a language switch like any other sentence.
+ * Andorra's returns the parish alone and Portugal's an OSM district, so the
+ * app names the country, and it has to follow a language switch like any
+ * other sentence.
  */
 export function placeSublabel(place: GeocodeResult): string {
-  if (place.country !== 'and') return place.sublabel;
-  return place.sublabel ? m.place_andorra_parish({ parish: place.sublabel }) : m.place_andorra();
+  switch (place.country) {
+    case 'and':
+      return place.sublabel ? m.place_andorra_parish({ parish: place.sublabel }) : m.place_andorra();
+    case 'prt':
+      return place.sublabel
+        ? m.place_portugal_district({ district: place.sublabel })
+        : m.place_portugal();
+    default:
+      return place.sublabel;
+  }
 }
 
 function extraProductLabel(id: ExtraProductId): string {
   switch (id) {
     case 'dieselPremium':
       return m.product_diesel_premium();
+    case 'petrolPremium':
+      return m.product_petrol_premium();
     case 'agriculturalDiesel':
       return m.product_agricultural_diesel();
     case 'adBlue':
@@ -152,6 +163,8 @@ export function sourceTitle(id: DataSourceId): string {
       return 'geoportalgasolineras.es';
     case 'and':
       return 'sig.govern.ad';
+    case 'prt':
+      return 'precoscombustiveis.dgeg.gov.pt';
     case 'demo':
       return m.source_demo_title();
   }
@@ -167,6 +180,8 @@ export function sourceSublabel(id: DataSourceId): string {
       return m.source_esp_sub();
     case 'and':
       return m.source_and_sub();
+    case 'prt':
+      return m.source_prt_sub();
     case 'demo':
       return m.source_demo_sub();
   }

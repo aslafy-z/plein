@@ -53,7 +53,7 @@ import {
 import { mapUrlQuery, parseMapUrl } from '../lib/mapUrl';
 import { mapViewShareData, stationShareData, type ShareData } from '../lib/share';
 import { readStationsCache, writeStationsCache, STALE_MS } from '../data/stationsCache';
-import { normalizeStationId, stationCountry } from '../data/stationIds';
+import { normalizeStationId, stationCountry, type StationCountry } from '../data/stationIds';
 import {
   installReady,
   isStandalone,
@@ -474,7 +474,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // of the current scheme survive.
   const [sourceId, setSourceIdState] = useState<DataSourceId>(() => {
     const saved = persisted.sourceId as string | undefined;
-    return saved === 'fra' || saved === 'esp' || saved === 'and' || saved === 'demo'
+    return saved === 'fra' || saved === 'esp' || saved === 'and' || saved === 'prt' || saved === 'demo'
       ? saved
       : 'auto';
   });
@@ -1561,16 +1561,18 @@ function cached<A extends (string | number)[], T>(
 
 /**
  * Fuel actually compared and displayed for a station. E10 barely exists in
- * Spain (a handful of stations country-wide) and not at all in Andorra —
- * their SP95 (E5) is what an E10 vehicle fills up there, so those stations
- * join the E10 map with their SP95 price. Never the reverse: an SP95-only
- * engine must not be sent to an E10 pump, and French stations list both
- * fuels separately anyway.
+ * Spain (a handful of stations country-wide) and not at all in Andorra or
+ * Portugal — their SP95 (E5) is what an E10 vehicle fills up there, so those
+ * stations join the E10 map with their SP95 price. Never the reverse: an
+ * SP95-only engine must not be sent to an E10 pump, and French stations list
+ * both fuels separately anyway.
  */
+const SP95_FOR_E10: ReadonlyArray<StationCountry> = ['esp', 'and', 'prt'];
+
 export function effectiveFuel(s: Station, fuel: FuelId): FuelId | null {
   if (s.prices[fuel] != null) return fuel;
   const country = stationCountry(s.id);
-  if (fuel === 'e10' && s.prices.unleaded95 != null && (country === 'esp' || country === 'and')) {
+  if (fuel === 'e10' && s.prices.unleaded95 != null && country && SP95_FOR_E10.includes(country)) {
     return 'unleaded95';
   }
   return null;
