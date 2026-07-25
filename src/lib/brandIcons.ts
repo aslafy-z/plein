@@ -85,6 +85,15 @@ const BRAND_GROUPS: ReadonlyArray<BrandGroupDef> = [
   // Andorran banners (source sig.govern.ad) — Elf, Cepsa, Repsol, Shell, BP,
   // TotalEnergies, Meroil and Dyneff already match above.
   { label: 'Gasopas', match: /gasopas/i },
+  // Portuguese banners (source precoscombustiveis.dgeg.gov.pt) — Galp, BP,
+  // Repsol, Cepsa, Moeve, Intermarché, Auchan, E.Leclerc, Shell, Petroprix,
+  // Plenergy, Q8 and Avia already match above; the tail below the Pingo Doce
+  // network is made of regional distributors that read as independents.
+  { label: 'Prio', match: /\bprio\b/i, icon: 'prio' },
+  { label: 'Alves Bandeira', match: /alves\s?bandeira/i },
+  { label: 'Freitas', match: /\bfreitas\b/i },
+  { label: 'Pingo Doce', match: /pingo\s?doce/i, icon: 'pingodoce' },
+  { label: 'OZ Energia', match: /\boz\s?energia/i },
 ];
 
 /** Every filter entry the app knows — drives the « hors zone » selector. */

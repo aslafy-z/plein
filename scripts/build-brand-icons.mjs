@@ -55,6 +55,11 @@ const ICONS = [
   ['beroil', 'beroil.es'],
   ['petromiralles', 'petromiralles.com'],
   // Campsa / Valcarce / Disa / Petrocat / HAM : pas de favicon exploitable
+  // Portuguese banners (source precoscombustiveis.dgeg.gov.pt). Alves
+  // Bandeira / Freitas / OZ Energia serve no usable favicon — those keep the
+  // initials avatar.
+  ['prio', 'prio.pt'],
+  ['pingodoce', 'pingodoce.pt'],
 ];
 
 const SIZE = 64;

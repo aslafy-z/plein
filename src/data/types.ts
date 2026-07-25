@@ -20,11 +20,13 @@ export const SERVICE_TAGS: ServiceTag[] = ['open24h', 'carWash', 'shop', 'airPum
 
 /**
  * Extra products a source may list beyond the six graded fuels. The Spanish
- * flux carries a dozen of them; providers emit these ids and the catalog
- * supplies the labels, so nothing translated leaks out of the parse layer.
+ * flux carries a dozen of them, the Portuguese one its « especial »
+ * (additivated) grades; providers emit these ids and the catalog supplies the
+ * labels, so nothing translated leaks out of the parse layer.
  */
 export type ExtraProductId =
   | 'dieselPremium'
+  | 'petrolPremium'
   | 'agriculturalDiesel'
   | 'adBlue'
   | 'cng'
@@ -41,6 +43,7 @@ export type ExtraProductId =
 
 export const EXTRA_PRODUCT_IDS: ExtraProductId[] = [
   'dieselPremium',
+  'petrolPremium',
   'agriculturalDiesel',
   'adBlue',
   'cng',
@@ -141,10 +144,11 @@ export interface GeocodeResult {
   /**
    * Country to name in front of `sublabel`. The French and Spanish sources say
    * where a place is themselves (a département, a province) — proper nouns no
-   * locale translates. The Andorran one returns the parish alone, so the
-   * country is the app's own word and belongs to the catalog.
+   * locale translates. The Andorran one returns the parish alone and the
+   * Portuguese one an OSM district, so the country is the app's own word and
+   * belongs to the catalog.
    */
-  country?: 'and';
+  country?: 'and' | 'prt';
   kind: PlaceKind;
 }
 
@@ -183,7 +187,7 @@ export interface RouteProvider {
 }
 
 // ── Source selection ─────────────────────────────────────────────────────────
-export type DataSourceId = 'auto' | 'fra' | 'esp' | 'and' | 'demo';
+export type DataSourceId = 'auto' | 'fra' | 'esp' | 'and' | 'prt' | 'demo';
 
 export interface ProviderBundle {
   stations: StationsProvider;

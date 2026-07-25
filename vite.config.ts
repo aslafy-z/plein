@@ -112,6 +112,8 @@ const API_UPSTREAMS: Record<string, string> = {
   esp: 'https://sedeaplicaciones.minetur.gob.es',
   cartociudad: 'https://www.cartociudad.es',
   and: 'https://sig.govern.ad',
+  prt: 'https://precoscombustiveis.dgeg.gov.pt',
+  photon: 'https://photon.komoot.io',
 }
 
 function fetchJson(url: string): Promise<{ status: number; body: string }> {
@@ -138,7 +140,7 @@ function fetchJson(url: string): Promise<{ status: number; body: string }> {
 }
 
 function apiHandler(req: IncomingMessage, res: ServerResponse): void {
-  const m = (req.url ?? '').match(/^\/(fra|ban|osrm|valhalla|esp|cartociudad|and)(\/.*)$/)
+  const m = (req.url ?? '').match(/^\/(fra|ban|osrm|valhalla|esp|cartociudad|and|prt|photon)(\/.*)$/)
   if (!m) {
     res.statusCode = 404
     res.end()
