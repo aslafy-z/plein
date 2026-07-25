@@ -264,11 +264,13 @@ export function installSmoothKeyboard(
 
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.altKey || e.ctrlKey || e.metaKey) return;
+    // Read before the key filter: pressing Shift MID-hold is a « go faster »,
+    // and Shift alone is not one of the keys below
+    shiftHeld = e.shiftKey;
     const pan = PAN_KEYS[e.key];
     const zoom = ZOOM_KEYS[e.key];
     if (!pan && zoom === undefined) return;
     e.preventDefault(); // the arrows must not scroll the page under the map
-    shiftHeld = e.shiftKey;
     if (e.repeat) return; // the OS repeat tells nothing the held keys don't
     if (!moving) {
       moving = true;
@@ -316,6 +318,13 @@ export function installSmoothKeyboard(
   return () => {
     if (raf) cancelAnimationFrame(raf);
     raf = 0;
+    // Torn down mid-zoom (the map unmounts under a held key): put the level
+    // back on a whole one, silently — a caller saving the view for the next
+    // mount must not record the fraction the ease was passing through.
+    if (zoomShown != null) {
+      internal._move?.(map.getCenter(), clampZoom(Math.round(zoomTarget)), undefined, true);
+      zoomShown = null;
+    }
     el.removeEventListener('keydown', onKeyDown);
     el.removeEventListener('pointerdown', onPointerDown);
     window.removeEventListener('keyup', onKeyUp);
