@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { agoLabel, distLabel, durationLabel, fmtPrice, plural } from './format'
+import { agoLabel, clockLabel, distLabel, durationLabel, fmtPrice, plural } from './format'
 
 describe('fmtPrice', () => {
   it('formats to two decimals with a French comma', () => {
@@ -27,6 +27,14 @@ describe('durationLabel', () => {
     expect(durationLabel(45)).toBe('45 min')
     expect(durationLabel(316)).toBe('5 h 16')
     expect(durationLabel(60)).toBe('1 h 00')
+  })
+})
+
+describe('clockLabel', () => {
+  it('reads the local wall clock, minutes zero-padded', () => {
+    expect(clockLabel(new Date(2026, 6, 25, 17, 36))).toBe('17 h 36')
+    expect(clockLabel(new Date(2026, 6, 25, 9, 5))).toBe('9 h 05')
+    expect(clockLabel(new Date(2026, 6, 25, 0, 0))).toBe('0 h 00')
   })
 })
 

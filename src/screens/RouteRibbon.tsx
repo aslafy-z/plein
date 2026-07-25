@@ -14,6 +14,26 @@ const STRATEGIES = [
 const detourLabel = (detourMin: number) =>
   detourMin === 0 ? 'sans détour' : `détour +${detourMin} min`;
 
+/** Where the tank runs dry on the timeline — between two stops, or after the last one */
+const limitMarker = (limitKm: number) => (
+  <div key="limit-marker" style={{ position: 'relative', padding: '0 0 14px' }}>
+    <div
+      style={{
+        position: 'absolute',
+        left: -22,
+        top: 5,
+        width: 10,
+        height: 10,
+        borderRadius: '50%',
+        background: C.warn,
+      }}
+    />
+    <div style={{ fontSize: 12, color: C.warn, fontWeight: 700 }}>
+      ≈ KM {limitKm} — limite d'autonomie sans arrêt
+    </div>
+  </div>
+);
+
 export default function RouteRibbon() {
   const app = useApp();
   const { fromText, toText, fuel, tank, routeMode, routeState } = app;
@@ -234,48 +254,12 @@ export default function RouteRibbon() {
     for (const st of analysis.stops) {
       if (analysis.needsStop && !markerDone && st.kmAlong > analysis.limitKm) {
         markerDone = true;
-        stopNodes.push(
-          <div key="limit-marker" style={{ position: 'relative', padding: '0 0 14px' }}>
-            <div
-              style={{
-                position: 'absolute',
-                left: -22,
-                top: 5,
-                width: 10,
-                height: 10,
-                borderRadius: '50%',
-                background: C.warn,
-              }}
-            />
-            <div style={{ fontSize: 12, color: C.warn, fontWeight: 700 }}>
-              ≈ KM {analysis.limitKm} — limite d'autonomie sans arrêt
-            </div>
-          </div>,
-        );
+        stopNodes.push(limitMarker(analysis.limitKm));
       }
       stopNodes.push(st.id === analysis.recoId ? recoNode(st) : plainNode(st));
     }
     // Autonomy runs out after the last found stop → marker still belongs on the line
-    if (analysis.needsStop && !markerDone) {
-      stopNodes.push(
-        <div key="limit-marker" style={{ position: 'relative', padding: '0 0 14px' }}>
-          <div
-            style={{
-              position: 'absolute',
-              left: -22,
-              top: 5,
-              width: 10,
-              height: 10,
-              borderRadius: '50%',
-              background: C.warn,
-            }}
-          />
-          <div style={{ fontSize: 12, color: C.warn, fontWeight: 700 }}>
-            ≈ KM {analysis.limitKm} — limite d'autonomie sans arrêt
-          </div>
-        </div>,
-      );
-    }
+    if (analysis.needsStop && !markerDone) stopNodes.push(limitMarker(analysis.limitKm));
 
     const nTour = analysis.tourStops.length;
 

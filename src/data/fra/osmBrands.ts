@@ -8,7 +8,8 @@
 // snapshot is fresher in practice than an API that answers one time in three.
 import type { GeoPoint } from '../../lib/geo';
 import { haversineKm } from '../../lib/geo';
-import type { BrandCat, Station } from '../types';
+import { initialsOf } from '../../lib/text';
+import type { Station } from '../types';
 
 /** A gouv station adopts a POI's brand (and position) only within this distance */
 const MATCH_KM = 0.15;
@@ -82,37 +83,6 @@ export async function fuelPoisAlong(polyline: GeoPoint[], corridorKm: number): P
       p.lng >= minLng - dLng &&
       p.lng <= maxLng + dLng,
   );
-}
-
-// ── Brand → category (drives the « Distributeurs » filter) ───────────────────
-const BRAND_CATS: ReadonlyArray<readonly [RegExp, BrandCat]> = [
-  [/leclerc/i, 'gs'],
-  [/carrefour/i, 'gs'],
-  [/intermarch/i, 'gs'],
-  [/super\s?u|hyper\s?u|système u|u express|station u/i, 'gs'],
-  [/auchan/i, 'gs'],
-  [/casino|géant/i, 'gs'],
-  [/cora\b/i, 'gs'],
-  [/lidl|aldi|netto|leader price|colruyt|monoprix/i, 'gs'],
-  [/total/i, 'pet'],
-  [/\bbp\b/i, 'pet'],
-  [/esso/i, 'pet'],
-  [/shell/i, 'pet'],
-  [/avia/i, 'pet'],
-  [/agip|\beni\b/i, 'pet'],
-  [/texaco|elf\b/i, 'pet'],
-  [/dyneff/i, 'pet'],
-];
-
-function catFor(label: string): BrandCat {
-  for (const [re, cat] of BRAND_CATS) if (re.test(label)) return cat;
-  return 'ind';
-}
-
-function initialsOf(label: string): string {
-  const words = label.split(/[\s·-]+/).filter((w) => w.length > 1 || /\d/.test(w));
-  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
-  return label.slice(0, 2).toUpperCase();
 }
 
 // ── Spatial index over the candidate POIs ────────────────────────────────────
@@ -232,7 +202,6 @@ export function enrichWithBrands(stations: Station[], pois: FuelPoi[]): Station[
     return {
       ...s,
       brand: m.label,
-      cat: catFor(m.label),
       name: city ? `${m.label} · ${city}` : m.label,
       init: initialsOf(m.label),
       ...snap,

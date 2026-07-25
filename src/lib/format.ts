@@ -19,7 +19,7 @@ export function durationLabel(min: number): string {
   return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`;
 }
 
-/** "17:36"-style clock label for a Date */
+/** Wall-clock label for a Date, French style: 17:36 -> "17 h 36" */
 export function clockLabel(d: Date): string {
   return `${d.getHours()} h ${String(d.getMinutes()).padStart(2, '0')}`;
 }

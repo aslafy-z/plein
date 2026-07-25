@@ -4,17 +4,12 @@ import type { CSSProperties } from 'react';
 
 export const C = {
   bg: '#101214', // app background
-  bgDeep: '#0d0f11', // page backdrop (desktop)
   surface: '#1a1d20', // cards
   surface2: '#1d2226', // chips / secondary surfaces
   surface3: '#22282c', // tertiary (avatars, bars)
   navBg: '#15181b',
   mapBg: '#14181a',
-  mapBlock: '#171c1f',
-  mapRoad: '#20262a',
-  mapRoadThin: '#1c2226',
   accent: '#3ddc84', // green
-  accentHover: '#5fe49a',
   onAccent: '#08120c', // near-black on green
   ink: '#e8eaed', // primary text
   body: '#cfd6da', // secondary text on chips
@@ -22,8 +17,6 @@ export const C = {
   faint: '#5c666c', // faintest text
   ghost: '#3a4147', // footer text
   warn: '#e07a5f', // orange (expensive / destination / limits)
-  warnBar: '#c96f5c',
-  okBar: '#5f7f6e',
   border: 'rgba(255,255,255,.07)',
   border08: 'rgba(255,255,255,.08)',
   border09: 'rgba(255,255,255,.09)',
@@ -39,7 +32,6 @@ export const C = {
 } as const;
 
 export const FONT = {
-  sans: "Archivo, system-ui, sans-serif",
   mono: "'Spline Sans Mono', ui-monospace, monospace",
 } as const;
 

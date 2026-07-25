@@ -33,7 +33,6 @@ function station(over: Partial<Station> & { id: string }): Station {
   return {
     name: `Station ${over.id}`,
     init: 'ST',
-    cat: 'unknown',
     lat: BASE.lat,
     lng: BASE.lng,
     address: '',

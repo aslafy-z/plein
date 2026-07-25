@@ -10,7 +10,6 @@ const station = (id: string, dLat: number): Station => ({
   id,
   name: id,
   init: 'ST',
-  cat: 'unknown',
   lat: CENTER.lat + dLat,
   lng: CENTER.lng,
   address: '',
