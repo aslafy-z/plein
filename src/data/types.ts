@@ -104,8 +104,20 @@ export interface NearbyStation extends Station {
 
 /** A station enriched with route-relative info */
 export interface RouteStation extends Station {
-  kmAlong: number; // km from departure along the route
+  /**
+   * km from departure along the route, on the route's own distance scale.
+   * Exact, not rounded: the fuel-stop optimizer orders its graph on it, and
+   * two stations rounded to the same km could not chain. Views round it.
+   */
+  kmAlong: number;
   detourMin: number; // extra minutes to reach it and come back
+  /**
+   * Crow-flies km from the station to the nearest point of the route. Measured
+   * ONCE, when the corridor loads: projecting a station onto the polyline
+   * costs O(vertices), so a few hundred stations against a few thousand
+   * vertices is seconds of main thread — never something a selector may redo.
+   */
+  offRouteKm: number;
 }
 
 // ── Providers ────────────────────────────────────────────────────────────────

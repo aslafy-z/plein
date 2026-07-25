@@ -7,14 +7,47 @@
 // coverage over global price order — a cluster of cheap stations near the
 // destination must never evict every reachable station near the departure.
 import { cumulativeKm, nearestOnPolyline } from './geo';
-import type { Route, Station } from '../data/types';
+import type { Route, RouteStation, Station } from '../data/types';
 import { CROW_ROAD_FACTOR } from './fuelEconomics';
 import { priceMilliPerLitre } from './fuelEconomics';
 import type { PlanQuality, TravelLeg } from './routeOptimizer';
 
+/** Off-route access speed of the estimated model (~40 km/h local roads) */
+const OFF_ROUTE_MIN_PER_KM = 1.5;
+
+/**
+ * Project a corridor onto the route: km along it (on the route's OWN distance
+ * scale — a simplified polyline measures shorter than the road distance it
+ * claims, and the autonomy limit is on road km) and crow-flies km off it.
+ *
+ * Costs O(stations × polyline vertices), which is hundreds of milliseconds on
+ * a long route, so it runs EXACTLY ONCE per corridor — when the route loads.
+ * `selectRouteCandidates` then reads the stored fields instead of measuring
+ * again on every recompute.
+ */
+export function projectCorridor(route: Route, stations: readonly Station[]): RouteStation[] {
+  const cum = cumulativeKm(route.polyline);
+  const polyLen = cum[cum.length - 1] || 1;
+  const scale = route.distanceKm > 0 ? route.distanceKm / polyLen : 1;
+  return stations.map((st) => {
+    const near = nearestOnPolyline({ lat: st.lat, lng: st.lng }, route.polyline, cum);
+    return {
+      ...st,
+      kmAlong: near.alongKm * scale,
+      offRouteKm: near.distKm,
+      // Estimated access: crow-flies lifted to the road scale, there and back
+      // at local-road speed — the display fallback until routed legs exist.
+      detourMin:
+        near.distKm < 0.4
+          ? 0
+          : Math.max(1, Math.round(near.distKm * CROW_ROAD_FACTOR * OFF_ROUTE_MIN_PER_KM * 2)),
+    };
+  });
+}
+
 /** A station projected onto the route, priced, ready for the matrix call */
 export interface RouteCandidate {
-  station: Station;
+  station: RouteStation;
   /** km along the route at the nearest polyline vertex, on the route's own
       distance scale (demo polylines are straight lines shorter than the
       claimed road distance — the scale keeps both on the same axis) */
@@ -49,34 +82,34 @@ const DEDUPE_DECIMALS = 3;
  * Pick the candidate set for one matrix call. Deterministic: same inputs,
  * same output, always ordered by (projectionKm, id).
  *
+ * `stations` arrive ALREADY projected — `kmAlong` and `offRouteKm` are measured
+ * once when the corridor loads (see `loadRoute`). Projecting is O(polyline
+ * vertices) per station, so a corridor of a few hundred stations against a few
+ * thousand vertices costs seconds; this function runs inside a selector and
+ * must stay O(stations log stations).
+ *
  * `priceOf` injects the effective-fuel logic (SP95-for-E10 etc.) so this
  * module stays free of catalog knowledge; stations it returns undefined for
  * are excluded — a missing price is never replaced by a fake large one.
  */
 export function selectRouteCandidates(
   route: Route,
-  stations: readonly Station[],
-  priceOf: (s: Station) => { value: number; updatedAt?: string } | undefined,
+  stations: readonly RouteStation[],
+  priceOf: (s: RouteStation) => { value: number; updatedAt?: string } | undefined,
   opts: CandidateOptions,
 ): RouteCandidate[] {
-  if (!route.polyline.length || opts.maxCandidates <= 0) return [];
-  const cum = cumulativeKm(route.polyline);
-  const polyLen = cum[cum.length - 1] || 1;
-  const scale = route.distanceKm > 0 ? route.distanceKm / polyLen : 1;
+  if (opts.maxCandidates <= 0) return [];
 
-  // Project + price + filter
+  // Price + filter (the projection already happened at load)
   const all: RouteCandidate[] = [];
   for (const s of stations) {
     const price = priceOf(s);
     if (price == null) continue;
-    const near = nearestOnPolyline({ lat: s.lat, lng: s.lng }, route.polyline, cum);
-    const projectionKm = near.alongKm * scale;
-    if (projectionKm <= EDGE_MARGIN_KM || projectionKm >= route.distanceKm - EDGE_MARGIN_KM)
-      continue;
+    if (s.kmAlong <= EDGE_MARGIN_KM || s.kmAlong >= route.distanceKm - EDGE_MARGIN_KM) continue;
     all.push({
       station: s,
-      projectionKm,
-      offRouteKm: near.distKm,
+      projectionKm: s.kmAlong,
+      offRouteKm: s.offRouteKm,
       priceMilli: priceMilliPerLitre(price.value),
       priceUpdatedAt: price.updatedAt,
     });
@@ -164,9 +197,6 @@ export interface PlanLegs {
   between: Array<Array<TravelLeg | null>>;
   quality: PlanQuality;
 }
-
-/** Off-route access speed of the estimated model (~40 km/h local roads) */
-const OFF_ROUTE_MIN_PER_KM = 1.5;
 
 /**
  * Geometric fallback when no road matrix can be obtained (offline demo,

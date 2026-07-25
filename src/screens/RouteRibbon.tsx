@@ -179,7 +179,7 @@ export default function RouteRibbon() {
                 : m.ribbon_recommended_stop()}
             </span>
             <span style={{ fontSize: 11, color: C.mut, whiteSpace: 'nowrap' }}>
-              {m.ribbon_km_marker({ km: st.kmAlong })} · {detourLabel(st.detourMin)}
+              {m.ribbon_km_marker({ km: Math.round(st.kmAlong) })} · {detourLabel(st.detourMin)}
             </span>
           </div>
           <button
@@ -278,7 +278,7 @@ export default function RouteRibbon() {
             style={{ flex: 1, minWidth: 0, cursor: 'pointer', textAlign: 'left' }}
           >
             <div style={{ fontSize: 12, color: C.mut, fontWeight: 700 }}>
-              {m.ribbon_km_marker({ km: st.kmAlong })} · {detourLabel(st.detourMin)}
+              {m.ribbon_km_marker({ km: Math.round(st.kmAlong) })} · {detourLabel(st.detourMin)}
             </div>
             <div style={{ fontSize: 14.5, fontWeight: 700, color: C.ink, marginTop: 2 }}>
               {st.name}

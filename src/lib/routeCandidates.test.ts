@@ -6,6 +6,7 @@ import { usableRangeKm } from './fuelEconomics'
 import {
   estimatePlanLegs,
   matrixPlanLegs,
+  projectCorridor,
   selectRouteCandidates,
   type RouteCandidate,
 } from './routeCandidates'
@@ -42,6 +43,17 @@ function station(id: string, alongKm: number, price: number, offKm = 0): Station
 
 const dieselPrice = (s: Station) => s.prices.diesel
 
+/**
+ * Candidates over a raw corridor, projected first — the app projects once in
+ * `loadRoute` and the selector reads the stored fields, so a test that skipped
+ * the projection would not be testing the pipeline the app runs.
+ */
+const candidatesFor = (
+  route: Route,
+  stations: readonly Station[],
+  opts: Parameters<typeof selectRouteCandidates>[3],
+) => selectRouteCandidates(route, projectCorridor(route, stations), dieselPrice, opts)
+
 describe('selectRouteCandidates', () => {
   it('keeps only priced stations projected inside the route', () => {
     const route = northRoute(200)
@@ -52,7 +64,7 @@ describe('selectRouteCandidates', () => {
       station('past-arrival', 199.7, 1.5),
     ]
     stations[1].prices = {}
-    const picked = selectRouteCandidates(route, stations, dieselPrice, {
+    const picked = candidatesFor(route, stations, {
       maxCandidates: 10,
       firstWindowKm: 500,
     })
@@ -69,7 +81,7 @@ describe('selectRouteCandidates', () => {
     )
     // …and two mid-priced ones inside the departure fuel's reach
     stations.push(station('early-a', 40, 1.8), station('early-b', 70, 1.85))
-    const picked = selectRouteCandidates(route, stations, dieselPrice, {
+    const picked = candidatesFor(route, stations, {
       maxCandidates: 10,
       firstWindowKm: usableRangeKm(8, 6.5), // ≈ 98 km
     })
@@ -78,7 +90,7 @@ describe('selectRouteCandidates', () => {
     expect(ids).toContain('early-b')
     expect(picked.length).toBeLessThanOrEqual(10)
     // Determinism: same inputs, same set, same order
-    const again = selectRouteCandidates(route, stations, dieselPrice, {
+    const again = candidatesFor(route, stations, {
       maxCandidates: 10,
       firstWindowKm: usableRangeKm(8, 6.5),
     })
@@ -92,7 +104,7 @@ describe('selectRouteCandidates', () => {
       // Prices fall towards the destination — a global sort would keep only the end
       stations.push(station(`s-${String(km).padStart(3, '0')}`, km, 2.0 - km / 1000))
     }
-    const picked = selectRouteCandidates(route, stations, dieselPrice, {
+    const picked = candidatesFor(route, stations, {
       maxCandidates: 12,
       firstWindowKm: 500,
     })
@@ -108,7 +120,7 @@ describe('selectRouteCandidates', () => {
     const twin1 = station('twin-b', 150, 1.7)
     const twin2 = station('twin-a', 150, 1.7) // same cell, same price → one survives
     const stations = [twin1, twin2, station('pricey-pick', 200, 1.95), station('cheap', 100, 1.55)]
-    const picked = selectRouteCandidates(route, stations, dieselPrice, {
+    const picked = candidatesFor(route, stations, {
       maxCandidates: 2,
       firstWindowKm: 500,
       requiredIds: ['pricey-pick'],
@@ -119,13 +131,29 @@ describe('selectRouteCandidates', () => {
     expect(ids.length).toBeLessThanOrEqual(2)
   })
 
+  it('reads the stored projection instead of measuring the polyline again', () => {
+    // Projecting is O(stations × vertices) — far too expensive for a selector
+    // that reruns on every store update, so it happens once at load. Proof:
+    // with the polyline emptied, an already-projected corridor still resolves.
+    const route = northRoute(300)
+    const projected = projectCorridor(route, [station('a', 80, 1.7), station('b', 200, 1.6)])
+    const picked = selectRouteCandidates({ ...route, polyline: [] }, projected, dieselPrice, {
+      maxCandidates: 10,
+      firstWindowKm: 500,
+    })
+    expect(picked.map((c) => c.station.id)).toEqual(['a', 'b'])
+    // Projections snap to the nearest vertex (2.7 km apart on this fixture)
+    expect(picked[0].projectionKm).toBeGreaterThan(77)
+    expect(picked[0].projectionKm).toBeLessThan(83)
+  })
+
   it('respects the matrix size cap', () => {
     const route = northRoute(500)
     const stations = Array.from({ length: 60 }, (_, i) =>
       station(`s${String(i).padStart(2, '0')}`, 10 + i * 8, 1.6 + (i % 10) / 100),
     )
     expect(
-      selectRouteCandidates(route, stations, dieselPrice, {
+      candidatesFor(route, stations, {
         maxCandidates: 28,
         firstWindowKm: 400,
       }).length,
@@ -136,12 +164,7 @@ describe('selectRouteCandidates', () => {
 describe('estimatePlanLegs', () => {
   it('models along-route driving plus an off-route access hop, on the route scale', () => {
     const route = northRoute(200)
-    const candidates = selectRouteCandidates(
-      route,
-      [station('mid', 100, 1.7, 4)],
-      dieselPrice,
-      { maxCandidates: 5, firstWindowKm: 500 },
-    )
+    const candidates = candidatesFor(route, [station('mid', 100, 1.7, 4)], { maxCandidates: 5, firstWindowKm: 500 })
     const legs = estimatePlanLegs(route, candidates)
     expect(legs.quality).toBe('estimated')
     expect(legs.direct).toEqual({ distanceKm: 200, durationMin: 120 })
@@ -158,7 +181,7 @@ describe('estimatePlanLegs', () => {
     // The demo draws straight polylines shorter than the road distance it
     // claims — projections must live on the road-distance axis.
     const route = { ...northRoute(200), distanceKm: 250 }
-    const candidates = selectRouteCandidates(route, [station('mid', 100, 1.7)], dieselPrice, {
+    const candidates = candidatesFor(route, [station('mid', 100, 1.7)], {
       maxCandidates: 5,
       firstWindowKm: 500,
     })
@@ -217,7 +240,7 @@ describe('demo corridor (Toulouse → Bordeaux)', () => {
       (s) => nearestOnPolyline({ lat: s.lat, lng: s.lng }, route.polyline).distKm <= 8,
     )
     const startFuel = (vehicle.tank * startTankPct) / 100
-    const candidates: RouteCandidate[] = selectRouteCandidates(route, pool, dieselPrice, {
+    const candidates: RouteCandidate[] = candidatesFor(route, pool, {
       maxCandidates: 28,
       firstWindowKm: usableRangeKm(startFuel, vehicle.consumption),
     })
