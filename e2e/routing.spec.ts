@@ -71,7 +71,7 @@ test('browser back walks the fiche and the tabs, in-app', async ({ page }) => {
   await page.getByText('Carte', { exact: true }).click()
   await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
   await page.getByText(/MàJ /).first().click()
-  await expect(page.getByText('Station U · Croix-Blanche')).toBeVisible()
+  await expect(page.getByText('Station U · Croix-Blanche').first()).toBeVisible()
   expect(new URL(page.url()).pathname).toBe('/station/su')
 
   await page.goBack()

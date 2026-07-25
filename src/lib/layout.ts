@@ -24,12 +24,15 @@ export const DESKTOP_QUERY = `(min-width: ${DESKTOP_MIN_WIDTH}px)`;
 export const CONTENT_MAX_WIDTH = 760;
 
 /**
- * Width of the panel docked next to the map on desktop (the zone list, the
- * route timeline). The floor is what a station row needs to lay its name,
- * distance and price on ONE line — below it the name wraps and the row stops
- * being scannable, which is the whole point of the list.
+ * Width of the panel floating over the map on desktop (the zone list, the
+ * route timeline, the station fiche). The floor is what a station row needs
+ * to lay its name, distance and price on ONE line — below it the name wraps
+ * and the row stops being scannable, which is the whole point of the list.
  */
 export const PANEL_WIDTH = 'clamp(350px, 30vw, 440px)';
+
+/** Gap between a floating panel and the edges of the map stage it rides */
+export const PANEL_GAP = 12;
 
 // One MediaQueryList per query: `getSnapshot` runs on every render, and
 // re-creating the object there would allocate a listener target per frame.

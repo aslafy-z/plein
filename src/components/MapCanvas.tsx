@@ -99,16 +99,36 @@ function pricedIds(app: AppStore, bounds: L.LatLngBounds | null): Set<string> {
  * center (and therefore the search circle) under the user, and near a
  * results boundary the sheet⇄circle coupling even self-oscillated. Only
  * the controls riding the bottom edge slide up with `bottomInset`.
+ * `leftInset` is the desktop mirror of it: the floating panel covers the
+ * map's left edge, so auto-fits pad on that side instead of the bottom.
  */
-export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number }) {
+export default function MapCanvas({
+  bottomInset = 0,
+  leftInset = 0,
+}: {
+  bottomInset?: number;
+  leftInset?: number;
+}) {
   const app = useApp();
   const desktop = useIsDesktop();
-  // Auto-fit reads the inset at run time (padding above the sheet)
+  // Auto-fit reads the insets at run time (padding above the sheet /
+  // right of the panel)
   const insetRef = useRef(bottomInset);
   insetRef.current = bottomInset;
+  const leftInsetRef = useRef(leftInset);
+  leftInsetRef.current = leftInset;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
+  /** Center of the VISIBLE map — the stage minus the floating panel. On a
+      phone it is the plain container center; on desktop everything that
+      means « the middle of what the user sees » (the gliding circle, the
+      pan-to-station) must aim here, not at the stage center half-hidden
+      under the panel. */
+  const visibleCenterPoint = (map: L.Map) => {
+    const size = map.getSize();
+    return L.point((size.x + leftInsetRef.current) / 2, size.y / 2);
+  };
   const layerRef = useRef<L.LayerGroup | null>(null);
   const userInteractedRef = useRef(false);
   /** true right after the saved view was restored — skip the mount-run pan-to-station */
@@ -121,6 +141,8 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
   // moveend closures read the latest app state through this ref
   const appRef = useRef(app);
   appRef.current = app;
+  const desktopRef = useRef(desktop);
+  desktopRef.current = desktop;
 
   // Pins and chip re-rank against the view after a pan/zoom. Guarded on the
   // actual bounds so a programmatic re-fit to the same view can't loop.
@@ -201,7 +223,7 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
     const measureCircleOffset = () => {
       if (!circleRef.current) return;
       const p = map.latLngToContainerPoint(circleRef.current.getLatLng());
-      const mid = map.getSize().divideBy(2);
+      const mid = visibleCenterPoint(map);
       circleOffsetRef.current = { x: p.x - mid.x, y: p.y - mid.y };
     };
     map.on('dragstart', measureCircleOffset);
@@ -251,7 +273,7 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
       zooming = false;
       if (userInteractedRef.current) {
         circleOffsetRef.current = { x: 0, y: 0 };
-        circleRef.current?.setLatLng(map.getCenter());
+        circleRef.current?.setLatLng(map.containerPointToLatLng(visibleCenterPoint(map)));
       }
     });
     // Results follow the circle LIVE while the finger drags (throttled):
@@ -276,11 +298,8 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
         off.x = 0;
         off.y = 0;
       }
-      const mid = map.getSize().divideBy(2);
-      const c =
-        off.x || off.y
-          ? map.containerPointToLatLng(L.point(mid.x + off.x, mid.y + off.y))
-          : map.getCenter();
+      const mid = visibleCenterPoint(map);
+      const c = map.containerPointToLatLng(L.point(mid.x + off.x, mid.y + off.y));
       circleRef.current?.setLatLng(c);
       const now = Date.now();
       if (now - lastLiveSearch < LIVE_SEARCH_MS) return;
@@ -341,6 +360,28 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Desktop: the arrows drive the map from wherever focus sits ─────────────
+  // Clicking a row or a chip moves the focus there, and the map's keyboard
+  // loop only hears keys while its container holds it — so a pan-by-arrows
+  // died after every click. Route the arrows back: unless the user is typing
+  // or a dialog is up, an arrow press re-focuses the map (the press itself
+  // warms up, holding and the next presses pan).
+  useEffect(() => {
+    if (!desktop) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.key.startsWith('Arrow')) return;
+      const el = document.activeElement as HTMLElement | null;
+      if (el) {
+        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable) return;
+        if (el.closest('[role="dialog"]')) return;
+      }
+      const mapEl = mapRef.current?.getContainer();
+      if (mapEl && el !== mapEl) mapEl.focus({ preventScroll: true });
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [desktop]);
 
   // ── Reset auto-fit when the frame of reference changes ──────────────────────
   const lastFrameRef = useRef({ searchPos: app.searchPos, radius: app.radius });
@@ -484,8 +525,15 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
       } else {
         const marker = L.marker([s.lat, s.lng], { zIndexOffset: z, icon });
         // Tapping a pin selects the station in the bottom-sheet card
-        // (the full detail opens from there) — Google-Maps-like flow
-        marker.on('click', () => appRef.current.setFocusStation(s.id));
+        // (the full detail opens from there) — Google-Maps-like flow.
+        // With a fiche already open (desktop stacks it under the list), the
+        // tap swaps the fiche to that station instead: the reader is in
+        // detail mode, a pin that only re-pointed a hidden card read as dead.
+        marker.on('click', () => {
+          const cur = appRef.current;
+          if (desktopRef.current && cur.screen === 'detail') cur.openStation(s.id);
+          else cur.setFocusStation(s.id);
+        });
         marker.addTo(layer);
         markers.set(s.id, { marker, sig });
       }
@@ -523,15 +571,15 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
     if (userInteractedRef.current || app.focusStationId) return;
     programmaticUntil.current = Date.now() + 700;
     const box = radiusBounds(app.searchPos, app.radius);
-    // The sheet overlays the map bottom — pad the fit so the zone lands
-    // in the VISIBLE part, above the collapsed sheet
+    // The sheet overlays the map bottom, the desktop panel its left edge —
+    // pad the fit so the zone lands in the VISIBLE part
     map.fitBounds(L.latLngBounds([box.south, box.west], [box.north, box.east]), {
-      paddingTopLeft: [40, 40],
+      paddingTopLeft: [40 + leftInsetRef.current, 40],
       paddingBottomRight: [40, 40 + insetRef.current],
       maxZoom: 15,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [app.searchPos, app.radius, app.focusStationId, bottomInset]);
+  }, [app.searchPos, app.radius, app.focusStationId, bottomInset, leftInset]);
 
   // ── Selecting a station (pin tap or sheet-list tap) pans the map onto it ──
   useEffect(() => {
@@ -544,7 +592,11 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
     const s = selectMapStations(app).find((x) => x.id === app.focusStationId);
     if (!s) return;
     programmaticUntil.current = Date.now() + 1200; // no auto-search, no circle glide
-    map.panTo([s.lat, s.lng]);
+    // Land the station on the VISIBLE center — panTo would center it on the
+    // stage, half a panel to the left of where the user is looking
+    const z = map.getZoom();
+    const pt = map.project([s.lat, s.lng], z).subtract(L.point(leftInsetRef.current / 2, 0));
+    map.panTo(map.unproject(pt, z));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [app.focusStationId]);
 
@@ -569,8 +621,17 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
     transition: 'bottom .3s cubic-bezier(.4,0,.2,1)',
   };
 
-  // Half of a zoom control pair — two of them make the usual joined pill
-  const zoomButton = {
+  // Floating pills and control clusters share the glass of the panels
+  // (theme.ts) with a lighter shadow — they are small and many
+  const pillGlass = {
+    background: 'rgba(16,18,20,.82)',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+    border: `1px solid rgba(255,255,255,.1)`,
+  };
+
+  // One button of the desktop control column (zoom, share, recenter)
+  const clusterButton = {
     height: 42,
     display: 'flex',
     alignItems: 'center',
@@ -599,7 +660,8 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
           style={{
             position: 'absolute',
             // The centered pill stays clear of the recenter button (right)
-            left: 24,
+            // and of the desktop panel (left)
+            left: 24 + leftInset,
             right: 24,
             ...bottomEdge,
             display: 'flex',
@@ -610,13 +672,12 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
         >
           <span
             style={{
-              background: C.surface2,
+              ...pillGlass,
               color: C.body,
               fontSize: 12,
               fontWeight: 600,
               padding: '7px 14px',
               borderRadius: 16,
-              border: `1px solid ${C.border09}`,
               boxShadow: '0 8px 24px rgba(0,0,0,.5)',
               textAlign: 'center',
             }}
@@ -631,7 +692,7 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
         <div
           style={{
             position: 'absolute',
-            left: 0,
+            left: leftInset,
             right: 0,
             ...bottomEdge,
             display: 'flex',
@@ -642,13 +703,12 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
         >
           <span
             style={{
-              background: C.surface2,
+              ...pillGlass,
               color: C.body,
               fontSize: 12.5,
               fontWeight: 600,
               padding: '8px 16px',
               borderRadius: 18,
-              border: `1px solid ${C.border09}`,
               boxShadow: '0 8px 24px rgba(0,0,0,.5)',
             }}
           >
@@ -657,22 +717,23 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
         </div>
       )}
 
-      {/* Zoom — desktop only. A finger pinches and a keyboard has +/− (see
+      {/* Desktop: one glass column for everything a mouse needs on the map.
+          Zoom first — a finger pinches and a keyboard has +/− (see
           lib/mapKeyboard), but a mouse has neither: a wheel over the map is
           the only way in without these, and a trackpad user who scrolls to
           pan gets a zoom instead. Same interaction as a wheel notch, so the
-          view is the user's from here on and auto-fit stands down. */}
-      {desktop && (
+          view is the user's from here on and auto-fit stands down. Then the
+          share and recenter controls, which the phone keeps as their own
+          circles riding the sheet. */}
+      {desktop ? (
         <div
           style={{
             position: 'absolute',
             right: 14,
             ...bottomEdge,
-            bottom: bottomEdge.bottom + 104,
             width: 44,
             borderRadius: 22,
-            background: C.surface2,
-            border: `1px solid ${C.border09}`,
+            ...pillGlass,
             boxShadow: '0 6px 18px rgba(0,0,0,.45)',
             display: 'flex',
             flexDirection: 'column',
@@ -684,7 +745,7 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
             onClick={() => mapRef.current?.zoomIn()}
             aria-label={m.map_zoom_in()}
             title={m.map_zoom_in()}
-            style={zoomButton}
+            style={clusterButton}
           >
             +
           </button>
@@ -693,83 +754,126 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
             onClick={() => mapRef.current?.zoomOut()}
             aria-label={m.map_zoom_out()}
             title={m.map_zoom_out()}
-            style={zoomButton}
+            style={clusterButton}
           >
             −
           </button>
-        </div>
-      )}
-
-      {/* Share the view — same picto and same share path as a station fiche.
-          The URL already carries the view, but an installed PWA has no
-          address bar to copy it from. Rides the map's control column so it
-          stays clear of the sheet whatever its height. */}
-      <button
-        onClick={() => app.shareMapView()}
-        aria-label={m.map_share_view()}
-        title={m.map_share_view()}
-        style={{
-          position: 'absolute',
-          right: 14,
-          ...bottomEdge,
-          bottom: bottomEdge.bottom + 52,
-          width: 44,
-          height: 44,
-          borderRadius: '50%',
-          background: C.surface2,
-          border: `1px solid ${C.border09}`,
-          boxShadow: '0 6px 18px rgba(0,0,0,.45)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-        }}
-      >
-        <ShareIcon color={C.ink} size={18} />
-      </button>
-
-      {/* Recenter on the user */}
-      <button
-        onClick={() => app.resetSearchToUser()}
-        aria-label={m.map_recenter_aria()}
-        title={m.map_my_position()}
-        style={{
-          position: 'absolute',
-          right: 14,
-          ...bottomEdge,
-          width: 44,
-          height: 44,
-          borderRadius: '50%',
-          background: C.surface2,
-          border: `1px solid ${app.searchedAway ? C.accentBorderStrong : C.border09}`,
-          boxShadow: '0 6px 18px rgba(0,0,0,.45)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-        }}
-      >
-        <div
-          style={{
-            width: 16,
-            height: 16,
-            borderRadius: '50%',
-            border: `2.5px solid ${app.searchedAway ? C.accent : C.mut}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <div
+          <div style={{ height: 1, background: C.border09 }} />
+          <button
+            onClick={() => app.shareMapView()}
+            aria-label={m.map_share_view()}
+            title={m.map_share_view()}
+            style={clusterButton}
+          >
+            <ShareIcon color={C.ink} size={18} />
+          </button>
+          <div style={{ height: 1, background: C.border09 }} />
+          <button
+            onClick={() => app.resetSearchToUser()}
+            aria-label={m.map_recenter_aria()}
+            title={m.map_my_position()}
             style={{
-              width: 5,
-              height: 5,
-              borderRadius: '50%',
-              background: app.searchedAway ? C.accent : C.mut,
+              ...clusterButton,
+              // Away from the user's position, the whole button turns on —
+              // a 16px icon changing hue alone read as nothing at all
+              background: app.searchedAway ? C.accentSoft15 : 'transparent',
             }}
-          />
+          >
+            <div
+              style={{
+                width: 16,
+                height: 16,
+                borderRadius: '50%',
+                border: `2.5px solid ${app.searchedAway ? C.accent : C.mut}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <div
+                style={{
+                  width: 5,
+                  height: 5,
+                  borderRadius: '50%',
+                  background: app.searchedAway ? C.accent : C.mut,
+                }}
+              />
+            </div>
+          </button>
         </div>
-      </button>
+      ) : (
+        <>
+          {/* Share the view — same picto and same share path as a station
+              fiche. The URL already carries the view, but an installed PWA
+              has no address bar to copy it from. Rides the map's control
+              column so it stays clear of the sheet whatever its height. */}
+          <button
+            onClick={() => app.shareMapView()}
+            aria-label={m.map_share_view()}
+            title={m.map_share_view()}
+            style={{
+              position: 'absolute',
+              right: 14,
+              ...bottomEdge,
+              bottom: bottomEdge.bottom + 52,
+              width: 44,
+              height: 44,
+              borderRadius: '50%',
+              ...pillGlass,
+              boxShadow: '0 6px 18px rgba(0,0,0,.45)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+            }}
+          >
+            <ShareIcon color={C.ink} size={18} />
+          </button>
+
+          {/* Recenter on the user */}
+          <button
+            onClick={() => app.resetSearchToUser()}
+            aria-label={m.map_recenter_aria()}
+            title={m.map_my_position()}
+            style={{
+              position: 'absolute',
+              right: 14,
+              ...bottomEdge,
+              width: 44,
+              height: 44,
+              borderRadius: '50%',
+              ...pillGlass,
+              border: `1px solid ${app.searchedAway ? C.accentBorderStrong : 'rgba(255,255,255,.1)'}`,
+              boxShadow: '0 6px 18px rgba(0,0,0,.45)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+            }}
+          >
+            <div
+              style={{
+                width: 16,
+                height: 16,
+                borderRadius: '50%',
+                border: `2.5px solid ${app.searchedAway ? C.accent : C.mut}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <div
+                style={{
+                  width: 5,
+                  height: 5,
+                  borderRadius: '50%',
+                  background: app.searchedAway ? C.accent : C.mut,
+                }}
+              />
+            </div>
+          </button>
+        </>
+      )}
     </div>
   );
 }

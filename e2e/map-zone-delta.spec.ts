@@ -34,10 +34,17 @@ async function mockStations(page: Page, pins: { price: number; km: number }[]) {
   await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
 }
 
-/** Select a zone station by its price, from the pull-up list */
+/** Select a zone station by its price. The phone taps its row in the
+    pulled-up sheet; a desktop row opens the fiche instead of merely
+    selecting, so there the tap goes to the station's map pin. */
 async function selectFromList(page: Page, price: string) {
-  await openZoneList(page)
-  await page.getByTestId('zone-list').getByText(price).click()
+  const handle = page.getByRole('button', { name: /liste des stations/ })
+  if ((await handle.count()) > 0) {
+    await openZoneList(page)
+    await page.getByTestId('zone-list').getByText(price).click()
+  } else {
+    await page.locator('.pin-bubble', { hasText: price.replace(' €', '') }).click()
+  }
   await expect(page.getByText('Station sélectionnée')).toBeVisible()
 }
 

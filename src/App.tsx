@@ -40,15 +40,17 @@ export default function App() {
           <FallbackBanner />
           <InstallPrompt />
           {screen === 'onboarding' && <Onboarding />}
-          {screen === 'map' && <MapScreen />}
+          {/* On desktop the fiche floats over the LIVE map, in the same slot
+              as the zone panel — so /station/:id keeps MapScreen mounted and
+              MapScreen decides what the slot shows */}
+          {(screen === 'map' || (desktop && screen === 'detail')) && <MapScreen />}
           {screen === 'favs' && <FavoritesScreen />}
           {screen === 'routeSetup' && <RouteSetup />}
           {screen === 'route' && <RouteRibbon />}
           {screen === 'settings' && <Settings />}
           {showTabBar && <NavBar />}
-          {/* Last so the phone's full-screen fiche covers the tab bar above;
-              on desktop it is simply the content of the region */}
-          {screen === 'detail' && <StationDetail />}
+          {/* Last so the phone's full-screen fiche covers the tab bar above */}
+          {screen === 'detail' && !desktop && <StationDetail />}
         </div>
         {app.filtersOpen && <FiltersSheet />}
         <Toast />

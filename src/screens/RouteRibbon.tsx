@@ -1,8 +1,8 @@
-import type { ReactNode } from 'react';
-import { C, mono } from '../theme';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { C, floatingPanelStyle, mono } from '../theme';
 import { clockLabel, fmtPrice, durationLabel } from '../lib/format';
 import { fuelLabel } from '../lib/labels';
-import { CONTENT_MAX_WIDTH, PANEL_WIDTH, useIsDesktop } from '../lib/layout';
+import { CONTENT_MAX_WIDTH, PANEL_GAP, useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
 import { type RouteStation } from '../data/types';
 import {
@@ -94,6 +94,25 @@ export default function RouteRibbon() {
   const analysis = selectRouteAnalysis(app);
   const route = routeState.route;
   const hasRoute = routeState.status === 'ready' && route != null;
+
+  // The floating timeline's real width (PANEL_WIDTH is a clamp) + margins,
+  // measured so the route map can pad its fits past it — same slot geometry
+  // as the map screen's panel
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [panelInset, setPanelInset] = useState(0);
+  useLayoutEffect(() => {
+    if (!desktop || !hasRoute) {
+      setPanelInset(0);
+      return;
+    }
+    const el = panelRef.current;
+    if (!el) return;
+    const measure = () => setPanelInset(el.offsetWidth + PANEL_GAP * 2);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [desktop, hasRoute]);
 
   const toggleStyle = (id: string, size: number) => {
     const inRun = !!app.plannedStops[id];
@@ -498,12 +517,14 @@ export default function RouteRibbon() {
         <div
           style={{
             display: 'flex',
-            gap: 8,
+            gap: 6,
             marginTop: 14,
             marginBottom: 6,
             flexWrap: 'wrap',
           }}
         >
+          {/* Tight enough that the three of them hold one line at the
+              panel's usual widths — wrapping stays the floor's fallback */}
           {STRATEGIES.map((k) => {
             const active = routeMode === k;
             return (
@@ -513,9 +534,9 @@ export default function RouteRibbon() {
                 style={{
                   background: active ? C.accent : 'transparent',
                   color: active ? C.onAccent : C.body,
-                  fontSize: 12.5,
+                  fontSize: 12,
                   fontWeight: 700,
-                  padding: '7px 13px',
+                  padding: '7px 11px',
                   borderRadius: 16,
                   border: active ? `1px solid ${C.accent}` : '1px solid rgba(255,255,255,.15)',
                   cursor: 'pointer',
@@ -542,21 +563,28 @@ export default function RouteRibbon() {
     );
   }
 
+  // With a route: the corridor map takes the whole stage and the timeline
+  // floats over it — the same slot the map screen gives its zone panel.
+  // Without one (computing, error), there is no map to ride: the timeline
+  // reads as a centered column instead.
+  if (!hasRoute) {
+    return <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>{timeline}</div>;
+  }
+
   return (
-    <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
-      <div
-        style={{
-          width: hasRoute ? PANEL_WIDTH : '100%',
-          flexShrink: 0,
-          minHeight: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          borderRight: hasRoute ? `1px solid ${C.border}` : undefined,
-        }}
-      >
+    <div
+      style={{
+        flex: 1,
+        minHeight: 0,
+        position: 'relative',
+        overflow: 'hidden',
+        background: C.mapBg,
+      }}
+    >
+      <RouteMap fill leftInset={panelInset} />
+      <div ref={panelRef} style={floatingPanelStyle}>
         {timeline}
       </div>
-      {hasRoute && <RouteMap fill />}
     </div>
   );
 }

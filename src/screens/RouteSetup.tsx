@@ -345,16 +345,13 @@ export default function RouteSetup() {
         </div>
       </div>
 
-      {/* CTA — sticky like the fiche station's « Y aller »: the primary action
-          stays reachable while the form scrolls. The NavBar below already
-          carries the safe-area inset, so this bar doesn't add its own. */}
-      <div
-        style={{
-          ...stickyBarStyle(false),
-          // Line the CTA up with the form's own gutter, which is wider here
-          ...(desktop ? { padding: '14px 32px 26px' } : null),
-        }}
-      >
+      {/* CTA — sticky on a phone, like the fiche station's « Y aller »: the
+          primary action stays reachable while the form scrolls. The NavBar
+          below already carries the safe-area inset, so this bar doesn't add
+          its own. A desktop window shows the whole form at once: the button
+          follows the content instead of hugging the bottom edge across a
+          region of empty space. */}
+      <div style={desktop ? { padding: '18px 32px 26px' } : stickyBarStyle(false)}>
         <button onClick={() => app.startRoute()} disabled={!canGo} style={ctaStyle(canGo)}>
           {m.route_compare_cta()}
         </button>

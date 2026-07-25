@@ -2,10 +2,10 @@ import { test, expect, gotoMap, mapZoom, desktopOnly, DESKTOP_MIN_WIDTH } from '
 
 // The desktop arrangement (src/lib/layout.ts). Above DESKTOP_MIN_WIDTH the app
 // fills the window instead of being letterboxed into a phone-shaped column:
-// navigation moves to a side rail, the zone list is docked beside the map
-// rather than dragged over it, and the filters become a dialog. This file
-// covers that wiring — the gestures it replaces stay in map.spec.ts, scoped to
-// the phone project.
+// navigation moves to a side rail, the map runs edge to edge with the zone
+// list floating over its left edge, and the filters become an anchored
+// popover. This file covers that wiring — the gestures it replaces stay in
+// map.spec.ts, scoped to the phone project.
 
 desktopOnly()
 
@@ -55,8 +55,8 @@ test('navigation is a side rail, not a bottom tab bar', async ({ page }) => {
   await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
 })
 
-test('the zone list is docked beside the map, and a row selects on it', async ({ page }) => {
-  // Docked means already there — no gesture, no tap
+test('the zone list floats over the map, and a row selects on it', async ({ page }) => {
+  // Floating means already there — no gesture, no tap
   const list = page.getByTestId('zone-list')
   await expect(list).toBeVisible()
   await expect(page.getByText('Station U · Croix-Blanche').first()).toBeVisible()
@@ -64,19 +64,22 @@ test('the zone list is docked beside the map, and a row selects on it', async ({
   const listBox = await list.boundingBox()
   const map = await page.locator('.leaflet-container').first().boundingBox()
   if (!listBox || !map) throw new Error('layout not measurable')
-  // Beside, not over: the panel ends where the map begins
-  expect(listBox.x + listBox.width).toBeLessThanOrEqual(map.x + 1)
+  // Over, not beside: the map runs edge to edge under the panel — it starts
+  // left of the list and continues past its right edge
+  expect(listBox.x).toBeGreaterThan(map.x)
+  expect(map.x + map.width).toBeGreaterThan(listBox.x + listBox.width)
 
-  // The map ↔ list link still works, and nothing collapses on the way
-  await page.locator('button[aria-label^="Voir "][aria-label$="sur la carte"]').nth(1).click()
-  await expect(page.getByText('Station sélectionnée')).toBeVisible()
+  // One click on a row: its fiche opens under the list, which stays put —
+  // and closing it hands the zone card back
+  await page.locator('button[aria-label^="Ouvrir la fiche"]').nth(1).click()
+  await expect(page.getByText('Services')).toBeVisible()
   await expect(list).toBeVisible()
 
-  await page.getByRole('button', { name: 'Désélectionner la station' }).click()
+  await page.getByRole('button', { name: 'Fermer la fiche' }).click()
   await expect(page.getByText(/La moins chère/).first()).toBeVisible()
 })
 
-test('the filters are a dialog: Escape and the backdrop both close it', async ({ page }) => {
+test('the filters are a popover: Escape and a click outside both close it', async ({ page }) => {
   const dialog = page.getByRole('dialog')
 
   await page.getByText(/^Filtres · \d+$/).click()
@@ -94,13 +97,17 @@ test('the filters are a dialog: Escape and the backdrop both close it', async ({
   await expect(page.getByText('La moins chère près de vous')).toBeVisible()
 })
 
-test('a station fiche is a page in the region, with the rail still up', async ({ page }) => {
+test('a station fiche stacks under the list, with the rail still up', async ({ page }) => {
   await page.getByText(/MàJ /).first().click()
 
-  await expect(page.locator('[aria-label="Carte de la station"]')).toBeVisible()
   await expect(page.getByText('12 route de la Croix-Blanche · 31000 Toulouse')).toBeVisible()
-  // Still oriented: the navigation did not disappear under a full-screen page
+  // No mini-map here: the live map right of the panel already shows the pin
+  await expect(page.locator('[aria-label="Carte de la station"]')).toHaveCount(0)
+  // Still oriented: the list stays up above the fiche, the navigation did
+  // not disappear under a full-screen page, the live map is still there
+  await expect(page.getByTestId('zone-list')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Réglages', exact: true })).toBeVisible()
+  await expect(page.locator('.leaflet-container').first()).toBeVisible()
 
   // A narrow document stays narrow — it must not stretch across the region
   const card = await page.getByText('12 route de la Croix-Blanche · 31000 Toulouse').boundingBox()
@@ -108,7 +115,7 @@ test('a station fiche is a page in the region, with the rail still up', async ({
   if (!card || !shell) throw new Error('layout not measurable')
   expect(card.width).toBeLessThan(shell.width * 0.6)
 
-  await page.getByRole('button', { name: 'Retour' }).click()
+  await page.getByRole('button', { name: 'Fermer la fiche' }).click()
   await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
 })
 
