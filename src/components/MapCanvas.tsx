@@ -3,6 +3,7 @@ import L from 'leaflet';
 import { C } from '../theme';
 import { haversineKm, radiusBounds, type GeoPoint } from '../lib/geo';
 import { addDarkBasemap } from '../lib/tiles';
+import { installSmoothKeyboard } from '../lib/mapKeyboard';
 import ShareIcon from './ShareIcon';
 import {
   useApp,
@@ -137,6 +138,8 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
     const map = L.map(containerRef.current, {
       zoomControl: false,
       attributionControl: true,
+      // Leaflet's stepped arrows/±  give way to the smooth loop installed below
+      keyboard: false,
     });
     const saved =
       savedView &&
@@ -192,11 +195,22 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
     // the view on the zone bounds, not on searchPos (same after a
     // pan-to-station). Snapping it onto the center at the first move event
     // was a visible jump — measure the gap here and absorb it gradually.
-    map.on('dragstart', () => {
+    const measureCircleOffset = () => {
       if (!circleRef.current) return;
       const p = map.latLngToContainerPoint(circleRef.current.getLatLng());
       const mid = map.getSize().divideBy(2);
       circleOffsetRef.current = { x: p.x - mid.x, y: p.y - mid.y };
+    };
+    map.on('dragstart', measureCircleOffset);
+
+    // Arrows and +/- move the map on their own animation-frame loop (see
+    // mapKeyboard): it drives the same `move`/`moveend` path as a drag, so
+    // the circle glides and the results follow the keyboard like the finger.
+    const stopKeyboard = installSmoothKeyboard(map, {
+      onGestureStart: () => {
+        domInteract();
+        measureCircleOffset();
+      },
     });
 
     // The zoom the map has LANDED on, mirrored onto the container. Nothing in
@@ -303,6 +317,7 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
     return () => {
       clearTimeout(moveTimer.current);
       ro.disconnect();
+      stopKeyboard();
       el.removeEventListener('wheel', domInteract);
       el.removeEventListener('dblclick', domInteract);
       el.removeEventListener('touchstart', onTouchStart);
