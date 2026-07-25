@@ -244,6 +244,24 @@ describe('enrichWithBrands', () => {
     expect(enrichWithBrands(stations, pois)[0].brand).toBe('Shell');
   });
 
+  it('returns a non-finite station untouched instead of hanging', () => {
+    // An infinite latitude makes every cell bound infinite, and `la++` never
+    // leaves Infinity — without a guard the cell walk spins forever. The test
+    // times out rather than fails if that ever comes back.
+    const pois = pad([{ lat: 43.6047, lng: 1.4442, label: 'Total' }]);
+    const stations = [
+      station('nan', Number.NaN, 1.4442),
+      station('inf', Number.POSITIVE_INFINITY, 1.4442),
+      station('-inf', Number.NEGATIVE_INFINITY, 1.4442),
+      station('inf-lng', 43.6047, Number.POSITIVE_INFINITY),
+      station('ok', 43.6047, 1.4442),
+    ];
+    const out = enrichWithBrands(stations, pois);
+    expect(out).toEqual(enrichByFullScan(stations, pois));
+    expect(out.slice(0, 4)).toEqual(stations.slice(0, 4)); // untouched, no match
+    expect(out[4].brand).toBe('Total'); // the sane one still matches
+  }, 5_000);
+
   it('agrees with a full scan far from the equator and around the poles', () => {
     // Not places this app serves, but the cell arithmetic must not silently
     // drop matches where meridians converge.

@@ -155,6 +155,10 @@ function buildPoiGrid(pois: FuelPoi[]): PoiGrid {
  * order a full scan would visit them in, so ties still go to the first POI.
  */
 function candidatesNear(grid: PoiGrid, count: number, p: GeoPoint): number[] {
+  // A non-finite coordinate would make every cell bound infinite, and `la++`
+  // never leaves Infinity — the walk below would spin forever. The full scan
+  // this replaces just measured NaN and matched nothing; do the same, cheaply.
+  if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng)) return [];
   const dLat = WINDOW_KM * DEG_PER_KM;
   // Meridians converge, so the same window spans more longitude the further
   // north we are; measure the cosine at the edge of the window, not its center.
