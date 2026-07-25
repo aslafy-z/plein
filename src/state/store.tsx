@@ -2422,18 +2422,15 @@ export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
     .filter((e) => !planIds.has(e.c.station.id) && e.detour != null)
     .map((e) => ({
       station: e.c.station,
-      // A candidate past the no-stop autonomy limit cannot be driven to on the
-      // departure tank, so it leads no list — offered, but after the ones that
-      // can actually be reached.
-      reachable: e.c.projectionKm <= limitKm,
       score: alternativeScore(app, e.c.priceMilli, e.detour!),
     }))
-    .sort(
-      (a, b) =>
-        Number(b.reachable) - Number(a.reachable) ||
-        a.score - b.score ||
-        (a.station.id < b.station.id ? -1 : 1),
-    )
+    // The strategy score is the ONLY ranking. Sorting the departure tank's reach
+    // ahead of it looks prudent and is not: on a 20 % tank it fills the list with
+    // whatever sits in the first 120 km — two pumps 20 minutes off the road beat
+    // a on-corridor bargain further on — and an alternative is something to swap
+    // INTO the plan, reached after the stops that precede it. The timeline's
+    // « limite d'autonomie » marker is what says where the dry point falls.
+    .sort((a, b) => a.score - b.score || (a.station.id < b.station.id ? -1 : 1))
     .slice(0, MAX_ALTERNATIVES)
     .map((e) => e.station)
     .sort((a, b) => a.kmAlong - b.kmAlong);

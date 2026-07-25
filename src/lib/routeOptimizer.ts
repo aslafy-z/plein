@@ -177,10 +177,13 @@ const STRATEGY_VALUE_OF_TIME: Record<RouteStrategy, number> = {
   price: 2,
   balanced: VALUE_OF_TIME_CENTS_PER_MIN,
   /**
-   * Minutes dominate: at 10 €/min a one-minute-longer plan has to be ~20 c/L
-   * cheaper across a 50 L tank to win, so price decides close calls only.
+   * Minutes dominate — 1,50 €/min is 90 €/h, far above any real wage — but not
+   * absolutely. A 10-minute detour still costs 15 €, which a 50 L tank would
+   * have to be 30 c/L cheaper to justify, so the chip stays firmly
+   * detour-averse. What it no longer does is pay 14 € to save 4 minutes on a
+   * 900 km trip: 0,7 % of the duration for 12 % of the fuel bill.
    */
-  detour: 1000,
+  detour: 150,
 };
 
 /** Additive cost components every DP state carries (all integers) */
