@@ -18,10 +18,12 @@ import {
   selectPriceRange,
   selectPriceStats,
   selectSorted,
+  selectPlanCandidates,
   selectReachCandidates,
   selectRecommended,
   selectRouteAnalysis,
   selectVisible,
+  travelMatrixKey,
   selectZoneBrandCounts,
   selectZoneDelta,
   selectZoneFuels,
@@ -71,6 +73,13 @@ function app(over: Partial<AppStore> = {}): AppStore {
     routeMode: 'balanced',
     plannedStops: {},
     routeState: { status: 'idle', route: null, stations: [], fellBack: false },
+    routeMatrix: { status: 'idle', key: null, cells: null },
+    sourceId: 'demo',
+    vehicle: 'car',
+    avoidMotorway: false,
+    avoidToll: false,
+    fromPoint: null,
+    toPoint: null,
     ...over,
   } as AppStore
 }
@@ -533,28 +542,43 @@ describe('sortFavoriteRows', () => {
 })
 
 // ── Route analysis ───────────────────────────────────────────────────────────
-const routeStation = (
+// Corridor stations carry REAL coordinates: the plan pipeline projects them
+// onto the route polyline itself — kmAlong/detourMin are display metadata.
+const ROUTE_KM = 260
+const routeLine = () =>
+  Array.from({ length: 53 }, (_, i) => north((ROUTE_KM / 52) * i))
+
+const corridorStation = (
   id: string,
   price: number,
   kmAlong: number,
-  detourMin: number,
-): RouteStation => ({ ...station({ id, prices: diesel(price) }), kmAlong, detourMin })
+  offKm = 0,
+): RouteStation => ({
+  ...station({ id, prices: diesel(price) }),
+  lat: BASE.lat + kmAlong / 111,
+  lng: BASE.lng + offKm / (111 * Math.cos((BASE.lat * Math.PI) / 180)),
+  kmAlong,
+  detourMin: Math.round(offKm * 4),
+})
 
+// Positions sit on polyline vertices (5 km grid) so the projection is exact
 const CORRIDOR: RouteStation[] = [
-  routeStation('cheapest-far-detour', 1.63, 119, 7),
-  routeStation('balanced', 1.66, 85, 2),
-  routeStation('on-route-pricey', 1.84, 58, 0),
-  routeStation('max', 1.9, 150, 3),
+  corridorStation('on-route-pricey', 1.84, 55, 0),
+  corridorStation('balanced', 1.66, 85, 0.5),
+  corridorStation('cheapest-far-detour', 1.63, 120, 6),
+  corridorStation('max', 1.9, 150, 0),
 ]
 
 const routeApp = (over: Partial<AppStore> = {}) =>
   app({
     routeState: {
       status: 'ready',
-      route: { distanceKm: 260, durationMin: 150, polyline: [] },
+      route: { distanceKm: ROUTE_KM, durationMin: 156, polyline: routeLine() },
       stations: CORRIDOR,
       fellBack: false,
     },
+    fromPoint: BASE,
+    toPoint: north(ROUTE_KM),
     ...over,
   })
 
@@ -566,45 +590,122 @@ describe('selectAutonomy', () => {
 })
 
 describe('selectRouteAnalysis', () => {
-  it('each strategy crowns its own stop with its own justification', () => {
-    const balanced = selectRouteAnalysis(routeApp())
-    // 1,66 € + 2 min beats 1,63 € + 7 min once the détour minutes are priced
-    expect(balanced.recoId).toBe('balanced')
-    expect(balanced.recoReason).toEqual({ kind: 'balanced', saving: 12 })
-
-    const price = selectRouteAnalysis(routeApp({ routeMode: 'price' }))
-    expect(price.recoId).toBe('cheapest-far-detour')
-    expect(price.recoReason).toEqual({ kind: 'lowestPrice', saving: 13.5 })
-
-    const detour = selectRouteAnalysis(routeApp({ routeMode: 'detour' }))
-    expect(detour.recoId).toBe('on-route-pricey')
-    expect(detour.recoReason).toEqual({ kind: 'noDetour' })
-  })
-
-  it('a low departure tank forces a REACHABLE recommendation', () => {
-    // 10 % of 50 L at 6,5 L/100 km → limit KM 60: only the on-route station
-    // (KM 58) is reachable — the corridor-wide winners are beyond the limit
-    const a = selectRouteAnalysis(routeApp({ startTankPct: 10 }))
-    expect(a.needsStop).toBe(true)
-    expect(a.limitKm).toBe(60)
-    expect(a.recoId).toBe('on-route-pricey')
-    expect(a.arrival).toEqual({ kind: 'autonomyShort', limitKm: 60 })
-    // …and the shown stops always include the best reachable one
-    expect(a.stops.map((s) => s.id)).toContain('on-route-pricey')
-  })
-
-  it('prices the whole trip at the recommended stop', () => {
+  it('a tank that covers the trip yields a zero-stop plan, stations stay optional', () => {
+    // 70 % of 50 L → 538 km of autonomy for 260 km of route
     const a = selectRouteAnalysis(routeApp())
-    // 260 km × 6,5 L/100 km = 16,9 L, at the compromis price 1,66 €/L
-    expect(a.tripLitres).toBeCloseTo(16.9, 10)
-    expect(a.tripCost).toBeCloseTo(16.9 * 1.66, 10)
+    expect(a.plan?.status).toBe('direct')
+    expect(a.planStops).toEqual([])
+    expect(a.purchaseCostCents).toBe(0)
+    expect(a.needsStop).toBe(false)
+    expect(a.arrival?.kind).toBe('direct')
+    // Cheap corridor stations are still offered — as alternatives, never as
+    // a required or « optimal » stop
+    expect(a.alternatives.length).toBeGreaterThan(0)
   })
 
-  it('picked stops survive strategy switches even off the top list', () => {
-    const a = selectRouteAnalysis(
-      routeApp({ routeMode: 'detour', plannedStops: { max: true } }),
+  it('a low departure tank forces a plan that starts at a REACHABLE station', () => {
+    // 10 % of 50 L at 6,5 L/100 km → limit KM 60: only the on-route station
+    // (KM 55) can open the plan, whatever the strategy prefers further on
+    for (const routeMode of ['balanced', 'price', 'detour'] as const) {
+      const a = selectRouteAnalysis(routeApp({ startTankPct: 10, routeMode }))
+      expect(a.needsStop).toBe(true)
+      expect(a.limitKm).toBe(60)
+      expect(a.plan?.status).toBe('planned')
+      expect(a.planStops[0].station.id).toBe('on-route-pricey')
+    }
+  })
+
+  it('the strategy changes the plan, and the cheap-but-far pump loses on real detour cost', () => {
+    const price = selectRouteAnalysis(routeApp({ startTankPct: 10, routeMode: 'price' }))
+    const detour = selectRouteAnalysis(routeApp({ startTankPct: 10, routeMode: 'detour' }))
+    // Detour: one forced stop, no hop to a cheaper pump
+    expect(detour.planStops.map((p) => p.station.id)).toEqual(['on-route-pricey'])
+    // Price: tops up at the forced stop, buys the bulk at the fair on-corridor
+    // pump. The 1,63 € sticker never wins: its 6 km off-road access burns more
+    // fuel than the 3 ct/L discount pays for — it stays an alternative.
+    const priceIds = price.planStops.map((p) => p.station.id)
+    expect(priceIds.slice(0, 2)).toEqual(['on-route-pricey', 'balanced'])
+    expect(priceIds).not.toContain('cheapest-far-detour')
+    expect(price.planStops[0].stop.purchasedLitres).toBeLessThan(
+      price.planStops[1].stop.purchasedLitres,
     )
+    expect(price.alternatives.map((s) => s.id)).toContain('cheapest-far-detour')
+    // A plan stop states what to buy there, in integer cents
+    for (const p of price.planStops) {
+      expect(p.stop.purchaseCostCents).toBe(
+        Math.round((p.stop.purchasedLitres * p.stop.priceMilli) / 10),
+      )
+    }
+  })
+
+  it('no reachable station at all → infeasible, with the arrival saying so', () => {
+    const a = selectRouteAnalysis(
+      routeApp({
+        startTankPct: 10,
+        routeState: {
+          status: 'ready',
+          route: { distanceKm: ROUTE_KM, durationMin: 156, polyline: routeLine() },
+          stations: CORRIDOR.filter((s) => s.kmAlong > 100),
+          fellBack: false,
+        },
+      }),
+    )
+    expect(a.plan?.status).toBe('infeasible')
+    expect(a.plan?.diagnostics?.noStationInRange).toBe(true)
+    expect(a.arrival).toEqual({ kind: 'autonomyShort', limitKm: 60 })
+    expect(a.planStops).toEqual([])
+  })
+
+  it('a picked stop is constrained INTO the plan and its litres recomputed', () => {
+    const a = selectRouteAnalysis(routeApp({ plannedStops: { max: true } }))
+    expect(a.plan?.status).toBe('planned')
+    expect(a.planStops.map((p) => p.station.id)).toContain('max')
+    expect(a.invalidPlannedStopIds).toEqual([])
     expect(a.plannedStops.map((s) => s.id)).toEqual(['max'])
+  })
+
+  it('a picked stop without a usable price is flagged, not silently accepted', () => {
+    const e10Only = {
+      ...corridorStation('no-diesel', 1.8, 100),
+      prices: { e10: { value: 1.8 } },
+    }
+    const a = selectRouteAnalysis(
+      routeApp({
+        routeState: {
+          status: 'ready',
+          route: { distanceKm: ROUTE_KM, durationMin: 156, polyline: routeLine() },
+          stations: [...CORRIDOR, e10Only],
+          fellBack: false,
+        },
+        plannedStops: { 'no-diesel': true },
+      }),
+    )
+    expect(a.invalidPlannedStopIds).toEqual(['no-diesel'])
+  })
+
+  it('runs on the geometric estimate until a matching matrix lands, then routed', () => {
+    const base = routeApp()
+    expect(selectRouteAnalysis(base).quality).toBe('estimated')
+
+    const candidates = selectPlanCandidates(base)
+    const key = travelMatrixKey('demo', BASE, north(ROUTE_KM), candidates, {
+      avoidMotorway: false,
+      avoidToll: false,
+      vehicle: 'car',
+    })
+    const n = candidates.length + 2
+    const cells = Array.from({ length: n }, () =>
+      Array.from({ length: n }, () => ({ distanceKm: 60, durationMin: 40 })),
+    )
+    const routed = selectRouteAnalysis(
+      routeApp({ routeMatrix: { status: 'ready', key, cells } }),
+    )
+    expect(routed.quality).toBe('routed')
+    // A stale matrix (candidate set moved on) must NOT be trusted
+    const stale = selectRouteAnalysis(
+      routeApp({ routeMatrix: { status: 'ready', key: 'other', cells } }),
+    )
+    expect(stale.quality).toBe('estimated')
   })
 })
 

@@ -9,8 +9,16 @@ import type { ReachInfo, Route, RouteOptions, RouteProvider } from '../types';
 const OSRM_ROOT = IS_DEV ? '/proxy/osrm' : 'https://router.project-osrm.org';
 const OSRM_BASE = OSRM_ROOT + '/route/v1/driving';
 const OSRM_TABLE_BASE = OSRM_ROOT + '/table/v1/driving';
-const VALHALLA_BASE = (IS_DEV ? '/proxy/valhalla' : 'https://valhalla1.openstreetmap.de') + '/route';
+const VALHALLA_ROOT = IS_DEV ? '/proxy/valhalla' : 'https://valhalla1.openstreetmap.de';
+const VALHALLA_BASE = VALHALLA_ROOT + '/route';
+const VALHALLA_MATRIX_BASE = VALHALLA_ROOT + '/sources_to_targets';
 const TIMEOUT_MS = 12000;
+/**
+ * Points one travel-matrix call may carry. The FOSSGIS Valhalla instance caps
+ * matrix locations at 50 per side; OSRM's public demo table accepts more, so
+ * the stricter limit governs both backends.
+ */
+const TRAVEL_MATRIX_MAX_POINTS = 50;
 
 // ── OSRM ─────────────────────────────────────────────────────────────────────
 interface OsrmResponse {
@@ -83,6 +91,29 @@ async function osrmReachMatrix(
   });
 }
 
+// ── OSRM table (full square matrix for the route fuel-stop plan) ─────────────
+async function osrmTravelMatrix(points: GeoPoint[]): Promise<Array<Array<ReachInfo | null>>> {
+  if (!points.length) return [];
+  const coords = points.map((p) => `${p.lng.toFixed(5)},${p.lat.toFixed(5)}`).join(';');
+  // No sources/destinations restriction: every point is source AND target
+  const url = `${OSRM_TABLE_BASE}/${coords}?annotations=duration,distance`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+  if (!res.ok) throw new Error(`OSRM HTTP ${res.status}`);
+  const json = (await res.json()) as OsrmTableResponse;
+  const { durations, distances } = json;
+  if (json.code !== 'Ok' || !durations || !distances)
+    throw new Error(`OSRM table code ${json.code ?? 'unknown'}`);
+  return points.map((_, i) =>
+    points.map((_, j) => {
+      const meters = distances[i]?.[j];
+      const seconds = durations[i]?.[j];
+      return meters != null && seconds != null
+        ? { distanceKm: meters / 1000, durationMin: seconds / 60 }
+        : null;
+    }),
+  );
+}
+
 // ── Valhalla ─────────────────────────────────────────────────────────────────
 /**
  * Decode a Valhalla shape string (Google polyline, 1e-6 precision)
@@ -119,13 +150,13 @@ interface ValhallaResponse {
   };
 }
 
-async function valhallaRoute(from: GeoPoint, to: GeoPoint, opts: RouteOptions): Promise<Route> {
+/** Costing profile + options shared by the route and matrix calls */
+function valhallaCosting(opts: RouteOptions): {
+  costing: string;
+  costing_options: Record<string, Record<string, number>>;
+} {
   const costing = opts.vehicle === 'motorcycle' ? 'motorcycle' : 'auto';
-  const body = {
-    locations: [
-      { lat: from.lat, lon: from.lng },
-      { lat: to.lat, lon: to.lng },
-    ],
+  return {
     costing,
     costing_options: {
       [costing]: {
@@ -133,6 +164,16 @@ async function valhallaRoute(from: GeoPoint, to: GeoPoint, opts: RouteOptions): 
         ...(opts.avoidToll ? { use_tolls: 0 } : {}),
       },
     },
+  };
+}
+
+async function valhallaRoute(from: GeoPoint, to: GeoPoint, opts: RouteOptions): Promise<Route> {
+  const body = {
+    locations: [
+      { lat: from.lat, lon: from.lng },
+      { lat: to.lat, lon: to.lng },
+    ],
+    ...valhallaCosting(opts),
     directions_type: 'none',
   };
   const url = `${VALHALLA_BASE}?json=${encodeURIComponent(JSON.stringify(body))}`;
@@ -152,6 +193,42 @@ async function valhallaRoute(from: GeoPoint, to: GeoPoint, opts: RouteOptions): 
   };
 }
 
+// ── Valhalla sources_to_targets (matrix for avoid-options / motorcycle) ──────
+// Official matrix endpoint of the same public FOSSGIS instance the route call
+// uses — distances come back in km, times in seconds; unroutable pairs carry
+// null fields. https://valhalla.github.io/valhalla/api/matrix/api-reference/
+interface ValhallaMatrixResponse {
+  sources_to_targets?: Array<Array<{ distance?: number | null; time?: number | null }>>;
+}
+
+async function valhallaTravelMatrix(
+  points: GeoPoint[],
+  opts: RouteOptions,
+): Promise<Array<Array<ReachInfo | null>>> {
+  if (!points.length) return [];
+  const locations = points.map((p) => ({ lat: p.lat, lon: p.lng }));
+  const body = {
+    sources: locations,
+    targets: locations,
+    ...valhallaCosting(opts),
+    units: 'kilometers',
+  };
+  const url = `${VALHALLA_MATRIX_BASE}?json=${encodeURIComponent(JSON.stringify(body))}`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+  if (!res.ok) throw new Error(`Valhalla HTTP ${res.status}`);
+  const json = (await res.json()) as ValhallaMatrixResponse;
+  const rows = json.sources_to_targets;
+  if (!rows || rows.length !== points.length) throw new Error('Valhalla matrix shape');
+  return rows.map((row) =>
+    points.map((_, j) => {
+      const cell = row[j];
+      return cell && cell.distance != null && cell.time != null
+        ? { distanceKm: cell.distance, durationMin: cell.time / 60 }
+        : null;
+    }),
+  );
+}
+
 // ── Provider ─────────────────────────────────────────────────────────────────
 export class RealRouteProvider implements RouteProvider {
   async getRoute(from: GeoPoint, to: GeoPoint, options: RouteOptions = {}): Promise<Route> {
@@ -167,5 +244,20 @@ export class RealRouteProvider implements RouteProvider {
   // plain car profile is accurate enough for every profile here.
   getReachMatrix(from: GeoPoint, targets: GeoPoint[]): Promise<Array<ReachInfo | null>> {
     return osrmReachMatrix(from, targets);
+  }
+
+  readonly travelMatrixMaxPoints = TRAVEL_MATRIX_MAX_POINTS;
+
+  // Same split as getRoute, so the matrix legs live on the same cost model as
+  // the route they annotate: Valhalla when an avoid option or the motorcycle
+  // profile is on, OSRM's table endpoint otherwise.
+  getTravelMatrix(
+    points: GeoPoint[],
+    options: RouteOptions = {},
+  ): Promise<Array<Array<ReachInfo | null>>> {
+    if (options.avoidMotorway || options.avoidToll || options.vehicle === 'motorcycle') {
+      return valhallaTravelMatrix(points, options);
+    }
+    return osrmTravelMatrix(points);
   }
 }

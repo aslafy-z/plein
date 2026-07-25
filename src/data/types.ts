@@ -195,6 +195,19 @@ export interface RouteProvider {
    * routing backend (demo) keep crow-flies distances.
    */
   getReachMatrix?(from: GeoPoint, targets: GeoPoint[]): Promise<Array<ReachInfo | null>>;
+  /**
+   * Full square road matrix between `points` — every point is both a source
+   * and a target, so one call yields origin→station, station→station and
+   * station→destination legs for the route fuel-stop plan. `null` per cell
+   * when unroutable. Optional — the plan falls back to a geometric estimate
+   * (and says so) when the provider has no matrix backend or the call fails.
+   */
+  getTravelMatrix?(
+    points: GeoPoint[],
+    options?: RouteOptions,
+  ): Promise<Array<Array<ReachInfo | null>>>;
+  /** Largest `points` a single getTravelMatrix call accepts */
+  readonly travelMatrixMaxPoints?: number;
 }
 
 // ── Source selection ─────────────────────────────────────────────────────────

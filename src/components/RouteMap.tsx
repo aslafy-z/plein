@@ -30,6 +30,14 @@ export default function RouteMap({
   const app = useApp();
   const analysis = selectRouteAnalysis(app);
   const route = app.routeState.route;
+  // Stable pin signature: the draw effect must rerun when the PLAN changes,
+  // not when unrelated store state produces a fresh analysis object.
+  const planKey = [
+    analysis.plan?.status ?? '',
+    ...analysis.planStops.map((p) => p.station.id),
+    '|',
+    ...analysis.alternatives.map((s) => s.id),
+  ].join(',');
   const leftInsetRef = useRef(leftInset);
   leftInsetRef.current = leftInset;
 
@@ -134,11 +142,13 @@ export default function RouteMap({
       }
     }
 
-    // Corridor stops as price pins (recommended one highlighted)
-    for (const st of analysis.stops) {
+    // Plan stops + alternatives as price pins (the plan's own highlighted)
+    const planIds = new Set(analysis.planStops.map((p) => p.station.id));
+    const shown = [...analysis.planStops.map((p) => p.station), ...analysis.alternatives];
+    for (const st of shown) {
       const price = effectivePrice(st, app.fuel)?.value;
       if (price == null) continue;
-      const reco = st.id === analysis.recoId;
+      const reco = planIds.has(st.id);
       const bg = reco ? '#3ddc84' : '#22282c';
       const fg = reco ? '#08120c' : '#cfd6da';
       const font = reco
@@ -170,7 +180,7 @@ export default function RouteMap({
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [route, app.routeState.stations, app.fuel, app.routeMode, analysis.recoId]);
+  }, [route, app.routeState.stations, app.fuel, app.routeMode, planKey, analysis.limitKm]);
 
   return (
     <div

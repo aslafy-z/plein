@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { C, floatingPanelStyle, mono } from '../theme';
-import { clockLabel, fmtPrice, durationLabel } from '../lib/format';
+import { clockLabel, fmtDecimal, fmtPrice, durationLabel } from '../lib/format';
 import { fuelLabel } from '../lib/labels';
 import { CONTENT_MAX_WIDTH, PANEL_GAP, useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
@@ -12,9 +12,10 @@ import {
   effectiveFuel,
   effectivePrice,
   type ArrivalEstimate,
-  type RecommendationReason,
+  type PlanStopView,
   type RouteMode,
 } from '../state/store';
+import type { InfeasibleDiagnostics } from '../lib/routeOptimizer';
 import RouteMap from '../components/RouteMap';
 
 const STRATEGIES: RouteMode[] = ['balanced', 'price', 'detour'];
@@ -33,21 +34,14 @@ function strategyLabel(mode: RouteMode): string {
 const detourLabel = (detourMin: number) =>
   detourMin === 0 ? m.ribbon_no_detour() : m.ribbon_detour({ minutes: detourMin });
 
-/** Why the ribbon crowns this stop — the analysis hands over data, not copy */
-function recommendationLabel(reason: RecommendationReason | null): string {
-  if (!reason) return '';
-  switch (reason.kind) {
-    case 'lowestPrice':
-      return m.ribbon_reco_lowest_price({ saving: fmtPrice(reason.saving) });
-    case 'noDetour':
-      return m.ribbon_reco_no_detour();
-    case 'minDetour':
-      return m.ribbon_reco_min_detour({ minutes: reason.detourMin });
-    case 'balanced':
-      return m.ribbon_reco_balanced({ saving: fmtPrice(reason.saving) });
-    case 'onlyStation':
-      return m.ribbon_reco_only_station();
-  }
+/** Litres with locale decimals — one digit under 10 L, whole litres above */
+const litresLabel = (litres: number) => fmtDecimal(litres, litres < 10 ? 1 : 0);
+
+/** Why no plan exists — structured diagnostics become one clear sentence */
+function infeasibleLabel(diag: InfeasibleDiagnostics | undefined, limitKm: number): string {
+  const km = Math.round(diag?.furthestReachableKm ?? limitKm);
+  if (!diag || diag.noStationInRange) return m.ribbon_infeasible_no_station({ km });
+  return m.ribbon_infeasible_gap({ km });
 }
 
 function arrivalLabel(arrival: ArrivalEstimate | null): string {
@@ -134,8 +128,9 @@ export default function RouteRibbon() {
     };
   };
 
-  // ── Reco stop card ──────────────────────────────────────────────────────────
-  const recoNode = (st: RouteStation) => {
+  // ── Plan stop card ──────────────────────────────────────────────────────────
+  const planStopNode = (view: PlanStopView, index: number, count: number) => {
+    const st = view.station;
     const inRun = !!app.plannedStops[st.id];
     return (
       <div key={st.id} style={{ position: 'relative', padding: '0 0 14px' }}>
@@ -156,7 +151,7 @@ export default function RouteRibbon() {
             fontWeight: 800,
           }}
         >
-          ★
+          {count > 1 ? index + 1 : '★'}
         </div>
         <div
           style={{
@@ -179,7 +174,9 @@ export default function RouteRibbon() {
                 flex: 1,
               }}
             >
-              {m.ribbon_recommended_stop()}
+              {count > 1
+                ? m.ribbon_plan_stop_index({ index: index + 1, count })
+                : m.ribbon_recommended_stop()}
             </span>
             <span style={{ fontSize: 11, color: C.mut, whiteSpace: 'nowrap' }}>
               {m.ribbon_km_marker({ km: st.kmAlong })} · {detourLabel(st.detourMin)}
@@ -201,7 +198,10 @@ export default function RouteRibbon() {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 16, fontWeight: 700, color: C.ink }}>{st.name}</div>
               <div style={{ fontSize: 12, color: C.mut, marginTop: 2 }}>
-                {recommendationLabel(analysis.recoReason)}
+                {m.ribbon_plan_buy({
+                  litres: litresLabel(view.stop.purchasedLitres),
+                  cost: fmtPrice(view.stop.purchaseCostCents / 100),
+                })}
               </div>
             </div>
             <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -323,18 +323,20 @@ export default function RouteRibbon() {
       </div>
     );
   } else {
+    const plan = analysis.plan;
     const limitPct = Math.max(8, Math.min(92, (analysis.limitKm / route.distanceKm) * 100));
 
+    // The optimal sequence, with the autonomy marker threaded between stops
     const stopNodes: ReactNode[] = [];
     let markerDone = false;
-    for (const st of analysis.stops) {
-      if (analysis.needsStop && !markerDone && st.kmAlong > analysis.limitKm) {
+    const count = analysis.planStops.length;
+    analysis.planStops.forEach((view, i) => {
+      if (analysis.needsStop && !markerDone && view.station.kmAlong > analysis.limitKm) {
         markerDone = true;
         stopNodes.push(limitMarker(analysis.limitKm));
       }
-      stopNodes.push(st.id === analysis.recoId ? recoNode(st) : plainNode(st));
-    }
-    // Autonomy runs out after the last found stop → marker still belongs on the line
+      stopNodes.push(planStopNode(view, i, count));
+    });
     if (analysis.needsStop && !markerDone) stopNodes.push(limitMarker(analysis.limitKm));
 
     const nStops = analysis.plannedStops.length;
@@ -379,13 +381,60 @@ export default function RouteRibbon() {
           </div>
         </div>
 
-        {/* Stops */}
-        {analysis.stops.length === 0 ? (
+        {/* The plan: direct / stops / infeasible */}
+        {plan?.status === 'direct' && (
+          <div style={{ position: 'relative', padding: '0 0 14px' }} data-testid="plan-direct">
+            <div
+              style={{
+                background: C.accentSoft10,
+                border: '1px solid rgba(61,220,132,.3)',
+                borderRadius: 14,
+                padding: '12px 16px',
+              }}
+            >
+              <div style={{ fontSize: 13.5, fontWeight: 800, color: C.accent }}>
+                {m.ribbon_no_stop_needed()}
+              </div>
+              {analysis.destinationFuelLitres != null && (
+                <div style={{ fontSize: 12, color: C.mut, marginTop: 3 }}>
+                  {m.ribbon_fuel_at_destination({
+                    litres: litresLabel(analysis.destinationFuelLitres),
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        {plan?.status === 'infeasible' && (
+          <div style={{ position: 'relative', padding: '0 0 14px' }} data-testid="plan-infeasible">
+            <div
+              style={{
+                background: C.surface2,
+                border: `1px solid ${C.warn}`,
+                borderRadius: 14,
+                padding: '12px 16px',
+              }}
+            >
+              <div style={{ fontSize: 13.5, fontWeight: 800, color: C.warn }}>
+                {m.ribbon_infeasible_title()}
+              </div>
+              <div style={{ fontSize: 12, color: C.mut, marginTop: 3, lineHeight: 1.45 }}>
+                {infeasibleLabel(plan.diagnostics, analysis.limitKm)}
+              </div>
+            </div>
+          </div>
+        )}
+        {plan?.status === 'planned' && stopNodes}
+        {plan?.status !== 'planned' && analysis.needsStop && limitMarker(analysis.limitKm)}
+        {routeState.stations.length === 0 && (
           <div style={{ position: 'relative', padding: '0 0 14px', fontSize: 12.5, color: C.mut }}>
             {m.ribbon_no_stops()}
           </div>
-        ) : (
-          stopNodes
+        )}
+        {analysis.invalidPlannedStopIds.length > 0 && (
+          <div style={{ position: 'relative', padding: '0 0 14px', fontSize: 12, color: C.warn }}>
+            {m.ribbon_manual_stops_invalid()}
+          </div>
         )}
 
         {/* Tour bar */}
@@ -435,6 +484,25 @@ export default function RouteRibbon() {
             {arrivalLabel(analysis.arrival)}
           </div>
         </div>
+
+        {/* Alternatives — candidates worth a look, never « the » plan */}
+        {analysis.alternatives.length > 0 && (
+          <div style={{ paddingTop: 22 }} data-testid="plan-alternatives">
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '.12em',
+                textTransform: 'uppercase',
+                color: C.mut,
+                paddingBottom: 10,
+              }}
+            >
+              {m.ribbon_alternatives_title()}
+            </div>
+            {analysis.alternatives.map(plainNode)}
+          </div>
+        )}
       </div>
     );
   }
@@ -501,17 +569,19 @@ export default function RouteRibbon() {
             </span>
             <span>·</span>
             <span>{m.ribbon_fuel_tank({ fuel: fuelLabel(fuel), tank })}</span>
-            {analysis.tripCost != null && analysis.tripLitres != null && (
-              <>
-                <span>·</span>
-                <span>
-                  {m.ribbon_trip_fuel({
-                    litres: Math.round(analysis.tripLitres),
-                    cost: fmtPrice(analysis.tripCost),
-                  })}
-                </span>
-              </>
-            )}
+            {analysis.plan?.status === 'planned' &&
+              analysis.purchaseLitres != null &&
+              analysis.purchaseCostCents != null && (
+                <>
+                  <span>·</span>
+                  <span>
+                    {m.ribbon_trip_purchase({
+                      litres: litresLabel(analysis.purchaseLitres),
+                      cost: fmtPrice(analysis.purchaseCostCents / 100),
+                    })}
+                  </span>
+                </>
+              )}
           </div>
         )}
         <div
@@ -548,6 +618,12 @@ export default function RouteRibbon() {
             );
           })}
         </div>
+        {/* Routed matrix unavailable → the plan runs on geometric estimates */}
+        {hasRoute && analysis.quality === 'estimated' && (
+          <div style={{ fontSize: 11.5, color: C.mut, marginTop: 2 }} data-testid="plan-estimated">
+            {m.ribbon_estimated_notice()}
+          </div>
+        )}
       </div>
 
       {body}

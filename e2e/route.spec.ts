@@ -1,5 +1,10 @@
 import { test, expect, gotoMap } from './fixtures'
 
+// A 20 % departure tank forces a plan on the Toulouse → Bordeaux demo
+// corridor, so the whole flow — plan card, tour, fiche, history — has a
+// recommended stop to hang off.
+test.use({ seed: { sourceId: 'demo', onboarded: true, startTankPct: 20 } })
+
 test('route comparison: ribbon, tour, station detail and history', async ({ page }) => {
   await gotoMap(page)
 
@@ -16,21 +21,21 @@ test('route comparison: ribbon, tour, station detail and history', async ({ page
   await page.getByText('Bordeaux centre').click()
   await page.getByText('Comparer les stations sur le trajet').click()
 
-  // ── Ribbon: recommended stop, corridor map, trip fuel cost ──
+  // ── Ribbon: planned stop, corridor map, purchase totals ──
   await expect(page.getByText('Arrêt conseillé')).toBeVisible({ timeout: 30_000 })
   await expect(page.locator('[aria-label="Carte du trajet"]')).toBeVisible()
-  await expect(page.getByText(/de carburant/)).toBeVisible()
+  await expect(page.getByText(/à acheter/).first()).toBeVisible()
 
-  // strategy switch
+  // strategy switch → the price plan chains two stops
   await page.getByText('Prix le + bas').click()
-  await expect(page.getByText('Arrêt conseillé')).toBeVisible()
+  await expect(page.getByText('Arrêt 1/2')).toBeVisible()
 
-  // add the recommended stop to the tour
+  // add the first planned stop to the tour
   await page.getByRole('button', { name: 'Ajouter à la tournée' }).first().click()
   await expect(page.getByText('Lancer la tournée ›')).toBeVisible()
 
-  // ── Station detail from the recommended stop ──
-  await page.getByRole('button', { name: /Fiche de/ }).click()
+  // ── Station detail from the planned stop ──
+  await page.getByRole('button', { name: /Fiche de/ }).first().click()
   // « Services » is the fiche section both arrangements render — the desktop
   // fiche has no mini-map
   await expect(page.getByText('Services')).toBeVisible()
