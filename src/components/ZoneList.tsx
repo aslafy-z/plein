@@ -151,23 +151,9 @@ export default function ZoneList({
           const deal = priceTier(price, stats, true) === 'deal' || recoRow;
           const delta = (priceCents(price) - priceCents(min)) / 100;
           const rowStatus = openStatus(s.hours);
-          const locate = (
-            <button
-              onClick={() => {
-                // Locate on the map: highlighted pin + pan, card at the top
-                app.setFocusStation(s.id);
-                onRowPick?.();
-              }}
-              aria-label={m.sheet_locate_aria({ station: s.name })}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                width: '100%',
-                flex: 1,
-                minWidth: 0,
-              }}
-            >
+
+          const identity = (
+            <>
               <BrandAvatar label={s.brand ?? s.name} init={s.init} size={38} fontSize={12.5} />
               <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
                 <div
@@ -188,37 +174,57 @@ export default function ZoneList({
                     .join(' · ')}
                 </div>
               </div>
-              <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                <div
-                  style={{
-                    font: mono(700, 17),
-                    color: deal ? C.accent : C.ink,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {fmtPrice(price)} €
-                </div>
-                <div
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: deal ? C.accent : delta > 0.12 ? C.warn : C.mut,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {/* Sub-cent deltas read « +0,00 » — at the displayed
-                      precision these prices are simply equal, say nothing */}
-                  {best
-                    ? m.sheet_row_best_price()
-                    : recoRow
-                      ? m.sheet_row_recommended({ delta: fmtPrice(delta) })
-                      : deal
-                        ? Math.abs(delta) >= 0.005
-                          ? m.sheet_row_deal_delta({ delta: fmtPrice(delta) })
-                          : m.sheet_row_deal()
-                        : m.sheet_row_delta({ delta: fmtPrice(delta) })}
-                </div>
+            </>
+          );
+
+          const priceBlock = (
+            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+              <div style={{ font: mono(700, 17), color: deal ? C.accent : C.ink, whiteSpace: 'nowrap' }}>
+                {fmtPrice(price)} €
               </div>
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: deal ? C.accent : delta > 0.12 ? C.warn : C.mut,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {/* Sub-cent deltas read « +0,00 » — at the displayed
+                    precision these prices are simply equal, say nothing */}
+                {best
+                  ? m.sheet_row_best_price()
+                  : recoRow
+                    ? m.sheet_row_recommended({ delta: fmtPrice(delta) })
+                    : deal
+                      ? Math.abs(delta) >= 0.005
+                        ? m.sheet_row_deal_delta({ delta: fmtPrice(delta) })
+                        : m.sheet_row_deal()
+                      : m.sheet_row_delta({ delta: fmtPrice(delta) })}
+              </div>
+            </div>
+          );
+
+          /** Locate on the map: highlighted pin + pan, card at the top */
+          const locate = (
+            <button
+              onClick={() => {
+                app.setFocusStation(s.id);
+                onRowPick?.();
+              }}
+              aria-label={m.sheet_locate_aria({ station: s.name })}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                flex: 1,
+                minWidth: 0,
+                alignSelf: 'stretch',
+              }}
+            >
+              {identity}
+              {/* On a phone the row is one target, so the price rides with it */}
+              {!desktop && priceBlock}
             </button>
           );
 
@@ -238,19 +244,21 @@ export default function ZoneList({
 
           // A phone row does one thing: it locates the station, and the sheet
           // collapses onto the map where the card — the way into the fiche —
-          // is now showing that station. Nothing collapses on a window: the
-          // list stays put, so a row that only re-highlights a pin reads as
-          // dead, and the fiche needs a door of its own on every row.
+          // is now showing it. Nothing collapses on a window: the list stays
+          // put, so a row that only re-highlights a pin reads as dead and the
+          // fiche needs a door of its own here.
           if (!desktop) {
             return (
-              <div key={s.id} style={rowStyle}>
+              <div key={s.id} data-testid="zone-row" style={rowStyle}>
                 {locate}
               </div>
             );
           }
 
+          // That door is the whole right-hand side — price, gap and chevron
+          // together. A bare chevron is a 15px target asking to be missed.
           return (
-            <div key={s.id} style={rowStyle}>
+            <div key={s.id} data-testid="zone-row" style={rowStyle}>
               {locate}
               <button
                 onClick={() => app.openStation(s.id)}
@@ -261,15 +269,15 @@ export default function ZoneList({
                   alignSelf: 'stretch',
                   display: 'flex',
                   alignItems: 'center',
-                  paddingLeft: 10,
-                  marginLeft: 2,
+                  gap: 8,
+                  paddingLeft: 12,
                   borderLeft: `1px solid ${deal ? C.accentBorder : C.border}`,
-                  color: C.mut,
-                  fontSize: 15,
-                  fontWeight: 700,
                 }}
               >
-                ›
+                {priceBlock}
+                <span aria-hidden style={{ color: C.mut, fontSize: 15, fontWeight: 700 }}>
+                  ›
+                </span>
               </button>
             </div>
           );

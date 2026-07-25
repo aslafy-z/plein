@@ -51,11 +51,22 @@ test('a held arrow glides the map instead of stepping it', async ({ page }) => {
   expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(250)
 
   // …and they cover it CONTINUOUSLY: from the moment the ramp-up gets the map
-  // going, no frame stalls the way a step waiting for the next keypress did
+  // going, no frame stalls the way a step waiting for the next keypress did.
+  //
+  // The stall bound is the assertion that carries this — a 600 ms hold with no
+  // gap over 120 ms IS continuous motion. How MANY frames a machine manages in
+  // those 600 ms is not a property of the app: it fell from ~34 to ~12 on CI
+  // just by giving the desktop layout a map twice the area to paint, so the
+  // count below only guards against sampling nothing at all.
   const moving = samples.filter((s, i) => i > 0 && s.x !== samples[i - 1].x && s.t < released)
-  expect(moving.length).toBeGreaterThan(15)
+  expect(moving.length).toBeGreaterThan(8)
   const stalls = moving.map((s, i) => (i === 0 ? 0 : s.t - moving[i - 1].t))
   expect(Math.max(...stalls)).toBeLessThan(120)
+
+  // A glide, not hops: Leaflet's own handler jumped a whole 80 px step per
+  // keypress, where the frame loop advances a handful of pixels at a time.
+  const jumps = moving.map((s, i) => (i === 0 ? 0 : Math.abs(s.x - moving[i - 1].x)))
+  expect(Math.max(...jumps)).toBeLessThan(40)
 })
 
 test('a tap on + zooms exactly one whole level', async ({ page }) => {

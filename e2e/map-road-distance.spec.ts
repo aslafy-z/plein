@@ -80,7 +80,7 @@ test('the reco and distances follow the road matrix, not crow-flies', async ({ p
   // The list keeps sticker order: crow-flies-close Rivegauche stays the
   // « meilleur prix » but shows its real 12 km; Rivedroite is recommended
   await openZoneList(page)
-  const rows = page.getByRole('button', { name: /^Voir / })
+  const rows = page.getByTestId('zone-row')
   await expect(rows.first()).toContainText('Rivegauche')
   await expect(rows.first()).toContainText('meilleur prix')
   await expect(rows.first()).toContainText('12,0 km')
