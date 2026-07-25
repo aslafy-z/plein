@@ -60,7 +60,7 @@ test('a closer station wins when the détour eats the savings', async ({ page })
   // The list keeps the sticker-price order and its labels: the cheapest
   // first with « meilleur prix », the recommended one flagged as such
   await openZoneList(page)
-  const rows = page.getByRole('button', { name: /^Voir / })
+  const rows = page.getByTestId('zone-row')
   await expect(rows.first()).toContainText('Lointaine')
   await expect(rows.first()).toContainText('meilleur prix')
   await expect(rows.nth(1)).toContainText('Proche')

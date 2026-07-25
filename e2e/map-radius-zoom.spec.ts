@@ -66,9 +66,18 @@ test('searching a place lands on the radius, whatever the stations do there', as
   await page.getByText(/voir les stations ici/).first().click()
   await expect(page.getByText('Marseille').first()).toBeVisible({ timeout: 15_000 })
 
-  // Same radius, same viewport → the searched place is framed exactly as
-  // wide as home was, however few (or many) stations sit around it
+  // Same radius, same viewport → the searched place is framed as wide as home
+  // was, however few (or many) stations sit around it. That is the whole point:
+  // fitting the STATIONS used to zoom several levels past the radius whenever
+  // they clustered near the centre.
+  //
+  // Within one level, not exactly equal. `fitBounds` snaps to a whole level,
+  // and a radius spans slightly more longitude the further north you are
+  // (radiusBounds divides by cos(lat)) — so Toulouse and Marseille ask for
+  // fractional zooms a hair apart, and a pair that straddles an integer
+  // boundary floors either side of it. At 800 px wide they do; at 412 they
+  // don't, which is the only reason this ever looked exact.
   await expect(async () => {
-    expect(await mapZoom(page)).toBe(home)
+    expect(Math.abs((await mapZoom(page)) - home)).toBeLessThanOrEqual(1)
   }).toPass()
 })

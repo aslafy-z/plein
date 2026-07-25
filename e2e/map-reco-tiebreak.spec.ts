@@ -54,15 +54,15 @@ test('at the same displayed price the nearest station is recommended', async ({ 
   await expect(page.getByText('Station · Proche').first()).toBeVisible()
   await expect(page.getByText('1,90 €').first()).toBeVisible()
   // …not the sub-cent-cheaper one 3 km farther
-  await expect(page.getByRole('button', { name: /Voir Station · Lointaine/ })).not.toContainText(
-    'meilleur prix',
-  )
+  await expect(
+    page.getByTestId('zone-row').filter({ hasText: 'Lointaine' }),
+  ).not.toContainText('meilleur prix')
 
   // …and the list keeps the sub-cent-cheaper one a bon plan without the
   // silly « +0,00 » delta
   await openZoneList(page)
   await expect(page.getByText('meilleur prix')).toHaveCount(1)
-  const rows = page.getByRole('button', { name: /^Voir / })
+  const rows = page.getByTestId('zone-row')
   await expect(rows.first()).toContainText('Proche')
   await expect(rows.first()).toContainText('meilleur prix')
   await expect(rows.nth(1)).toContainText('Lointaine')
