@@ -180,6 +180,21 @@ describe('service worker — assets', () => {
     expect(assetCache(sw)?.entries.size).toBe(1)
   })
 
+  it('caches the self-hosted fonts, so the offline shell keeps its type', async () => {
+    let calls = 0
+    const sw = loadSw(async (req) => {
+      calls += 1
+      return new Response(req.url, { status: 200 })
+    })
+
+    await sw.fetchEvent(request('/fonts/archivo-latin-v25.woff2'))
+    const { res } = await sw.fetchEvent(request('/fonts/archivo-latin-v25.woff2'))
+
+    expect(await res?.text()).toBe(`${ORIGIN}/fonts/archivo-latin-v25.woff2`)
+    expect(calls).toBe(1)
+    expect(assetCache(sw)?.entries.has(`${ORIGIN}/fonts/archivo-latin-v25.woff2`)).toBe(true)
+  })
+
   it('bounds the asset cache, evicting the oldest entries first', async () => {
     const sw = loadSw(async (req) => new Response(req.url, { status: 200 }))
     const max = sw.limits.ASSET_MAX_ENTRIES

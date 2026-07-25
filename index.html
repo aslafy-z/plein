@@ -11,11 +11,18 @@
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Self-hosted web fonts (@font-face in src/styles.css). Preloaded because
+         the stylesheet only reveals them one round-trip later, and the mono
+         face carries every price. Latin only — latin-ext stays behind its
+         unicode-range. crossorigin is required even same-origin: fonts are
+         fetched in CORS mode, and without it the preload is fetched twice. -->
+    <link rel="preload" href="/fonts/archivo-latin-v25.woff2" as="font" type="font/woff2" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Spline+Sans+Mono:wght@500;600;700&display=swap"
-      rel="stylesheet"
+      rel="preload"
+      href="/fonts/spline-sans-mono-latin-v13.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
     />
     <title>Plein. — le plein au juste prix</title>
   </head>
