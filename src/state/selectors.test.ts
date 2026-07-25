@@ -436,13 +436,11 @@ describe('selectPriceStats / priceTier', () => {
     expect(priceTier(2.1, stats, false)).toBe('high')
   })
 
-  it('selectDeals reads the same tiers whether the stats are handed to it or not', () => {
+  it('selectDeals keeps the low-price cluster, and says nothing without a distribution', () => {
     const a = withData([1.6, 1.61, 1.75, 1.85])
-    const deals = selectDeals(a)
-    expect(deals.map((s) => s.id)).toEqual(['s0', 's1'])
-    expect(selectDeals(a, selectPriceStats(a)).map((s) => s.id)).toEqual(deals.map((s) => s.id))
-    // No distribution at all (empty map) → nothing is a « bon plan »
-    expect(selectDeals(a, null)).toEqual([])
+    expect(selectDeals(a).map((s) => s.id)).toEqual(['s0', 's1'])
+    // No station on the map → no distribution → nothing is a « bon plan »
+    expect(selectPriceStats(app())).toBeNull()
     expect(selectDeals(app())).toEqual([])
   })
 })

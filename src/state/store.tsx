@@ -1466,42 +1466,47 @@ export function useApp(): AppStore {
 // ── Derived selectors (pure — shared by every screen) ────────────────────────
 
 /**
- * Per-store memo cache. Every selector below is a pure function of the store
- * object it is handed, and a single render pass calls them dozens of times
- * (`MapSheet` alone reaches for eight, each re-deriving the same base
- * projection over the whole `stations.data`). Keying the cache on the store's
- * IDENTITY collapses all of that into one pass without changing a single
- * signature — the selectors stay pure functions, unit-testable with a plain
- * object.
+ * Selectors are pure functions of the store they are handed, and a render
+ * pass calls them dozens of times: `MapSheet` alone reaches for eight, each
+ * re-deriving the same projection over the whole `stations.data`. `cached`
+ * wraps a selector so that work happens ONCE per store object — write the
+ * selector as usual, wrap it, and every caller shares the result.
  *
  * The contract this rests on: a store object is never mutated in place. The
  * provider rebuilds it (see the `useMemo` above) whenever any input changes,
- * so a new identity means new inputs and callers holding an older object —
+ * so a new identity means new inputs, and callers holding an older object —
  * a stale closure inside an effect, say — keep getting the answers that
- * object describes. A hypothetical field mutated behind a stable identity
- * would already be invisible to consumers (React skips the re-render), so
- * caching adds no failure mode the store didn't already have.
+ * object describes. A field mutated behind a stable identity would already
+ * be invisible to consumers (React skips the re-render), so this adds no
+ * failure mode the store didn't already have.
  *
- * `WeakMap` keeps this leak-free: entries die with the store object they
- * describe. Callers passing an ad-hoc `{ ...app, … }` variant simply get
- * their own short-lived entry.
+ * Two things to know when writing one:
+ * - results are SHARED, hence read-only: copy before sorting
+ *   (`[...selectVisible(app)].sort(…)`), as every call site already does;
+ * - extra arguments join the cache key, so they must be primitives — a
+ *   selector taking an object stays uncached (`selectZoneDelta`).
  *
- * One rule for callers: the arrays and maps handed back are SHARED, so they
- * are read-only — copy before sorting (`[...selectVisible(app)].sort(…)`),
- * as every call site already does.
+ * `WeakMap` keeps it leak-free: entries die with the store they describe.
  */
 const selectorCache = new WeakMap<object, Map<string, unknown>>();
+let selectorId = 0;
 
-function memo<T>(app: AppStore, key: string, compute: () => T): T {
-  let entries = selectorCache.get(app);
-  if (!entries) {
-    entries = new Map();
-    selectorCache.set(app, entries);
-  }
-  if (entries.has(key)) return entries.get(key) as T;
-  const value = compute();
-  entries.set(key, value);
-  return value;
+function cached<A extends (string | number)[], T>(
+  select: (app: AppStore, ...args: A) => T,
+): (app: AppStore, ...args: A) => T {
+  const id = `${selectorId++}`;
+  return (app, ...args) => {
+    let entries = selectorCache.get(app);
+    if (!entries) {
+      entries = new Map();
+      selectorCache.set(app, entries);
+    }
+    const key = `${id}:${args.join('|')}`;
+    if (entries.has(key)) return entries.get(key) as T;
+    const value = select(app, ...args);
+    entries.set(key, value);
+    return value;
+  };
 }
 
 /**
@@ -1610,19 +1615,17 @@ function enrichDistance(app: AppStore, s: Station): NearbyStation {
  * predicates (a radius comparison, a brand lookup, a price presence check),
  * so a whole render tree costs one distance pass instead of twenty.
  */
-function selectEnriched(app: AppStore): NearbyStation[] {
-  return memo(app, 'enriched', () => app.stations.data.map((s) => enrichDistance(app, s)));
-}
+const selectEnriched = cached((app: AppStore): NearbyStation[] =>
+  app.stations.data.map((s) => enrichDistance(app, s)),
+);
 
 /** Enriched stations passing the service-tag filter (no radius, brand or fuel) */
-function selectTagged(app: AppStore): NearbyStation[] {
-  return memo(app, 'tagged', () => {
-    const { serviceTags } = app;
-    const wantedTags = (Object.keys(serviceTags) as ServiceTag[]).filter((t) => serviceTags[t]);
-    if (!wantedTags.length) return selectEnriched(app);
-    return selectEnriched(app).filter((s) => wantedTags.every((t) => s.tags.includes(t)));
-  });
-}
+const selectTagged = cached((app: AppStore): NearbyStation[] => {
+  const { serviceTags } = app;
+  const wantedTags = (Object.keys(serviceTags) as ServiceTag[]).filter((t) => serviceTags[t]);
+  if (!wantedTags.length) return selectEnriched(app);
+  return selectEnriched(app).filter((s) => wantedTags.every((t) => s.tags.includes(t)));
+});
 
 /** Brandless stations pass as « Indépendants & autres » via brandGroup */
 function passesBrand(app: AppStore, s: NearbyStation): boolean {
@@ -1634,23 +1637,19 @@ function passesBrand(app: AppStore, s: NearbyStation): boolean {
  * « Distributeurs » counts are grouped from, and the shared base of the
  * brand-filtered zone.
  */
-function selectZoneAllBrands(app: AppStore): NearbyStation[] {
-  return memo(app, 'zoneAllBrands', () =>
-    selectTagged(app).filter((s) => s.searchKm <= app.radius),
-  );
-}
+const selectZoneAllBrands = cached((app: AppStore): NearbyStation[] =>
+  selectTagged(app).filter((s) => s.searchKm <= app.radius),
+);
 
 /** Zone stations passing every filter EXCEPT the fuel one */
-function selectZoneStations(app: AppStore): NearbyStation[] {
-  return memo(app, 'zone', () => selectZoneAllBrands(app).filter((s) => passesBrand(app, s)));
-}
+const selectZoneStations = cached((app: AppStore): NearbyStation[] =>
+  selectZoneAllBrands(app).filter((s) => passesBrand(app, s)),
+);
 
 /** Stations passing the current filters, enriched with distance, for a given fuel */
-export function selectVisibleForFuel(app: AppStore, fuel: FuelId): NearbyStation[] {
-  return memo(app, `visible:${fuel}`, () =>
-    selectZoneStations(app).filter((s) => effectivePrice(s, fuel) != null),
-  );
-}
+export const selectVisibleForFuel = cached((app: AppStore, fuel: FuelId): NearbyStation[] =>
+  selectZoneStations(app).filter((s) => effectivePrice(s, fuel) != null),
+);
 
 /** Stations passing the current filters, for the currently selected fuel */
 export function selectVisible(app: AppStore): NearbyStation[] {
@@ -1665,17 +1664,15 @@ export function selectVisible(app: AppStore): NearbyStation[] {
  * A group with nothing to show here is simply absent from the result — the
  * sheet lists it among the brands kept for a next trip.
  */
-export function selectZoneBrandCounts(app: AppStore): Map<string, number> {
-  return memo(app, 'zoneBrandCounts', () => {
-    const counts = new Map<string, number>();
-    for (const s of selectZoneAllBrands(app)) {
-      if (effectivePrice(s, app.fuel) == null) continue;
-      const g = brandGroup(s.brand);
-      counts.set(g, (counts.get(g) ?? 0) + 1);
-    }
-    return counts;
-  });
-}
+export const selectZoneBrandCounts = cached((app: AppStore): Map<string, number> => {
+  const counts = new Map<string, number>();
+  for (const s of selectZoneAllBrands(app)) {
+    if (effectivePrice(s, app.fuel) == null) continue;
+    const g = brandGroup(s.brand);
+    counts.set(g, (counts.get(g) ?? 0) + 1);
+  }
+  return counts;
+});
 
 /**
  * Fuels actually sold in the zone (radius + brand/service filters). Drives
@@ -1683,18 +1680,16 @@ export function selectZoneBrandCounts(app: AppStore): Map<string, number> {
  * barely exist outside France (nowhere in Andorra, a handful of Spanish
  * stations), so an empty map must say so instead of looking broken.
  */
-export function selectZoneFuels(app: AppStore): FuelId[] {
-  return memo(app, 'zoneFuels', () => {
-    // Raw prices only — a fuel reachable through the SP95 fallback is not
-    // « sold here », the chip must name what the pumps actually serve. One
-    // pass collecting the fuels on offer, not one filtered pass per fuel.
-    const sold = new Set<FuelId>();
-    for (const s of selectZoneStations(app)) {
-      for (const f of ALL_FUELS) if (s.prices[f] != null) sold.add(f);
-    }
-    return ALL_FUELS.filter((f) => sold.has(f));
-  });
-}
+export const selectZoneFuels = cached((app: AppStore): FuelId[] => {
+  // Raw prices only — a fuel reachable through the SP95 fallback is not
+  // « sold here », the chip must name what the pumps actually serve. One
+  // pass collecting the fuels on offer, not one filtered pass per fuel.
+  const sold = new Set<FuelId>();
+  for (const s of selectZoneStations(app)) {
+    for (const f of ALL_FUELS) if (s.prices[f] != null) sold.add(f);
+  }
+  return ALL_FUELS.filter((f) => sold.has(f));
+});
 
 /**
  * Stations drawn on the map: every loaded station passing the fuel/brand/
@@ -1702,13 +1697,9 @@ export function selectZoneFuels(app: AppStore): FuelId[] {
  * radius makes them pop in and out while panning; the circle stays a visual
  * indicator of the « cheapest near you » zone.
  */
-export function selectMapStations(app: AppStore): NearbyStation[] {
-  return memo(app, 'mapStations', () =>
-    selectTagged(app).filter(
-      (s) => effectivePrice(s, app.fuel) != null && passesBrand(app, s),
-    ),
-  );
-}
+export const selectMapStations = cached((app: AppStore): NearbyStation[] =>
+  selectTagged(app).filter((s) => effectivePrice(s, app.fuel) != null && passesBrand(app, s)),
+);
 
 /**
  * Zone stations cheapest-first. Prices are DISPLAYED at cent precision while
@@ -1717,20 +1708,17 @@ export function selectMapStations(app: AppStore): NearbyStation[] {
  * station comes first — the recommended pump must never be a farther one
  * for a difference the user cannot even see.
  */
-export function selectByPrice(app: AppStore): NearbyStation[] {
-  return memo(app, 'byPrice', () => {
-    const f = app.fuel;
-    const cents = (s: NearbyStation) => priceCents(effectivePrice(s, f)?.value ?? 9);
-    return [...selectVisible(app)].sort((a, b) => cents(a) - cents(b) || a.distKm - b.distKm);
-  });
-}
+export const selectByPrice = cached((app: AppStore): NearbyStation[] => {
+  const f = app.fuel;
+  const cents = (s: NearbyStation) => priceCents(effectivePrice(s, f)?.value ?? 9);
+  return [...selectVisible(app)].sort((a, b) => cents(a) - cents(b) || a.distKm - b.distKm);
+});
 
-export function selectSorted(app: AppStore): NearbyStation[] {
-  if (app.sort === 'prix') return selectByPrice(app);
-  return memo(app, 'byDistance', () =>
-    [...selectVisible(app)].sort((a, b) => a.distKm - b.distKm),
-  );
-}
+export const selectSorted = cached((app: AppStore): NearbyStation[] =>
+  app.sort === 'prix'
+    ? selectByPrice(app)
+    : [...selectVisible(app)].sort((a, b) => a.distKm - b.distKm),
+);
 
 /** Cheapest STICKER price of the zone — labels (« meilleur prix ») and deltas */
 export function selectCheapest(app: AppStore): NearbyStation | null {
@@ -1796,35 +1784,29 @@ const RECO_TIE_CENTS = 1;
  * that the recommendation never sends the user farther for a price
  * difference they cannot even see.
  */
-export function selectRecommended(app: AppStore): NearbyStation | null {
-  return memo(app, 'recommended', () => {
-    const f = app.fuel;
-    const zone = selectVisible(app);
-    const eff = (s: NearbyStation) =>
-      priceCents(effectiveLiterPrice(app, effectivePrice(s, f)!.value, s.distKm));
-    let min = Infinity;
-    for (const s of zone) min = Math.min(min, eff(s));
-    let pick: NearbyStation | null = null;
-    for (const s of zone) {
-      if (eff(s) - min <= RECO_TIE_CENTS && (!pick || s.distKm < pick.distKm)) pick = s;
-    }
-    return pick;
-  });
-}
+export const selectRecommended = cached((app: AppStore): NearbyStation | null => {
+  const f = app.fuel;
+  const zone = selectVisible(app);
+  const eff = (s: NearbyStation) =>
+    priceCents(effectiveLiterPrice(app, effectivePrice(s, f)!.value, s.distKm));
+  let min = Infinity;
+  for (const s of zone) min = Math.min(min, eff(s));
+  let pick: NearbyStation | null = null;
+  for (const s of zone) {
+    if (eff(s) - min <= RECO_TIE_CENTS && (!pick || s.distKm < pick.distKm)) pick = s;
+  }
+  return pick;
+});
 
 /**
  * Station currently selected on the map (pin tapped / list row tapped).
  * Resolved against the map pins so a station outside the radius circle can
  * still be selected; null when the selection no longer matches the filters.
  */
-export function selectFocusStation(app: AppStore): NearbyStation | null {
+export const selectFocusStation = cached((app: AppStore): NearbyStation | null => {
   if (!app.focusStationId) return null;
-  return memo(
-    app,
-    'focusStation',
-    () => selectMapStations(app).find((s) => s.id === app.focusStationId) ?? null,
-  );
-}
+  return selectMapStations(app).find((s) => s.id === app.focusStationId) ?? null;
+});
 
 // ── Price tiers: « bons plans » vs stations chères ───────────────────────────
 /**
@@ -1878,36 +1860,34 @@ export interface PriceStats {
  * near-identical low prices are all highlighted, not just the first one.
  * Symmetrically, prices hugging the maximum form the expensive tier.
  */
-export function selectPriceStats(app: AppStore): PriceStats | null {
-  return memo(app, 'priceStats', () => {
-    const f = app.fuel;
-    const pins = selectMapStations(app);
-    if (!pins.length) return null;
-    let min = Infinity;
-    let max = -Infinity;
-    let sum = 0;
-    for (const s of pins) {
-      const p = effectivePrice(s, f)!.value;
-      if (p < min) min = p;
-      if (p > max) max = p;
-      sum += p;
-    }
-    const mean = sum / pins.length;
-    let zoneMin = Infinity;
-    for (const s of selectVisible(app)) {
-      const p = effectivePrice(s, f)!.value;
-      if (p < zoneMin) zoneMin = p;
-    }
-    return {
-      min,
-      max,
-      mean,
-      dealMax: min + Math.max(TIER_EPS, TIER_SPREAD * (mean - min)),
-      highMin: max - Math.max(TIER_EPS, TIER_SPREAD * (max - mean)),
-      zoneDealMax: zoneMin === Infinity ? null : zoneMin + TIER_EPS,
-    };
-  });
-}
+export const selectPriceStats = cached((app: AppStore): PriceStats | null => {
+  const f = app.fuel;
+  const pins = selectMapStations(app);
+  if (!pins.length) return null;
+  let min = Infinity;
+  let max = -Infinity;
+  let sum = 0;
+  for (const s of pins) {
+    const p = effectivePrice(s, f)!.value;
+    if (p < min) min = p;
+    if (p > max) max = p;
+    sum += p;
+  }
+  const mean = sum / pins.length;
+  let zoneMin = Infinity;
+  for (const s of selectVisible(app)) {
+    const p = effectivePrice(s, f)!.value;
+    if (p < zoneMin) zoneMin = p;
+  }
+  return {
+    min,
+    max,
+    mean,
+    dealMax: min + Math.max(TIER_EPS, TIER_SPREAD * (mean - min)),
+    highMin: max - Math.max(TIER_EPS, TIER_SPREAD * (max - mean)),
+    zoneDealMax: zoneMin === Infinity ? null : zoneMin + TIER_EPS,
+  };
+});
 
 /**
  * Tier of a price against the area distribution — colors pins, dots and rows.
@@ -1928,41 +1908,32 @@ export function priceTier(price: number, stats: PriceStats | null, inZone = fals
   return 'mid';
 }
 
-/**
- * Zone stations in the « bon plan » tier, cheapest first. Callers that
- * already hold the stats (the sheet tiers its rows with them) pass them in
- * rather than paying for the distribution twice.
- */
-export function selectDeals(app: AppStore, stats?: PriceStats | null): NearbyStation[] {
-  if (stats !== undefined) return dealsFrom(app, stats);
-  return memo(app, 'deals', () => dealsFrom(app, selectPriceStats(app)));
-}
-
-function dealsFrom(app: AppStore, stats: PriceStats | null): NearbyStation[] {
+/** Zone stations in the « bon plan » tier, cheapest first */
+export const selectDeals = cached((app: AppStore): NearbyStation[] => {
+  // The distribution is shared with whoever already asked for it this render
+  const stats = selectPriceStats(app);
   if (!stats) return [];
   const f = app.fuel;
   return selectByPrice(app).filter(
     (s) => priceTier(effectivePrice(s, f)!.value, stats, true) === 'deal',
   );
-}
+});
 
-export function selectPriceRange(app: AppStore): { min: number; max: number } | null {
-  return memo(app, 'priceRange', () => {
-    const f = app.fuel;
-    const zone = selectVisible(app);
-    if (!zone.length) return null;
-    // True extremes of the raw prices — selectByPrice ranks in cents with a
-    // distance tie-break, so its first/last are not the exact min/max anymore
-    let min = Infinity;
-    let max = -Infinity;
-    for (const s of zone) {
-      const p = effectivePrice(s, f)!.value;
-      if (p < min) min = p;
-      if (p > max) max = p;
-    }
-    return { min, max };
-  });
-}
+export const selectPriceRange = cached((app: AppStore): { min: number; max: number } | null => {
+  const f = app.fuel;
+  const zone = selectVisible(app);
+  if (!zone.length) return null;
+  // True extremes of the raw prices — selectByPrice ranks in cents with a
+  // distance tie-break, so its first/last are not the exact min/max anymore
+  let min = Infinity;
+  let max = -Infinity;
+  for (const s of zone) {
+    const p = effectivePrice(s, f)!.value;
+    if (p < min) min = p;
+    if (p > max) max = p;
+  }
+  return { min, max };
+});
 
 export interface ZoneDelta {
   /** €/L, never negative — the sign the card prints comes from `best` */
