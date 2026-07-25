@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { C } from '../theme';
+import { m } from '../paraglide/messages.js';
 import { cumulativeKm, type GeoPoint } from '../lib/geo';
 import { addDarkBasemap } from '../lib/tiles';
 import { installSmoothKeyboard } from '../lib/mapKeyboard';
@@ -127,7 +128,7 @@ export default function RouteMap() {
 
   return (
     <div
-      aria-label="Carte du trajet"
+      aria-label={m.map_route_aria()}
       style={{
         position: 'relative',
         height: 210,

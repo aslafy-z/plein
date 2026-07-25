@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { C } from '../theme';
+import { m } from '../paraglide/messages.js';
 import { haversineKm, radiusBounds, type GeoPoint } from '../lib/geo';
 import { addDarkBasemap } from '../lib/tiles';
 import { installSmoothKeyboard } from '../lib/mapKeyboard';
@@ -495,12 +496,12 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
       }
     }
 
-    // roadReach/conso/tank feed selectRecommended (effective price over the
+    // roadReach/consumption/tank feed selectRecommended (effective price over the
     // road distance): the matrix lands a few hundred ms AFTER the stations, so
     // without them the emphasized pin kept the crow-flies pick while the sheet
     // card — a plain render — already showed the road-aware one.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [app.stations.data, app.fuel, app.radius, app.brandSel, app.serviceTags, app.userPos, app.searchPos, app.focusStationId, app.roadReach, app.conso, app.tank, viewTick]);
+  }, [app.stations.data, app.fuel, app.radius, app.brandSel, app.serviceTags, app.userPos, app.searchPos, app.focusStationId, app.roadReach, app.consumption, app.tank, viewTick]);
 
   // ── Auto-fit on the SEARCH CIRCLE itself until the user takes over — and
   // never while a station is selected (don't yank the view). Framing the
@@ -649,8 +650,8 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
           stays clear of the sheet whatever its height. */}
       <button
         onClick={() => app.shareMapView()}
-        aria-label="Partager cette vue"
-        title="Partager cette vue"
+        aria-label={m.map_share_view()}
+        title={m.map_share_view()}
         style={{
           position: 'absolute',
           right: 14,
@@ -674,8 +675,8 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
       {/* Recenter on the user */}
       <button
         onClick={() => app.resetSearchToUser()}
-        aria-label="Recentrer sur ma position"
-        title="Ma position"
+        aria-label={m.map_recenter_aria()}
+        title={m.map_my_position()}
         style={{
           position: 'absolute',
           right: 14,

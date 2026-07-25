@@ -5,6 +5,21 @@ import { test as base, expect } from '@playwright/test'
 // cleared on the first load of each test — reloads must keep app state.
 type Options = { seed: Record<string, unknown> }
 
+// The app picks its language from the browser unless the blob names one.
+// Assertions here read French, so the locale is pinned for every test rather
+// than left to depend on the browser's — `playwright.config.ts` happens to ask
+// for fr-FR too, and one of those two must not silently become the reason the
+// suite passes. A spec picks another language through `seed`, or drops the pin
+// entirely with `locale: null` to exercise the detection path.
+const BASE_SEED = { locale: 'fr' }
+
+/** `locale: null` in a seed means « no explicit choice », not « choose null » */
+function dropNullLocale(settings: Record<string, unknown>): Record<string, unknown> {
+  if (settings.locale != null) return settings
+  const { locale: _dropped, ...rest } = settings
+  return rest
+}
+
 export const test = base.extend<Options>({
   seed: [{ sourceId: 'demo', onboarded: true }, { option: true }],
 
@@ -26,7 +41,7 @@ export const test = base.extend<Options>({
       sessionStorage.setItem('e2e-init', '1')
       localStorage.clear()
       localStorage.setItem('plein.settings.v1', JSON.stringify(settings))
-    }, seed)
+    }, dropNullLocale({ ...BASE_SEED, ...seed }))
 
     await use(page)
 

@@ -1,18 +1,69 @@
 import type { ReactNode } from 'react';
 import { C, mono } from '../theme';
-import { fmtPrice, durationLabel, plural } from '../lib/format';
-import { FUEL_LABELS, type RouteStation } from '../data/types';
-import { useApp, selectRouteAnalysis, effectiveFuel, effectivePrice } from '../state/store';
+import { clockLabel, fmtPrice, durationLabel } from '../lib/format';
+import { fuelLabel } from '../lib/labels';
+import { m } from '../paraglide/messages.js';
+import { type RouteStation } from '../data/types';
+import {
+  useApp,
+  routeFromLabel,
+  selectRouteAnalysis,
+  effectiveFuel,
+  effectivePrice,
+  type ArrivalEstimate,
+  type RecommendationReason,
+  type RouteMode,
+} from '../state/store';
 import RouteMap from '../components/RouteMap';
 
-const STRATEGIES = [
-  ['compromis', 'Meilleur compromis'],
-  ['prix', 'Prix le + bas'],
-  ['detour', 'Détour min.'],
-] as const;
+const STRATEGIES: RouteMode[] = ['balanced', 'price', 'detour'];
+
+function strategyLabel(mode: RouteMode): string {
+  switch (mode) {
+    case 'balanced':
+      return m.ribbon_strategy_balanced();
+    case 'price':
+      return m.ribbon_strategy_price();
+    case 'detour':
+      return m.ribbon_strategy_detour();
+  }
+}
 
 const detourLabel = (detourMin: number) =>
-  detourMin === 0 ? 'sans détour' : `détour +${detourMin} min`;
+  detourMin === 0 ? m.ribbon_no_detour() : m.ribbon_detour({ minutes: detourMin });
+
+/** Why the ribbon crowns this stop — the analysis hands over data, not copy */
+function recommendationLabel(reason: RecommendationReason | null): string {
+  if (!reason) return '';
+  switch (reason.kind) {
+    case 'lowestPrice':
+      return m.ribbon_reco_lowest_price({ saving: fmtPrice(reason.saving) });
+    case 'noDetour':
+      return m.ribbon_reco_no_detour();
+    case 'minDetour':
+      return m.ribbon_reco_min_detour({ minutes: reason.detourMin });
+    case 'balanced':
+      return m.ribbon_reco_balanced({ saving: fmtPrice(reason.saving) });
+    case 'onlyStation':
+      return m.ribbon_reco_only_station();
+  }
+}
+
+function arrivalLabel(arrival: ArrivalEstimate | null): string {
+  if (!arrival) return '';
+  switch (arrival.kind) {
+    case 'withStops':
+      return m.ribbon_arrival_with_stops({
+        count: arrival.stops,
+        time: clockLabel(new Date(arrival.at)),
+        extra: arrival.extraMin,
+      });
+    case 'autonomyShort':
+      return m.ribbon_arrival_autonomy_short({ km: arrival.limitKm });
+    case 'direct':
+      return m.ribbon_arrival_direct({ time: clockLabel(new Date(arrival.at)) });
+  }
+}
 
 /** Where the tank runs dry on the timeline — between two stops, or after the last one */
 const limitMarker = (limitKm: number) => (
@@ -29,26 +80,27 @@ const limitMarker = (limitKm: number) => (
       }}
     />
     <div style={{ fontSize: 12, color: C.warn, fontWeight: 700 }}>
-      ≈ KM {limitKm} — limite d'autonomie sans arrêt
+      {m.ribbon_autonomy_limit({ km: limitKm })}
     </div>
   </div>
 );
 
 export default function RouteRibbon() {
   const app = useApp();
-  const { fromText, toText, fuel, tank, routeMode, routeState } = app;
+  const { toText, fuel, tank, routeMode, routeState } = app;
+  const fromLabel = routeFromLabel(app);
   const analysis = selectRouteAnalysis(app);
   const route = routeState.route;
 
   const toggleStyle = (id: string, size: number) => {
-    const inTour = !!app.tour[id];
+    const inRun = !!app.plannedStops[id];
     return {
       width: size,
       height: size,
       borderRadius: '50%',
-      background: inTour ? C.accent : 'transparent',
-      color: inTour ? C.onAccent : C.mut,
-      border: inTour ? `1.5px solid ${C.accent}` : '1.5px solid rgba(255,255,255,.2)',
+      background: inRun ? C.accent : 'transparent',
+      color: inRun ? C.onAccent : C.mut,
+      border: inRun ? `1.5px solid ${C.accent}` : '1.5px solid rgba(255,255,255,.2)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -62,7 +114,7 @@ export default function RouteRibbon() {
 
   // ── Reco stop card ──────────────────────────────────────────────────────────
   const recoNode = (st: RouteStation) => {
-    const inTour = !!app.tour[st.id];
+    const inRun = !!app.plannedStops[st.id];
     return (
       <div key={st.id} style={{ position: 'relative', padding: '0 0 14px' }}>
         <div
@@ -105,15 +157,15 @@ export default function RouteRibbon() {
                 flex: 1,
               }}
             >
-              Arrêt conseillé
+              {m.ribbon_recommended_stop()}
             </span>
             <span style={{ fontSize: 11, color: C.mut, whiteSpace: 'nowrap' }}>
-              KM {st.kmAlong} · {detourLabel(st.detourMin)}
+              {m.ribbon_km_marker({ km: st.kmAlong })} · {detourLabel(st.detourMin)}
             </span>
           </div>
           <button
             onClick={() => app.openStation(st.id)}
-            aria-label={`Fiche de ${st.name}`}
+            aria-label={m.ribbon_station_aria({ station: st.name })}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -126,7 +178,9 @@ export default function RouteRibbon() {
           >
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 16, fontWeight: 700, color: C.ink }}>{st.name}</div>
-              <div style={{ fontSize: 12, color: C.mut, marginTop: 2 }}>{analysis.recoSub}</div>
+              <div style={{ fontSize: 12, color: C.mut, marginTop: 2 }}>
+                {recommendationLabel(analysis.recoReason)}
+              </div>
             </div>
             <div style={{ textAlign: 'right', flexShrink: 0 }}>
               <div style={{ font: mono(700, 22), color: C.accent, whiteSpace: 'nowrap' }}>
@@ -134,7 +188,7 @@ export default function RouteRibbon() {
               </div>
               {/* Fuel of the SHOWN price — SP95 when E10 fell back on it */}
               <div style={{ fontSize: 11, color: C.mut, whiteSpace: 'nowrap' }}>
-                {FUEL_LABELS[effectiveFuel(st, fuel) ?? fuel]} / L
+                {m.sheet_per_litre({ fuel: fuelLabel(effectiveFuel(st, fuel) ?? fuel) })}
               </div>
             </div>
           </button>
@@ -153,15 +207,15 @@ export default function RouteRibbon() {
                 cursor: 'pointer',
               }}
             >
-              Y aller
+              {m.ribbon_go_there()}
             </button>
             <button
-              onClick={() => app.toggleTour(st.id)}
-              title="Ajouter à la tournée"
-              aria-label={inTour ? 'Retirer de la tournée' : 'Ajouter à la tournée'}
+              onClick={() => app.togglePlannedStop(st.id)}
+              title={m.ribbon_add_stop_title()}
+              aria-label={inRun ? m.ribbon_remove_stop_aria() : m.ribbon_add_stop_aria()}
               style={toggleStyle(st.id, 40)}
             >
-              {inTour ? '✓' : '+'}
+              {inRun ? '✓' : '+'}
             </button>
           </div>
         </div>
@@ -171,7 +225,7 @@ export default function RouteRibbon() {
 
   // ── Plain stop ──────────────────────────────────────────────────────────────
   const plainNode = (st: RouteStation) => {
-    const inTour = !!app.tour[st.id];
+    const inRun = !!app.plannedStops[st.id];
     return (
       <div key={st.id} style={{ position: 'relative', padding: '0 0 14px' }}>
         <div
@@ -189,7 +243,7 @@ export default function RouteRibbon() {
         <div
           style={{
             background: C.surface,
-            border: inTour ? '1.5px solid rgba(61,220,132,.4)' : `1px solid ${C.border}`,
+            border: inRun ? '1.5px solid rgba(61,220,132,.4)' : `1px solid ${C.border}`,
             borderRadius: 14,
             padding: '12px 14px',
             display: 'flex',
@@ -202,7 +256,7 @@ export default function RouteRibbon() {
             style={{ flex: 1, minWidth: 0, cursor: 'pointer', textAlign: 'left' }}
           >
             <div style={{ fontSize: 12, color: C.mut, fontWeight: 700 }}>
-              KM {st.kmAlong} · {detourLabel(st.detourMin)}
+              {m.ribbon_km_marker({ km: st.kmAlong })} · {detourLabel(st.detourMin)}
             </div>
             <div style={{ fontSize: 14.5, fontWeight: 700, color: C.ink, marginTop: 2 }}>
               {st.name}
@@ -212,12 +266,12 @@ export default function RouteRibbon() {
             {fmtPrice(effectivePrice(st, fuel)?.value)} €
           </div>
           <button
-            onClick={() => app.toggleTour(st.id)}
-            title="Ajouter à la tournée"
-            aria-label={inTour ? 'Retirer de la tournée' : 'Ajouter à la tournée'}
+            onClick={() => app.togglePlannedStop(st.id)}
+            title={m.ribbon_add_stop_title()}
+            aria-label={inRun ? m.ribbon_remove_stop_aria() : m.ribbon_add_stop_aria()}
             style={toggleStyle(st.id, 32)}
           >
-            {inTour ? '✓' : '+'}
+            {inRun ? '✓' : '+'}
           </button>
         </div>
       </div>
@@ -230,20 +284,20 @@ export default function RouteRibbon() {
     body = (
       <div style={{ padding: '40px 22px', textAlign: 'center' }}>
         <div style={{ fontSize: 13.5, color: C.mut, lineHeight: 1.5 }}>
-          {routeState.error ?? 'Itinéraire indisponible.'}
+          {routeState.error ?? m.ribbon_error_fallback()}
         </div>
         <button
           onClick={() => app.editRoute()}
           style={{ marginTop: 14, fontSize: 14, fontWeight: 700, color: C.accent, cursor: 'pointer' }}
         >
-          Modifier l'itinéraire
+          {m.ribbon_edit_route()}
         </button>
       </div>
     );
   } else if (routeState.status !== 'ready' || !route) {
     body = (
       <div style={{ padding: '40px 22px', textAlign: 'center', fontSize: 13.5, color: C.mut }}>
-        Calcul de l'itinéraire…
+        {m.ribbon_computing()}
       </div>
     );
   } else {
@@ -261,7 +315,7 @@ export default function RouteRibbon() {
     // Autonomy runs out after the last found stop → marker still belongs on the line
     if (analysis.needsStop && !markerDone) stopNodes.push(limitMarker(analysis.limitKm));
 
-    const nTour = analysis.tourStops.length;
+    const nStops = analysis.plannedStops.length;
 
     body = (
       <div style={{ position: 'relative', margin: '14px 22px 0', paddingLeft: 26 }}>
@@ -295,26 +349,28 @@ export default function RouteRibbon() {
           >
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.onAccent }} />
           </div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>Départ · {fromText}</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>
+            {m.ribbon_departure({ place: fromLabel })}
+          </div>
           <div style={{ fontSize: 12, color: C.mut, marginTop: 1 }}>
-            Réservoir {app.startTankPct} % · autonomie ≈ {analysis.autonomyKm} km
+            {m.ribbon_departure_tank({ percent: app.startTankPct, km: analysis.autonomyKm })}
           </div>
         </div>
 
         {/* Stops */}
         {analysis.stops.length === 0 ? (
           <div style={{ position: 'relative', padding: '0 0 14px', fontSize: 12.5, color: C.mut }}>
-            Aucune station trouvée le long du trajet — élargissez les filtres.
+            {m.ribbon_no_stops()}
           </div>
         ) : (
           stopNodes
         )}
 
         {/* Tour bar */}
-        {nTour > 0 && (
+        {nStops > 0 && (
           <div style={{ position: 'relative', padding: '0 0 16px' }}>
             <button
-              onClick={() => app.openTourInMaps()}
+              onClick={() => app.openPlannedStopsInMaps()}
               style={{
                 width: '100%',
                 background: C.accentSoft10,
@@ -328,10 +384,10 @@ export default function RouteRibbon() {
               }}
             >
               <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: C.accent, textAlign: 'left' }}>
-                {plural(nTour, 'arrêt')} sélectionné{nTour > 1 ? 's' : ''}
+                {m.ribbon_selected_stops({ count: nStops })}
               </span>
               <span style={{ fontSize: 12.5, fontWeight: 800, color: C.accent, whiteSpace: 'nowrap' }}>
-                Lancer la tournée ›
+                {m.ribbon_start_run()}
               </span>
             </button>
           </div>
@@ -350,8 +406,12 @@ export default function RouteRibbon() {
               background: C.ink,
             }}
           />
-          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>Arrivée · {toText}</div>
-          <div style={{ fontSize: 12, color: C.mut, marginTop: 1 }}>{analysis.arrivalLabel}</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>
+            {m.ribbon_arrival({ place: toText })}
+          </div>
+          <div style={{ fontSize: 12, color: C.mut, marginTop: 1 }}>
+            {arrivalLabel(analysis.arrival)}
+          </div>
         </div>
       </div>
     );
@@ -382,17 +442,17 @@ export default function RouteRibbon() {
               flex: 1,
             }}
           >
-            Votre trajet
+            {m.ribbon_header()}
           </span>
           <button
             onClick={() => app.editRoute()}
             style={{ fontSize: 12.5, fontWeight: 700, color: C.accent, cursor: 'pointer' }}
           >
-            Modifier
+            {m.ribbon_edit()}
           </button>
         </div>
         <div style={{ fontSize: 22, fontWeight: 800, color: C.ink, marginTop: 4 }}>
-          {fromText} → {toText}
+          {fromLabel} → {toText}
         </div>
         {route && (
           <div
@@ -406,18 +466,21 @@ export default function RouteRibbon() {
             }}
           >
             <span>
-              {Math.round(route.distanceKm)} km · {durationLabel(route.durationMin)}
+              {m.ribbon_distance_duration({
+                km: Math.round(route.distanceKm),
+                duration: durationLabel(route.durationMin),
+              })}
             </span>
             <span>·</span>
-            <span>
-              {FUEL_LABELS[fuel]} · réservoir {tank} L
-            </span>
+            <span>{m.ribbon_fuel_tank({ fuel: fuelLabel(fuel), tank })}</span>
             {analysis.tripCost != null && analysis.tripLitres != null && (
               <>
                 <span>·</span>
                 <span>
-                  ≈ {Math.round(analysis.tripLitres)} L · {fmtPrice(analysis.tripCost)} € de
-                  carburant
+                  {m.ribbon_trip_fuel({
+                    litres: Math.round(analysis.tripLitres),
+                    cost: fmtPrice(analysis.tripCost),
+                  })}
                 </span>
               </>
             )}
@@ -432,7 +495,7 @@ export default function RouteRibbon() {
             flexWrap: 'wrap',
           }}
         >
-          {STRATEGIES.map(([k, label]) => {
+          {STRATEGIES.map((k) => {
             const active = routeMode === k;
             return (
               <button
@@ -450,7 +513,7 @@ export default function RouteRibbon() {
                   whiteSpace: 'nowrap',
                 }}
               >
-                {label}
+                {strategyLabel(k)}
               </button>
             );
           })}

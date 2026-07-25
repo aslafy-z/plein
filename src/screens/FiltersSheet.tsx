@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { C, ctaStyle, mono } from '../theme';
-import { ALL_FUELS, FUEL_LABELS, SERVICE_TAGS } from '../data/types';
+import { ALL_FUELS, SERVICE_TAGS } from '../data/types';
 import { useApp, selectVisible, selectZoneBrandCounts } from '../state/store';
+import { brandGroupLabel, fuelLabel, serviceTagLabel } from '../lib/labels';
+import { m } from '../paraglide/messages.js';
 import {
   brandIconSrc,
-  INDEPENDENT_GROUP,
+  INDEPENDENT_BRAND_ID,
   KNOWN_BRAND_GROUPS,
 } from '../lib/brandIcons';
 
@@ -25,14 +27,14 @@ export default function FiltersSheet() {
   const [brandsOpen, setBrandsOpen] = useState(false);
 
   // Brand groups present in the zone with their station count, most frequent
-  // first; brandless stations count as « Indépendants & autres », pinned last
+  // first; brandless stations count as the « independent » group, pinned last
   // so the tail never buries the real enseignes. The count answers « how many
   // stations do I get if I pick this brand » — it therefore honours the fuel
   // and service filters, and only ignores the brand selection itself.
   const counts = selectZoneBrandCounts(app);
   const zoneBrands = [...counts.entries()].sort((a, b) => {
-    if (a[0] === INDEPENDENT_GROUP) return 1;
-    if (b[0] === INDEPENDENT_GROUP) return -1;
+    if (a[0] === INDEPENDENT_BRAND_ID) return 1;
+    if (b[0] === INDEPENDENT_BRAND_ID) return -1;
     return b[1] - a[1] || a[0].localeCompare(b[0]);
   });
   // Every known group with nothing to show here — outside the radius, or
@@ -42,15 +44,17 @@ export default function FiltersSheet() {
 
   const brandSummary =
     app.brandSel.length === 0
-      ? 'Tous'
-      : app.brandSel.slice(0, 2).join(', ') +
-        (app.brandSel.length > 2 ? ` +${app.brandSel.length - 2}` : '');
+      ? m.filters_brands_all()
+      : app.brandSel.slice(0, 2).map(brandGroupLabel).join(', ') +
+        (app.brandSel.length > 2
+          ? ` ${m.filters_brands_more({ count: app.brandSel.length - 2 })}`
+          : '');
 
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 1100 }}>
       <button
         onClick={() => app.setFiltersOpen(false)}
-        aria-label="Fermer les filtres"
+        aria-label={m.filters_close_overlay_aria()}
         style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.55)', width: '100%' }}
       />
       <div
@@ -72,7 +76,7 @@ export default function FiltersSheet() {
       >
         <button
           onClick={() => app.setFiltersOpen(false)}
-          aria-label="Fermer"
+          aria-label={m.filters_close_aria()}
           style={{
             width: 36,
             height: 4,
@@ -83,18 +87,18 @@ export default function FiltersSheet() {
         />
 
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          <span style={{ fontSize: 20, fontWeight: 800, color: C.ink, flex: 1 }}>Filtres</span>
+          <span style={{ fontSize: 20, fontWeight: 800, color: C.ink, flex: 1 }}>{m.filters_title()}</span>
           <button
             onClick={() => app.resetFilters()}
             style={{ fontSize: 13, fontWeight: 700, color: C.accent }}
           >
-            Réinitialiser
+            {m.filters_reset()}
           </button>
         </div>
 
         {/* Carburant */}
         <div>
-          <div style={{ ...sectionLabel, marginBottom: 10 }}>Carburant</div>
+          <div style={{ ...sectionLabel, marginBottom: 10 }}>{m.filters_fuel_section()}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {ALL_FUELS.map((f) => {
               const on = app.fuel === f;
@@ -113,7 +117,7 @@ export default function FiltersSheet() {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {FUEL_LABELS[f]}
+                  {fuelLabel(f)}
                 </button>
               );
             })}
@@ -123,7 +127,7 @@ export default function FiltersSheet() {
         {/* Rayon */}
         <div>
           <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
-            <span style={{ ...sectionLabel, flex: 1 }}>Rayon de recherche</span>
+            <span style={{ ...sectionLabel, flex: 1 }}>{m.filters_radius_section()}</span>
             <span style={{ font: mono(700, 15), color: C.ink }}>{app.radius} km</span>
           </div>
           <input
@@ -144,8 +148,8 @@ export default function FiltersSheet() {
               marginTop: 2,
             }}
           >
-            <span>1 km</span>
-            <span>25 km</span>
+            <span>{m.unit_kilometres({ km: 1 })}</span>
+            <span>{m.unit_kilometres({ km: 25 })}</span>
           </div>
         </div>
 
@@ -158,7 +162,7 @@ export default function FiltersSheet() {
                 aria-expanded={brandsOpen}
                 style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}
               >
-                <span style={sectionLabel}>Distributeurs</span>
+                <span style={sectionLabel}>{m.filters_brands_section()}</span>
                 <span
                   style={{
                     flex: 1,
@@ -188,7 +192,7 @@ export default function FiltersSheet() {
               {brandsOpen && (
                 <div style={{ marginTop: 8 }}>
                   <div style={{ fontSize: 12, color: C.faint, marginBottom: 6 }}>
-                    Aucune sélection = tous les distributeurs.
+                    {m.filters_brands_hint()}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {zoneBrands.map(([brand, count]) => {
@@ -251,7 +255,7 @@ export default function FiltersSheet() {
                               whiteSpace: 'nowrap',
                             }}
                           >
-                            {brand}
+                            {brandGroupLabel(brand)}
                           </span>
                           <span style={{ fontSize: 12, color: C.faint }}>{count}</span>
                         </button>
@@ -261,7 +265,7 @@ export default function FiltersSheet() {
                   {outOfZone.length > 0 && (
                     <>
                       <div style={{ fontSize: 11.5, color: C.faint, margin: '10px 0 8px' }}>
-                        Aucune station ici avec ces filtres — pour un prochain trajet
+                        {m.filters_brands_out_of_zone()}
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
                         {outOfZone.map((brand) => {
@@ -299,7 +303,7 @@ export default function FiltersSheet() {
                                   }}
                                 />
                               )}
-                              {brand}
+                              {brandGroupLabel(brand)}
                             </button>
                           );
                         })}
@@ -311,17 +315,15 @@ export default function FiltersSheet() {
             </>
           ) : (
             <>
-              <div style={{ ...sectionLabel, marginBottom: 6 }}>Distributeurs</div>
-              <div style={{ fontSize: 12, color: C.faint }}>
-                La source publique ne fournit pas les enseignes des stations.
-              </div>
+              <div style={{ ...sectionLabel, marginBottom: 6 }}>{m.filters_brands_section()}</div>
+              <div style={{ fontSize: 12, color: C.faint }}>{m.filters_brands_unknown()}</div>
             </>
           )}
         </div>
 
         {/* Services */}
         <div>
-          <div style={{ ...sectionLabel, marginBottom: 10 }}>Services</div>
+          <div style={{ ...sectionLabel, marginBottom: 10 }}>{m.filters_services_section()}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {SERVICE_TAGS.map((t) => {
               const on = !!app.serviceTags[t];
@@ -340,7 +342,7 @@ export default function FiltersSheet() {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {t === '24/24' ? 'Ouvert 24/24' : t}
+                  {t === 'open24h' ? m.service_open24h_filter() : serviceTagLabel(t)}
                 </button>
               );
             })}
@@ -351,7 +353,7 @@ export default function FiltersSheet() {
           onClick={() => app.setFiltersOpen(false)}
           style={{ ...ctaStyle(), boxShadow: '0 6px 16px rgba(61,220,132,.25)' }}
         >
-          Voir {nbVisible} station{nbVisible === 1 ? '' : 's'}
+          {m.filters_apply({ count: nbVisible })}
         </button>
       </div>
     </div>

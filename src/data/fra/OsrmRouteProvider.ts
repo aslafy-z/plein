@@ -120,7 +120,7 @@ interface ValhallaResponse {
 }
 
 async function valhallaRoute(from: GeoPoint, to: GeoPoint, opts: RouteOptions): Promise<Route> {
-  const costing = opts.vehicle === 'moto' ? 'motorcycle' : 'auto';
+  const costing = opts.vehicle === 'motorcycle' ? 'motorcycle' : 'auto';
   const body = {
     locations: [
       { lat: from.lat, lon: from.lng },
@@ -157,7 +157,7 @@ export class RealRouteProvider implements RouteProvider {
   async getRoute(from: GeoPoint, to: GeoPoint, options: RouteOptions = {}): Promise<Route> {
     // Valhalla handles everything OSRM's demo profile can't: road-class /
     // toll avoidance and the motorcycle profile.
-    if (options.avoidMotorway || options.avoidToll || options.vehicle === 'moto') {
+    if (options.avoidMotorway || options.avoidToll || options.vehicle === 'motorcycle') {
       return valhallaRoute(from, to, options);
     }
     return osrmRoute(from, to);

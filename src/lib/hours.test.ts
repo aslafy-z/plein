@@ -20,23 +20,23 @@ describe('openStatus', () => {
 
   it('24/24 automats are always open', () => {
     const s = openStatus({ auto24: true, days: {} }, at(3))
-    expect(s).toEqual({ open: true, label: 'Ouvert 24/24', short: 'ouvert 24/24' })
+    expect(s).toEqual({ open: true, kind: 'open24h' })
   })
 
   it('a staffed range opens and closes at the right minutes', () => {
     const hours = staffed(8 * 60, 21 * 60 + 30)
     expect(openStatus(hours, at(12))).toEqual({
       open: true,
-      label: 'Ouvert · ferme à 21 h 30',
-      short: 'ouvert',
+      kind: 'openUntil',
+      atMinutes: 21 * 60 + 30,
     })
     expect(openStatus(hours, at(7, 59))).toEqual({
       open: false,
-      label: 'Fermé · ouvre à 8 h',
-      short: 'fermé',
+      kind: 'opensAt',
+      atMinutes: 8 * 60,
     })
-    // Past the last range of the day → plain « Fermé »
-    expect(openStatus(hours, at(22))?.label).toBe('Fermé')
+    // Past the last range of the day → closed with no reopening time
+    expect(openStatus(hours, at(22))).toEqual({ open: false, kind: 'closed' })
   })
 
   it('a closed day says so', () => {
@@ -44,11 +44,7 @@ describe('openStatus', () => {
       auto24: false,
       days: { 3: { closed: true, ranges: [] } },
     }
-    expect(openStatus(hours, at(12))).toEqual({
-      open: false,
-      label: "Fermé aujourd'hui",
-      short: 'fermé',
-    })
+    expect(openStatus(hours, at(12))).toEqual({ open: false, kind: 'closedToday' })
   })
 
   it("an overnight range spills past midnight into the next day", () => {
@@ -56,8 +52,9 @@ describe('openStatus', () => {
     const hours = staffed(22 * 60, 6 * 60)
     expect(openStatus(hours, at(2))).toEqual({
       open: true,
-      label: 'Ouvert · ferme à 6 h',
-      short: 'ouvert',
+      kind: 'openUntil',
+      // 6 h of the NEXT day, counted from yesterday's midnight
+      atMinutes: 30 * 60,
     })
     expect(openStatus(hours, at(12))?.open).toBe(false)
   })

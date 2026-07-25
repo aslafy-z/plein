@@ -3,26 +3,58 @@ import type { GeoPoint } from '../lib/geo';
 import type { StationHours } from '../lib/hours';
 
 // ── Fuels ────────────────────────────────────────────────────────────────────
-export type FuelId = 'gazole' | 'e10' | 'sp98' | 'sp95' | 'e85' | 'gplc';
-
-export const FUEL_LABELS: Record<FuelId, string> = {
-  gazole: 'Gazole',
-  e10: 'SP95-E10',
-  sp98: 'SP98',
-  sp95: 'SP95',
-  e85: 'E85',
-  gplc: 'GPLc',
-};
+// Ids are English technical symbols — they are persisted, put in shared links
+// and used as record keys. `e10` / `e85` keep their EN 228 / EN 15293 grade
+// codes. The user-facing labels live in the message catalog (lib/labels.ts).
+export type FuelId = 'diesel' | 'e10' | 'unleaded98' | 'unleaded95' | 'e85' | 'lpg';
 
 /** The three quick-switch fuels (map chip cycle + list tabs) */
-export const MAIN_FUELS: FuelId[] = ['gazole', 'e10', 'e85'];
+export const MAIN_FUELS: FuelId[] = ['diesel', 'e10', 'e85'];
 /** Every selectable fuel (filter sheet + settings) */
-export const ALL_FUELS: FuelId[] = ['gazole', 'e10', 'sp98', 'sp95', 'e85', 'gplc'];
+export const ALL_FUELS: FuelId[] = ['diesel', 'e10', 'unleaded98', 'unleaded95', 'e85', 'lpg'];
 
 // ── Stations ─────────────────────────────────────────────────────────────────
 /** Normalized, filterable service tags (raw services kept for the detail screen) */
-export type ServiceTag = '24/24' | 'Lavage' | 'Boutique' | 'Gonflage' | 'Additifs';
-export const SERVICE_TAGS: ServiceTag[] = ['24/24', 'Lavage', 'Boutique', 'Gonflage', 'Additifs'];
+export type ServiceTag = 'open24h' | 'carWash' | 'shop' | 'airPump' | 'additives';
+export const SERVICE_TAGS: ServiceTag[] = ['open24h', 'carWash', 'shop', 'airPump', 'additives'];
+
+/**
+ * Extra products a source may list beyond the six graded fuels. The Spanish
+ * flux carries a dozen of them; providers emit these ids and the catalog
+ * supplies the labels, so nothing translated leaks out of the parse layer.
+ */
+export type ExtraProductId =
+  | 'dieselPremium'
+  | 'agriculturalDiesel'
+  | 'adBlue'
+  | 'cng'
+  | 'lng'
+  | 'bioCng'
+  | 'bioLng'
+  | 'hydrogen'
+  | 'renewableDiesel'
+  | 'renewablePetrol'
+  | 'biodiesel'
+  | 'bioethanol'
+  | 'heatingOilDelivered'
+  | 'heatingOilOnSite';
+
+export const EXTRA_PRODUCT_IDS: ExtraProductId[] = [
+  'dieselPremium',
+  'agriculturalDiesel',
+  'adBlue',
+  'cng',
+  'lng',
+  'bioCng',
+  'bioLng',
+  'hydrogen',
+  'renewableDiesel',
+  'renewablePetrol',
+  'biodiesel',
+  'bioethanol',
+  'heatingOilDelivered',
+  'heatingOilOnSite',
+];
 
 export interface FuelPrice {
   value: number; // €/L
@@ -40,11 +72,15 @@ export interface Station {
   lng: number;
   address: string;
   city: string;
-  cp?: string;
+  postalCode?: string;
   prices: Partial<Record<FuelId, FuelPrice>>;
   /** Normalized filterable tags */
   tags: ServiceTag[];
-  /** Raw service labels for the detail screen */
+  /**
+   * Services for the detail screen: an `ExtraProductId` when the source names
+   * a known product, raw upstream text otherwise (the gouv flux writes free
+   * text nobody can translate).
+   */
   services: string[];
   /** true when on a motorway (gouv `pop === 'A'`) */
   highway: boolean;
@@ -73,10 +109,6 @@ export interface RouteStation extends Station {
 export interface SourceCapabilities {
   /** Does this source know station brands? (gouv flux does not) */
   brands: boolean;
-  /** Human label shown in Réglages, e.g. "prix-carburants.gouv.fr" */
-  label: string;
-  /** Sub label, e.g. "temps réel · mis à jour toutes les 10 min" */
-  sublabel: string;
 }
 
 export interface StationsFetchOptions {
@@ -110,7 +142,7 @@ export interface Route {
   polyline: GeoPoint[];
 }
 
-export type VehicleId = 'car' | 'moto';
+export type VehicleId = 'car' | 'motorcycle';
 
 export interface RouteOptions {
   avoidMotorway?: boolean;

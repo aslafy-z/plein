@@ -4,13 +4,9 @@
 import { useEffect, useReducer } from 'react';
 import { C } from '../theme';
 import { STALE_MS } from '../data/stationsCache';
+import { agoLabelFrom } from '../lib/format';
+import { m } from '../paraglide/messages.js';
 import { useApp } from '../state/store';
-
-function ageLabel(ms: number): string {
-  const min = Math.round(ms / 60_000);
-  if (min < 60) return `il y a ${Math.max(1, min)} min`;
-  return `il y a ${Math.round(min / 60)} h`;
-}
 
 export default function Freshness() {
   const app = useApp();
@@ -39,7 +35,7 @@ export default function Freshness() {
         <span className="spin" style={{ color: C.accent, fontSize: 13 }} aria-hidden>
           ↻
         </span>
-        actualisation…
+        {m.freshness_refreshing()}
       </span>
     );
   }
@@ -50,8 +46,8 @@ export default function Freshness() {
   return (
     <button
       onClick={() => app.reloadStations()}
-      title="Prix non actualisés — toucher pour recharger"
-      aria-label="Recharger les prix"
+      title={m.freshness_stale_title()}
+      aria-label={m.freshness_reload_aria()}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -100,7 +96,7 @@ export default function Freshness() {
           }}
         />
       </span>
-      {ageLabel(age)} · ↻
+      {m.freshness_age({ age: agoLabelFrom(fetchedAt) })}
     </button>
   );
 }

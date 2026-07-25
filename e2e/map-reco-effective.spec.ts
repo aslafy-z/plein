@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures'
 
 // A cheaper pump farther away can cost as much as a closer one once the fuel
-// burnt to reach it is counted (conso & réservoir des Réglages). The card
+// burnt to reach it is counted (consumption & tank size from Réglages). The card
 // crowns the best DEAL, not the best sticker price: 1,86 € at ~15.9 km vs
 // 1,89 € at ~11.8 km (defaults: 6,5 L/100 km, 50 L) → effective 1,937 vs
 // 1,948 €/L — within the 1-ct tie margin, and a tie goes to the NEAREST.

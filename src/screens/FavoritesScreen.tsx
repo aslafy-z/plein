@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { C, mono } from '../theme';
-import { FUEL_LABELS } from '../data/types';
 import {
   useApp,
   effectivePrice,
@@ -9,17 +8,13 @@ import {
   type FavoriteStation,
   type FavSort,
 } from '../state/store';
-import { fmtPrice, distLabel, agoLabel, plural } from '../lib/format';
+import { fmtPrice, distLabel, agoLabel } from '../lib/format';
+import { fuelLabel, openStatusShort } from '../lib/labels';
+import { m } from '../paraglide/messages.js';
 import { openStatus } from '../lib/hours';
 import { haversineKm } from '../lib/geo';
 import BrandAvatar from '../components/BrandAvatar';
 import Star from '../components/Star';
-
-const SORTS: [FavSort, string][] = [
-  ['reco', 'Recommandé'],
-  ['prix', 'Prix'],
-  ['dist', 'Distance'],
-];
 
 /**
  * Favoris — the user's pinned stations (★ on a station detail or on the map
@@ -29,7 +24,12 @@ const SORTS: [FavSort, string][] = [
  */
 export default function FavoritesScreen() {
   const app = useApp();
-  const [sort, setSort] = useState<FavSort>('reco');
+  const [sort, setSort] = useState<FavSort>('recommended');
+  const sorts: [FavSort, string][] = [
+    ['recommended', m.favorites_sort_recommended()],
+    ['price', m.favorites_sort_price()],
+    ['distance', m.favorites_sort_distance()],
+  ];
 
   const rows = app.favorites.map((f) => {
     const live = app.stations.data.find((s) => s.id === f.id);
@@ -38,9 +38,9 @@ export default function FavoritesScreen() {
     return { f, live, price, distKm };
   });
 
-  // « Recommandé » : prix effectif au litre en comptant le carburant brûlé
-  // pour l'aller-retour (conso & réservoir des Réglages) — même notion que
-  // la station mise en avant sur la carte.
+  // « Recommandé » ranks on the effective per-litre price: the fuel burnt on
+  // the round trip (consumption & tank size from Réglages) counted in — the
+  // same notion as the station the map card crowns.
   const favs = sortFavoriteRows(rows, sort, app);
 
   const locate = (f: FavoriteStation) => {
@@ -54,21 +54,21 @@ export default function FavoritesScreen() {
       <div style={{ padding: '14px 20px 18px' }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-          <span style={{ fontSize: 24, fontWeight: 800, color: C.ink, flex: 1 }}>Favoris</span>
+          <span style={{ fontSize: 24, fontWeight: 800, color: C.ink, flex: 1 }}>{m.favorites_title()}</span>
           {favs.length > 0 && (
             <span style={{ fontSize: 13, color: C.mut, fontWeight: 600 }}>
-              {plural(favs.length, 'station')}
+              {m.favorites_count({ count: favs.length })}
             </span>
           )}
         </div>
         <div style={{ fontSize: 13, color: C.mut, marginTop: 4 }}>
-          Vos stations habituelles, au prix du jour.
+          {m.favorites_subtitle()}
         </div>
 
         {/* Sort chips — « Recommandé » = meilleur rapport prix / distance */}
         {favs.length > 0 && (
           <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-            {SORTS.map(([k, label]) => {
+            {sorts.map(([k, label]) => {
               const active = sort === k;
               return (
                 <button
@@ -104,11 +104,10 @@ export default function FavoritesScreen() {
           >
             <Star filled={false} color={C.faint} size={34} />
             <span style={{ fontSize: 15, fontWeight: 700, color: C.body }}>
-              Aucun favori pour l'instant
+              {m.favorites_empty_title()}
             </span>
             <span style={{ fontSize: 13.5, color: C.mut, lineHeight: 1.5, maxWidth: 300 }}>
-              Touchez l'étoile d'une fiche station pour l'épingler ici et comparer vos stations
-              habituelles d'un coup d'œil.
+              {m.favorites_empty_body()}
             </span>
             <button
               onClick={() => app.go('map')}
@@ -122,14 +121,15 @@ export default function FavoritesScreen() {
                 padding: '11px 22px',
               }}
             >
-              Explorer la carte
+              {m.favorites_explore_map()}
             </button>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 14 }}>
             {favs.map(({ f, live, price, distKm }) => {
               const updated = live && effectivePrice(live, app.fuel)?.updatedAt;
-              const status = live ? openStatus(live.hours)?.short : undefined;
+              const liveStatus = live ? openStatus(live.hours) : null;
+              const status = liveStatus ? openStatusShort(liveStatus) : undefined;
               return (
                 <div
                   key={f.id}
@@ -145,7 +145,7 @@ export default function FavoritesScreen() {
                 >
                   <button
                     onClick={() => locate(f)}
-                    aria-label={`Voir ${f.name} sur la carte`}
+                    aria-label={m.sheet_locate_aria({ station: f.name })}
                     style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}
                   >
                     <BrandAvatar label={f.name} init={f.init} size={40} fontSize={13} />
@@ -167,9 +167,9 @@ export default function FavoritesScreen() {
                           distLabel(distKm),
                           status,
                           updated
-                            ? `MàJ ${agoLabel(updated)}`
+                            ? m.sheet_updated_ago({ ago: agoLabel(updated) })
                             : price == null
-                              ? 'toucher pour voir la zone'
+                              ? m.favorites_tap_to_load()
                               : undefined,
                         ]
                           .filter(Boolean)
@@ -187,13 +187,13 @@ export default function FavoritesScreen() {
                         {price != null ? `${fmtPrice(price)} €` : '—'}
                       </div>
                       <div style={{ fontSize: 11, color: C.mut, whiteSpace: 'nowrap' }}>
-                        {FUEL_LABELS[app.fuel]} / L
+                        {m.sheet_per_litre({ fuel: fuelLabel(app.fuel) })}
                       </div>
                     </div>
                   </button>
                   <button
                     onClick={() => app.toggleFavorite(f)}
-                    aria-label={`Retirer ${f.name} des favoris`}
+                    aria-label={m.favorites_remove_aria({ station: f.name })}
                     style={{
                       width: 40,
                       height: 40,
@@ -217,8 +217,7 @@ export default function FavoritesScreen() {
                 lineHeight: 1.5,
               }}
             >
-              Le prix s'affiche quand la station est dans la zone chargée — toucher une station
-              l'ouvre sur la carte.
+              {m.favorites_footer()}
             </div>
           </div>
         )}

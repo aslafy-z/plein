@@ -9,6 +9,7 @@ import type { GeoPoint } from '../../lib/geo';
 import { haversineKm, nearestOnPolyline } from '../../lib/geo';
 import { initialsOf } from '../../lib/text';
 import type {
+  ExtraProductId,
   FuelId,
   FuelPrice,
   SourceCapabilities,
@@ -45,20 +46,20 @@ export function andCoversAlong(polyline: GeoPoint[], corridorKm: number): boolea
 // ── Products ─────────────────────────────────────────────────────────────────
 // idProducte of the IPE flux → app fuel. Andorra sells neither E10 nor E85.
 const FUEL_PRODUCTS: ReadonlyArray<readonly [number, FuelId]> = [
-  [4, 'sp95'], // Gasolina sense plom 95 octans
-  [5, 'sp98'], // Gasolina sense plom 98 octans
-  [6, 'gazole'], // Gasoil de locomoció
-  [11, 'gplc'], // GLP
+  [4, 'unleaded95'], // Gasolina sense plom 95 octans
+  [5, 'unleaded98'], // Gasolina sense plom 98 octans
+  [6, 'diesel'], // Gasoil de locomoció
+  [11, 'lpg'], // GLP
 ];
 
 // Other products become « Services » on the detail screen (like the Spanish
 // source's extra products). Heating oil alone doesn't make a fuel station:
 // stations with no road fuel at all are dropped.
-const EXTRA_PRODUCTS: ReadonlyArray<readonly [number, string]> = [
-  [8, 'Gazole Premium (millorat)'],
-  [9, 'AdBlue'],
-  [7, 'Fioul domestique — livraison'],
-  [10, 'Fioul domestique — en station'],
+const EXTRA_PRODUCTS: ReadonlyArray<readonly [number, ExtraProductId]> = [
+  [8, 'dieselPremium'], // Gasoil millorat
+  [9, 'adBlue'],
+  [7, 'heatingOilDelivered'],
+  [10, 'heatingOilOnSite'],
 ];
 
 // ── Brands ───────────────────────────────────────────────────────────────────
@@ -146,11 +147,11 @@ export function groupStations(features: unknown[]): Station[] {
   interface Acc {
     nom: string;
     parroquia: string;
-    cp?: string;
+    postalCode?: string;
     /** Filled by the first row carrying a usable ring; no point, no station */
     point: GeoPoint | null;
     prices: Partial<Record<FuelId, FuelPrice>>;
-    services: Map<number, string>;
+    services: Map<number, ExtraProductId>;
   }
   const byId = new Map<number, Acc>();
 
@@ -172,7 +173,7 @@ export function groupStations(features: unknown[]): Station[] {
     // Location and parish come from whichever row carries them
     if (!acc.point) acc.point = centroidOf(geometry?.rings);
     if (!acc.parroquia) acc.parroquia = toStr(a.Parroquia) ?? '';
-    if (!acc.cp) acc.cp = toStr(a.Codi_parroquia);
+    if (!acc.postalCode) acc.postalCode = toStr(a.Codi_parroquia);
 
     const product = toNum(a.idProducte);
     const price = toNum(a.PREU);
@@ -195,9 +196,9 @@ export function groupStations(features: unknown[]): Station[] {
     if (!acc.point) continue;
     const banner = BANNERS.find(([re]) => re.test(acc.nom));
     const name = tidyName(acc.nom);
-    // AdBlue / Gasoil millorat ≈ the French « additifs » services (same rule
-    // as the Spanish source)
-    const additifs = acc.services.has(8) || acc.services.has(9);
+    // AdBlue / Gasoil millorat are what the « additives » filter looks for
+    // (same rule as the Spanish source)
+    const hasAdditives = acc.services.has(8) || acc.services.has(9);
     stations.push({
       id: `and-${id}`,
       name,
@@ -207,10 +208,10 @@ export function groupStations(features: unknown[]): Station[] {
       lng: acc.point.lng,
       address: '', // the flux carries no street addresses
       city: acc.parroquia,
-      cp: acc.cp,
+      postalCode: acc.postalCode,
       prices: acc.prices,
-      tags: additifs ? ['Additifs'] : [],
-      services: EXTRA_PRODUCTS.filter(([p]) => acc.services.has(p)).map(([, label]) => label),
+      tags: hasAdditives ? ['additives'] : [],
+      services: EXTRA_PRODUCTS.filter(([p]) => acc.services.has(p)).map(([, id]) => id),
       highway: false, // Andorra has no motorways
       hours: undefined, // the flux carries no opening hours
     });
@@ -263,8 +264,6 @@ export class AndStationsProvider implements StationsProvider {
   readonly id = 'and' as const;
   readonly capabilities: SourceCapabilities = {
     brands: true, // the station name carries the banner
-    label: 'sig.govern.ad',
-    sublabel: "Andorre · officiel Govern d'Andorra",
   };
 
   async getStationsNear(

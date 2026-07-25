@@ -6,7 +6,7 @@
 // "E. Leclerc", "Esso" / "Esso Express"…) plus a long tail of one-off
 // independent stations. Listing them raw makes the filter unusable, so each
 // label resolves to ONE group below — first match wins — and everything
-// unrecognized falls into « Indépendants & autres ». Patterns match both a
+// unrecognized falls into the « independent » group. Patterns match both a
 // bare brand ("TotalEnergies") and a full display name
 // ("Total Access · Tournefeuille"), so favorites — which only persist the
 // name — resolve too.
@@ -14,8 +14,14 @@
 /** Every banner of the U cooperative — one enseigne, one card program */
 const U_FAMILY = /super\s?u|hyper\s?u|système u|u express|station\s?u|enseignes u|^u\s*(·|$)/i;
 
-/** Filter group for unrecognized brands and stations without brand data */
-export const INDEPENDENT_GROUP = 'Indépendants & autres';
+/**
+ * Filter group for unrecognized brands and stations without brand data. A
+ * stable id, not a label: it is persisted in `brandSel`, travels in shared
+ * links and is matched against — the display name lives in the catalog
+ * (`brandGroupLabel`). Every other group key IS its enseigne's proper name,
+ * which no locale translates.
+ */
+export const INDEPENDENT_BRAND_ID = 'independent';
 
 interface BrandGroupDef {
   label: string;
@@ -51,8 +57,8 @@ const BRAND_GROUPS: ReadonlyArray<BrandGroupDef> = [
   { label: 'Tamoil', match: /tamoil/i, icon: 'tamoil' },
   { label: 'Élan', match: /^[ée]lan\b/i },
   { label: 'Vito', match: /^vito\b/i },
-  // Enseignes espagnoles (source geoportalgasolineras.es) — Petronor prices
-  // under the Repsol group; Moeve is Cepsa's new banner but prices apart.
+  // Spanish banners (source geoportalgasolineras.es) — Petronor prices under
+  // the Repsol group; Moeve is Cepsa's new banner but prices apart.
   { label: 'Repsol', match: /repsol|petronor/i, icon: 'repsol' },
   { label: 'Cepsa', match: /cepsa/i },
   { label: 'Moeve', match: /moeve/i, icon: 'moeve' },
@@ -62,7 +68,7 @@ const BRAND_GROUPS: ReadonlyArray<BrandGroupDef> = [
   { label: 'Petroprix', match: /petroprix/i, icon: 'petroprix' },
   { label: 'Q8', match: /\bq8\b/i, icon: 'q8' },
   { label: 'BonÀrea', match: /bonarea/i, icon: 'bonarea' },
-  // Esclatoil = les stations du groupe Bon Preu
+  // Esclatoil = the Bon Preu group's stations
   { label: 'Esclatoil', match: /esclatoil|bon\s?preu/i, icon: 'esclatoil' },
   { label: 'Alcampo', match: /alcampo/i, icon: 'alcampo' },
   { label: 'Eroski', match: /eroski/i, icon: 'eroski' },
@@ -76,15 +82,15 @@ const BRAND_GROUPS: ReadonlyArray<BrandGroupDef> = [
   { label: 'Disa', match: /\bdisa\b/i },
   { label: 'Petrocat', match: /petrocat/i },
   { label: 'HAM', match: /\bham\b/i },
-  // Enseignes andorranes (source sig.govern.ad) — Elf, Cepsa, Repsol, Shell,
-  // BP, TotalEnergies, Meroil et Dyneff matchent déjà plus haut.
+  // Andorran banners (source sig.govern.ad) — Elf, Cepsa, Repsol, Shell, BP,
+  // TotalEnergies, Meroil and Dyneff already match above.
   { label: 'Gasopas', match: /gasopas/i },
 ];
 
 /** Every filter entry the app knows — drives the « hors zone » selector. */
 export const KNOWN_BRAND_GROUPS: readonly string[] = [
   ...BRAND_GROUPS.map((g) => g.label),
-  INDEPENDENT_GROUP,
+  INDEPENDENT_BRAND_ID,
 ];
 
 /**
@@ -93,9 +99,9 @@ export const KNOWN_BRAND_GROUPS: readonly string[] = [
  * means it isn't part of a national network.
  */
 export function brandGroup(brand: string | undefined): string {
-  if (!brand) return INDEPENDENT_GROUP;
+  if (!brand) return INDEPENDENT_BRAND_ID;
   for (const g of BRAND_GROUPS) if (g.match.test(brand)) return g.label;
-  return INDEPENDENT_GROUP;
+  return INDEPENDENT_BRAND_ID;
 }
 
 /** Icon URL for a brand or display name, or null when we have no logo. */

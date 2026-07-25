@@ -11,6 +11,7 @@ import type { DayHours, StationHours } from '../../lib/hours';
 import { initialsOf, titleCase } from '../../lib/text';
 import { zonedTimeToMs } from '../../lib/time';
 import type {
+  ExtraProductId,
   FuelId,
   FuelPrice,
   ServiceTag,
@@ -109,30 +110,33 @@ function toStr(v: unknown): string | undefined {
   return typeof v === 'string' && v.trim() ? v.trim() : undefined;
 }
 
+// Left column: our fuel id. The right one is the flux's own header.
 const FUEL_COLS: ReadonlyArray<readonly [FuelId, string]> = [
-  ['gazole', 'Precio Gasoleo A'],
+  ['diesel', 'Precio Gasoleo A'],
   ['e10', 'Precio Gasolina 95 E10'],
-  ['sp98', 'Precio Gasolina 98 E5'],
-  ['sp95', 'Precio Gasolina 95 E5'],
+  ['unleaded98', 'Precio Gasolina 98 E5'],
+  ['unleaded95', 'Precio Gasolina 95 E5'],
   ['e85', 'Precio Gasolina 95 E85'],
-  ['gplc', 'Precio Gases licuados del petróleo'],
+  ['lpg', 'Precio Gases licuados del petróleo'],
 ];
 
-// The flux has no lavage/boutique-style service field, but it does list every
+// The flux has no car-wash/shop-style service field, but it does list every
 // extra product on sale — shown as the « Services » of the detail screen.
-const EXTRA_PRODUCTS: ReadonlyArray<readonly [string, string]> = [
-  ['Precio Gasoleo Premium', 'Gazole Premium'],
-  ['Precio Gasoleo B', 'Gazole B (agricole)'],
-  ['Precio Adblue', 'AdBlue'],
-  ['Precio Gas Natural Comprimido', 'GNC — gaz naturel comprimé'],
-  ['Precio Gas Natural Licuado', 'GNL — gaz naturel liquéfié'],
-  ['Precio Biogas Natural Comprimido', 'BioGNC'],
-  ['Precio Biogas Natural Licuado', 'BioGNL'],
-  ['Precio Hidrogeno', 'Hydrogène'],
-  ['Precio Diésel Renovable', 'Diesel renouvelable (HVO)'],
-  ['Precio Gasolina Renovable', 'Essence renouvelable'],
-  ['Precio Biodiesel', 'Biodiesel'],
-  ['Precio Bioetanol', 'Bioéthanol'],
+// Left column: the flux's Spanish header. Right: our product id — the catalog
+// names it, so the parse layer translates nothing.
+const EXTRA_PRODUCTS: ReadonlyArray<readonly [string, ExtraProductId]> = [
+  ['Precio Gasoleo Premium', 'dieselPremium'],
+  ['Precio Gasoleo B', 'agriculturalDiesel'],
+  ['Precio Adblue', 'adBlue'],
+  ['Precio Gas Natural Comprimido', 'cng'],
+  ['Precio Gas Natural Licuado', 'lng'],
+  ['Precio Biogas Natural Comprimido', 'bioCng'],
+  ['Precio Biogas Natural Licuado', 'bioLng'],
+  ['Precio Hidrogeno', 'hydrogen'],
+  ['Precio Diésel Renovable', 'renewableDiesel'],
+  ['Precio Gasolina Renovable', 'renewablePetrol'],
+  ['Precio Biodiesel', 'biodiesel'],
+  ['Precio Bioetanol', 'bioethanol'],
 ];
 
 /**
@@ -214,13 +218,11 @@ function parseRecord(rec: Raw, updatedAt: string | undefined): Station | null {
   const city = toStr(rec['Municipio']) ?? toStr(rec['Localidad']) ?? '';
   const address = toStr(rec['Dirección']) ?? '';
   const hours = parseOpeningHours(rec['Horario']);
-  const tags: ServiceTag[] = hours?.auto24 ? ['24/24'] : [];
+  const tags: ServiceTag[] = hours?.auto24 ? ['open24h'] : [];
   // A price on an extra product means the station sells it
-  const services = EXTRA_PRODUCTS.filter(([col]) => toNum(rec[col]) != null).map(
-    ([, label]) => label,
-  );
-  // AdBlue / Gasóleo Premium ≈ the French « additifs » services
-  if (services.some((s) => /adblue|premium/i.test(s))) tags.push('Additifs');
+  const services = EXTRA_PRODUCTS.filter(([col]) => toNum(rec[col]) != null).map(([, id]) => id);
+  // AdBlue / Gasóleo Premium are what the « additives » filter looks for
+  if (services.some((s) => s === 'adBlue' || s === 'dieselPremium')) tags.push('additives');
   const id = toStr(rec['IDEESS']);
 
   return {
@@ -232,7 +234,7 @@ function parseRecord(rec: Raw, updatedAt: string | undefined): Station | null {
     lng,
     address: titleCase(address),
     city,
-    cp: toStr(rec['C.P.']),
+    postalCode: toStr(rec['C.P.']),
     prices,
     tags,
     services,
@@ -317,8 +319,6 @@ export class EspStationsProvider implements StationsProvider {
   readonly id = 'esp' as const;
   readonly capabilities: SourceCapabilities = {
     brands: true, // the flux carries the rótulo (enseigne) directly
-    label: 'geoportalgasolineras.es',
-    sublabel: 'Espagne · officiel MITECO · toutes les 30 min',
   };
 
   async getStationsNear(

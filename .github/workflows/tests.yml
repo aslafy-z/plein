@@ -1,5 +1,6 @@
 # Runs the test suites:
-# - unit: tsc typecheck + Vitest (src/**/*.test.ts) — fast, no browser
+# - unit: paraglide message compile + tsc typecheck + Vitest (src/**/*.test.ts)
+#         — fast, no browser
 # - e2e:  Playwright suite (e2e/, playwright.config.ts) against the Vite dev
 #         server (started automatically by Playwright's webServer) with the
 #         deterministic demo data source, split across shards (one runner each)
@@ -33,6 +34,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Compiles messages/{locale}.json into src/paraglide (gitignored). Both
+      # scripts below also run it via `pre*`, so this only makes the step
+      # visible in the log when the catalog is what broke.
+      - run: npm run messages
       - run: npm run typecheck
       - run: npm test
 
@@ -54,6 +59,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run messages
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
       - name: Run e2e tests

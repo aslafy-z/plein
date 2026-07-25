@@ -96,7 +96,7 @@ describe('state updaters stay pure', () => {
 
     const run = () => [
       toggleFavoriteIn([station('a')], station('b')).map((f) => f.id),
-      nextFuelAfter('gazole'),
+      nextFuelAfter('diesel'),
       toggleBrandIn(['TotalEnergies'], 'Leclerc'),
       pushRecentIn([trip('Albi')], trip('Pau'), true).map((r) => r.label),
     ]

@@ -1,4 +1,5 @@
 import { useApp } from '../state/store';
+import { m } from '../paraglide/messages.js';
 import { C } from '../theme';
 
 /**
@@ -33,15 +34,13 @@ export default function FallbackBanner() {
       }}
     >
       <span style={{ flex: 1 }}>
-        {errored
-          ? 'Impossible de charger les stations. Vérifiez votre connexion.'
-          : 'Source temps réel indisponible — données de démonstration affichées.'}
+        {errored ? m.banner_load_error() : m.banner_fell_back()}
       </span>
       <button
         onClick={() => app.reloadStations()}
         style={{ color: C.accent, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}
       >
-        Réessayer
+        {m.banner_retry()}
       </button>
     </div>
   );

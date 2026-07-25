@@ -1,10 +1,24 @@
 // Shareable map link — the map screen mirrors what it shows into the query
-// string (`/?ll=43.6047,1.4442&z=14&f=gazole&r=5`): the address bar is always
+// string (`/?ll=43.6047,1.4442&z=14&f=diesel&r=5`): the address bar is always
 // a link to the exact view on screen, and opening one lands on the same area,
 // the same fuel and the same filters. Every value is re-validated on the way
 // in: a link is user input, and a hand-edited one must never break the app.
 import type { GeoPoint } from './geo';
-import { ALL_FUELS, SERVICE_TAGS, type FuelId, type ServiceTag } from '../data/types';
+import { SERVICE_TAGS, type FuelId, type ServiceTag } from '../data/types';
+import { migrateFuelId } from '../state/persist';
+
+/**
+ * Fuel ids and service tags used to be French words, and links carrying them
+ * are already in the wild — a shared view must keep opening on the fuel and
+ * the filters it was shared with.
+ */
+const LEGACY_SERVICE_TAGS: Record<string, ServiceTag> = {
+  '24/24': 'open24h',
+  Lavage: 'carWash',
+  Boutique: 'shop',
+  Gonflage: 'airPump',
+  Additifs: 'additives',
+};
 
 /** Query keys — short, they end up in a pasted URL */
 const K = {
@@ -90,17 +104,16 @@ export function parseMapUrl(search: string): ParsedMapUrl {
   const rawZoom = num(q.get(K.zoom));
   const zoom = rawZoom == null ? null : clamp(rawZoom, MIN_ZOOM, MAX_ZOOM);
 
-  const rawFuel = q.get(K.fuel);
-  const fuel = ALL_FUELS.includes(rawFuel as FuelId) ? (rawFuel as FuelId) : null;
+  const fuel = migrateFuelId(q.get(K.fuel));
 
   const rawRadius = num(q.get(K.radius));
   const radius =
     rawRadius == null || rawRadius < 1 ? null : clamp(Math.round(rawRadius), 1, MAX_URL_RADIUS_KM);
 
   const brands = list(q.get(K.brands)).slice(0, MAX_BRANDS);
-  const services = list(q.get(K.services)).filter((s): s is ServiceTag =>
-    SERVICE_TAGS.includes(s as ServiceTag),
-  );
+  const services = list(q.get(K.services))
+    .map((s) => LEGACY_SERVICE_TAGS[s] ?? s)
+    .filter((s): s is ServiceTag => SERVICE_TAGS.includes(s as ServiceTag));
 
   return {
     center,

@@ -17,26 +17,31 @@ export interface DayHours {
 export interface StationHours {
   /** 24/24 self-service pumps */
   auto24: boolean;
-  /** ISO day (1 = lundi … 7 = dimanche); missing entry = unknown */
+  /** ISO day (1 = Monday … 7 = Sunday); missing entry = unknown */
   days: Partial<Record<number, DayHours>>;
 }
 
+/**
+ * What the source says about right now, as data — the copy is assembled by
+ * the view (lib/labels.ts) so this stays a pure, locale-free computation.
+ */
+export type OpenStatusKind =
+  | 'open24h'
+  /** Open, and `atMinutes` is when it closes */
+  | 'openUntil'
+  | 'closedToday'
+  /** Closed, and `atMinutes` is when it opens again today */
+  | 'opensAt'
+  | 'closed';
+
 export interface OpenStatus {
   open: boolean;
-  /** Chip label, e.g. "Ouvert · ferme à 20 h 30" */
-  label: string;
-  /** Inline label for one-line summaries, e.g. "ouvert" / "fermé" */
-  short: string;
+  kind: OpenStatusKind;
+  /** Boundary time in minutes from midnight — only for `openUntil` / `opensAt` */
+  atMinutes?: number;
 }
 
 const DAY_MIN = 24 * 60;
-
-function fmtMin(m: number): string {
-  const mm = ((m % DAY_MIN) + DAY_MIN) % DAY_MIN;
-  const h = Math.floor(mm / 60);
-  const min = mm % 60;
-  return min === 0 ? `${h} h` : `${h} h ${String(min).padStart(2, '0')}`;
-}
 
 /** ISO day (1 = Monday … 7 = Sunday) for a JS Date */
 function isoDay(d: Date): number {
@@ -57,33 +62,31 @@ function normalized(day: DayHours | undefined): HoursRange[] {
  */
 export function openStatus(hours: StationHours | undefined, now = new Date()): OpenStatus | null {
   if (!hours) return null;
-  if (hours.auto24) return { open: true, label: 'Ouvert 24/24', short: 'ouvert 24/24' };
+  if (hours.auto24) return { open: true, kind: 'open24h' };
 
   const today = hours.days[isoDay(now)];
-  const m = now.getHours() * 60 + now.getMinutes();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
 
   // A range from yesterday can spill past midnight (e.g. 22 h – 6 h)
   const yesterday = new Date(now.getTime() - DAY_MIN * 60_000);
   for (const r of normalized(hours.days[isoDay(yesterday)])) {
-    if (r.close > DAY_MIN && m < r.close - DAY_MIN) {
-      return { open: true, label: `Ouvert · ferme à ${fmtMin(r.close)}`, short: 'ouvert' };
+    if (r.close > DAY_MIN && nowMin < r.close - DAY_MIN) {
+      return { open: true, kind: 'openUntil', atMinutes: r.close };
     }
   }
 
   if (!today) return null;
-  if (today.closed) return { open: false, label: "Fermé aujourd'hui", short: 'fermé' };
+  if (today.closed) return { open: false, kind: 'closedToday' };
 
   const ranges = normalized(today);
   if (!ranges.length) return null; // « open » day without hours → unknown
 
   for (const r of ranges) {
-    if (m >= r.open && m < r.close) {
-      return { open: true, label: `Ouvert · ferme à ${fmtMin(r.close)}`, short: 'ouvert' };
+    if (nowMin >= r.open && nowMin < r.close) {
+      return { open: true, kind: 'openUntil', atMinutes: r.close };
     }
   }
-  const next = ranges.filter((r) => r.open > m).sort((a, b) => a.open - b.open)[0];
-  if (next) {
-    return { open: false, label: `Fermé · ouvre à ${fmtMin(next.open)}`, short: 'fermé' };
-  }
-  return { open: false, label: 'Fermé', short: 'fermé' };
+  const next = ranges.filter((r) => r.open > nowMin).sort((a, b) => a.open - b.open)[0];
+  if (next) return { open: false, kind: 'opensAt', atMinutes: next.open };
+  return { open: false, kind: 'closed' };
 }

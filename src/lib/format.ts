@@ -1,44 +1,120 @@
-// French-locale formatting helpers
+// Locale-aware formatting helpers.
+//
+// Numbers, wall-clock times and relative dates go through `Intl`, so the
+// decimal separator, the clock convention and « il y a 2 h » follow the active
+// locale instead of being hard-coded to French. Anything `Intl` has no
+// primitive for (a duration written « 5 h 16 ») is a message in the catalog.
+import { getLocale } from '../paraglide/runtime.js';
+import { m } from '../paraglide/messages.js';
+
+/** Placeholder for « we don't know » — same glyph in every locale */
+export const EM_DASH = '—';
+
+// Intl formatters are expensive to build and this module sits on the render
+// path of every list row, so they are memoised per locale.
+const numberFormats = new Map<string, Intl.NumberFormat>();
+
+function decimals(digits: number): Intl.NumberFormat {
+  const key = `${getLocale()}:${digits}`;
+  let f = numberFormats.get(key);
+  if (!f) {
+    f = new Intl.NumberFormat(getLocale(), {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    });
+    numberFormats.set(key, f);
+  }
+  return f;
+}
+
+/** Fixed-precision decimal in the active locale: 6.5 -> "6,5" in French */
+export function fmtDecimal(v: number, digits: number): string {
+  return decimals(digits).format(v);
+}
 
 /** 1.679 -> "1,68" ; null/undefined -> "—" */
 export function fmtPrice(v: number | null | undefined): string {
-  if (v == null || !isFinite(v)) return '—';
-  return v.toFixed(2).replace('.', ',');
+  if (v == null || !isFinite(v)) return EM_DASH;
+  return decimals(2).format(v);
 }
 
 /** 0.85 -> "850 m" ; 2.34 -> "2,3 km" */
 export function distLabel(km: number): string {
-  if (km < 1) return `${Math.round(km * 1000)} m`;
-  return `${km.toFixed(1).replace('.', ',')} km`;
+  if (km < 1) return m.unit_metres({ metres: Math.round(km * 1000) });
+  return m.unit_kilometres({ km: fmtDecimal(km, 1) });
 }
 
 /** 316 -> "5 h 16" ; 45 -> "45 min" */
 export function durationLabel(min: number): string {
-  const m = Math.round(min);
-  if (m < 60) return `${m} min`;
-  return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`;
+  const total = Math.round(min);
+  if (total < 60) return m.unit_minutes({ minutes: total });
+  return m.unit_hours_minutes({
+    hours: Math.floor(total / 60),
+    minutes: String(total % 60).padStart(2, '0'),
+  });
 }
 
-/** Wall-clock label for a Date, French style: 17:36 -> "17 h 36" */
+/** Minutes from midnight as a wall-clock label — « 20 h 30 » is French for 20:30 */
+export function minutesLabel(minutesFromMidnight: number): string {
+  const day = 24 * 60;
+  const mm = ((minutesFromMidnight % day) + day) % day;
+  const hours = Math.floor(mm / 60);
+  return mm % 60 === 0
+    ? m.unit_hours({ hours })
+    : m.unit_hours_minutes({ hours, minutes: String(mm % 60).padStart(2, '0') });
+}
+
+const clockFormats = new Map<string, Intl.DateTimeFormat>();
+
+/** Wall-clock label for a Date, in the active locale's convention */
 export function clockLabel(d: Date): string {
-  return `${d.getHours()} h ${String(d.getMinutes()).padStart(2, '0')}`;
+  let f = clockFormats.get(getLocale());
+  if (!f) {
+    f = new Intl.DateTimeFormat(getLocale(), { hour: 'numeric', minute: '2-digit' });
+    clockFormats.set(getLocale(), f);
+  }
+  return f.format(d);
+}
+
+const dayMonthFormats = new Map<string, Intl.DateTimeFormat>();
+
+/** Short calendar date for the trip history — « 25 juil. » in French */
+export function dayMonthLabel(ms: number): string {
+  let f = dayMonthFormats.get(getLocale());
+  if (!f) {
+    f = new Intl.DateTimeFormat(getLocale(), { day: 'numeric', month: 'short' });
+    dayMonthFormats.set(getLocale(), f);
+  }
+  return f.format(new Date(ms));
+}
+
+const relativeFormats = new Map<string, Intl.RelativeTimeFormat>();
+
+function relative(): Intl.RelativeTimeFormat {
+  let f = relativeFormats.get(getLocale());
+  if (!f) {
+    // `auto` turns -1 day into « hier »; `short` keeps « il y a 2 h » compact
+    // enough for a list row.
+    f = new Intl.RelativeTimeFormat(getLocale(), { numeric: 'auto', style: 'short' });
+    relativeFormats.set(getLocale(), f);
+  }
+  return f;
+}
+
+/** Age of a past instant: "il y a 2 h" / "hier" / "il y a 3 j" */
+export function agoLabelFrom(ms: number, now = Date.now()): string {
+  const mins = Math.max(0, Math.round((now - ms) / 60000));
+  if (mins <= 1) return m.time_just_now();
+  if (mins < 60) return relative().format(-mins, 'minute');
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return relative().format(-hours, 'hour');
+  return relative().format(-Math.round(hours / 24), 'day');
 }
 
 /** ISO timestamp -> "il y a 2 h" / "hier" / "il y a 3 j" */
 export function agoLabel(iso: string | undefined): string {
-  if (!iso) return '—';
+  if (!iso) return EM_DASH;
   const t = new Date(iso).getTime();
-  if (!isFinite(t)) return '—';
-  const mins = Math.max(0, Math.round((Date.now() - t) / 60000));
-  if (mins < 60) return mins <= 1 ? "à l'instant" : `il y a ${mins} min`;
-  const hours = Math.round(mins / 60);
-  if (hours < 24) return `il y a ${hours} h`;
-  const days = Math.round(hours / 24);
-  if (days === 1) return 'hier';
-  return `il y a ${days} j`;
-}
-
-/** Plural helper: n + singular/plural word */
-export function plural(n: number, singular: string, pluralWord?: string): string {
-  return `${n} ${n > 1 ? (pluralWord ?? singular + 's') : singular}`;
+  if (!isFinite(t)) return EM_DASH;
+  return agoLabelFrom(t);
 }

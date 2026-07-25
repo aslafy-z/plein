@@ -43,25 +43,25 @@ describe('groupStations', () => {
     expect(st.id).toBe('and-12')
     expect(st.name).toBe('TotalEnergies · La Massana I')
     expect(st.brand).toBe('TotalEnergies')
-    expect(st.prices.gazole?.value).toBe(1.5)
-    expect(st.prices.sp95?.value).toBe(1.62)
+    expect(st.prices.diesel?.value).toBe(1.5)
+    expect(st.prices.unleaded95?.value).toBe(1.62)
     expect(st.city).toBe('La Massana')
-    expect(st.cp).toBe('4')
-    expect(st.tags).toEqual(['Additifs'])
+    expect(st.postalCode).toBe('4')
+    expect(st.tags).toEqual(['additives'])
     expect(st.lat).toBeCloseTo(42.501, 3)
     expect(st.lng).toBeCloseTo(1.501, 3)
   })
 
   it('keeps prices from rows that precede the first geometry-bearing row', () => {
     const stations = groupStations([
-      row(12, 6, 1.5), // gazole, no geometry at all
-      row(12, 4, 1.62, { geometry: { rings: 'nope' } }), // sp95, malformed rings
-      row(12, 5, 1.71, { geometry: { rings: RINGS } }), // sp98, finally a polygon
+      row(12, 6, 1.5), // diesel, no geometry at all
+      row(12, 4, 1.62, { geometry: { rings: 'nope' } }), // unleaded95, malformed rings
+      row(12, 5, 1.71, { geometry: { rings: RINGS } }), // unleaded98, finally a polygon
     ])
     expect(stations).toHaveLength(1)
-    expect(stations[0].prices.gazole?.value).toBe(1.5)
-    expect(stations[0].prices.sp95?.value).toBe(1.62)
-    expect(stations[0].prices.sp98?.value).toBe(1.71)
+    expect(stations[0].prices.diesel?.value).toBe(1.5)
+    expect(stations[0].prices.unleaded95?.value).toBe(1.62)
+    expect(stations[0].prices.unleaded98?.value).toBe(1.71)
     expect(stations[0].lat).toBeCloseTo(42.501, 3)
   })
 
@@ -71,8 +71,8 @@ describe('groupStations', () => {
       row(12, 9, 0.8, { geometry: { rings: RINGS } }), // AdBlue carries the polygon
     ])
     expect(stations).toHaveLength(1)
-    expect(stations[0].prices.gazole?.value).toBe(1.5)
-    expect(stations[0].services).toEqual(['AdBlue'])
+    expect(stations[0].prices.diesel?.value).toBe(1.5)
+    expect(stations[0].services).toEqual(['adBlue'])
   })
 
   it('fills the parish from whichever row supplies it', () => {
@@ -85,7 +85,7 @@ describe('groupStations', () => {
       }),
     ])
     expect(stations[0].city).toBe('Encamp')
-    expect(stations[0].cp).toBe('3')
+    expect(stations[0].postalCode).toBe('3')
   })
 
   it('drops a station when no row ever carries a usable polygon', () => {

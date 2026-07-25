@@ -10,13 +10,22 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+// Registers the locale strategy — imported first so nothing can reach a
+// message function before Paraglide knows how to resolve the language.
+import {
+  applyLocale,
+  currentLocale,
+  explicitLocale,
+  followBrowserLocale,
+  syncDocumentLocale,
+  type Locale,
+} from '../lib/locale';
 import { IS_ANDROID, IS_IOS } from '../lib/env';
-import { clockLabel } from '../lib/format';
 import type { GeoPoint } from '../lib/geo';
+import { m } from '../paraglide/messages.js';
 import { cumulativeKm, haversineKm, nearestOnPolyline } from '../lib/geo';
 import {
   ALL_FUELS,
-  FUEL_LABELS,
   SERVICE_TAGS,
   type VehicleId,
   type DataSourceId,
@@ -31,7 +40,16 @@ import {
   type Station,
 } from '../data/types';
 import { getProviders } from '../data/providers';
+import { fuelLabel } from '../lib/labels';
 import { brandGroup } from '../lib/brandIcons';
+import {
+  loadPersisted,
+  savePersisted,
+  type FavoriteStation,
+  type MapsSiteId,
+  type PersistedSettings,
+  type RecentPlace,
+} from './persist';
 import { mapUrlQuery, parseMapUrl } from '../lib/mapUrl';
 import { mapViewShareData, stationShareData, type ShareData } from '../lib/share';
 import { readStationsCache, writeStationsCache, STALE_MS } from '../data/stationsCache';
@@ -46,20 +64,21 @@ import {
 // ── Constants ────────────────────────────────────────────────────────────────
 /** Toulouse Capitole — default position when geolocation is unavailable */
 export const DEFAULT_POS: GeoPoint = { lat: 43.6047, lng: 1.4442 };
-/** Route departure placeholder — resolves to the user's current position */
-export const DEFAULT_FROM_LABEL = 'Ma position';
 /** Recent-trip history kept in Réglages persistence */
 const MAX_RECENTS = 4;
 export const MAX_RADIUS_KM = 25;
 /** Vehicle profile presets (tank L, consumption L/100 km, default fuel) — adjustable in Réglages */
-export const VEHICLE_PRESETS: Record<VehicleId, { tank: number; conso: number; fuel: FuelId }> = {
-  car: { tank: 50, conso: 6.5, fuel: 'gazole' },
-  moto: { tank: 15, conso: 5, fuel: 'e10' },
+export const VEHICLE_PRESETS: Record<
+  VehicleId,
+  { tank: number; consumption: number; fuel: FuelId }
+> = {
+  car: { tank: 50, consumption: 6.5, fuel: 'diesel' },
+  motorcycle: { tank: 15, consumption: 5, fuel: 'e10' },
 };
-const DEFAULT_CONSO = VEHICLE_PRESETS.car.conso;
+const DEFAULT_CONSUMPTION = VEHICLE_PRESETS.car.consumption;
 /** Default departure tank level (%) — adjustable on the route setup */
 const DEFAULT_START_TANK_PCT = 70;
-/** € value of one minute of detour, for the « compromis » strategy */
+/** € value of one minute of detour, for the « balanced » strategy */
 const EUR_PER_DETOUR_MIN = 0.35;
 /** Minutes spent actually refuelling at a stop */
 const REFUEL_MIN = 4;
@@ -82,17 +101,26 @@ export type Screen =
   | 'settings'
   | 'detail';
 
-export type RouteMode = 'compromis' | 'prix' | 'detour';
-export type SortMode = 'prix' | 'dist';
+export type RouteMode = 'balanced' | 'price' | 'detour';
+export type SortMode = 'price' | 'distance';
 
-/** Web maps site used by « Y aller » on desktop (mobile opens the native GPS app) */
-export type MapsSiteId = 'google' | 'waze' | 'apple' | 'osm';
-export const MAPS_SITES: { id: MapsSiteId; label: string }[] = [
-  { id: 'google', label: 'Google Maps' },
-  { id: 'waze', label: 'Waze' },
-  { id: 'apple', label: 'Apple Plans' },
-  { id: 'osm', label: 'OpenStreetMap' },
-];
+export type { MapsSiteId, FavoriteStation, RecentPlace };
+/** Web maps sites offered by « Y aller » on desktop, in display order */
+export const MAPS_SITE_IDS: MapsSiteId[] = ['google', 'waze', 'apple', 'osm'];
+
+/** Display name of a maps site — only Apple's differs across locales */
+export function mapsSiteLabel(id: MapsSiteId): string {
+  switch (id) {
+    case 'waze':
+      return m.maps_site_waze();
+    case 'apple':
+      return m.maps_site_apple();
+    case 'osm':
+      return m.maps_site_osm();
+    default:
+      return m.maps_site_google();
+  }
+}
 function mapsSiteUrl(site: MapsSiteId, lat: number, lng: number): string {
   switch (site) {
     case 'waze':
@@ -128,66 +156,6 @@ interface RouteState {
 }
 
 // ── Persistence ──────────────────────────────────────────────────────────────
-const LS_KEY = 'plein.settings.v1';
-
-interface PersistedSettings {
-  fuel: FuelId;
-  vehicle: VehicleId;
-  tank: number;
-  conso: number;
-  avoidMotorway: boolean;
-  avoidToll: boolean;
-  startTankPct: number;
-  radius: number;
-  sourceId: DataSourceId;
-  onboarded: boolean;
-  alerts: boolean;
-  mapsSite: MapsSiteId;
-  /** Last position the app was centered on — restored on reload so the
-      station cache hits instantly instead of flashing Toulouse/demo data */
-  lastPos: GeoPoint;
-  /** true when geolocation succeeded before — on reload the first stations
-      fetch waits for the fresh fix instead of loading the stale area twice */
-  geoGranted: boolean;
-  installDismissed: boolean;
-  bgloc: boolean;
-  recents: { label: string; sublabel: string; point: GeoPoint }[];
-  /** Pinned stations — snapshot so they render even out of the loaded area */
-  favorites: FavoriteStation[];
-  /** Selected brand labels in the filters (empty/absent = every brand) */
-  brandSel: string[];
-  /** Armed by onboarding, spent the first time the map sheet can bounce to
-      show it pulls up — absent for anyone who onboarded before the hint
-      existed, so it only ever plays for newcomers */
-  sheetHint: boolean;
-}
-
-export interface FavoriteStation {
-  id: string;
-  name: string;
-  init: string;
-  city?: string;
-  lat: number;
-  lng: number;
-}
-
-function loadPersisted(): Partial<PersistedSettings> {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    return raw ? (JSON.parse(raw) as Partial<PersistedSettings>) : {};
-  } catch {
-    return {};
-  }
-}
-
-function savePersisted(p: Partial<PersistedSettings>) {
-  try {
-    localStorage.setItem(LS_KEY, JSON.stringify({ ...loadPersisted(), ...p }));
-  } catch {
-    /* private mode etc. — non-fatal */
-  }
-}
-
 /**
  * Mirror one slice of state into the persisted blob whenever it changes.
  *
@@ -238,16 +206,19 @@ export function toggleBrandIn(sel: string[], label: string): string[] {
  * default suggestions are dropped rather than pushed down.
  */
 export function pushRecentIn(
-  prev: PersistedSettings['recents'],
-  entry: PersistedSettings['recents'][number],
+  prev: RecentPlace[],
+  entry: RecentPlace,
   hasTripHistory: boolean,
-): PersistedSettings['recents'] {
+): RecentPlace[] {
   const base = hasTripHistory ? prev : [];
   return [entry, ...base.filter((r) => r.label !== entry.label)].slice(0, MAX_RECENTS);
 }
 
-/** Destination suggestions shown until the user has real trip history */
-export const DEFAULT_RECENTS: PersistedSettings['recents'] = [
+/**
+ * Destination suggestions shown until the user has real trip history. The sub
+ * label is a département name — a proper noun, not copy to translate.
+ */
+export const DEFAULT_RECENTS: RecentPlace[] = [
   { label: 'Toulouse', sublabel: 'Haute-Garonne', point: { lat: 43.6047, lng: 1.4442 } },
 ];
 
@@ -311,13 +282,17 @@ export interface AppStore {
 
   // route
   fromText: string;
+  /** true while the departure field means « wherever I am » rather than a typed place */
+  fromIsCurrentPosition: boolean;
   toText: string;
   fromPoint: GeoPoint | null;
   toPoint: GeoPoint | null;
   setFrom(text: string, point?: GeoPoint | null): void;
+  /** Put the departure field back on the user's position */
+  useCurrentPositionAsStart(): void;
   setTo(text: string, point?: GeoPoint | null): void;
   searchPlaces(q: string): Promise<GeocodeResult[]>;
-  recents: PersistedSettings['recents'];
+  recents: RecentPlace[];
   /** false while `recents` still shows the default suggestions */
   hasTripHistory: boolean;
   routeReady: boolean;
@@ -338,27 +313,32 @@ export interface AppStore {
   startTankPct: number;
   setStartTankPct(v: number): void;
   routeState: RouteState;
-  tour: Record<string, boolean>;
-  toggleTour(id: string): void;
+  /** Stops the user picked for a multi-stop run, by station id */
+  plannedStops: Record<string, boolean>;
+  togglePlannedStop(id: string): void;
 
   // settings
   vehicle: VehicleId;
-  /** Switch profile and apply its tank/conso/fuel presets */
+  /** Switch profile and apply its tank/consumption/fuel presets */
   setVehicle(v: VehicleId): void;
   tank: number;
   setTank(t: number): void;
   /** Average consumption, L/100 km — feeds autonomy + trip cost */
-  conso: number;
-  setConso(v: number): void;
+  consumption: number;
+  setConsumption(v: number): void;
   alerts: boolean;
   setAlerts(v: boolean): void;
-  bgloc: boolean;
-  setBgloc(v: boolean): void;
+  backgroundLocation: boolean;
+  setBackgroundLocation(v: boolean): void;
   sourceId: DataSourceId;
   setSourceId(s: DataSourceId): void;
   /** Maps website opened by « Y aller » on desktop */
   mapsSite: MapsSiteId;
   setMapsSite(s: MapsSiteId): void;
+  /** Active language — null while the app follows the browser */
+  locale: Locale;
+  localeIsExplicit: boolean;
+  setLocale(l: Locale | null): void;
 
   // detail
   detailId: string | null;
@@ -367,7 +347,7 @@ export interface AppStore {
   toast: string | null;
   notify(msg: string): void;
   openInMaps(target: Station | RouteStation): void;
-  openTourInMaps(): void;
+  openPlannedStopsInMaps(): void;
   shareStation(target: Station | RouteStation): void;
   /** Share the map as it stands — same link the address bar carries */
   shareMapView(): void;
@@ -443,9 +423,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     persisted.onboarded ? initialNav.screen : 'onboarding',
   );
   const [prevScreen, setPrevScreen] = useState<Screen>('map');
-  const [fuel, setFuel] = useState<FuelId>(initialMap.fuel ?? persisted.fuel ?? 'gazole');
+  const [fuel, setFuel] = useState<FuelId>(initialMap.fuel ?? persisted.fuel ?? 'diesel');
   usePersisted('fuel', fuel);
-  const [sort, setSort] = useState<SortMode>('prix');
+  const [sort, setSort] = useState<SortMode>('price');
   const [radius, setRadiusState] = useState<number>(
     initialMap.radius != null
       ? Math.min(initialMap.radius, MAX_RADIUS_KM)
@@ -461,26 +441,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
     Object.fromEntries((initialMap.services ?? []).map((t) => [t, true])),
   );
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [routeMode, setRouteMode] = useState<RouteMode>('compromis');
-  const [tour, setTour] = useState<Record<string, boolean>>({});
+  const [routeMode, setRouteMode] = useState<RouteMode>('balanced');
+  const [plannedStops, setPlannedStops] = useState<Record<string, boolean>>({});
   const [detailId, setDetailId] = useState<string | null>(
     persisted.onboarded ? initialNav.detailId : null,
   );
-  const [fromText, setFromText] = useState(DEFAULT_FROM_LABEL);
+  const [fromText, setFromText] = useState('');
+  // The departure defaults to « wherever I am ». It is a state flag, not a
+  // string compared against a label: a translated label would silently stop
+  // matching and the app would try to geocode the words « My position ».
+  const [fromIsCurrentPosition, setFromIsCurrentPosition] = useState(true);
   const [toText, setToText] = useState('');
   const [fromPoint, setFromPoint] = useState<GeoPoint | null>(null);
   const [toPoint, setToPoint] = useState<GeoPoint | null>(null);
   const [routeReady, setRouteReady] = useState(false);
   const [vehicle, setVehicleState] = useState<VehicleId>(persisted.vehicle ?? 'car');
   const [tank, setTankState] = useState<number>(persisted.tank ?? VEHICLE_PRESETS.car.tank);
-  const [conso, setConsoState] = useState<number>(persisted.conso ?? DEFAULT_CONSO);
+  const [consumption, setConsumptionState] = useState<number>(
+    persisted.consumption ?? DEFAULT_CONSUMPTION,
+  );
   const [avoidMotorway, setAvoidMotorwayState] = useState<boolean>(persisted.avoidMotorway ?? false);
   const [avoidToll, setAvoidTollState] = useState<boolean>(persisted.avoidToll ?? false);
   const [startTankPct, setStartTankPctState] = useState<number>(
     persisted.startTankPct ?? DEFAULT_START_TANK_PCT,
   );
   const [alerts, setAlertsState] = useState<boolean>(persisted.alerts ?? true);
-  const [bgloc, setBglocState] = useState<boolean>(persisted.bgloc ?? false);
+  const [backgroundLocation, setBackgroundLocationState] = useState<boolean>(
+    persisted.backgroundLocation ?? false,
+  );
   // Forced migration to « Automatique » : legacy persisted ids ('gouv' before
   // the country rename) and new installs land on 'auto'; only explicit choices
   // of the current scheme survive.
@@ -491,6 +479,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       : 'auto';
   });
   const [mapsSite, setMapsSiteState] = useState<MapsSiteId>(persisted.mapsSite ?? 'google');
+  // Mirror of the Paraglide locale. Message functions read it from the runtime;
+  // holding it in state is what re-renders the tree when the language changes.
+  const [locale, setLocaleState] = useState<Locale>(() => currentLocale());
+  const [localeIsExplicit, setLocaleIsExplicit] = useState(() => explicitLocale() != null);
   const [toast, setToast] = useState<string | null>(null);
   // Start from the last known position so the per-area cache hits instantly
   const initialPos = persisted.lastPos ?? DEFAULT_POS;
@@ -533,7 +525,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     savePersisted({ sheetHint: false });
   }, []);
 
-  const [recents, setRecents] = useState(persisted.recents ?? DEFAULT_RECENTS);
+  const [recents, setRecents] = useState<RecentPlace[]>(persisted.recents ?? DEFAULT_RECENTS);
   const [hasTripHistory, setHasTripHistory] = useState(persisted.recents != null);
   usePersisted('recents', recents);
   const [canInstall, setCanInstall] = useState(installReady());
@@ -933,17 +925,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ── Route computation ──────────────────────────────────────────────────────
-  /** Record a real trip in the « Récents » history (replaces the default suggestions) */
+  /**
+   * Record a real trip in the « Récents » history (replaces the default
+   * suggestions). The distance and the date are stored as numbers, not as a
+   * ready-made sentence: the row is written in whatever language the app is
+   * in when it is READ, not when the trip was made.
+   */
   const pushRecent = useCallback(
     (label: string, point: GeoPoint, distanceKm: number) => {
-      const date = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' }).format(
-        new Date(),
-      );
-      const entry = {
-        label,
-        sublabel: `${Math.round(distanceKm)} km · fait le ${date}`,
-        point,
-      };
+      const entry: RecentPlace = { label, point, distanceKm, at: Date.now() };
       setRecents((prev) => pushRecentIn(prev, entry, hasTripHistory));
       setHasTripHistory(true);
     },
@@ -1011,7 +1001,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           route: null,
           stations: [],
           fellBack: false,
-          error: 'Itinéraire indisponible. Vérifiez votre connexion.',
+          error: m.route_error_unavailable(),
         });
       }
     },
@@ -1071,20 +1061,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     savePersisted({ tank: t });
   }, []);
 
-  const setConso = useCallback((v: number) => {
-    setConsoState(v);
-    savePersisted({ conso: v });
+  const setConsumption = useCallback((v: number) => {
+    setConsumptionState(v);
+    savePersisted({ consumption: v });
   }, []);
 
   const setVehicle = useCallback((v: VehicleId) => {
     setVehicleState(v);
     const preset = VEHICLE_PRESETS[v];
     setTankState(preset.tank);
-    setConsoState(preset.conso);
-    // A moto runs on SP95-E10, not gazole — the fuel follows the profile
+    setConsumptionState(preset.consumption);
+    // A motorcycle runs on SP95-E10, not diesel — the fuel follows the profile
     setFuel(preset.fuel);
     // `fuel` rides along through `usePersisted`
-    savePersisted({ vehicle: v, tank: preset.tank, conso: preset.conso });
+    savePersisted({ vehicle: v, tank: preset.tank, consumption: preset.consumption });
   }, []);
 
   const setAvoidMotorway = useCallback((v: boolean) => {
@@ -1107,9 +1097,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     savePersisted({ alerts: v });
   }, []);
 
-  const setBgloc = useCallback((v: boolean) => {
-    setBglocState(v);
-    savePersisted({ bgloc: v });
+  const setBackgroundLocation = useCallback((v: boolean) => {
+    setBackgroundLocationState(v);
+    savePersisted({ backgroundLocation: v });
   }, []);
 
   const setSourceId = useCallback((s: DataSourceId) => {
@@ -1122,6 +1112,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     savePersisted({ mapsSite: s });
   }, []);
 
+  /**
+   * Pick a language, or `null` to follow the browser again. Paraglide owns the
+   * resolution and the persistence; the state mirror is what re-renders the
+   * tree, since message functions are plain imports React cannot subscribe to.
+   */
+  const setLocale = useCallback((next: Locale | null) => {
+    if (next) {
+      applyLocale(next);
+      setLocaleState(next);
+      setLocaleIsExplicit(true);
+    } else {
+      setLocaleState(followBrowserLocale());
+      setLocaleIsExplicit(false);
+    }
+  }, []);
+
+  // Keep <html lang> and the page title in the active language
+  useEffect(() => {
+    syncDocumentLocale(m.app_title());
+  }, [locale]);
+
   const toggleBrand = useCallback((label: string) => {
     setBrandSelState((sel) => toggleBrandIn(sel, label));
   }, []);
@@ -1130,7 +1141,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setRadius(5);
     setBrandSelState([]);
     setServiceTags({});
-    setFuel('gazole');
+    setFuel('diesel');
   }, [setFuel, setRadius]);
 
   const searchPlaces = useCallback(
@@ -1140,7 +1151,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const setFrom = useCallback((text: string, point: GeoPoint | null = null) => {
     setFromText(text);
+    setFromIsCurrentPosition(false);
     setFromPoint(point);
+    setRouteReady(false);
+  }, []);
+
+  const useCurrentPositionAsStart = useCallback(() => {
+    setFromText('');
+    setFromIsCurrentPosition(true);
+    setFromPoint(null);
     setRouteReady(false);
   }, []);
 
@@ -1158,7 +1177,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const geocode = getProviders(sourceId).geocode;
     try {
       if (!from) {
-        if (fromText.trim() === DEFAULT_FROM_LABEL || !fromText.trim()) {
+        if (fromIsCurrentPosition || !fromText.trim()) {
           from = userPos;
         } else {
           const r = await geocode.search(fromText);
@@ -1178,16 +1197,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
       /* geocode failure handled below */
     }
     if (!from || !to) {
-      showToast('Adresse introuvable — précisez la destination');
+      showToast(m.toast_address_not_found());
       return;
     }
     setFromPoint(from);
     setToPoint(to);
-    setTour({});
+    setPlannedStops({});
     setRouteReady(true);
     setScreen('route');
     void computeRoute(from, to, toLabel);
-  }, [computeRoute, fromPoint, fromText, showToast, sourceId, toPoint, toText, userPos]);
+  }, [
+    computeRoute,
+    fromIsCurrentPosition,
+    fromPoint,
+    fromText,
+    showToast,
+    sourceId,
+    toPoint,
+    toText,
+    userPos,
+  ]);
 
   const editRoute = useCallback(() => setScreen('routeSetup'), []);
 
@@ -1198,8 +1227,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
   const consumeFocusDestination = useCallback(() => setFocusDestination(false), []);
 
-  const toggleTour = useCallback((id: string) => {
-    setTour((t) => ({ ...t, [id]: !t[id] }));
+  const togglePlannedStop = useCallback((id: string) => {
+    setPlannedStops((t) => ({ ...t, [id]: !t[id] }));
   }, []);
 
   const openInMaps = useCallback(
@@ -1214,56 +1243,58 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // « Station » would be a lottery.
       const poiQuery = target.brand
         ? encodeURIComponent(
-            [target.brand, target.address, target.cp, target.city].filter(Boolean).join(' '),
+            [target.brand, target.address, target.postalCode, target.city]
+              .filter(Boolean)
+              .join(' '),
           )
         : null;
       if (IS_ANDROID) {
-        showToast("Ouverture de l'app GPS…");
+        showToast(m.toast_opening_gps_app());
         const label = encodeURIComponent(target.name);
         const q = poiQuery ?? `${target.lat},${target.lng}(${label})`;
         window.location.href = `geo:${target.lat},${target.lng}?q=${q}`;
         return;
       }
       if (IS_IOS) {
-        showToast('Ouverture de Plans…');
+        showToast(m.toast_opening_maps({ site: m.maps_site_apple() }));
         window.location.href = `https://maps.apple.com/?daddr=${target.lat},${target.lng}&dirflg=d`;
         return;
       }
       // Desktop: the site is a Réglages choice (Google Maps by default).
       // Unlike geo:, the Google dir URL carries no coordinate anchor for a
       // text search — only use it when a street address can disambiguate.
-      const site = MAPS_SITES.find((s) => s.id === mapsSite) ?? MAPS_SITES[0];
-      showToast(`Ouverture de ${site.label}…`);
+      const site = MAPS_SITE_IDS.includes(mapsSite) ? mapsSite : MAPS_SITE_IDS[0];
+      showToast(m.toast_opening_maps({ site: mapsSiteLabel(site) }));
       const url =
-        site.id === 'google' && poiQuery && target.address
+        site === 'google' && poiQuery && target.address
           ? `https://www.google.com/maps/dir/?api=1&destination=${poiQuery}&travelmode=driving`
-          : mapsSiteUrl(site.id, target.lat, target.lng);
+          : mapsSiteUrl(site, target.lat, target.lng);
       window.open(url, '_blank', 'noopener');
     },
     [showToast, mapsSite],
   );
 
-  const openTourInMaps = useCallback(() => {
-    const stops = routeState.stations.filter((s) => tour[s.id]);
+  const openPlannedStopsInMaps = useCallback(() => {
+    const stops = routeState.stations.filter((s) => plannedStops[s.id]);
     if (!stops.length || !toPoint) return;
     // Multi-stop URLs are a Google Maps feature — used on every platform
     // (Android/iOS open the Google Maps app via universal links when installed).
-    showToast('Ouverture de Google Maps…');
+    showToast(m.toast_opening_maps({ site: m.maps_site_google() }));
     const waypoints = stops.map((s) => `${s.lat},${s.lng}`).join('|');
     const origin = fromPoint ? `&origin=${fromPoint.lat},${fromPoint.lng}` : '';
     const url = `https://www.google.com/maps/dir/?api=1${origin}&destination=${toPoint.lat},${toPoint.lng}&waypoints=${encodeURIComponent(waypoints)}&travelmode=driving`;
     window.open(url, '_blank', 'noopener');
-  }, [fromPoint, routeState.stations, showToast, toPoint, tour]);
+  }, [fromPoint, plannedStops, routeState.stations, showToast, toPoint]);
 
   const copyShareLink = useCallback(
     (url: string) => {
       if (!navigator.clipboard) {
-        showToast('Partage indisponible sur cet appareil');
+        showToast(m.toast_share_unavailable());
         return;
       }
       navigator.clipboard.writeText(url).then(
-        () => showToast('Lien copié'),
-        () => showToast('Partage indisponible sur cet appareil'),
+        () => showToast(m.toast_link_copied()),
+        () => showToast(m.toast_share_unavailable()),
       );
     },
     [showToast],
@@ -1296,7 +1327,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         stationShareData(
           target,
           window.location.origin,
-          priced && value != null ? { fuelLabel: FUEL_LABELS[priced], value } : null,
+          priced && value != null ? { fuelLabel: fuelLabel(priced), value } : null,
         ),
       );
     },
@@ -1320,7 +1351,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           services: SERVICE_TAGS.filter((t) => serviceTags[t]),
         },
         window.location.origin,
-        { fuelLabel: FUEL_LABELS[fuel], place: searchLabel },
+        { fuelLabel: fuelLabel(fuel), place: searchLabel },
       ),
     );
   }, [brandSel, fuel, mapZoom, radius, searchLabel, searchPos, serviceTags, share]);
@@ -1382,10 +1413,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       reloadStations: () => void loadStations(),
       roadReach,
       fromText,
+      fromIsCurrentPosition,
       toText,
       fromPoint,
       toPoint,
       setFrom,
+      useCurrentPositionAsStart,
       setTo,
       searchPlaces,
       recents,
@@ -1405,22 +1438,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
       startTankPct,
       setStartTankPct,
       routeState,
-      tour,
-      toggleTour,
+      plannedStops,
+      togglePlannedStop,
       vehicle,
       setVehicle,
       tank,
       setTank,
-      conso,
-      setConso,
+      consumption,
+      setConsumption,
       alerts,
       setAlerts,
-      bgloc,
-      setBgloc,
+      backgroundLocation,
+      setBackgroundLocation,
       sourceId,
       setSourceId,
       mapsSite,
       setMapsSite,
+      locale,
+      localeIsExplicit,
+      setLocale,
       detailId,
       installReady: canInstall && !isStandalone(),
       installBannerVisible: canInstall && !isStandalone() && !installDismissed,
@@ -1429,7 +1465,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toast,
       notify: showToast,
       openInMaps,
-      openTourInMaps,
+      openPlannedStopsInMaps,
       shareStation,
       shareMapView,
       finishOnboarding,
@@ -1441,20 +1477,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
       brandSel, toggleBrand, serviceTags, filtersOpen, resetFilters, userPos, geoStatus,
       requestGeolocation, searchPos, searchLabel, setSearchArea, resetSearchToUser,
       focusStationId, mapZoom, setMapZoom,
-      favorites, toggleFavorite, stations, roadReach, loadStations, fromText, toText, fromPoint, toPoint,
-      setFrom, setTo, searchPlaces, recents, hasTripHistory, routeReady, startRoute, editRoute,
-      openRouteSearch, focusDestination, consumeFocusDestination,
-      routeMode, routeState, tour, toggleTour, vehicle, setVehicle, tank, setTank, conso, setConso,
+      favorites, toggleFavorite, stations, roadReach, loadStations, fromText, fromIsCurrentPosition,
+      toText, fromPoint, toPoint,
+      setFrom, useCurrentPositionAsStart, setTo, searchPlaces, recents, hasTripHistory, routeReady,
+      startRoute, editRoute, openRouteSearch, focusDestination, consumeFocusDestination,
+      routeMode, routeState, plannedStops, togglePlannedStop, vehicle, setVehicle, tank, setTank,
+      consumption, setConsumption,
       avoidMotorway, avoidToll, setAvoidMotorway, setAvoidToll, startTankPct, setStartTankPct,
       setFiltersOpenNav, alerts, setAlerts,
-      bgloc, setBgloc, sourceId, setSourceId, mapsSite, setMapsSite, detailId, toast, showToast,
+      backgroundLocation, setBackgroundLocation, sourceId, setSourceId, mapsSite, setMapsSite,
+      locale, localeIsExplicit, setLocale, detailId, toast, showToast,
       canInstall, installDismissed, promptInstall, dismissInstallBanner, persisted.lastPos,
-      openInMaps, openTourInMaps, shareStation, shareMapView, finishOnboarding,
+      openInMaps, openPlannedStopsInMaps, shareStation, shareMapView, finishOnboarding,
       sheetHint, consumeSheetHint,
     ],
   );
 
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
+}
+
+/**
+ * Departure shown in the route UI. « Ma position » is copy, not a value: the
+ * store carries a flag and the label is produced here, so translating it can
+ * never change what the route actually departs from.
+ */
+export function routeFromLabel(
+  app: Pick<AppStore, 'fromText' | 'fromIsCurrentPosition'>,
+): string {
+  return app.fromIsCurrentPosition ? m.route_from_current_position() : app.fromText;
 }
 
 export function useApp(): AppStore {
@@ -1520,8 +1570,8 @@ function cached<A extends (string | number)[], T>(
 export function effectiveFuel(s: Station, fuel: FuelId): FuelId | null {
   if (s.prices[fuel] != null) return fuel;
   const country = stationCountry(s.id);
-  if (fuel === 'e10' && s.prices.sp95 != null && (country === 'esp' || country === 'and')) {
-    return 'sp95';
+  if (fuel === 'e10' && s.prices.unleaded95 != null && (country === 'esp' || country === 'and')) {
+    return 'unleaded95';
   }
   return null;
 }
@@ -1627,7 +1677,7 @@ const selectTagged = cached((app: AppStore): NearbyStation[] => {
   return selectEnriched(app).filter((s) => wantedTags.every((t) => s.tags.includes(t)));
 });
 
-/** Brandless stations pass as « Indépendants & autres » via brandGroup */
+/** Brandless stations pass as the « independent » group via brandGroup */
 function passesBrand(app: AppStore, s: NearbyStation): boolean {
   return app.brandSel.length === 0 || app.brandSel.includes(brandGroup(s.brand));
 }
@@ -1715,7 +1765,7 @@ export const selectByPrice = cached((app: AppStore): NearbyStation[] => {
 });
 
 export const selectSorted = cached((app: AppStore): NearbyStation[] =>
-  app.sort === 'prix'
+  app.sort === 'price'
     ? selectByPrice(app)
     : [...selectVisible(app)].sort((a, b) => a.distKm - b.distKm),
 );
@@ -1727,20 +1777,20 @@ export function selectCheapest(app: AppStore): NearbyStation | null {
 
 /**
  * Per-litre price with the trip to the pump folded in: the fuel burnt driving
- * there and back (conso & réservoir des Réglages) is bought at that station's
- * own price — what a full tank ACTUALLY costs per litre. Shared by the map
- * recommendation and the « Recommandé » sort of the Favoris.
+ * there and back (consumption & tank size from Réglages) is bought at that
+ * station's own price — what a full tank ACTUALLY costs per litre. Shared by
+ * the map recommendation and the « Recommandé » sort of the Favoris.
  */
 export function effectiveLiterPrice(
-  app: Pick<AppStore, 'conso' | 'tank'>,
+  app: Pick<AppStore, 'consumption' | 'tank'>,
   price: number,
   distKm: number,
 ): number {
-  return price * (1 + (distKm * 2 * app.conso) / 100 / app.tank);
+  return price * (1 + (distKm * 2 * app.consumption) / 100 / app.tank);
 }
 
 // ── Favoris sorting ──────────────────────────────────────────────────────────
-export type FavSort = 'reco' | 'prix' | 'dist';
+export type FavSort = 'recommended' | 'price' | 'distance';
 
 /**
  * Order the Favoris rows. « Recommandé » ranks on the effective per-litre
@@ -1751,11 +1801,11 @@ export type FavSort = 'reco' | 'prix' | 'dist';
 export function sortFavoriteRows<T extends { price: number | null; distKm: number }>(
   rows: T[],
   sort: FavSort,
-  app: Pick<AppStore, 'conso' | 'tank'>,
+  app: Pick<AppStore, 'consumption' | 'tank'>,
 ): T[] {
   return [...rows].sort((a, b) => {
-    if (sort === 'dist') return a.distKm - b.distKm;
-    if (sort === 'prix') {
+    if (sort === 'distance') return a.distKm - b.distKm;
+    if (sort === 'price') {
       if (a.price == null && b.price == null) return a.distKm - b.distKm;
       if (a.price == null) return 1;
       if (b.price == null) return -1;
@@ -1971,21 +2021,46 @@ export function selectZoneDelta(app: AppStore, station: NearbyStation | null): Z
 
 /** Autonomy narrative for the route ribbon (depends on tank setting) */
 export function selectAutonomy(app: AppStore): { autonomyKm: number; limitKm: number } {
-  const autonomyKm = Math.round(((app.tank * (app.startTankPct / 100)) / app.conso) * 100);
+  const autonomyKm = Math.round(((app.tank * (app.startTankPct / 100)) / app.consumption) * 100);
   // Keep a ~20 % reserve before the "you must stop" line
   const limitKm = Math.round((autonomyKm * 0.8) / 10) * 10;
   return { autonomyKm, limitKm };
 }
 
+/**
+ * Why the recommended stop won, as data. The ribbon turns it into a sentence:
+ * assembling the copy here would bake one language into a unit-tested pure
+ * function, and a fragment like « le + bas du trajet » cannot be translated
+ * outside the sentence it belongs to.
+ */
+export type RecommendationReason =
+  /** « Prix » strategy — `saving` € off a full tank vs the priciest stop */
+  | { kind: 'lowestPrice'; saving: number }
+  /** « Détour min. » strategy, and the stop is right on the route */
+  | { kind: 'noDetour' }
+  | { kind: 'minDetour'; detourMin: number }
+  /** « Meilleur compromis » — `saving` € off a full tank vs the priciest stop */
+  | { kind: 'balanced'; saving: number }
+  /** Nothing to compare it against */
+  | { kind: 'onlyStation' };
+
+/** Arrival narrative of the ribbon's last row, as data */
+export type ArrivalEstimate =
+  /** Arrival at `at` (epoch ms) once `stops` refuelling stops are folded in */
+  | { kind: 'withStops'; stops: number; at: number; extraMin: number }
+  /** The tank cannot make it without stopping */
+  | { kind: 'autonomyShort'; limitKm: number }
+  | { kind: 'direct'; at: number };
+
 export interface RouteAnalysis {
   stops: RouteStation[];
   recoId: string | null;
-  recoSub: string;
+  recoReason: RecommendationReason | null;
   limitKm: number;
   autonomyKm: number;
   needsStop: boolean;
-  arrivalLabel: string;
-  tourStops: RouteStation[];
+  arrival: ArrivalEstimate | null;
+  plannedStops: RouteStation[];
   /** Fuel needed for the whole trip at the configured consumption */
   tripLitres: number | null;
   /** Trip fuel cost at the recommended stop's price (fallback: cheapest on route) */
@@ -1994,7 +2069,7 @@ export interface RouteAnalysis {
 
 /** Everything the route ribbon needs, computed from real data */
 export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
-  const { routeState, routeMode, fuel, tank, tour } = app;
+  const { routeState, routeMode, fuel, tank } = app;
   const { limitKm, autonomyKm } = selectAutonomy(app);
   const route = routeState.route;
   const needsStop = !!route && route.distanceKm > limitKm;
@@ -2003,7 +2078,7 @@ export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
   // Strategy score — the SAME ranking picks the shown stops and the reco,
   // so the strategy chips act on the whole ribbon.
   const scoreOf = (s: RouteStation): number => {
-    if (routeMode === 'prix') return priceOf(s);
+    if (routeMode === 'price') return priceOf(s);
     if (routeMode === 'detour') return s.detourMin * 1000 + priceOf(s);
     return priceOf(s) * tank + s.detourMin * EUR_PER_DETOUR_MIN;
   };
@@ -2032,32 +2107,32 @@ export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
   const withPrice = all;
   const reco: RouteStation | null = reachableByScore[0] ?? byScore[0] ?? null;
 
-  let recoSub = '';
+  let recoReason: RecommendationReason | null = null;
   if (reco && withPrice.length > 1) {
     const maxP = Math.max(...withPrice.map(priceOf));
-    const save = (maxP - priceOf(reco)) * tank;
-    if (routeMode === 'prix') {
-      recoSub = `Prix le plus bas du trajet : −${save.toFixed(2).replace('.', ',')} €`;
+    const saving = (maxP - priceOf(reco)) * tank;
+    if (routeMode === 'price') {
+      recoReason = { kind: 'lowestPrice', saving };
     } else if (routeMode === 'detour') {
-      recoSub =
+      recoReason =
         reco.detourMin === 0
-          ? 'Sur votre route · sans détour'
-          : `Détour minimal · +${reco.detourMin} min`;
+          ? { kind: 'noDetour' }
+          : { kind: 'minDetour', detourMin: reco.detourMin };
     } else {
-      recoSub = `Le plein ici : −${save.toFixed(2).replace('.', ',')} € vs le + cher du trajet`;
+      recoReason = { kind: 'balanced', saving };
     }
   } else if (reco) {
-    recoSub = 'Seule station trouvée sur le trajet';
+    recoReason = { kind: 'onlyStation' };
   }
 
-  // Tour selections survive strategy switches even if the stop leaves the top-6
-  const tourStops = all.filter((s) => tour[s.id]);
+  // Picked stops survive strategy switches even if they leave the top-6
+  const picked = all.filter((s) => app.plannedStops[s.id]);
 
   // Trip fuel volume + cost, from the configured average consumption
   let tripLitres: number | null = null;
   let tripCost: number | null = null;
   if (route) {
-    tripLitres = (route.distanceKm * app.conso) / 100;
+    tripLitres = (route.distanceKm * app.consumption) / 100;
     const refPrice = reco
       ? priceOf(reco)
       : withPrice.length
@@ -2066,31 +2141,33 @@ export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
     if (isFinite(refPrice)) tripCost = tripLitres * refPrice;
   }
 
-  let arrivalLabel = '';
+  let arrival: ArrivalEstimate | null = null;
   if (route) {
     const base = route.durationMin;
-    if (tourStops.length) {
-      const extra = tourStops.reduce((a, s) => a + s.detourMin + REFUEL_MIN, 0);
-      const arr = new Date(Date.now() + (base + extra) * 60000);
-      const n = tourStops.length;
-      arrivalLabel = `avec ${n} arrêt${n > 1 ? 's' : ''} : ${clockLabel(arr)} (+${extra} min pleins compris)`;
+    if (picked.length) {
+      const extraMin = picked.reduce((a, s) => a + s.detourMin + REFUEL_MIN, 0);
+      arrival = {
+        kind: 'withStops',
+        stops: picked.length,
+        at: Date.now() + (base + extraMin) * 60000,
+        extraMin,
+      };
     } else if (needsStop) {
-      arrivalLabel = `sans arrêt : autonomie insuffisante (limite ≈ KM ${limitKm})`;
+      arrival = { kind: 'autonomyShort', limitKm };
     } else {
-      const arr = new Date(Date.now() + base * 60000);
-      arrivalLabel = `arrivée estimée ${clockLabel(arr)} · autonomie OK`;
+      arrival = { kind: 'direct', at: Date.now() + base * 60000 };
     }
   }
 
   return {
     stops,
     recoId: reco?.id ?? null,
-    recoSub,
+    recoReason,
     limitKm,
     autonomyKm,
     needsStop,
-    arrivalLabel,
-    tourStops,
+    arrival,
+    plannedStops: picked,
     tripLitres,
     tripCost,
   };

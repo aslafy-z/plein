@@ -4,7 +4,7 @@ import { mapUrlQuery, parseMapUrl, type MapUrlView } from './mapUrl';
 const VIEW: MapUrlView = {
   center: { lat: 43.604652, lng: 1.444209 },
   zoom: 13,
-  fuel: 'gazole',
+  fuel: 'diesel',
   radius: 5,
   brands: [],
   services: [],
@@ -12,11 +12,11 @@ const VIEW: MapUrlView = {
 
 describe('mapUrlQuery', () => {
   it('writes the view with readable commas', () => {
-    expect(mapUrlQuery(VIEW)).toBe('?ll=43.60465,1.44421&z=13&f=gazole&r=5');
+    expect(mapUrlQuery(VIEW)).toBe('?ll=43.60465,1.44421&z=13&f=diesel&r=5');
   });
 
   it('omits the zoom until the map has one', () => {
-    expect(mapUrlQuery({ ...VIEW, zoom: null })).toBe('?ll=43.60465,1.44421&f=gazole&r=5');
+    expect(mapUrlQuery({ ...VIEW, zoom: null })).toBe('?ll=43.60465,1.44421&f=diesel&r=5');
   });
 
   it('always writes fuel and radius, so the link does not inherit the reader settings', () => {
@@ -29,10 +29,10 @@ describe('mapUrlQuery', () => {
     const q = mapUrlQuery({
       ...VIEW,
       brands: ['E.Leclerc', 'Intermarché'],
-      services: ['24/24', 'Lavage'],
+      services: ['open24h', 'carWash'],
     });
     expect(q).toContain('b=E.Leclerc,Intermarch%C3%A9');
-    expect(q).toContain('s=24%2F24,Lavage');
+    expect(q).toContain('s=open24h,carWash');
   });
 
   it('drops the trailing zeros of round coordinates', () => {
@@ -46,15 +46,15 @@ describe('parseMapUrl', () => {
       ...VIEW,
       center: { lat: 43.6, lng: 1.4 },
       brands: ['E.Leclerc', 'Intermarché'],
-      services: ['24/24'],
+      services: ['open24h'],
     };
     expect(parseMapUrl(mapUrlQuery(view))).toEqual({
       center: { lat: 43.6, lng: 1.4 },
       zoom: 13,
-      fuel: 'gazole',
+      fuel: 'diesel',
       radius: 5,
       brands: ['E.Leclerc', 'Intermarché'],
-      services: ['24/24'],
+      services: ['open24h'],
     });
   });
 
@@ -94,7 +94,7 @@ describe('parseMapUrl', () => {
   });
 
   it('drops unknown service tags and keeps the known ones', () => {
-    expect(parseMapUrl('?s=Lavage,Piscine').services).toEqual(['Lavage']);
+    expect(parseMapUrl('?s=Lavage,Piscine').services).toEqual(['carWash']);
     expect(parseMapUrl('?s=Piscine').services).toBeNull();
   });
 
@@ -108,3 +108,15 @@ describe('parseMapUrl', () => {
     expect(parseMapUrl('?b=&s=').services).toBeNull();
   });
 });
+
+describe('legacy links', () => {
+  it('still opens on the fuel and filters a pre-rename link was shared with', () => {
+    const parsed = parseMapUrl('?ll=43.6,1.4&f=gazole&r=5&s=24%2F24,Lavage')
+    expect(parsed.fuel).toBe('diesel')
+    expect(parsed.services).toEqual(['open24h', 'carWash'])
+  })
+
+  it('drops a fuel no build ever had', () => {
+    expect(parseMapUrl('?f=kerosene').fuel).toBeNull()
+  })
+})

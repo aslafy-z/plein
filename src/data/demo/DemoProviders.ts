@@ -83,8 +83,6 @@ export class DemoStationsProvider implements StationsProvider {
   readonly id = 'demo' as const;
   readonly capabilities: SourceCapabilities = {
     brands: true,
-    label: 'Données de démonstration',
-    sublabel: 'hors-ligne · jeu de données fictif',
   };
 
   async getStationsNear(center: GeoPoint, radiusKm: number): Promise<Station[]> {

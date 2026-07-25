@@ -131,8 +131,8 @@ describe('parsePrices', () => {
         e10_prix: null,
       }),
     ).toEqual({
-      gazole: { value: 1.789, updatedAt: '2026-07-19T05:00:00+02:00' },
-      sp98: { value: 1.929, updatedAt: undefined },
+      diesel: { value: 1.789, updatedAt: '2026-07-19T05:00:00+02:00' },
+      unleaded98: { value: 1.929, updatedAt: undefined },
     });
   });
 
@@ -142,8 +142,8 @@ describe('parsePrices', () => {
       {},
     );
     expect(parsePrices({ gazole_prix: 0.5, sp98_prix: 3.5 })).toEqual({
-      gazole: { value: 0.5, updatedAt: undefined },
-      sp98: { value: 3.5, updatedAt: undefined },
+      diesel: { value: 0.5, updatedAt: undefined },
+      unleaded98: { value: 3.5, updatedAt: undefined },
     });
   });
 
@@ -154,10 +154,10 @@ describe('parsePrices', () => {
           '{"@nom":"SP98","@valeur":"1.929"},{"@nom":"GPLc","@valeur":"0.999"}]',
       }),
     ).toEqual({
-      gazole: { value: 1.789, updatedAt: undefined },
+      diesel: { value: 1.789, updatedAt: undefined },
       e10: { value: 1.849, updatedAt: undefined },
-      sp98: { value: 1.929, updatedAt: undefined },
-      gplc: { value: 0.999, updatedAt: undefined },
+      unleaded98: { value: 1.929, updatedAt: undefined },
+      lpg: { value: 0.999, updatedAt: undefined },
     });
   });
 
@@ -167,7 +167,7 @@ describe('parsePrices', () => {
         gazole_prix: 1.789,
         prix: '[{"@nom":"SP98","@valeur":"1.929"}]',
       }),
-    ).toEqual({ gazole: { value: 1.789, updatedAt: undefined } });
+    ).toEqual({ diesel: { value: 1.789, updatedAt: undefined } });
   });
 
   it('clamps the prix fallback too, and keeps the first reading of a fuel', () => {
@@ -179,7 +179,7 @@ describe('parsePrices', () => {
           { '@nom': 'SP95', '@valeur': 178.9 },
         ],
       }),
-    ).toEqual({ gazole: { value: 1.789, updatedAt: undefined } });
+    ).toEqual({ diesel: { value: 1.789, updatedAt: undefined } });
   });
 
   it('returns nothing when the record carries no price at all', () => {

@@ -4,6 +4,7 @@ import { execFile, execFileSync } from 'node:child_process'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
 import { cloudflare } from "@cloudflare/vite-plugin";
+import { paraglideVitePlugin } from '@inlang/paraglide-js'
 
 // ── Build version ─────────────────────────────────────────────────────────────
 // Stamped into the bundle (`__APP_VERSION__`) and into `/version.json`, which the
@@ -174,8 +175,26 @@ function devProxies(): Plugin {
 // https://vite.dev/config/
 const APP_VERSION = buildVersion()
 
+// ── i18n ──────────────────────────────────────────────────────────────────────
+// Paraglide is a devDependency: it compiles messages/{locale}.json into plain
+// tree-shakable functions under src/paraglide (gitignored, regenerated here on
+// dev and build). `npm run typecheck` and `npm test` don't go through this
+// config, so they run the same compile from their `pre*` scripts.
+//
+// The strategy list is evaluated in order: an explicit choice in Réglages
+// wins, then the browser's language, then French. `url` is deliberately absent
+// — screens are store state here, not routes, so there is nothing in the URL
+// to carry a locale.
+const paraglide = () =>
+  paraglideVitePlugin({
+    project: './project.inlang',
+    outdir: './src/paraglide',
+    emitTsDeclarations: true,
+    strategy: ['custom-appSettings', 'preferredLanguage', 'baseLocale'],
+  })
+
 export default defineConfig({
-  plugins: [react(), devProxies(), versionStamp(APP_VERSION), cloudflare()],
+  plugins: [paraglide(), react(), devProxies(), versionStamp(APP_VERSION), cloudflare()],
   define: {
     __APP_VERSION__: JSON.stringify(APP_VERSION),
   },

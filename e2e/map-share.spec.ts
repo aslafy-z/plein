@@ -12,14 +12,14 @@ test('the map writes its view into the URL', async ({ page }) => {
 
   await expect.poll(() => params(page).get('ll')).toMatch(/^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/)
   await expect.poll(() => params(page).get('z')).not.toBeNull()
-  expect(params(page).get('f')).toBe('gazole')
+  expect(params(page).get('f')).toBe('diesel')
   expect(params(page).get('r')).toBe('5')
   expect(new URL(page.url()).pathname).toBe('/')
 })
 
 test('changing the fuel updates the link', async ({ page }) => {
   await gotoMap(page)
-  await expect.poll(() => params(page).get('f')).toBe('gazole')
+  await expect.poll(() => params(page).get('f')).toBe('diesel')
 
   await page.getByRole('button', { name: 'Gazole ↻' }).click()
 
@@ -42,7 +42,7 @@ test('a shared link opens on its area, fuel and radius', async ({ page }) => {
 
 test('a shared link carries the filters it was shared with', async ({ page }) => {
   // 4 of the 6 stations in the default demo zone are open 24/24 (filters.spec)
-  await page.goto('/?ll=43.6047,1.4442&z=13&f=gazole&r=5&s=24%2F24')
+  await page.goto('/?ll=43.6047,1.4442&z=13&f=diesel&r=5&s=open24h')
 
   await expect(page.getByText('Filtres · 4')).toBeVisible({ timeout: 15_000 })
 })

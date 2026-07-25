@@ -91,24 +91,25 @@ export function parseCoords(rec: Raw): GeoPoint | null {
 }
 
 // ── Prices ───────────────────────────────────────────────────────────────────
+// Left column: our fuel id. The other two are the flux's own column names.
 const FUEL_COLS: ReadonlyArray<readonly [FuelId, string, string]> = [
-  ['gazole', 'gazole_prix', 'gazole_maj'],
+  ['diesel', 'gazole_prix', 'gazole_maj'],
   ['e10', 'e10_prix', 'e10_maj'],
-  ['sp98', 'sp98_prix', 'sp98_maj'],
-  ['sp95', 'sp95_prix', 'sp95_maj'],
+  ['unleaded98', 'sp98_prix', 'sp98_maj'],
+  ['unleaded95', 'sp95_prix', 'sp95_maj'],
   ['e85', 'e85_prix', 'e85_maj'],
-  ['gplc', 'gplc_prix', 'gplc_maj'],
+  ['lpg', 'gplc_prix', 'gplc_maj'],
 ];
 
 /** Map a free-text fuel name to a FuelId (order matters: E10 before SP95). */
 function fuelFromName(name: string): FuelId | null {
   const n = name.toLowerCase();
-  if (n.includes('gazole') || n.includes('diesel')) return 'gazole';
+  if (n.includes('gazole') || n.includes('diesel')) return 'diesel';
   if (n.includes('e85')) return 'e85';
-  if (n.includes('gpl')) return 'gplc';
+  if (n.includes('gpl')) return 'lpg';
   if (n.includes('e10') || n.includes('sp95-e10')) return 'e10';
-  if (n.includes('98')) return 'sp98';
-  if (n.includes('95')) return 'sp95';
+  if (n.includes('98')) return 'unleaded98';
+  if (n.includes('95')) return 'unleaded95';
   return null;
 }
 
@@ -272,12 +273,12 @@ function deriveTags(services: string[], rec: Raw): ServiceTag[] {
     auto === true ||
     (typeof auto === 'string' && /oui/i.test(auto)) ||
     /automate.*24|24.*24/i.test(joined);
-  if (is24) tags.push('24/24');
-  if (/avage/i.test(joined)) tags.push('Lavage');
-  if (/outique/i.test(joined)) tags.push('Boutique');
-  if (/onflage/i.test(joined)) tags.push('Gonflage');
+  if (is24) tags.push('open24h');
+  if (/avage/i.test(joined)) tags.push('carWash');
+  if (/outique/i.test(joined)) tags.push('shop');
+  if (/onflage/i.test(joined)) tags.push('airPump');
   // « Carburant additivé » and « Vente d'additifs carburants » in the gouv flux
-  if (/additiv/i.test(joined)) tags.push('Additifs');
+  if (/additiv/i.test(joined)) tags.push('additives');
   return tags;
 }
 
@@ -306,7 +307,7 @@ function parseRecord(rec: Raw): Station | null {
     lng: coords.lng,
     address: toStr(rec.adresse) ?? '',
     city: ville,
-    cp: toStr(rec.cp),
+    postalCode: toStr(rec.cp),
     prices,
     tags: deriveTags(services, rec),
     services,
@@ -342,8 +343,6 @@ export class FraStationsProvider implements StationsProvider {
   readonly id = 'fra' as const;
   readonly capabilities: SourceCapabilities = {
     brands: true, // enriched from OpenStreetMap by proximity
-    label: 'prix-carburants.gouv.fr',
-    sublabel: 'temps réel · enseignes via OpenStreetMap',
   };
 
   async getStationsNear(

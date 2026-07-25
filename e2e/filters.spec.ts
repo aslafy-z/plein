@@ -55,8 +55,10 @@ test('a fuel nobody sells in the zone names itself and offers what IS sold', asy
   // No station within 5 km sells GPLc (the demo GPLc pumps sit farther out)
   await page.getByText('Filtres · 6').click()
   await page.getByRole('button', { name: 'GPLc', exact: true }).click()
-  await expect(page.getByText('Voir 0 stations')).toBeVisible()
-  await page.getByText('Voir 0 stations').click()
+  // French counts 0 as singular (CLDR `one`), which the hand-rolled plural
+  // helper this replaced got wrong
+  await expect(page.getByText('Voir 0 station', { exact: true })).toBeVisible()
+  await page.getByText('Voir 0 station', { exact: true }).click()
 
   // The empty state must name the culprit, not look broken…
   await expect(page.getByText('Aucune station ne vend du GPLc dans cette zone.')).toBeVisible()

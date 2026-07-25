@@ -4,6 +4,7 @@
 // setup for people who did want directions.
 import { useEffect, useRef, useState } from 'react';
 import { C } from '../theme';
+import { m } from '../paraglide/messages.js';
 import type { GeocodeResult } from '../data/types';
 import { useApp } from '../state/store';
 
@@ -114,7 +115,7 @@ export default function PlaceSearch() {
       <div style={barStyle}>
         <button
           onClick={() => setOpen(true)}
-          aria-label="Rechercher un lieu"
+          aria-label={m.search_open_aria()}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -136,13 +137,13 @@ export default function PlaceSearch() {
               whiteSpace: 'nowrap',
             }}
           >
-            {app.searchLabel ?? 'Chercher un lieu ou un trajet…'}
+            {app.searchLabel ?? m.search_prompt()}
           </span>
         </button>
         {app.searchLabel && (
           <button
             onClick={() => app.resetSearchToUser()}
-            aria-label="Revenir à ma position"
+            aria-label={m.search_reset_aria()}
             style={{
               flexShrink: 0,
               display: 'flex',
@@ -177,7 +178,7 @@ export default function PlaceSearch() {
           ref={inputRef}
           type="text"
           value={query}
-          placeholder="Ville, adresse…"
+          placeholder={m.search_placeholder()}
           onChange={(e) => {
             setQuery(e.target.value);
             runSearch(e.target.value);
@@ -197,7 +198,7 @@ export default function PlaceSearch() {
           <span
             className="spin"
             role="status"
-            aria-label="Recherche en cours…"
+            aria-label={m.search_in_progress()}
             style={{ flexShrink: 0, color: C.accent, fontSize: 14, lineHeight: 1 }}
           >
             ↻
@@ -205,7 +206,7 @@ export default function PlaceSearch() {
         )}
         <button
           onClick={close}
-          aria-label="Fermer la recherche"
+          aria-label={m.search_close_aria()}
           style={{ color: C.mut, fontSize: 16, fontWeight: 700, padding: '0 2px' }}
         >
           ✕
@@ -225,12 +226,12 @@ export default function PlaceSearch() {
               >
                 <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>{r.label}</div>
                 <div style={{ fontSize: 12, color: C.faint, marginTop: 1 }}>
-                  {r.sublabel} — voir les stations ici
+                  {r.sublabel} — {m.search_see_stations_here()}
                 </div>
               </button>
               <button
                 onClick={() => pickRoute(r)}
-                aria-label={`Itinéraire vers ${r.label}`}
+                aria-label={m.search_route_to_aria({ place: r.label })}
                 style={{
                   flexShrink: 0,
                   fontSize: 12,
@@ -243,7 +244,7 @@ export default function PlaceSearch() {
                   whiteSpace: 'nowrap',
                 }}
               >
-                Itinéraire ›
+                {m.search_route_shortcut()}
               </button>
             </div>
           ))}
