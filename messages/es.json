@@ -55,6 +55,8 @@
   "source_and_sub": "Andorra · oficial Govern d’Andorra · precios declarados por las gasolineras",
   "source_demo_title": "Datos de demostración",
   "source_demo_sub": "sin conexión · conjunto de datos ficticio",
+  "place_andorra": "Andorra",
+  "place_andorra_parish": "Andorra · {parish}",
   "toast_opening_gps_app": "Abriendo la app de GPS…",
   "toast_opening_maps": "Abriendo {site}…",
   "toast_link_copied": "Enlace copiado",

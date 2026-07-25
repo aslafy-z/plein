@@ -55,6 +55,8 @@
   "source_and_sub": "Andorra · oficial Govern d’Andorra · preus declarats per les benzineres",
   "source_demo_title": "Dades de demostració",
   "source_demo_sub": "sense connexió · conjunt de dades fictici",
+  "place_andorra": "Andorra",
+  "place_andorra_parish": "Andorra · {parish}",
   "toast_opening_gps_app": "S'està obrint l'app de GPS…",
   "toast_opening_maps": "S'està obrint {site}…",
   "toast_link_copied": "Enllaç copiat",

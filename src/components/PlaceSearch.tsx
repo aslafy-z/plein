@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { C } from '../theme';
 import { m } from '../paraglide/messages.js';
 import type { GeocodeResult } from '../data/types';
+import { placeSublabel } from '../lib/labels';
 import { useApp } from '../state/store';
 
 export default function PlaceSearch() {
@@ -226,7 +227,7 @@ export default function PlaceSearch() {
               >
                 <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>{r.label}</div>
                 <div style={{ fontSize: 12, color: C.faint, marginTop: 1 }}>
-                  {r.sublabel} — {m.search_see_stations_here()}
+                  {placeSublabel(r)} — {m.search_see_stations_here()}
                 </div>
               </button>
               <button
