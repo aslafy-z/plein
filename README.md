@@ -20,7 +20,7 @@ autour de vous et le long de vos trajets, en France, en Espagne et en Andorre.
 
 | Les prix autour de vous | La fiche d'une station | Sur votre trajet |
 | :---: | :---: | :---: |
-| <img src="docs/screenshots/map.png" width="250" alt="Carte des prix autour de Toulouse" /> | <img src="docs/screenshots/station.png" width="250" alt="Fiche d'une station : prix par carburant, écart au moins cher et économie sur un plein" /> | <img src="docs/screenshots/route.png" width="250" alt="Comparaison des stations sur un trajet Toulouse → Nantes" /> |
+| <img src="docs/screenshots/map.png" width="250" alt="Carte des prix autour de Toulouse" /> | <img src="docs/screenshots/station.png" width="250" alt="Fiche d'une station : prix par carburant, écart au moins cher, services et économie sur un plein" /> | <img src="docs/screenshots/route.png" width="250" alt="Comparaison des stations sur un trajet Toulouse → Nantes" /> |
 
 </div>
 
