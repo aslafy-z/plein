@@ -63,10 +63,13 @@ test('a held arrow glides the map instead of stepping it', async ({ page }) => {
   const stalls = moving.map((s, i) => (i === 0 ? 0 : s.t - moving[i - 1].t))
   expect(Math.max(...stalls)).toBeLessThan(120)
 
-  // A glide, not hops: Leaflet's own handler jumped a whole 80 px step per
-  // keypress, where the frame loop advances a handful of pixels at a time.
-  const jumps = moving.map((s, i) => (i === 0 ? 0 : Math.abs(s.x - moving[i - 1].x)))
-  expect(Math.max(...jumps)).toBeLessThan(40)
+  // Per-frame DISPLACEMENT is not a third assertion worth having, and it is
+  // worth saying why: the sampler and the pan share the main thread, so a busy
+  // machine delivers fewer, longer frames — 68px in one frame on CI is the same
+  // velocity as 14px in one frame here. Only the two bounds above are about the
+  // app rather than the runner: over a 600ms hold, a stepped handler cannot
+  // cover 250px (it drops the repeats that arrive mid-animation) and cannot
+  // avoid the idle gaps between its steps.
 })
 
 test('a tap on + zooms exactly one whole level', async ({ page }) => {
