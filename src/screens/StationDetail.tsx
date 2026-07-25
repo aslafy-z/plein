@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
-import { C, mono } from '../theme';
+import { C, ctaStyle, mono, stickyBarStyle } from '../theme';
 import { ALL_FUELS, MAIN_FUELS, FUEL_LABELS, type FuelId, type Station } from '../data/types';
 import {
   useApp,
@@ -479,29 +479,9 @@ export default function StationDetail() {
       {/* CTA — sticky so the primary action stays reachable on a fiche long
           enough to scroll (many fuels, many services), and pushed to the
           bottom edge by margin-top: auto when the fiche is shorter than the
-          screen. The gradient keeps the content readable as it passes under. */}
-      <div
-        style={{
-          position: 'sticky',
-          bottom: 0,
-          marginTop: 'auto',
-          padding: '14px 20px calc(18px + env(safe-area-inset-bottom, 0px))',
-          background: 'linear-gradient(to top, #101214 62%, #10121400)',
-        }}
-      >
-        <button
-          onClick={() => app.openInMaps(s)}
-          style={{
-            width: '100%',
-            background: C.accent,
-            color: C.onAccent,
-            fontSize: 15,
-            fontWeight: 700,
-            borderRadius: 26,
-            padding: '15px 0',
-            textAlign: 'center',
-          }}
-        >
+          screen. No NavBar below it, so the bar carries the safe-area inset. */}
+      <div style={stickyBarStyle()}>
+        <button onClick={() => app.openInMaps(s)} style={ctaStyle()}>
           Y aller
         </button>
       </div>
