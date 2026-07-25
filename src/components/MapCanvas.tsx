@@ -199,6 +199,18 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
       circleOffsetRef.current = { x: p.x - mid.x, y: p.y - mid.y };
     });
 
+    // The zoom the map has LANDED on, mirrored onto the container. Nothing in
+    // the DOM says it otherwise: Leaflet keeps the outgoing level's tiles for
+    // the length of a zoom animation, and when zooming out that stale level is
+    // the higher of the two — reading the tiles reports a level the map is not
+    // on. The attribute is dropped while an animation runs, so a reader waits
+    // for the map to land instead of catching it mid-flight. `moveend` covers
+    // the non-animated `setView`, which fires no zoom event at all.
+    const publishZoom = () => el.setAttribute('data-zoom', String(map.getZoom()));
+    map.on('zoomstart', () => el.removeAttribute('data-zoom'));
+    map.on('moveend zoomend', publishZoom);
+    publishZoom();
+
     map.on('moveend zoomend', () => {
       // The shareable URL carries the zoom — the center comes from searchPos,
       // which the pan handlers below keep in sync

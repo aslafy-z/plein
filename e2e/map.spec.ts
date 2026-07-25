@@ -1,4 +1,4 @@
-import { test, expect, gotoMap, tileZoom } from './fixtures'
+import { test, expect, gotoMap, mapZoom } from './fixtures'
 
 test.beforeEach(async ({ page }) => {
   await gotoMap(page)
@@ -152,7 +152,7 @@ test('station detail opens from the sheet and jumps back with the station select
 })
 
 test('the user zoom survives a detail round-trip via the back button', async ({ page }) => {
-  const zoom = () => tileZoom(page)
+  const zoom = () => mapZoom(page)
   const initial = await zoom()
 
   // Wheel-zoom over the map center: the user takes the view over (a wheel
