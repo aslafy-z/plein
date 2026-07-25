@@ -14,9 +14,11 @@ const VALHALLA_BASE = VALHALLA_ROOT + '/route';
 const VALHALLA_MATRIX_BASE = VALHALLA_ROOT + '/sources_to_targets';
 const TIMEOUT_MS = 12000;
 /**
- * Points one travel-matrix call may carry. The FOSSGIS Valhalla instance caps
- * matrix locations at 50 per side; OSRM's public demo table accepts more, so
- * the stricter limit governs both backends.
+ * Hard ceiling one travel-matrix call may carry, whichever backend answers: the
+ * FOSSGIS Valhalla instance caps matrix locations at 50 per side and OSRM's
+ * public demo table accepts more, so the stricter one governs both. The store
+ * asks for fewer than this today (MATRIX_MAX_POINTS) — this value is what the
+ * SERVER will take, not what we choose to send.
  */
 const TRAVEL_MATRIX_MAX_POINTS = 50;
 

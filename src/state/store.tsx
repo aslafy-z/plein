@@ -102,8 +102,10 @@ const DEFAULT_CONSUMPTION = VEHICLE_PRESETS.car.consumption;
 const DEFAULT_START_TANK_PCT = 70;
 /**
  * Points of one fuel-plan matrix call: origin + candidate stations +
- * destination. Providers may cap lower (travelMatrixMaxPoints); 32 keeps the
- * request small while covering ~30 stations, plenty for one corridor.
+ * destination. This is OUR budget, not a backend limit — 32 keeps the request
+ * small while covering ~30 stations, plenty for one corridor, and it is what
+ * binds today since every provider declares a higher `travelMatrixMaxPoints`.
+ * The min against that value is the guard for a provider that declares less.
  */
 const MATRIX_MAX_POINTS = 32;
 /**

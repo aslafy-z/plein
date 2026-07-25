@@ -24,14 +24,20 @@
 //   price of the route. Without it the solver values arriving empty and
 //   spawns absurd 0.5 L top-up stops whose only purpose is to shave the
 //   reserve overcarry of a long final leg.
-// - STOP COST: the price strategy's primary objective is money and its time
-//   tie-break only fires on exact ties, so without a monetary cost per stop
-//   a saving of a few cents justifies an extra halt. Each stop carries its
-//   own time valued at the shared value-of-time (REFUEL_STOP_MIN ×
+// - STOP COST: the price strategy charges travel time at a token 2 c/min, far
+//   too little to make an extra halt hurt, so without a monetary cost per stop
+//   a saving of a few cents would justify one. Each stop carries its own time
+//   valued at the shared value-of-time (REFUEL_STOP_MIN ×
 //   VALUE_OF_TIME_CENTS_PER_MIN ≈ 1.40 €) inside the price objective — the
-//   balanced and detour strategies already price the stop through their
-//   time term. Both terms shape the RANKING only: displayed totals remain
+//   balanced and detour strategies already price the stop through their own
+//   time weight. Both terms shape the RANKING only: displayed totals remain
 //   the litres actually bought at the pump.
+//
+// SCALES: `positionKm` orders the graph on the ROUTE's distance axis, while
+// every leg comes from the travel matrix, whose own origin→destination cell is
+// `direct`. The two disagree slightly (different snapping, different roads), so
+// they are never mixed: positions only ever order nodes and answer « how far
+// along », and all distance, time and fuel arithmetic uses legs alone.
 import {
   REFUEL_STOP_MIN,
   RESERVE_FRACTION,
@@ -133,11 +139,6 @@ export interface RoutePlan {
   extraDurationMin: number;
   fuelConsumedLitres: number;
   destinationFuelLitres: number;
-  /**
-   * The strategy's own ranking figure — price: cents; detour: minutes;
-   * balanced: cents + time valued at VALUE_OF_TIME_CENTS_PER_MIN. Never cash.
-   */
-  objectiveScore: number;
   /** Oldest price stamp among the purchase stops (stale-price transparency) */
   oldestPriceUpdatedAt?: string;
   diagnostics?: InfeasibleDiagnostics;
@@ -415,7 +416,6 @@ export function planRoute(input: OptimizerInput): RoutePlan {
     extraDurationMin: 0,
     fuelConsumedLitres: 0,
     destinationFuelLitres: 0,
-    objectiveScore: 0,
   };
 
   if (!best) {
@@ -481,7 +481,7 @@ export function planRoute(input: OptimizerInput): RoutePlan {
         purchasedLitres,
         departureFuelLitres: (state.fromArrivalUnits + purchased) * unit,
         purchaseCostCents: Math.round((purchasedLitres * st.priceMilli) / 10),
-        arrivalAtMinute: Math.round(fromState.timeTenths) / 10,
+        arrivalAtMinute: fromState.timeTenths / 10,
       });
     }
     cursor = { node: from, state: fromState };
@@ -493,12 +493,6 @@ export function planRoute(input: OptimizerInput): RoutePlan {
   const clampTiny = (v: number) => (v < 0 && v > ROUNDING_CLAMP_MIN ? 0 : v);
   const extraDistanceKm = clampTiny(totalDistanceKm - input.direct.distanceKm);
   const extraDurationMin = clampTiny(totalDurationMin - input.direct.durationMin);
-  const objectiveScore =
-    strategy === 'price'
-      ? totalPurchaseCostCents
-      : strategy === 'detour'
-        ? extraDurationMin
-        : totalPurchaseCostCents + (VALUE_OF_TIME_CENTS_PER_MIN * extraDurationMin) / 1;
   let oldestPriceUpdatedAt: string | undefined;
   for (const s of stops) {
     if (s.priceUpdatedAt && (!oldestPriceUpdatedAt || s.priceUpdatedAt < oldestPriceUpdatedAt)) {
@@ -517,7 +511,6 @@ export function planRoute(input: OptimizerInput): RoutePlan {
     extraDurationMin,
     fuelConsumedLitres,
     destinationFuelLitres: bestFuel * unit,
-    objectiveScore,
     oldestPriceUpdatedAt,
   };
 }
