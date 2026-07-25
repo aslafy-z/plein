@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fechaToIso } from './EspStationsProvider'
+import { fluxDateToIso, parseOpeningHours } from './EspStationsProvider'
 import type { GeoPoint } from '../../lib/geo'
 
 // Browser-typed project, Node-run tests — see src/lib/time.test.ts
@@ -10,25 +10,103 @@ afterEach(() => {
   process.env.TZ = original
 })
 
-describe('fechaToIso', () => {
+describe('fluxDateToIso', () => {
   it('reads the flux header as a Madrid wall clock', () => {
     // CEST (+02:00) in July, CET (+01:00) in January
-    expect(fechaToIso('19/07/2026 5:40:23')).toBe('2026-07-19T03:40:23.000Z')
-    expect(fechaToIso('15/01/2026 18:05:00')).toBe('2026-01-15T17:05:00.000Z')
+    expect(fluxDateToIso('19/07/2026 5:40:23')).toBe('2026-07-19T03:40:23.000Z')
+    expect(fluxDateToIso('15/01/2026 18:05:00')).toBe('2026-01-15T17:05:00.000Z')
   })
 
   it('resolves the same instant whatever the device zone is', () => {
     for (const tz of ['UTC', 'Europe/Paris', 'America/Los_Angeles', 'Asia/Tokyo']) {
       process.env.TZ = tz
-      expect(fechaToIso('19/07/2026 5:40:23')).toBe('2026-07-19T03:40:23.000Z')
+      expect(fluxDateToIso('19/07/2026 5:40:23')).toBe('2026-07-19T03:40:23.000Z')
     }
   })
 
   it('ignores anything that is not the expected shape', () => {
-    expect(fechaToIso(undefined)).toBe(undefined)
-    expect(fechaToIso('')).toBe(undefined)
-    expect(fechaToIso('2026-07-19T05:40:23')).toBe(undefined)
-    expect(fechaToIso('19/07/2026 5:40')).toBe(undefined)
+    expect(fluxDateToIso(undefined)).toBe(undefined)
+    expect(fluxDateToIso('')).toBe(undefined)
+    expect(fluxDateToIso('2026-07-19T05:40:23')).toBe(undefined)
+    expect(fluxDateToIso('19/07/2026 5:40')).toBe(undefined)
+  })
+})
+
+// ── Horario ──────────────────────────────────────────────────────────────────
+// Compact Spanish notation, day letters L M X J V S D (lunes … domingo).
+describe('parseOpeningHours', () => {
+  const ALL_DAY = [{ open: 0, close: 24 * 60 }]
+
+  it('reads the always-open shorthand as a 24/24 station', () => {
+    expect(parseOpeningHours('L-D: 24H')).toEqual({ auto24: true, days: {} })
+    expect(parseOpeningHours('l-d:24 h')).toEqual({ auto24: true, days: {} })
+  })
+
+  it('expands a day-letter range over every day it spans', () => {
+    expect(parseOpeningHours('L-V: 06:00-22:00')).toEqual({
+      auto24: false,
+      days: {
+        1: { closed: false, ranges: [{ open: 360, close: 1320 }] },
+        2: { closed: false, ranges: [{ open: 360, close: 1320 }] },
+        3: { closed: false, ranges: [{ open: 360, close: 1320 }] },
+        4: { closed: false, ranges: [{ open: 360, close: 1320 }] },
+        5: { closed: false, ranges: [{ open: 360, close: 1320 }] },
+      },
+    })
+  })
+
+  it('reads every segment of a multi-segment horario', () => {
+    const hours = parseOpeningHours('L-V: 06:00-22:00; S-D: 07:00-22:00')
+    expect(Object.keys(hours?.days ?? {})).toEqual(['1', '2', '3', '4', '5', '6', '7'])
+    expect(hours?.days[5]).toEqual({ closed: false, ranges: [{ open: 360, close: 1320 }] })
+    expect(hours?.days[7]).toEqual({ closed: false, ranges: [{ open: 420, close: 1320 }] })
+  })
+
+  it('keeps both halves of a split day', () => {
+    expect(parseOpeningHours('L: 07:00-14:00 y 16:00-22:00')?.days[1]).toEqual({
+      closed: false,
+      ranges: [
+        { open: 420, close: 840 },
+        { open: 960, close: 1320 },
+      ],
+    })
+  })
+
+  it('reads a single day, 24H or not', () => {
+    expect(parseOpeningHours('L: 24H')).toEqual({
+      auto24: false,
+      days: { 1: { closed: false, ranges: ALL_DAY } },
+    })
+    expect(parseOpeningHours('D: 09:00-14:00')).toEqual({
+      auto24: false,
+      days: { 7: { closed: false, ranges: [{ open: 540, close: 840 }] } },
+    })
+  })
+
+  it('marks a whole-week range open around the clock without claiming 24/24', () => {
+    // Only the "L-D: 24H" shorthand sets auto24 — this spelling stays per-day
+    const hours = parseOpeningHours('L-S: 24H; D: 09:00-14:00')
+    expect(hours?.auto24).toBe(false)
+    expect(hours?.days[6]).toEqual({ closed: false, ranges: ALL_DAY })
+  })
+
+  it('skips segments it cannot read, keeping the rest', () => {
+    expect(parseOpeningHours('L-V: horario variable; S: 09:00-14:00')).toEqual({
+      auto24: false,
+      days: { 6: { closed: false, ranges: [{ open: 540, close: 840 }] } },
+    })
+    // A backwards letter range carries no usable information
+    expect(parseOpeningHours('V-L: 06:00-22:00')).toBe(undefined)
+    // Neither does a zero-length range
+    expect(parseOpeningHours('L: 00:00-00:00')).toBe(undefined)
+  })
+
+  it('returns unknown for an empty or unreadable horario', () => {
+    expect(parseOpeningHours(undefined)).toBe(undefined)
+    expect(parseOpeningHours('')).toBe(undefined)
+    expect(parseOpeningHours('   ')).toBe(undefined)
+    expect(parseOpeningHours(24)).toBe(undefined)
+    expect(parseOpeningHours('Consultar en la estación')).toBe(undefined)
   })
 })
 

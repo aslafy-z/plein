@@ -58,7 +58,8 @@ function inPriceRange(v: number): boolean {
 }
 
 // ── Coordinates ──────────────────────────────────────────────────────────────
-function parseCoords(rec: Raw): GeoPoint | null {
+/** @internal exported for unit tests */
+export function parseCoords(rec: Raw): GeoPoint | null {
   const geom = rec.geom;
   if (geom && typeof geom === 'object') {
     const g = geom as Raw;
@@ -110,14 +111,17 @@ function fuelFromName(name: string): FuelId | null {
   return null;
 }
 
-interface RawPrix {
+export interface RawPrice {
   name: string;
   value: number;
   maj?: string;
 }
 
-/** `prix` may be a JSON string, a single object, or an already-parsed array. */
-function parsePrixField(v: unknown): RawPrix[] {
+/**
+ * `prix` may be a JSON string, a single object, or an already-parsed array.
+ * @internal exported for unit tests
+ */
+export function parsePriceField(v: unknown): RawPrice[] {
   let data: unknown = v;
   if (typeof v === 'string') {
     const s = v.trim();
@@ -129,7 +133,7 @@ function parsePrixField(v: unknown): RawPrix[] {
     }
   }
   const arr = Array.isArray(data) ? data : data && typeof data === 'object' ? [data] : [];
-  const out: RawPrix[] = [];
+  const out: RawPrice[] = [];
   for (const item of arr) {
     if (!item || typeof item !== 'object') continue;
     const o = item as Raw;
@@ -141,7 +145,8 @@ function parsePrixField(v: unknown): RawPrix[] {
   return out;
 }
 
-function parsePrices(rec: Raw): Partial<Record<FuelId, FuelPrice>> {
+/** @internal exported for unit tests */
+export function parsePrices(rec: Raw): Partial<Record<FuelId, FuelPrice>> {
   const out: Partial<Record<FuelId, FuelPrice>> = {};
   for (const [fuel, col, majCol] of FUEL_COLS) {
     const v = toNum(rec[col]);
@@ -149,7 +154,7 @@ function parsePrices(rec: Raw): Partial<Record<FuelId, FuelPrice>> {
   }
   if (Object.keys(out).length > 0) return out;
   // Fallback: parse the aggregated `prix` field.
-  for (const p of parsePrixField(rec.prix)) {
+  for (const p of parsePriceField(rec.prix)) {
     const fuel = fuelFromName(p.name);
     if (fuel && inPriceRange(p.value) && !out[fuel]) {
       out[fuel] = { value: p.value, updatedAt: p.maj };
@@ -159,8 +164,11 @@ function parsePrices(rec: Raw): Partial<Record<FuelId, FuelPrice>> {
 }
 
 // ── Services + tags ──────────────────────────────────────────────────────────
-/** `services` may be a JSON string ({"service":[...]}), an array, or `//`-joined. */
-function parseServices(rec: Raw): string[] {
+/**
+ * `services` may be a JSON string ({"service":[...]}), an array, or `//`-joined.
+ * @internal exported for unit tests
+ */
+export function parseServices(rec: Raw): string[] {
   const v = rec.services;
   let data: unknown = v;
   if (typeof v === 'string') {
@@ -186,8 +194,11 @@ function parseServices(rec: Raw): string[] {
 }
 
 // ── Opening hours ────────────────────────────────────────────────────────────
-/** "08.00" / "8:30" → minutes from midnight */
-function parseClock(v: unknown): number | null {
+/**
+ * "08.00" / "8:30" → minutes from midnight
+ * @internal exported for unit tests
+ */
+export function parseClock(v: unknown): number | null {
   const s = toStr(v);
   if (!s) return null;
   const m = s.match(/^(\d{1,2})[.:h](\d{2})$/i);
@@ -203,8 +214,9 @@ function parseClock(v: unknown): number | null {
  * {"@automate-24-24":"1"|"","jour":[{"@id":"1","@nom":"Lundi","@ferme":"1"|"",
  *   "horaire":{"@ouverture":"08.00","@fermeture":"19.30"} | [...]}]}
  * Days flagged open but without time ranges stay absent (= unknown).
+ * @internal exported for unit tests
  */
-function parseHoraires(rec: Raw): StationHours | undefined {
+export function parseOpeningHours(rec: Raw): StationHours | undefined {
   const autoField = rec.horaires_automate_24_24;
   let auto24 = typeof autoField === 'string' && /oui/i.test(autoField);
 
@@ -307,7 +319,7 @@ function parseRecord(rec: Raw): Station | null {
     tags: deriveTags(services, rec),
     services,
     highway: isHighway(rec),
-    hours: parseHoraires(rec),
+    hours: parseOpeningHours(rec),
   };
 }
 
