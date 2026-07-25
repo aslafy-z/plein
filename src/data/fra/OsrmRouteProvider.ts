@@ -84,8 +84,11 @@ async function osrmReachMatrix(
 }
 
 // ── Valhalla ─────────────────────────────────────────────────────────────────
-/** Decode a Valhalla shape string (Google polyline, 1e-6 precision) */
-function decodePolyline6(encoded: string): GeoPoint[] {
+/**
+ * Decode a Valhalla shape string (Google polyline, 1e-6 precision)
+ * @internal exported for unit tests
+ */
+export function decodePolyline6(encoded: string): GeoPoint[] {
   const out: GeoPoint[] = [];
   let index = 0;
   let lat = 0;

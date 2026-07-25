@@ -142,8 +142,8 @@ const EXTRA_PRODUCTS: ReadonlyArray<readonly [string, string]> = [
  * whichever province was queried, Canaries included. Resolve it in
  * Europe/Madrid so the freshness labels hold on a device in any zone.
  */
-export function fechaToIso(fecha: string | undefined): string | undefined {
-  const m = fecha?.match(/^(\d{2})\/(\d{2})\/(\d{4}) (\d{1,2}):(\d{2}):(\d{2})$/);
+export function fluxDateToIso(stamp: string | undefined): string | undefined {
+  const m = stamp?.match(/^(\d{2})\/(\d{2})\/(\d{4}) (\d{1,2}):(\d{2}):(\d{2})$/);
   if (!m) return undefined;
   const ms = zonedTimeToMs(
     'Europe/Madrid',
@@ -165,8 +165,9 @@ const DAY_LETTERS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
  * `Horario` is compact Spanish notation: "L-D: 24H",
  * "L-V: 06:00-22:00; S-D: 07:00-22:00", "L: 24H"…
  * Unparseable segments are skipped — unknown stays unknown.
+ * @internal exported for unit tests
  */
-function parseHorario(v: unknown): StationHours | undefined {
+export function parseOpeningHours(v: unknown): StationHours | undefined {
   const s = toStr(v);
   if (!s) return undefined;
   if (/^L-D:\s*24\s*H/i.test(s)) return { auto24: true, days: {} };
@@ -212,7 +213,7 @@ function parseRecord(rec: Raw, updatedAt: string | undefined): Station | null {
   const brand = rotulo ? titleCase(rotulo) : undefined;
   const city = toStr(rec['Municipio']) ?? toStr(rec['Localidad']) ?? '';
   const address = toStr(rec['Dirección']) ?? '';
-  const hours = parseHorario(rec['Horario']);
+  const hours = parseOpeningHours(rec['Horario']);
   const tags: ServiceTag[] = hours?.auto24 ? ['24/24'] : [];
   // A price on an extra product means the station sells it
   const services = EXTRA_PRODUCTS.filter(([col]) => toNum(rec[col]) != null).map(
@@ -300,7 +301,7 @@ async function loadProvince(id: string, lowPriority: boolean): Promise<Station[]
   const rows = Array.isArray(json.ListaEESSPrecio) ? json.ListaEESSPrecio : [];
   if (json.ResultadoConsulta !== 'OK') throw new Error('esp flux rejected the query');
 
-  const updatedAt = fechaToIso(json.Fecha);
+  const updatedAt = fluxDateToIso(json.Fecha);
   const stations: Station[] = [];
   for (const r of rows) {
     if (r && typeof r === 'object') {
