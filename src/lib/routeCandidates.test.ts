@@ -304,9 +304,15 @@ describe('demo corridor (Toulouse → Bordeaux)', () => {
   it('a 10 % tank forces a plan opening at the one reachable station', () => {
     const names = (strategy: 'balanced' | 'price' | 'detour') =>
       planFor(strategy, 10).stops.map((s) => s.stationId)
-    // One reachable opener + a fill that covers the rest: every strategy
-    // lands on the same single stop. Pinned so the e2e specs can assert the
-    // same stations by name; if the demo dataset moves, update both together.
+    // One reachable opener + a fill that covers the rest: every strategy lands
+    // on the same single stop. Pinned so the e2e specs can assert the same
+    // stations by name; if the demo dataset moves, update both together.
+    //
+    // « Prix » used to answer `au` here — 5 ct/L cheaper on the sticker, but
+    // 5,9 km off the road: 32,37 € and 186 min against 30,78 € and 168 min.
+    // Worse on cash, distance AND time. It won by 4 cents of residual-fuel
+    // credit while its 18 extra minutes cost the objective nothing, because
+    // the price strategy charged no value of time at all.
     expect(names('balanced')).toMatchInlineSnapshot(`
       [
         "r-grisolles",
@@ -314,7 +320,7 @@ describe('demo corridor (Toulouse → Bordeaux)', () => {
     `)
     expect(names('price')).toMatchInlineSnapshot(`
       [
-        "au",
+        "r-grisolles",
       ]
     `)
     expect(names('detour')).toMatchInlineSnapshot(`

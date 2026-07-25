@@ -156,6 +156,42 @@ describe('strategies', () => {
     expect(plan.stops.map((s) => s.stationId)).toEqual(['c-on-route-pricey'])
   })
 
+  it('detour: a near-tie in time is settled on price, not on the tenth of a minute', () => {
+    // Two stops, both essentially on the road, 24 seconds apart — and 40 ct/L
+    // between them. A lexicographic « minutes, then price » objective could
+    // never see the price: routed durations do not tie to the tenth of a
+    // minute, so the 0,4-second-cheaper station won whatever it charged.
+    const plan = planRoute(
+      buildInput({
+        routeKm: 300,
+        startFuel: 10,
+        strategy: 'detour',
+        stations: [
+          { id: 'a-hair-faster-costly', km: 100, price: 2.05, off: 0 },
+          { id: 'b-hair-slower-cheap', km: 100.4, price: 1.65, off: 0 },
+        ],
+      }),
+    )
+    expect(plan.stops.map((s) => s.stationId)).toEqual(['b-hair-slower-cheap'])
+  })
+
+  it('detour: minutes still dominate — a big discount does not buy a real detour', () => {
+    // Same 40 ct/L discount, now behind a 12 km access hop (~31 min there and
+    // back). « Détour min. » must refuse it: the chip promises minutes.
+    const plan = planRoute(
+      buildInput({
+        routeKm: 300,
+        startFuel: 10,
+        strategy: 'detour',
+        stations: [
+          { id: 'a-on-route-costly', km: 100, price: 2.05, off: 0 },
+          { id: 'b-far-cheap', km: 100.4, price: 1.65, off: 12 },
+        ],
+      }),
+    )
+    expect(plan.stops.map((s) => s.stationId)).toEqual(['a-on-route-costly'])
+  })
+
   it('11. the three strategies produce three different valid plans on the same fixture', () => {
     const plans = (['price', 'detour', 'balanced'] as const).map((strategy) =>
       planRoute(buildInput({ ...THREE_WAY, strategy })),
