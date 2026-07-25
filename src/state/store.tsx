@@ -216,6 +216,26 @@ export function pushRecentIn(
 }
 
 /**
+ * Record a whole trip: a departure typed or picked by hand is a place the user
+ * looked up, so it earns its « Récents » row just like the destination — only
+ * « Ma position » doesn't, which is why the caller passes the endpoints it has.
+ * `entries` are applied in order, so the LAST one ends up on top: pass the
+ * departure first and the destination second.
+ */
+export function pushTripIn(
+  prev: RecentPlace[],
+  entries: RecentPlace[],
+  hasTripHistory: boolean,
+): RecentPlace[] {
+  // Only the first push may drop the default suggestions — after it, the
+  // history is real and the rest of the trip must not wipe it again.
+  return entries.reduce(
+    (acc, entry, i) => pushRecentIn(acc, entry, hasTripHistory || i > 0),
+    prev,
+  );
+}
+
+/**
  * Destination suggestions shown until the user has real trip history. The sub
  * label is a département name — a proper noun, not copy to translate.
  */
@@ -928,14 +948,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ── Route computation ──────────────────────────────────────────────────────
   /**
    * Record a real trip in the « Récents » history (replaces the default
-   * suggestions). The distance and the date are stored as numbers, not as a
-   * ready-made sentence: the row is written in whatever language the app is
-   * in when it is READ, not when the trip was made.
+   * suggestions): its destination, and its departure when the user named one.
+   * The distance and the date are stored as numbers, not as a ready-made
+   * sentence: the row is written in whatever language the app is in when it is
+   * READ, not when the trip was made.
    */
   const pushRecent = useCallback(
-    (label: string, point: GeoPoint, distanceKm: number) => {
-      const entry: RecentPlace = { label, point, distanceKm, at: Date.now() };
-      setRecents((prev) => pushRecentIn(prev, entry, hasTripHistory));
+    (places: { label: string; point: GeoPoint }[], distanceKm: number) => {
+      const at = Date.now();
+      const entries = places.map((p) => ({ ...p, distanceKm, at }));
+      setRecents((prev) => pushTripIn(prev, entries, hasTripHistory));
       setHasTripHistory(true);
     },
     [hasTripHistory],
@@ -943,7 +965,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const routeReq = useRef(0);
   const computeRoute = useCallback(
-    async (from: GeoPoint, to: GeoPoint, toLabel: string) => {
+    // `fromLabel` is null when the trip departs from the user's position:
+    // « Ma position » is copy, not a place worth remembering.
+    async (from: GeoPoint, to: GeoPoint, toLabel: string, fromLabel: string | null) => {
+      const trip = fromLabel
+        ? [
+            { label: fromLabel, point: from },
+            { label: toLabel, point: to },
+          ]
+        : [{ label: toLabel, point: to }];
       const reqId = ++routeReq.current;
       setRouteState((s) => ({ ...s, status: 'loading' }));
       const run = async (src: DataSourceId) => {
@@ -982,7 +1012,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const res = await run(sourceId);
         if (reqId !== routeReq.current) return;
         setRouteState({ status: 'ready', ...res, fellBack: false });
-        pushRecent(toLabel, to, res.route.distanceKm);
+        pushRecent(trip, res.route.distanceKm);
       } catch {
         if (reqId !== routeReq.current) return;
         if (sourceId !== 'demo') {
@@ -990,7 +1020,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const res = await run('demo');
             if (reqId !== routeReq.current) return;
             setRouteState({ status: 'ready', ...res, fellBack: true });
-            pushRecent(toLabel, to, res.route.distanceKm);
+            pushRecent(trip, res.route.distanceKm);
             return;
           } catch {
             /* fall through */
@@ -1175,15 +1205,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let from = fromPoint;
     let to = toPoint;
     let toLabel = toText.trim();
+    // A departure the user named is remembered like the destination; « Ma
+    // position » is not a place, hence null.
+    let fromLabel = fromIsCurrentPosition ? null : fromText.trim() || null;
     const geocode = getProviders(sourceId).geocode;
     try {
       if (!from) {
         if (fromIsCurrentPosition || !fromText.trim()) {
           from = userPos;
+          fromLabel = null;
         } else {
           const r = await geocode.search(fromText);
           from = r[0]?.point ?? null;
-          if (r[0]) setFromText(r[0].label);
+          if (r[0]) {
+            setFromText(r[0].label);
+            fromLabel = r[0].label;
+          }
         }
       }
       if (!to) {
@@ -1206,7 +1243,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setPlannedStops({});
     setRouteReady(true);
     setScreen('route');
-    void computeRoute(from, to, toLabel);
+    void computeRoute(from, to, toLabel, fromLabel);
   }, [
     computeRoute,
     fromIsCurrentPosition,

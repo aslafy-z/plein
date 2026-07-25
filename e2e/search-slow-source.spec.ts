@@ -44,11 +44,11 @@ test('les suggestions n\'attendent pas la source la plus lente', async ({ page }
   await page.getByLabel('Rechercher un lieu').click()
   await page.getByPlaceholder('Ville, adresse…').fill('Toulouse')
 
-  // La BAN répond tout de suite : ses résultats s'affichent sans attendre
-  // l'Espagne, bien avant ses 20 s.
+  // BAN answers at once: its results show without waiting for Spain, well
+  // before its 20 s.
   await expect(page.getByText('voir les stations ici').first()).toBeVisible({ timeout: 6_000 })
 
-  // …et l'indicateur tourne toujours, parce qu'une source n'a pas conclu :
-  // la liste peut encore s'allonger.
+  // …and the spinner still turns, because a source has not concluded: the
+  // list may still grow.
   await expect(page.getByRole('status', { name: 'Recherche en cours…' })).toBeVisible()
 })
