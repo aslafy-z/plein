@@ -223,8 +223,7 @@ export default function ZoneList({
               }}
             >
               {identity}
-              {/* On a phone the row is one target, so the price rides with it */}
-              {!desktop && priceBlock}
+              {priceBlock}
             </button>
           );
 
@@ -255,8 +254,9 @@ export default function ZoneList({
             );
           }
 
-          // That door is the whole right-hand side — price, gap and chevron
-          // together. A bare chevron is a 15px target asking to be missed.
+          // The door shows a chevron and nothing else, but its hit area is the
+          // whole block right of the divider, full row height — a bare 15px
+          // glyph is a target asking to be missed.
           return (
             <div key={s.id} data-testid="zone-row" style={rowStyle}>
               {locate}
@@ -267,17 +267,18 @@ export default function ZoneList({
                 style={{
                   flexShrink: 0,
                   alignSelf: 'stretch',
+                  width: 34,
+                  marginRight: -6,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 8,
-                  paddingLeft: 12,
+                  justifyContent: 'center',
                   borderLeft: `1px solid ${deal ? C.accentBorder : C.border}`,
+                  color: C.mut,
+                  fontSize: 15,
+                  fontWeight: 700,
                 }}
               >
-                {priceBlock}
-                <span aria-hidden style={{ color: C.mut, fontSize: 15, fontWeight: 700 }}>
-                  ›
-                </span>
+                ›
               </button>
             </div>
           );
