@@ -47,6 +47,8 @@ function localeName(locale: Locale): string {
       return m.locale_name_en({}, { locale: 'en' });
     case 'es':
       return m.locale_name_es({}, { locale: 'es' });
+    case 'ca':
+      return m.locale_name_ca({}, { locale: 'ca' });
     default:
       return m.locale_name_fr({}, { locale: 'fr' });
   }
