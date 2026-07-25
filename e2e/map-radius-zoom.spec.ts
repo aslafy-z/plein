@@ -6,39 +6,49 @@ test.beforeEach(async ({ page }) => {
   await gotoMap(page)
 })
 
-/** Move the radius slider in the filters sheet and apply */
+/**
+ * Move the radius slider in the filters sheet and apply. Returns the level the
+ * map sits on as the new radius lands — the anchor `settled` needs to tell the
+ * fit that follows from the view it starts from.
+ */
 async function setRadius(page: import('@playwright/test').Page, km: string) {
   await page.getByText(/^Filtres · \d+$/).click()
   const slider = page.locator('input[type=range]')
   await slider.fill(km)
   await expect(slider).toHaveValue(km)
+  // Read the level here, not before opening the sheet: the map's inset follows
+  // the COLLAPSED sheet height, so the sheet standing open has not moved the
+  // view — and by now any earlier fit has long landed.
+  const before = await tileZoom(page)
   await page.getByText(/^Voir \d+ stations?$/).click()
   await expect(page.getByText(`< ${km} km`)).toBeVisible()
+  return before
+}
+
+/**
+ * Level the fit lands on, `previous` being the one the map showed before the
+ * change. It must have MOVED off `previous` and then hold still: the pre-fit
+ * level is stable by definition, so stability alone would happily settle on
+ * the view the fit has not left yet.
+ */
+async function settled(page: import('@playwright/test').Page, previous: number) {
+  let last = Number.NaN
+  let level = Number.NaN
+  // The reading is recorded BEFORE the assertion: throwing first would leave
+  // `last` at NaN for every retry, and no two readings could ever match.
+  await expect(async () => {
+    const z = await tileZoom(page)
+    const settledOn = z === last && z !== previous
+    level = z
+    last = z
+    expect(settledOn).toBe(true)
+  }).toPass()
+  return level
 }
 
 test('the zoom follows the search radius', async ({ page }) => {
-  const settled = async (previous?: number) => {
-    let last = Number.NaN
-    let level = Number.NaN
-    // Leaflet keeps the outgoing level's tiles during the fit animation —
-    // wait for two identical readings before trusting one. The reading is
-    // recorded BEFORE the assertion: throwing first would leave `last` at NaN
-    // for every retry, and no two readings could ever match.
-    await expect(async () => {
-      const z = await tileZoom(page)
-      const settledOn = z === last && z !== previous
-      level = z
-      last = z
-      expect(settledOn).toBe(true)
-    }).toPass()
-    return level
-  }
-
-  await setRadius(page, '25')
-  const wide = await settled()
-
-  await setRadius(page, '3')
-  const tight = await settled(wide)
+  const wide = await settled(page, await setRadius(page, '25'))
+  const tight = await settled(page, await setRadius(page, '3'))
 
   // 25 km → 3 km is a bit over 3 halvings of the framed box; the fit is
   // capped at z15 so assert the direction and a sane order of magnitude
@@ -47,12 +57,7 @@ test('the zoom follows the search radius', async ({ page }) => {
 })
 
 test('searching a place lands on the radius, whatever the stations do there', async ({ page }) => {
-  await setRadius(page, '10')
-  let home = Number.NaN
-  await expect(async () => {
-    home = await tileZoom(page)
-    expect(home).toBe(await tileZoom(page))
-  }).toPass()
+  const home = await settled(page, await setRadius(page, '10'))
 
   await page.getByText('Chercher un lieu ou un trajet…').click()
   await page.locator('input[placeholder="Ville, adresse…"]').fill('Marseille')
