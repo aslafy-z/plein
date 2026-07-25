@@ -73,6 +73,7 @@
   "nav_route": "Route",
   "nav_favorites": "Favorites",
   "nav_settings": "Settings",
+  "nav_home_aria": "Plein. — back to the map",
   "onboarding_headline": "Pay a fair price at the pump.",
   "onboarding_intro": "Station prices across France, Spain, Andorra and Portugal, compared around you and along your route.",
   "onboarding_step1_title": "Pick your fuel",
@@ -86,6 +87,7 @@
   "onboarding_start": "Get started",
   "onboarding_skip_location": "Continue without location",
   "map_radius_chip": "< {km} km",
+  "map_cycle_fuel_title": "Change fuel",
   "map_filters_chip": "Filters · {count}",
   "map_filters_aria": [
     {
@@ -108,6 +110,8 @@
   "map_install_dismiss": "Stop offering to install",
   "map_share_view": "Share this view",
   "map_recenter_aria": "Recentre on my position",
+  "map_zoom_in": "Zoom in",
+  "map_zoom_out": "Zoom out",
   "map_my_position": "My position",
   "map_route_aria": "Map of the route",
   "map_close_list": "Close the list",

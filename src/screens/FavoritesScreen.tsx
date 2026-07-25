@@ -10,11 +10,23 @@ import {
 } from '../state/store';
 import { fmtPrice, distLabel, agoLabel } from '../lib/format';
 import { fuelLabel, openStatusShort } from '../lib/labels';
+import { useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
 import { openStatus } from '../lib/hours';
 import { haversineKm } from '../lib/geo';
 import BrandAvatar from '../components/BrandAvatar';
 import Star from '../components/Star';
+
+/**
+ * Favorites read as a grid on a window and a column on a phone — one
+ * `auto-fill` track list does both, collapsing to a single column below the
+ * track floor. That floor is deliberately generous: a card narrower than this
+ * truncates the station name (« Station U · Croix-… »), which is exactly the
+ * word the user is scanning for.
+ */
+const FAV_GRID = 'repeat(auto-fill, minmax(440px, 1fr))';
+/** Two roomy columns rather than four cramped ones */
+const FAV_MAX_WIDTH = 1000;
 
 /**
  * Favoris — the user's pinned stations (★ on a station detail or on the map
@@ -24,6 +36,7 @@ import Star from '../components/Star';
  */
 export default function FavoritesScreen() {
   const app = useApp();
+  const desktop = useIsDesktop();
   const [sort, setSort] = useState<FavSort>('recommended');
   const sorts: [FavSort, string][] = [
     ['recommended', m.favorites_sort_recommended()],
@@ -51,7 +64,14 @@ export default function FavoritesScreen() {
 
   return (
     <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-      <div style={{ padding: '14px 20px 18px' }}>
+      <div
+        style={{
+          padding: desktop ? '26px 32px 32px' : '14px 20px 18px',
+          maxWidth: FAV_MAX_WIDTH,
+          margin: '0 auto',
+          width: '100%',
+        }}
+      >
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
           <span style={{ fontSize: 24, fontWeight: 800, color: C.ink, flex: 1 }}>{m.favorites_title()}</span>
@@ -125,7 +145,14 @@ export default function FavoritesScreen() {
             </button>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 14 }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: FAV_GRID,
+              gap: 10,
+              marginTop: 14,
+            }}
+          >
             {favs.map(({ f, live, price, distKm }) => {
               const updated = live && effectivePrice(live, app.fuel)?.updatedAt;
               const liveStatus = live ? openStatus(live.hours) : null;
@@ -210,6 +237,9 @@ export default function FavoritesScreen() {
             })}
             <div
               style={{
+                // Spans every column of the grid — a note about the list, not
+                // a card in it
+                gridColumn: '1 / -1',
                 fontSize: 12,
                 color: C.faint,
                 textAlign: 'center',

@@ -3,6 +3,7 @@ import { ALL_FUELS, type DataSourceId, type VehicleId } from '../data/types';
 import { useApp, MAPS_SITE_IDS, mapsSiteLabel, VEHICLE_PRESETS } from '../state/store';
 import { fmtDecimal } from '../lib/format';
 import { fuelLabel, sourceSublabel, sourceTitle, vehicleLabel } from '../lib/labels';
+import { CONTENT_MAX_WIDTH, useIsDesktop } from '../lib/layout';
 import { LOCALES, type Locale } from '../lib/locale';
 import { m } from '../paraglide/messages.js';
 import { HAS_NATIVE_MAPS } from '../lib/env';
@@ -58,6 +59,7 @@ function localeName(locale: Locale): string {
 
 export default function Settings() {
   const app = useApp();
+  const desktop = useIsDesktop();
   const { fuel, vehicle, tank, consumption, alerts, backgroundLocation, sourceId, geoStatus, mapsSite } = app;
   // Slider ranges follow the profile (a motorcycle tank is far smaller than a car's)
   const tankRange =
@@ -89,7 +91,12 @@ export default function Settings() {
         flex: 1,
         minHeight: 0,
         overflow: 'auto',
-        padding: '16px 20px 20px',
+        // A column of settings rows, centered: on a wide window the section
+        // labels and the sliders would otherwise sit a full screen apart
+        maxWidth: CONTENT_MAX_WIDTH,
+        width: '100%',
+        margin: '0 auto',
+        padding: desktop ? '26px 32px 40px' : '16px 20px 20px',
         boxSizing: 'border-box',
       }}
     >

@@ -13,6 +13,7 @@ import {
 import { stationCountry } from '../data/stationIds';
 import { fmtPrice, distLabel, agoLabel, durationLabel } from '../lib/format';
 import { fuelLabel, openStatusLabel, serviceLabel } from '../lib/labels';
+import { useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
 import { haversineKm } from '../lib/geo';
 import { openStatus } from '../lib/hours';
@@ -79,14 +80,15 @@ function StationMiniMap({ station }: { station: Station }) {
 }
 
 /** Cold load of /station/:id — the fiche has nothing to draw yet */
-function StationDetailPending() {
+function StationDetailPending({ desktop }: { desktop: boolean }) {
   return (
     <div
       style={{
-        position: 'absolute',
-        inset: 0,
-        background: '#101214',
-        zIndex: 1200,
+        // Same frame as the fiche it is standing in for, so nothing jumps
+        // when the station lands
+        ...(desktop
+          ? { flex: 1, minHeight: 0 }
+          : { position: 'absolute', inset: 0, background: '#101214', zIndex: 1200 }),
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -101,6 +103,7 @@ function StationDetailPending() {
 
 export default function StationDetail() {
   const app = useApp();
+  const desktop = useIsDesktop();
 
   const nearby = app.stations.data.find((x) => x.id === app.detailId);
   const routeSt = app.routeState.stations.find((x) => x.id === app.detailId);
@@ -122,7 +125,7 @@ export default function StationDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s, pending]);
 
-  if (!s) return pending ? <StationDetailPending /> : null;
+  if (!s) return pending ? <StationDetailPending desktop={desktop} /> : null;
 
   const { distKm, driveMin } = roadReachOf(
     haversineKm(app.userPos, { lat: s.lat, lng: s.lng }),
@@ -199,20 +202,12 @@ export default function StationDetail() {
   const thirdChip = s.brand ?? (s.highway ? m.detail_highway() : s.address ? null : s.city);
   const status = openStatus(s.hours);
 
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        inset: 0,
-        background: '#101214',
-        zIndex: 1200,
-        overflow: 'auto',
-        // Column layout so the CTA can be pushed to the bottom on a short
-        // fiche (margin-top: auto) and stick there on a long one
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
+  // The fiche itself — the same document in both arrangements. It fills the
+  // screen on a phone; on a window it becomes a bordered card centered in the
+  // region next to the navigation, because a fiche is a narrow document and
+  // nothing is gained by dragging its address line across 1200px.
+  const body = (
+    <>
       {/* Header mini-map */}
       <div style={{ position: 'relative', height: 160, flexShrink: 0, background: C.mapBg }}>
         <StationMiniMap station={s} />
@@ -242,6 +237,7 @@ export default function StationDetail() {
         <button
           onClick={() => app.back()}
           aria-label={m.detail_back_aria()}
+          title={m.detail_back_aria()}
           style={{
             position: 'absolute',
             left: 14,
@@ -511,6 +507,36 @@ export default function StationDetail() {
           {m.detail_go_there()}
         </button>
       </div>
+    </>
+  );
+
+  return (
+    <div
+      style={{
+        background: '#101214',
+        overflow: 'auto',
+        // Column layout so the CTA can be pushed to the bottom on a short
+        // fiche (margin-top: auto) and stick there on a long one
+        display: 'flex',
+        flexDirection: 'column',
+        boxSizing: 'border-box',
+        ...(desktop
+          ? {
+              // A card in the region, not an overlay: the side navigation
+              // stays visible and the browser Back button still means Back.
+              // The radius clips the header map at the top.
+              flex: 1,
+              minHeight: 0,
+              maxWidth: 660,
+              width: '100%',
+              margin: '24px auto',
+              border: `1px solid ${C.border}`,
+              borderRadius: 20,
+            }
+          : { position: 'absolute', inset: 0, zIndex: 1200 }),
+      }}
+    >
+      {body}
     </div>
   );
 }

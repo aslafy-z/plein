@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { C, mono } from '../theme';
 import { clockLabel, fmtPrice, durationLabel } from '../lib/format';
 import { fuelLabel } from '../lib/labels';
+import { CONTENT_MAX_WIDTH, PANEL_WIDTH, useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
 import { type RouteStation } from '../data/types';
 import {
@@ -87,10 +88,12 @@ const limitMarker = (limitKm: number) => (
 
 export default function RouteRibbon() {
   const app = useApp();
+  const desktop = useIsDesktop();
   const { toText, fuel, tank, routeMode, routeState } = app;
   const fromLabel = routeFromLabel(app);
   const analysis = selectRouteAnalysis(app);
   const route = routeState.route;
+  const hasRoute = routeState.status === 'ready' && route != null;
 
   const toggleStyle = (id: string, size: number) => {
     const inRun = !!app.plannedStops[id];
@@ -417,19 +420,25 @@ export default function RouteRibbon() {
     );
   }
 
-  return (
-    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-      {routeState.status === 'ready' && route && <RouteMap />}
-      <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-          overflow: 'auto',
-          padding: '16px 0 20px',
-          boxSizing: 'border-box',
-        }}
-      >
-        {/* Header */}
+  // The timeline: header, strategy chips, then the stops. Above the corridor
+  // map on a phone, docked beside it on a window.
+  const timeline = (
+    <div
+      style={{
+        flex: 1,
+        minHeight: 0,
+        overflow: 'auto',
+        padding: '16px 0 20px',
+        boxSizing: 'border-box',
+        // While the route is still computing there is no map to sit next to,
+        // so the timeline gets the whole region — as a reading column, not
+        // a header stretched across it
+        ...(desktop && !hasRoute
+          ? { maxWidth: CONTENT_MAX_WIDTH, width: '100%', margin: '0 auto' }
+          : null),
+      }}
+    >
+      {/* Header */}
       <div style={{ padding: '0 22px' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
           <span
@@ -520,8 +529,34 @@ export default function RouteRibbon() {
         </div>
       </div>
 
-        {body}
+      {body}
+    </div>
+  );
+
+  if (!desktop) {
+    return (
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        {hasRoute && <RouteMap />}
+        {timeline}
       </div>
+    );
+  }
+
+  return (
+    <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
+      <div
+        style={{
+          width: hasRoute ? PANEL_WIDTH : '100%',
+          flexShrink: 0,
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          borderRight: hasRoute ? `1px solid ${C.border}` : undefined,
+        }}
+      >
+        {timeline}
+      </div>
+      {hasRoute && <RouteMap fill />}
     </div>
   );
 }

@@ -73,6 +73,7 @@
   "nav_route": "Trajet",
   "nav_favorites": "Favoris",
   "nav_settings": "Réglages",
+  "nav_home_aria": "Plein. — revenir à la carte",
   "onboarding_headline": "Payez votre plein au juste prix.",
   "onboarding_intro": "Les prix des stations en France, en Espagne, en Andorre et au Portugal, comparés autour de vous et sur vos trajets.",
   "onboarding_step1_title": "Choisissez votre carburant",
@@ -86,6 +87,7 @@
   "onboarding_start": "Commencer",
   "onboarding_skip_location": "Continuer sans localisation",
   "map_radius_chip": "< {km} km",
+  "map_cycle_fuel_title": "Changer de carburant",
   "map_filters_chip": "Filtres · {count}",
   "map_filters_aria": [
     {
@@ -108,6 +110,8 @@
   "map_install_dismiss": "Ne plus proposer l'installation",
   "map_share_view": "Partager cette vue",
   "map_recenter_aria": "Recentrer sur ma position",
+  "map_zoom_in": "Zoomer",
+  "map_zoom_out": "Dézoomer",
   "map_my_position": "Ma position",
   "map_route_aria": "Carte du trajet",
   "map_close_list": "Fermer la liste",

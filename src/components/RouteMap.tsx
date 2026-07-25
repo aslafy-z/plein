@@ -18,7 +18,7 @@ function pointAtKm(polyline: GeoPoint[], cum: number[], km: number): GeoPoint | 
   return null;
 }
 
-export default function RouteMap() {
+export default function RouteMap({ fill = false }: { fill?: boolean }) {
   const app = useApp();
   const analysis = selectRouteAnalysis(app);
   const route = app.routeState.route;
@@ -27,6 +27,10 @@ export default function RouteMap() {
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
   const fittedRouteRef = useRef<unknown>(null);
+  /** Bounds of the drawn corridor, re-framed if the map is resized under it */
+  const lineBoundsRef = useRef<L.LatLngBounds | null>(null);
+  /** The user panned or zoomed: their framing wins over any re-fit */
+  const userMovedRef = useRef(false);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -42,14 +46,36 @@ export default function RouteMap() {
     mapRef.current = map;
     const stopKeyboard = installSmoothKeyboard(map);
 
-    const ro = new ResizeObserver(() => map.invalidateSize());
+    const markMoved = () => {
+      userMovedRef.current = true;
+    };
+    const el = map.getContainer();
+    el.addEventListener('wheel', markMoved, { passive: true });
+    el.addEventListener('mousedown', markMoved);
+    el.addEventListener('touchstart', markMoved, { passive: true });
+
+    // Leaflet keeps the CENTER when the container grows, not the framing: the
+    // fit below runs on whatever size the container had when the route landed,
+    // and the corridor then shrinks to a stamp in the middle of the real one.
+    // Cheap on a phone (a 210px strip, sized at mount) and very visible on a
+    // window, where the map fills the region — so re-frame on every resize
+    // until the user takes the view over.
+    const ro = new ResizeObserver(() => {
+      map.invalidateSize();
+      const box = lineBoundsRef.current;
+      if (box && !userMovedRef.current) map.fitBounds(box, { padding: [26, 26] });
+    });
     ro.observe(containerRef.current);
     return () => {
       ro.disconnect();
       stopKeyboard();
+      el.removeEventListener('wheel', markMoved);
+      el.removeEventListener('mousedown', markMoved);
+      el.removeEventListener('touchstart', markMoved);
       map.remove();
       mapRef.current = null;
       layerRef.current = null;
+      lineBoundsRef.current = null;
     };
   }, []);
 
@@ -119,9 +145,12 @@ export default function RouteMap() {
     }
 
     // Fit once per computed route, not on every strategy/fuel switch
+    const box = L.latLngBounds(line);
+    lineBoundsRef.current = box;
     if (fittedRouteRef.current !== route) {
       fittedRouteRef.current = route;
-      map.fitBounds(L.latLngBounds(line), { padding: [26, 26] });
+      userMovedRef.current = false; // a new route deserves its own framing
+      map.fitBounds(box, { padding: [26, 26] });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route, app.routeState.stations, app.fuel, app.routeMode, analysis.recoId]);
@@ -131,10 +160,12 @@ export default function RouteMap() {
       aria-label={m.map_route_aria()}
       style={{
         position: 'relative',
-        height: 210,
-        flexShrink: 0,
         background: C.mapBg,
-        borderBottom: `1px solid ${C.border}`,
+        // A strip above the timeline on a phone; the whole stage next to it
+        // on a window, where there is room to read the corridor properly
+        ...(fill
+          ? { flex: 1, minWidth: 0, minHeight: 0 }
+          : { height: 210, flexShrink: 0, borderBottom: `1px solid ${C.border}` }),
       }}
     >
       <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />

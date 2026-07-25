@@ -3,6 +3,7 @@ import L from 'leaflet';
 import { C } from '../theme';
 import { m } from '../paraglide/messages.js';
 import { haversineKm, radiusBounds, type GeoPoint } from '../lib/geo';
+import { useIsDesktop } from '../lib/layout';
 import { addDarkBasemap } from '../lib/tiles';
 import { installSmoothKeyboard } from '../lib/mapKeyboard';
 import ShareIcon from './ShareIcon';
@@ -101,6 +102,7 @@ function pricedIds(app: AppStore, bounds: L.LatLngBounds | null): Set<string> {
  */
 export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number }) {
   const app = useApp();
+  const desktop = useIsDesktop();
   // Auto-fit reads the inset at run time (padding above the sheet)
   const insetRef = useRef(bottomInset);
   insetRef.current = bottomInset;
@@ -567,6 +569,17 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
     transition: 'bottom .3s cubic-bezier(.4,0,.2,1)',
   };
 
+  // Half of a zoom control pair — two of them make the usual joined pill
+  const zoomButton = {
+    height: 42,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: C.ink,
+    fontSize: 19,
+    fontWeight: 600,
+  };
+
   return (
     <div
       style={{
@@ -641,6 +654,49 @@ export default function MapCanvas({ bottomInset = 0 }: { bottomInset?: number })
           >
             Recherche des stations…
           </span>
+        </div>
+      )}
+
+      {/* Zoom — desktop only. A finger pinches and a keyboard has +/− (see
+          lib/mapKeyboard), but a mouse has neither: a wheel over the map is
+          the only way in without these, and a trackpad user who scrolls to
+          pan gets a zoom instead. Same interaction as a wheel notch, so the
+          view is the user's from here on and auto-fit stands down. */}
+      {desktop && (
+        <div
+          style={{
+            position: 'absolute',
+            right: 14,
+            ...bottomEdge,
+            bottom: bottomEdge.bottom + 104,
+            width: 44,
+            borderRadius: 22,
+            background: C.surface2,
+            border: `1px solid ${C.border09}`,
+            boxShadow: '0 6px 18px rgba(0,0,0,.45)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            zIndex: 1000,
+          }}
+        >
+          <button
+            onClick={() => mapRef.current?.zoomIn()}
+            aria-label={m.map_zoom_in()}
+            title={m.map_zoom_in()}
+            style={zoomButton}
+          >
+            +
+          </button>
+          <div style={{ height: 1, background: C.border09 }} />
+          <button
+            onClick={() => mapRef.current?.zoomOut()}
+            aria-label={m.map_zoom_out()}
+            title={m.map_zoom_out()}
+            style={zoomButton}
+          >
+            −
+          </button>
         </div>
       )}
 

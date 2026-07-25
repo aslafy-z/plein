@@ -1,28 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { C, mono } from '../theme';
-import {
-  useApp,
-  selectSorted,
-  selectCheapest,
-  selectRecommended,
-  selectPriceRange,
-  selectPriceStats,
-  selectZoneDelta,
-  selectDeals,
-  selectFocusStation,
-  selectZoneFuels,
-  effectiveFuel,
-  effectivePrice,
-  priceTier,
-  priceCents,
-} from '../state/store';
-import { fmtPrice, distLabel, agoLabel, durationLabel } from '../lib/format';
-import { fuelLabel, openStatusShort } from '../lib/labels';
+import { C } from '../theme';
+import { useApp, selectSorted, selectRecommended, selectFocusStation } from '../state/store';
 import { m } from '../paraglide/messages.js';
-import { openStatus } from '../lib/hours';
-import BrandAvatar from './BrandAvatar';
-import Freshness from './Freshness';
-import Star from './Star';
+import ZoneCard from './ZoneCard';
+import ZoneList from './ZoneList';
 
 /** Share of the map stage the expanded sheet covers */
 const EXPAND_RATIO = 0.75;
@@ -39,10 +20,10 @@ const TRANSITION = 'height .3s cubic-bezier(.4,0,.2,1)';
 const HINT_MIN_ROWS = 2;
 
 /**
- * Bottom sheet over the map. Collapsed: the cheapest (or map-selected)
- * station card. Pulling it up reveals the list of the stations in the
- * radius; tapping a row selects the station on the map (highlighted pin,
- * map pans onto it) — the map ↔ list link.
+ * Bottom sheet over the map — the PHONE arrangement of the zone. Collapsed:
+ * the leading station card. Pulling it up reveals the list of the stations in
+ * the radius. On a desktop window the same two pieces are docked beside the
+ * map instead, always open, with no gesture at all (see ZonePanel).
  *
  * Gestures: the whole sheet drags, not just the handle — swipe up/down
  * anywhere on the station card, and swipe down on the list itself when it
@@ -66,25 +47,10 @@ export default function MapSheet({
   onExpandedChange: (open: boolean) => void;
 }) {
   const app = useApp();
-  const cheapest = selectCheapest(app);
-  // The card crowns the best DEAL (effective price, round-trip fuel counted)
-  // — not always the lowest sticker price when a closer pump beats it
-  const reco = selectRecommended(app);
-  const recoIsCheapest = reco == null || cheapest == null || reco.id === cheapest.id;
-  const focused = selectFocusStation(app);
-  const shown = focused ?? reco;
-  const rows = selectSorted(app);
-  const range = selectPriceRange(app);
-  // « Bons plans » (near-identical low prices): the collapsed card still
-  // preselects a single station, but the expanded list highlights all of them
-  const stats = selectPriceStats(app);
-  const dealCount = selectDeals(app).length;
-  const min = range?.min ?? 0;
-  const loading = app.stations.status === 'loading' || app.stations.status === 'idle';
-
-  const hasCard = shown != null;
-  // Zone empty for the SELECTED fuel: which fuels are actually sold around?
-  const soldFuels = !loading && !hasCard ? selectZoneFuels(app).filter((f) => f !== app.fuel) : [];
+  // What the card leads with — the sheet only needs to know WHETHER there is
+  // one (nothing to expand from an empty zone); ZoneCard draws it.
+  const hasCard = (selectFocusStation(app) ?? selectRecommended(app)) != null;
+  const rowCount = selectSorted(app).length;
 
   const rootRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -123,7 +89,7 @@ export default function MapSheet({
   const [hinting, setHinting] = useState(false);
   const hintPlayed = useRef(false);
   const armHint =
-    app.sheetHint && !expanded && hasCard && collapsedH != null && rows.length >= HINT_MIN_ROWS;
+    app.sheetHint && !expanded && hasCard && collapsedH != null && rowCount >= HINT_MIN_ROWS;
   const consumeSheetHint = app.consumeSheetHint;
   useEffect(() => {
     if (!armHint || hintPlayed.current) return;
@@ -389,23 +355,7 @@ export default function MapSheet({
     };
   }, [listAttached, dragBegin, dragMove, dragEnd]);
 
-  const stateKey = hasCard ? 'card' : loading ? 'loading' : 'empty';
   const height = expanded && hasCard ? expandedH : (collapsedH ?? undefined);
-
-  // « vs the zone » chip: null when the card has no zone to compare against
-  // (empty circle, or a station selected outside it) — then no chip at all,
-  // « +1,67 €/L » against a nonexistent floor is just the price again
-  const zoneDelta = selectZoneDelta(app, shown);
-
-  const shownStatus = shown ? openStatus(shown.hours) : null;
-
-  const cardHeading = recoIsCheapest
-    ? app.searchedAway
-      ? m.sheet_cheapest_in_area()
-      : m.sheet_cheapest_nearby()
-    : app.searchedAway
-      ? m.sheet_best_choice_in_area()
-      : m.sheet_best_choice_nearby();
 
   return (
     <div
@@ -443,401 +393,59 @@ export default function MapSheet({
         onPointerCancel={cardPointerCancel}
         onClickCapture={swallowClickAfterDrag}
       >
-        <div key={stateKey} className="sheet-swap">
-          {shown ? (
-            <div style={{ padding: '0 20px 18px' }}>
-              {/* Drag handle — kept as the visible affordance + a11y toggle.
-                  Pointer taps toggle in cardPointerUp; onClick only serves
-                  keyboard/AT synthetic clicks (no pointerup precedes them). */}
-              <div
-                ref={handleRef}
-                role="button"
-                tabIndex={0}
-                aria-expanded={expanded}
-                aria-label={expanded ? m.sheet_collapse_aria() : m.sheet_expand_aria()}
-                onClick={() => {
-                  if (g.current.toggled) {
-                    g.current.toggled = false;
-                    return;
-                  }
+        <ZoneCard
+          handle={
+            // Kept as the visible affordance + a11y toggle. Pointer taps
+            // toggle in cardPointerUp; onClick only serves keyboard/AT
+            // synthetic clicks (no pointerup precedes them).
+            <div
+              ref={handleRef}
+              role="button"
+              tabIndex={0}
+              aria-expanded={expanded}
+              aria-label={expanded ? m.sheet_collapse_aria() : m.sheet_expand_aria()}
+              onClick={() => {
+                if (g.current.toggled) {
+                  g.current.toggled = false;
+                  return;
+                }
+                onExpandedChange(!expanded);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
                   onExpandedChange(!expanded);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onExpandedChange(!expanded);
-                  }
-                }}
-                style={{ padding: '10px 0 8px', margin: '0 -20px' }}
-              >
-                <div
-                  style={{
-                    width: 36,
-                    height: 4,
-                    borderRadius: 2,
-                    background: 'rgba(255,255,255,.18)',
-                    margin: '0 auto',
-                  }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                <span
-                  style={{
-                    flex: 1,
-                    fontSize: 11.5,
-                    fontWeight: 700,
-                    letterSpacing: '.12em',
-                    textTransform: 'uppercase',
-                    color: C.accent,
-                  }}
-                >
-                  {/* Four whole sentences, never two glued fragments: word
-                      order and adjective agreement differ per language, and
-                      « La moins chère » + « près de vous » only happens to
-                      concatenate in French. */}
-                  {focused ? m.sheet_selected_station() : cardHeading}
-                </span>
-                {focused && (
-                  <button
-                    onClick={() => app.setFocusStation(null)}
-                    aria-label={m.sheet_deselect_aria()}
-                    style={{ color: C.mut, fontSize: 14, fontWeight: 700, padding: '0 2px' }}
-                  >
-                    ✕
-                  </button>
-                )}
-                <button
-                  onClick={() =>
-                    app.toggleFavorite({
-                      id: shown.id,
-                      name: shown.name,
-                      init: shown.init,
-                      city: shown.city,
-                      lat: shown.lat,
-                      lng: shown.lng,
-                    })
-                  }
-                  aria-label={
-                    app.isFavorite(shown.id)
-                      ? m.sheet_remove_favorite_aria({ station: shown.name })
-                      : m.sheet_add_favorite_aria({ station: shown.name })
-                  }
-                  style={{ padding: '0 2px', display: 'flex', alignItems: 'center' }}
-                >
-                  <Star
-                    filled={app.isFavorite(shown.id)}
-                    color={app.isFavorite(shown.id) ? C.accent : C.mut}
-                    size={16}
-                  />
-                </button>
-                <Freshness />
-              </div>
-
-              <button
-                onClick={() => app.openStation(shown.id)}
-                style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%' }}
-              >
-                <BrandAvatar label={shown.brand ?? shown.name} init={shown.init} size={46} fontSize={15} />
-                <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-                  <div style={{ color: C.ink, fontSize: 16, fontWeight: 600 }}>{shown.name}</div>
-                  <div style={{ color: C.mut, fontSize: 13, marginTop: 2 }}>
-                    {[
-                      distLabel(shown.distKm),
-                      shownStatus ? openStatusShort(shownStatus) : undefined,
-                      m.sheet_updated_ago({
-                        ago: agoLabel(effectivePrice(shown, app.fuel)?.updatedAt),
-                      }),
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ font: mono(700, 22), color: C.accent, whiteSpace: 'nowrap' }}>
-                    {fmtPrice(effectivePrice(shown, app.fuel)?.value)} €
-                  </div>
-                  {/* Fuel of the SHOWN price — SP95 when E10 fell back on it */}
-                  <div style={{ color: C.mut, fontSize: 11.5, whiteSpace: 'nowrap' }}>
-                    {m.sheet_per_litre({ fuel: fuelLabel(effectiveFuel(shown, app.fuel) ?? app.fuel) })}
-                  </div>
-                </div>
-              </button>
-
-              <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
-                <button
-                  onClick={() => app.openInMaps(shown)}
-                  style={{
-                    flex: 1,
-                    background: C.accent,
-                    color: C.onAccent,
-                    fontSize: 15,
-                    fontWeight: 700,
-                    borderRadius: 24,
-                    padding: '13px 0',
-                    textAlign: 'center',
-                  }}
-                >
-                  {m.sheet_go_there({ duration: durationLabel(shown.driveMin) })}
-                </button>
-                {zoneDelta != null && (
-                  <div
-                    data-testid="zone-delta"
-                    style={{
-                      width: 100,
-                      background: C.surface3,
-                      color: C.body,
-                      fontSize: 14,
-                      fontWeight: 600,
-                      borderRadius: 24,
-                      padding: '13px 0',
-                      textAlign: 'center',
-                      border: `1px solid ${C.border09}`,
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {m.sheet_price_per_litre_delta({
-                      sign: zoneDelta.best ? '−' : '+',
-                      amount: fmtPrice(zoneDelta.amount),
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : loading ? (
-            <div
-              style={{ padding: '18px 20px', textAlign: 'center', color: C.mut, fontSize: 13.5 }}
+                }
+              }}
+              style={{ padding: '10px 0 8px', margin: '0 -20px' }}
             >
-              {m.sheet_loading()}
-            </div>
-          ) : soldFuels.length > 0 ? (
-            // Stations around, but none sells the selected fuel (no E10/E85
-            // outside France…) — name the culprit and offer what IS sold
-            <div
-              style={{ padding: '16px 20px 18px', textAlign: 'center', color: C.mut, fontSize: 13.5 }}
-            >
-              {m.sheet_fuel_not_sold({ fuel: fuelLabel(app.fuel) })}
               <div
                 style={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  flexWrap: 'wrap',
-                  gap: 8,
-                  marginTop: 10,
+                  width: 36,
+                  height: 4,
+                  borderRadius: 2,
+                  background: 'rgba(255,255,255,.18)',
+                  margin: '0 auto',
                 }}
-              >
-                <span style={{ alignSelf: 'center' }}>{m.sheet_sold_here()}</span>
-                {soldFuels.map((f) => (
-                  <button
-                    key={f}
-                    onClick={() => app.setFuel(f)}
-                    style={{
-                      fontSize: 12.5,
-                      fontWeight: 700,
-                      color: C.accent,
-                      background: C.surface2,
-                      padding: '6px 12px',
-                      borderRadius: 14,
-                      border: `1px solid ${C.border}`,
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {fuelLabel(f)}
-                  </button>
-                ))}
-              </div>
+              />
             </div>
-          ) : (
-            <div
-              style={{ padding: '18px 20px', textAlign: 'center', color: C.mut, fontSize: 13.5 }}
-            >
-              {m.sheet_no_match()}{' '}
-              <button
-                onClick={() => app.setFiltersOpen(true)}
-                style={{ color: C.accent, fontWeight: 700, display: 'inline' }}
-              >
-                {m.sheet_adjust_filters()}
-              </button>
-            </div>
-          )}
-        </div>
+          }
+        />
       </div>
 
       {/* ── Station list revealed by pulling the sheet up ── */}
       {listAttached && (
-        <div
-          style={{
-            flex: 1,
-            minHeight: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            borderTop: `1px solid ${C.border}`,
+        <ZoneList
+          scrollerRef={listRef}
+          gestures={{
+            onPointerDown: listPointerDown,
+            onPointerMove: listPointerMove,
+            onPointerUp: listPointerUp,
+            onPointerCancel: listPointerUp,
+            onClickCapture: swallowClickAfterDrag,
           }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 20px 10px' }}>
-            <span
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                letterSpacing: '.1em',
-                textTransform: 'uppercase',
-                color: C.mut,
-                flex: 1,
-              }}
-            >
-              {m.sheet_zone_count({ count: rows.length })}
-            </span>
-            {dealCount > 1 && (
-              <span
-                style={{
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: C.accent,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {m.sheet_deal_count({ count: dealCount })}
-              </span>
-            )}
-            {(
-              [
-                ['price', m.sheet_sort_price()],
-                ['distance', m.sheet_sort_distance()],
-              ] as const
-            ).map(([k, label]) => {
-              const active = app.sort === k;
-              return (
-                <button
-                  key={k}
-                  onClick={() => app.setSort(k)}
-                  style={{
-                    fontSize: 12.5,
-                    fontWeight: 700,
-                    color: active ? C.onAccent : C.mut,
-                    background: active ? C.accent : C.surface2,
-                    padding: '6px 12px',
-                    borderRadius: 14,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-
-          <div
-            ref={listRef}
-            data-testid="zone-list"
-            onPointerDown={listPointerDown}
-            onPointerMove={listPointerMove}
-            onPointerUp={listPointerUp}
-            onPointerCancel={listPointerUp}
-            onClickCapture={swallowClickAfterDrag}
-            style={{
-              flex: 1,
-              minHeight: 0,
-              overflowY: 'auto',
-              overscrollBehavior: 'contain',
-              touchAction: 'pan-y',
-              padding: '0 16px 16px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-            }}
-          >
-            {rows.length === 0 && (
-              <div style={{ textAlign: 'center', color: C.mut, fontSize: 13, padding: '18px 0' }}>
-                {m.sheet_empty_radius()}
-              </div>
-            )}
-            {rows.map((s) => {
-              const best = cheapest?.id === s.id;
-              // Recommended over the sticker-cheapest (closer, better
-              // effective price) — flagged so its row explains the card
-              const recoRow = !best && reco?.id === s.id;
-              const isFocus = app.focusStationId === s.id;
-              const price = effectivePrice(s, app.fuel)!.value;
-              // Rows are zone stations — the zone floor applies (the cheapest
-              // of the circle is a bon plan even when the area has cheaper).
-              // The recommended row is highlighted like a deal whatever its
-              // tier, so it matches its card — without moving the tier bounds.
-              const deal = priceTier(price, stats, true) === 'deal' || recoRow;
-              const delta = (priceCents(price) - priceCents(min)) / 100;
-              const rowStatus = openStatus(s.hours);
-              return (
-                <button
-                  key={s.id}
-                  onClick={() => {
-                    // Locate on the map: highlighted pin + pan, card in the sheet
-                    app.setFocusStation(s.id);
-                    onExpandedChange(false);
-                  }}
-                  aria-label={m.sheet_locate_aria({ station: s.name })}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    width: '100%',
-                    background: deal ? C.accentSoft09 : C.surface2,
-                    borderRadius: 14,
-                    padding: '11px 14px',
-                    flexShrink: 0,
-                    border: isFocus
-                      ? `1.5px solid ${C.accent}`
-                      : `1px solid ${deal ? C.accentBorderStrong : C.border}`,
-                  }}
-                >
-                  <BrandAvatar label={s.brand ?? s.name} init={s.init} size={38} fontSize={12.5} />
-                  <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-                    <div
-                      style={{
-                        fontSize: 14.5,
-                        fontWeight: 700,
-                        color: C.ink,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {s.name}
-                    </div>
-                    <div style={{ fontSize: 12, color: C.mut, marginTop: 1 }}>
-                      {[distLabel(s.distKm), rowStatus ? openStatusShort(rowStatus) : undefined]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ font: mono(700, 17), color: deal ? C.accent : C.ink, whiteSpace: 'nowrap' }}>
-                      {fmtPrice(price)} €
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 600,
-                        color: deal ? C.accent : delta > 0.12 ? C.warn : C.mut,
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {/* Sub-cent deltas read « +0,00 » — at the displayed
-                          precision these prices are simply equal, say nothing */}
-                      {best
-                        ? m.sheet_row_best_price()
-                        : recoRow
-                          ? m.sheet_row_recommended({ delta: fmtPrice(delta) })
-                          : deal
-                            ? Math.abs(delta) >= 0.005
-                              ? m.sheet_row_deal_delta({ delta: fmtPrice(delta) })
-                              : m.sheet_row_deal()
-                            : m.sheet_row_delta({ delta: fmtPrice(delta) })}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+          onRowPick={() => onExpandedChange(false)}
+        />
       )}
     </div>
   );
