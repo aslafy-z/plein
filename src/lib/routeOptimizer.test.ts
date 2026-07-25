@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   FUEL_UNIT_LITRES,
+  MIN_PURCHASE_LITRES,
   planRoute,
   type OptimizerInput,
   type PlanQuality,
@@ -418,6 +419,23 @@ describe('no absurd micro-stops', () => {
     // The single fill honours the reserve of the 525 km final leg, so the
     // vehicle arrives with a real margin instead of planned-empty.
     expect(plan.destinationFuelLitres).toBeGreaterThan(5)
+  })
+
+  it('never plans a purchase below the forecourt minimum', () => {
+    // A route just past the no-stop range: the required top-up is tiny on
+    // paper (the tank already nearly covers it), but no pump sells 0.5 L —
+    // the stop must buy at least MIN_PURCHASE_LITRES.
+    const plan = planRoute(
+      buildInput({
+        routeKm: 130,
+        startFuel: 10,
+        stations: [{ id: 's1', km: 60, price: 1.7 }],
+      }),
+    )
+    expect(plan.status).toBe('planned')
+    for (const stop of plan.stops) {
+      expect(stop.purchasedLitres).toBeGreaterThanOrEqual(MIN_PURCHASE_LITRES)
+    }
   })
 })
 

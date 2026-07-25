@@ -43,6 +43,13 @@ import {
 /** Fuel state granularity of the solver (documented precision) */
 export const FUEL_UNIT_LITRES = 0.5;
 
+/**
+ * Smallest purchase a stop may plan. Forecourts commonly refuse or frown at
+ * micro-purchases (and nobody halts for one litre): a stop that buys, buys
+ * at least this much — a user-pinned stop may still be a zero-litre halt.
+ */
+export const MIN_PURCHASE_LITRES = 5;
+
 export type RouteStrategy = 'balanced' | 'price' | 'detour';
 /** routed = road matrix legs; estimated = geometric fallback legs */
 export type PlanQuality = 'routed' | 'estimated';
@@ -298,9 +305,14 @@ export function planRoute(input: OptimizerInput): RoutePlan {
       purchasedUnits: 0,
     });
     const departRow: Array<DepartState | undefined> = new Array(tankUnits + 1);
-    // Prefix sweep: purchase[f] = best over a < f of arrive[a] + stop + price×(f−a).
-    // Adding one step to purchase[f−1] covers every a < f exactly — partial
-    // purchases of any size come out of this recurrence for free.
+    // Prefix sweep: purchase[f] = best over a ≤ f − minBuy of
+    // arrive[a] + stop + price×(f−a). Adding one step to purchase[f−1]
+    // covers every eligible a exactly — partial purchases of any size above
+    // the forecourt minimum come out of this recurrence for free.
+    const minBuyUnits = Math.max(
+      1,
+      Math.min(Math.round(MIN_PURCHASE_LITRES / unit), tankUnits),
+    );
     let purchase: DepartState | undefined;
     for (let f = 0; f <= tankUnits; f++) {
       if (purchase) {
@@ -310,14 +322,15 @@ export function planRoute(input: OptimizerInput): RoutePlan {
           purchasedUnits: purchase.purchasedUnits + 1,
         };
       }
-      const prev = f > 0 ? arriveRow[f - 1] : undefined;
-      if (prev) {
-        const oneStep: DepartState = {
-          ...stopAt(prev, f - 1),
-          money: prev.money + price,
-          purchasedUnits: 1,
+      const seed = f >= minBuyUnits ? arriveRow[f - minBuyUnits] : undefined;
+      if (seed) {
+        const stopped = stopAt(seed, f - minBuyUnits);
+        const minBuy: DepartState = {
+          ...stopped,
+          money: stopped.money + minBuyUnits * price,
+          purchasedUnits: minBuyUnits,
         };
-        if (!purchase || better(oneStep, purchase)) purchase = oneStep;
+        if (!purchase || better(minBuy, purchase)) purchase = minBuy;
       }
       // A pinned stop may leave without buying (the user wants the halt);
       // anywhere else a zero-litre stop is pointless and stays illegal.
