@@ -106,6 +106,10 @@ const MATRIX_MAX_POINTS = 32;
  * issues one request when it settles instead of one per step.
  */
 const MATRIX_DEBOUNCE_MS = 350;
+/** Extra tries after a failed matrix call (429s from public servers are transient) */
+const MATRIX_RETRIES = 2;
+/** First retry gap; each further one doubles it */
+const MATRIX_RETRY_BASE_MS = 1200;
 // Shared fuel-economics constants live in lib/fuelEconomics — re-exported so
 // existing imports (tests, screens) keep one canonical source.
 export { CROW_ROAD_FACTOR, effectiveLiterPrice };
@@ -184,14 +188,25 @@ interface RouteState {
 
 /**
  * One travel-matrix call per (route, candidate set): the road legs the
- * fuel-stop optimizer runs on. While it loads — or when it fails — the plan
- * runs on the geometric estimate and says so (`quality: 'estimated'`).
+ * fuel-stop optimizer runs on. Whenever there are no cells to run on, the plan
+ * uses the geometric estimate and says so (`quality: 'estimated'`) — but WHY
+ * they are missing is not one state:
+ *
+ * - `idle` — nothing to measure (no route yet).
+ * - `unsupported` — this source has no matrix backend, so there is nothing to
+ *   wait for and nothing to retry. The demo provider is deliberately here.
+ * - `loading` — a call is scheduled or in flight.
+ * - `ready` — `cells` answer for `key`.
+ * - `error` — the call actually failed. Only this one is worth retrying, and
+ *   collapsing it with `unsupported` is how a real outage becomes invisible.
  */
 export interface RouteMatrixState {
-  status: 'idle' | 'loading' | 'ready' | 'error';
+  status: 'idle' | 'unsupported' | 'loading' | 'ready' | 'error';
   /** Identity of the candidate set + endpoints the cells answer for */
   key: string | null;
   cells: Array<Array<ReachInfo | null>> | null;
+  /** Failed attempts for `key` so far — drives the bounded retry */
+  attempts?: number;
 }
 
 /** Everything that identifies one matrix call — a changed key means refetch
@@ -1138,10 +1153,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
     const getTravelMatrix = provider.getTravelMatrix?.bind(provider);
     if (!getTravelMatrix || !candidates.length) {
+      // Nothing to measure and nothing to retry — a source without a matrix
+      // backend is not a failure, and neither is a corridor with no candidate.
+      const blocked: RouteMatrixState['status'] = getTravelMatrix ? 'idle' : 'unsupported';
       matrixKeyRef.current = null;
       clearTimeout(matrixTimer.current);
       setRouteMatrix((m) =>
-        m.status === 'error' ? m : { status: 'error', key: null, cells: null },
+        m.status === blocked ? m : { status: blocked, key: null, cells: null },
       );
       return;
     }
@@ -1158,26 +1176,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ...candidates.map((c) => ({ lat: c.station.lat, lng: c.station.lng })),
       toPoint,
     ];
+    // Public routing servers rate-limit, and a 429 is transient — but the key
+    // stays put on failure, so nothing would ever ask again for this candidate
+    // set: one flaky response used to pin the plan to estimated legs until the
+    // user happened to change something. Retry a bounded number of times with a
+    // widening gap, then settle on `error`.
+    const attempt = (n: number) => {
+      if (matrixKeyRef.current !== key) return;
+      getTravelMatrix(points, { avoidMotorway, avoidToll, vehicle })
+        .then((cells) => {
+          if (matrixKeyRef.current !== key) return;
+          setRouteMatrix({ status: 'ready', key, cells, attempts: n });
+        })
+        .catch(() => {
+          if (matrixKeyRef.current !== key) return;
+          if (n < MATRIX_RETRIES) {
+            setRouteMatrix({ status: 'loading', key, cells: null, attempts: n + 1 });
+            matrixTimer.current = setTimeout(() => attempt(n + 1), MATRIX_RETRY_BASE_MS * 2 ** n);
+            return;
+          }
+          setRouteMatrix({ status: 'error', key, cells: null, attempts: n + 1 });
+        });
+    };
     // Settle before calling. The departure tank is a SLIDER: every step re-thins
     // the corridor, and each set it lands on would otherwise be a matrix request
     // against a public, rate-limited server — a drag would issue a dozen and
     // keep only the last. The plan runs on the geometric estimate until the call
     // returns, exactly as it does while loading.
     clearTimeout(matrixTimer.current);
-    matrixTimer.current = setTimeout(() => {
-      if (matrixKeyRef.current !== key) return;
-      getTravelMatrix(points, { avoidMotorway, avoidToll, vehicle })
-        .then((cells) => {
-          if (matrixKeyRef.current !== key) return;
-          setRouteMatrix({ status: 'ready', key, cells });
-        })
-        .catch(() => {
-          if (matrixKeyRef.current !== key) return;
-          // The key stays: the same set is not refetched in a loop — the next
-          // candidate change retries, the estimate carries the plan meanwhile.
-          setRouteMatrix({ status: 'error', key, cells: null });
-        });
-    }, MATRIX_DEBOUNCE_MS);
+    matrixTimer.current = setTimeout(() => attempt(0), MATRIX_DEBOUNCE_MS);
   }, [
     routeState,
     fromPoint,
