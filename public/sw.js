@@ -70,8 +70,12 @@ self.addEventListener('fetch', (event) => {
 
   if (url.origin !== self.location.origin) return; // other APIs: straight to network
 
-  // Immutable build output + icons: cache-first
-  if (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/icons/')) {
+  // Immutable build output + icons + self-hosted fonts: cache-first
+  if (
+    url.pathname.startsWith('/assets/') ||
+    url.pathname.startsWith('/icons/') ||
+    url.pathname.startsWith('/fonts/')
+  ) {
     event.respondWith(
       caches.open(ASSET_CACHE).then(async (cache) => {
         const hit = await cache.match(req);

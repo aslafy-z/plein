@@ -153,3 +153,6 @@ Les données affichées restent soumises aux licences de leurs producteurs
 respectifs (Licence Ouverte pour les données publiques françaises, datos
 abiertos du MITECO pour les prix espagnols, © Govern d'Andorra pour l'Andorre,
 ODbL pour OpenStreetMap).
+Les polices **Archivo** et **Spline Sans Mono**, embarquées dans
+`public/fonts/`, sont sous [SIL Open Font License 1.1](public/fonts/) (voir les
+fichiers `*-OFL.txt` du même dossier).
