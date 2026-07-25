@@ -131,6 +131,36 @@ describe('selectRouteCandidates', () => {
     expect(ids.length).toBeLessThanOrEqual(2)
   })
 
+  it('lets a user-picked stop win its dedupe cell against a lower id', () => {
+    // Two pumps ~11 m apart at the same price collapse into one candidate. If
+    // the twin with the lower id won, the pin would come back as unplannable
+    // through invalidPlannedStopIds — about a perfectly valid station.
+    const route = northRoute(300)
+    const picked = candidatesFor(
+      route,
+      [station('twin-a', 150, 1.7), station('twin-b', 150.01, 1.7)],
+      { maxCandidates: 10, firstWindowKm: 500, requiredIds: ['twin-b'] },
+    )
+    expect(picked.map((c) => c.station.id)).toEqual(['twin-b'])
+  })
+
+  it('never lets user-picked stops overflow the matrix cap', () => {
+    // maxCandidates is what ONE matrix call can measure. More pins than that
+    // and the provider rejects the request, degrading every leg to an estimate,
+    // so the pins past the cap are dropped in route order instead.
+    const route = northRoute(300)
+    const stations = Array.from({ length: 12 }, (_, i) =>
+      station(`pin-${String(i).padStart(2, '0')}`, 20 + i * 20, 1.7),
+    )
+    const picked = candidatesFor(route, stations, {
+      maxCandidates: 3,
+      firstWindowKm: 500,
+      requiredIds: stations.map((s) => s.id),
+    })
+    expect(picked).toHaveLength(3)
+    expect(picked.map((c) => c.station.id)).toEqual(['pin-00', 'pin-01', 'pin-02'])
+  })
+
   it('reads the stored projection instead of measuring the polyline again', () => {
     // Projecting is O(stations × vertices) — far too expensive for a selector
     // that reruns on every store update, so it happens once at load. Proof:

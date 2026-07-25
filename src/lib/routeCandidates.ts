@@ -70,6 +70,9 @@ export interface CandidateOptions {
 
 /** Stations glued to the very ends of the route are not stops, they are noise */
 const EDGE_MARGIN_KM = 1;
+/** The one total order of the module: progress along the route, then id */
+const byRoute = (a: RouteCandidate, b: RouteCandidate) =>
+  a.projectionKm - b.projectionKm || (a.station.id < b.station.id ? -1 : 1);
 /** Aimed bucket width — a bucket per ~50 km of route, bounded below */
 const BUCKET_TARGET_KM = 50;
 const MAX_BUCKETS = 12;
@@ -115,24 +118,37 @@ export function selectRouteCandidates(
     });
   }
 
-  // Deduplicate near-identical stations (same ~110 m cell, same price)
+  const required = new Set(opts.requiredIds ?? []);
+
+  // Deduplicate near-identical stations (same ~110 m cell, same price). A stop
+  // the user pinned always wins its cell: dropping it in favour of the twin
+  // next door would report the pin back as unplannable, which it is not.
   const byCell = new Map<string, RouteCandidate>();
   for (const c of all) {
     const key = `${c.station.lat.toFixed(DEDUPE_DECIMALS)},${c.station.lng.toFixed(DEDUPE_DECIMALS)},${c.priceMilli}`;
     const cur = byCell.get(key);
-    if (!cur || c.station.id < cur.station.id) byCell.set(key, c);
+    if (cur && required.has(cur.station.id)) continue;
+    if (!cur || required.has(c.station.id) || c.station.id < cur.station.id) byCell.set(key, c);
   }
-  const deduped = [...byCell.values()];
+  // Route order up front: every step below then thins a deterministic list,
+  // whatever order the corridor arrived in.
+  const deduped = [...byCell.values()].sort(byRoute);
 
-  const required = new Set(opts.requiredIds ?? []);
   const byPrice = (a: RouteCandidate, b: RouteCandidate) =>
     a.priceMilli - b.priceMilli || (a.station.id < b.station.id ? -1 : 1);
 
   const picked = new Map<string, RouteCandidate>();
   const take = (c: RouteCandidate) => picked.set(c.station.id, c);
 
-  // 1. User-picked stops survive whenever they are priced and on the corridor
-  for (const c of deduped) if (required.has(c.station.id)) take(c);
+  // 1. User-picked stops survive whenever they are priced and on the corridor —
+  //    but never past the cap: `maxCandidates` is what one matrix call can
+  //    measure, and overflowing it makes the PROVIDER reject the request, which
+  //    would degrade the whole plan to estimated legs. Pins beyond the cap are
+  //    dropped in route order, so the caller reports them as unplannable.
+  for (const c of deduped) {
+    if (picked.size >= opts.maxCandidates) break;
+    if (required.has(c.station.id)) take(c);
+  }
 
   // 2. The first mandatory stopping window: with a low departure tank these
   //    are the only stations that can ever start a plan — keep the cheapest
@@ -181,10 +197,7 @@ export function selectRouteCandidates(
     if (!added) break;
   }
 
-  return [...picked.values()].sort(
-    (a, b) =>
-      a.projectionKm - b.projectionKm || (a.station.id < b.station.id ? -1 : 1),
-  );
+  return [...picked.values()].sort(byRoute);
 }
 
 // ── Travel legs ──────────────────────────────────────────────────────────────
