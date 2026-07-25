@@ -59,6 +59,24 @@ test.describe('Andorran source', () => {
   })
 })
 
+test.describe('Portuguese source', () => {
+  // Same contract for the DGEG flux, centered on Lisboa so the searched zone
+  // actually intersects a Portuguese district.
+  test.use({
+    seed: {
+      sourceId: 'prt',
+      onboarded: true,
+      lastPos: { lat: 38.7223, lng: -9.1393 },
+    },
+  })
+
+  test('prt source yields a usable map (live data, or demo fallback with banner)', async ({ page }) => {
+    test.setTimeout(120_000)
+    await page.goto('/')
+    await expectUsableMap(page)
+  })
+})
+
 test.describe('Spanish source', () => {
   // Same contract for the Spanish flux, centered on Madrid so the searched
   // zone actually intersects Spanish provinces.

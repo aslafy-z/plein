@@ -224,7 +224,7 @@ export function groupStations(rows: unknown[]): Station[] {
     for (const [product, extra] of EXTRA_PRODUCTS) {
       if (acc.products.has(product) && !services.includes(extra)) services.push(extra);
     }
-    // The additivated grades are what the « additifs » filter looks for here
+    // The additivated grades are what the « additives » filter looks for here
     // (the flux carries no AdBlue, and no opening hours either)
     const tags: ServiceTag[] = services.some((s) => s === 'dieselPremium' || s === 'petrolPremium')
       ? ['additives']
