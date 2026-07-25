@@ -77,7 +77,7 @@ export default function MapSheet({
   // « Bons plans » (near-identical low prices): the collapsed card still
   // preselects a single station, but the expanded list highlights all of them
   const stats = selectPriceStats(app);
-  const dealCount = selectDeals(app, stats).length;
+  const dealCount = selectDeals(app).length;
   const min = range?.min ?? 0;
   const loading = app.stations.status === 'loading' || app.stations.status === 'idle';
 

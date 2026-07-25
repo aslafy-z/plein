@@ -10,7 +10,6 @@ function station(id: string): Station {
     id,
     name: `Station ${id}`,
     init: 'ST',
-    cat: 'unknown',
     lat: 43.6,
     lng: 1.44,
     address: '1 rue du Test',
