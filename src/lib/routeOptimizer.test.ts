@@ -175,6 +175,32 @@ describe('strategies', () => {
     expect(plan.stops.map((s) => s.stationId)).toEqual(['b-hair-slower-cheap'])
   })
 
+  it('detour: 4 minutes on a long trip do not cost 14 € of fuel', () => {
+    // The shape seen on Toulouse → Lille: the « Détour min. » plan arrived 4 min
+    // earlier and 14,32 € dearer — 0,7 % of the duration for 12 % of the fuel
+    // bill. Both stops are ON the road, so what the chip actually trades away is
+    // a big discount, not a detour. This pins the value of time that allows it.
+    const plan = planRoute(
+      buildInput({
+        routeKm: 500,
+        startFuel: 7.5,
+        strategy: 'detour',
+        stations: [
+          { id: 'a-on-route-dear', km: 80, price: 2.02, off: 0 },
+          { id: 'b-on-route-cheap', km: 80, price: 1.72, off: 0 },
+        ],
+        // Reaching the cheap pump costs 4 minutes more — nothing else differs
+        patch: (legs) => {
+          legs.origin[1] = {
+            distanceKm: legs.origin[1]!.distanceKm,
+            durationMin: legs.origin[1]!.durationMin + 4,
+          }
+        },
+      }),
+    )
+    expect(plan.stops[0].stationId).toBe('b-on-route-cheap')
+  })
+
   it('detour: minutes still dominate — a big discount does not buy a real detour', () => {
     // Same 40 ct/L discount, now behind a 12 km access hop (~31 min there and
     // back). « Détour min. » must refuse it: the chip promises minutes.

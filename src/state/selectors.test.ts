@@ -676,12 +676,43 @@ describe('selectRouteAnalysis', () => {
     expect(offered('detour')).toEqual(['onroute-a', 'onroute-b', 'onroute-c', 'onroute-d'])
   })
 
-  it('offers alternatives past the autonomy limit only after the reachable ones', () => {
-    // Limit KM 60: only the KM 55 station can be driven to on the departure
-    // tank. It is in the plan, so the rest are alternatives — in reach order.
-    const a = selectRouteAnalysis(routeApp({ startTankPct: 10, routeMode: 'detour' }))
-    expect(a.limitKm).toBe(60)
-    expect(a.alternatives.every((s) => s.kmAlong > a.limitKm)).toBe(true)
+  it('ranks alternatives on the strategy alone, not on the departure tank reach', () => {
+    // A low tank makes only the first stations reachable without stopping, and
+    // they are the WORST of the corridor here: two pumps far off the road at
+    // KM 3. Ranking reach first would hand them the list on a 20 % tank, though
+    // an alternative is swapped INTO the plan and reached after earlier stops.
+    const wide: RouteStation[] = [
+      corridorStation('near-but-far-off-a', 1.7, 8, 12),
+      corridorStation('near-but-far-off-b', 1.72, 10, 12),
+      corridorStation('opener', 1.9, 50, 0),
+      corridorStation('far-on-route-cheap', 1.55, 150, 0),
+      corridorStation('far-on-route-fair', 1.6, 200, 0),
+      corridorStation('far-on-route-ok', 1.62, 215, 0),
+      corridorStation('far-on-route-meh', 1.66, 230, 0),
+    ]
+    const a = selectRouteAnalysis(
+      routeApp({
+        startTankPct: 25,
+        routeMode: 'balanced',
+        routeState: {
+          status: 'ready',
+          route: { distanceKm: ROUTE_KM, durationMin: 156, polyline: routeLine() },
+          stations: wide,
+          fellBack: false,
+        },
+      }),
+    )
+    const ids = a.alternatives.map((s) => s.id)
+    expect(a.limitKm).toBe(150)
+    // Three of the four slots go to stations BEYOND the no-stop limit…
+    expect(ids).toEqual(
+      expect.arrayContaining(['far-on-route-fair', 'far-on-route-ok', 'far-on-route-meh']),
+    )
+    // …so the cut fell on the strategy score, not on reach: of the two 12 km
+    // off-road pumps sitting inside it, only the better-scoring one survives.
+    // Ranking reach first would have handed both a slot.
+    expect(ids).toContain('near-but-far-off-a')
+    expect(ids).not.toContain('near-but-far-off-b')
   })
 
   it('no reachable station at all → infeasible, with the arrival saying so', () => {
