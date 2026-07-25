@@ -100,6 +100,12 @@ const DEFAULT_START_TANK_PCT = 70;
  * request small while covering ~30 stations, plenty for one corridor.
  */
 const MATRIX_MAX_POINTS = 32;
+/**
+ * Quiet period before the matrix call goes out. Long enough that dragging the
+ * departure-tank slider — which re-thins the candidate set at every step —
+ * issues one request when it settles instead of one per step.
+ */
+const MATRIX_DEBOUNCE_MS = 350;
 // Shared fuel-economics constants live in lib/fuelEconomics — re-exported so
 // existing imports (tests, screens) keep one canonical source.
 export { CROW_ROAD_FACTOR, effectiveLiterPrice };
@@ -1108,10 +1114,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // when it fails, selectors run the plan on the geometric estimate instead
   // (flagged `estimated`), so the ribbon always has an answer.
   const matrixKeyRef = useRef<string | null>(null);
+  const matrixTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // Only an unmount clears the pending call: the effect reruns on state the key
+  // does not depend on, and a per-run cleanup would cancel a scheduled request
+  // that the next run then skips as « same key », leaving it never sent.
+  useEffect(() => () => clearTimeout(matrixTimer.current), []);
   useEffect(() => {
     const route = routeState.route;
     if (routeState.status !== 'ready' || !route || !fromPoint || !toPoint) {
       matrixKeyRef.current = null;
+      clearTimeout(matrixTimer.current);
       setRouteMatrix((m) => (m.status === 'idle' ? m : { status: 'idle', key: null, cells: null }));
       return;
     }
@@ -1124,8 +1136,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       plannedStops,
       provider.travelMatrixMaxPoints,
     );
-    if (!provider.getTravelMatrix || !candidates.length) {
+    const getTravelMatrix = provider.getTravelMatrix?.bind(provider);
+    if (!getTravelMatrix || !candidates.length) {
       matrixKeyRef.current = null;
+      clearTimeout(matrixTimer.current);
       setRouteMatrix((m) =>
         m.status === 'error' ? m : { status: 'error', key: null, cells: null },
       );
@@ -1144,18 +1158,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ...candidates.map((c) => ({ lat: c.station.lat, lng: c.station.lng })),
       toPoint,
     ];
-    provider
-      .getTravelMatrix(points, { avoidMotorway, avoidToll, vehicle })
-      .then((cells) => {
-        if (matrixKeyRef.current !== key) return;
-        setRouteMatrix({ status: 'ready', key, cells });
-      })
-      .catch(() => {
-        if (matrixKeyRef.current !== key) return;
-        // The key stays: the same set is not refetched in a loop — the next
-        // candidate change retries, the estimate carries the plan meanwhile.
-        setRouteMatrix({ status: 'error', key, cells: null });
-      });
+    // Settle before calling. The departure tank is a SLIDER: every step re-thins
+    // the corridor, and each set it lands on would otherwise be a matrix request
+    // against a public, rate-limited server — a drag would issue a dozen and
+    // keep only the last. The plan runs on the geometric estimate until the call
+    // returns, exactly as it does while loading.
+    clearTimeout(matrixTimer.current);
+    matrixTimer.current = setTimeout(() => {
+      if (matrixKeyRef.current !== key) return;
+      getTravelMatrix(points, { avoidMotorway, avoidToll, vehicle })
+        .then((cells) => {
+          if (matrixKeyRef.current !== key) return;
+          setRouteMatrix({ status: 'ready', key, cells });
+        })
+        .catch(() => {
+          if (matrixKeyRef.current !== key) return;
+          // The key stays: the same set is not refetched in a loop — the next
+          // candidate change retries, the estimate carries the plan meanwhile.
+          setRouteMatrix({ status: 'error', key, cells: null });
+        });
+    }, MATRIX_DEBOUNCE_MS);
   }, [
     routeState,
     fromPoint,
