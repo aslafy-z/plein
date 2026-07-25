@@ -78,8 +78,6 @@ export class AutoStationsProvider implements StationsProvider {
   readonly id = 'auto' as const;
   readonly capabilities: SourceCapabilities = {
     brands: true,
-    label: 'Automatique',
-    sublabel: 'France + Espagne + Andorre selon la zone',
   };
 
   private readonly fra = new FraStationsProvider();

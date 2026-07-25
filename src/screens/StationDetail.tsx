@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { C, ctaStyle, mono, stickyBarStyle } from '../theme';
-import { ALL_FUELS, MAIN_FUELS, FUEL_LABELS, type FuelId, type Station } from '../data/types';
+import { ALL_FUELS, MAIN_FUELS, type FuelId, type Station } from '../data/types';
 import {
   useApp,
   selectVisibleForFuel,
@@ -12,6 +12,8 @@ import {
 } from '../state/store';
 import { stationCountry } from '../data/stationIds';
 import { fmtPrice, distLabel, agoLabel, durationLabel } from '../lib/format';
+import { fuelLabel, openStatusLabel, serviceLabel } from '../lib/labels';
+import { m } from '../paraglide/messages.js';
 import { haversineKm } from '../lib/geo';
 import { openStatus } from '../lib/hours';
 import { brandIconSrc } from '../lib/brandIcons';
@@ -70,7 +72,7 @@ function StationMiniMap({ station }: { station: Station }) {
   return (
     <div
       ref={containerRef}
-      aria-label="Carte de la station"
+      aria-label={m.detail_map_aria()}
       style={{ position: 'absolute', inset: 0, background: C.mapBg }}
     />
   );
@@ -92,7 +94,7 @@ function StationDetailPending() {
         fontSize: 13,
       }}
     >
-      Chargement de la station…
+      {m.detail_loading()}
     </div>
   );
 }
@@ -127,8 +129,17 @@ export default function StationDetail() {
     app.roadReach[s.id],
   );
   const placeChip = isRoute
-    ? `KM ${routeSt!.kmAlong} · ${routeSt!.detourMin === 0 ? 'sans détour' : `détour +${routeSt!.detourMin} min`}`
-    : `${distLabel(distKm)} · ${durationLabel(driveMin)}`;
+    ? m.detail_place_chip_route({
+        km: routeSt!.kmAlong,
+        detour:
+          routeSt!.detourMin === 0
+            ? m.ribbon_no_detour()
+            : m.ribbon_detour({ minutes: routeSt!.detourMin }),
+      })
+    : m.detail_place_chip_nearby({
+        distance: distLabel(distKm),
+        duration: durationLabel(driveMin),
+      });
 
   // Fuels to display: any priced fuel + always the main fuels
   const shownFuels = ALL_FUELS.filter((f) => s.prices[f] != null || MAIN_FUELS.includes(f));
@@ -140,8 +151,8 @@ export default function StationDetail() {
   const rangeFor = (f: FuelId) =>
     fuelRange(isRoute ? app.routeState.stations : selectVisibleForFuel(app, f), f);
 
-  const scopeLow = isRoute ? '▼ le + bas du trajet' : '▼ le + bas dans le rayon';
-  const scopeSave = isRoute ? 'vs le + cher du trajet' : 'vs la plus chère dans le rayon';
+  const scopeLow = isRoute ? m.detail_scope_low_route() : m.detail_scope_low_radius();
+  const scopeSave = isRoute ? m.detail_scope_save_route() : m.detail_scope_save_radius();
 
   const maxForCurrentFuel = rangeFor(app.fuel)?.max ?? null;
 
@@ -164,19 +175,26 @@ export default function StationDetail() {
     : app.stations.activeSource;
   // The auto source mixes countries — attribute per station (ids are prefixed)
   const stationSource = activeSource === 'auto' ? (stationCountry(s.id) ?? 'fra') : activeSource;
+  const ago = agoLabel(mostRecent);
+  // The « auto » source mixes countries, so the credit names the flux that
+  // actually served THIS station — never a domain hard-coded per screen.
+  const sourceName =
+    stationSource === 'fra'
+      ? 'prix-carburants.gouv.fr'
+      : stationSource === 'esp'
+        ? 'geoportalgasolineras.es'
+        : stationSource === 'and'
+          ? m.detail_source_and()
+          : null;
   const footerText =
     s.confirmations != null
-      ? `Mis à jour ${agoLabel(mostRecent)} · confirmé par ${s.confirmations} conducteurs`
-      : stationSource === 'fra'
-        ? `Mis à jour ${agoLabel(mostRecent)} · source : prix-carburants.gouv.fr`
-        : stationSource === 'esp'
-          ? `Mis à jour ${agoLabel(mostRecent)} · source : geoportalgasolineras.es`
-          : stationSource === 'and'
-            ? `Mis à jour ${agoLabel(mostRecent)} · source : Govern d’Andorra (sig.govern.ad)`
-            : `Mis à jour ${agoLabel(mostRecent)} · données de démonstration`;
+      ? m.detail_footer_confirmed({ ago, count: s.confirmations })
+      : sourceName
+        ? m.detail_footer_source({ ago, source: sourceName })
+        : m.detail_footer_demo({ ago });
 
   // Address line already shows the city; the third chip adds brand or context
-  const thirdChip = s.brand ?? (s.highway ? 'Autoroute' : s.address ? null : s.city);
+  const thirdChip = s.brand ?? (s.highway ? m.detail_highway() : s.address ? null : s.city);
   const status = openStatus(s.hours);
 
   return (
@@ -217,11 +235,11 @@ export default function StationDetail() {
             border: `1px solid ${C.accentBorder}`,
           }}
         >
-          Voir sur la carte ›
+          {m.detail_view_on_map()}
         </button>
         <button
           onClick={() => app.back()}
-          aria-label="Retour"
+          aria-label={m.detail_back_aria()}
           style={{
             position: 'absolute',
             left: 14,
@@ -243,7 +261,7 @@ export default function StationDetail() {
         {/* Share the fiche — native sheet where it exists, clipboard elsewhere */}
         <button
           onClick={() => app.shareStation(s)}
-          aria-label="Partager la station"
+          aria-label={m.detail_share_aria()}
           style={{
             position: 'absolute',
             right: 62,
@@ -272,7 +290,9 @@ export default function StationDetail() {
               lng: s.lng,
             })
           }
-          aria-label={app.isFavorite(s.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+          aria-label={
+            app.isFavorite(s.id) ? m.detail_remove_favorite_aria() : m.detail_add_favorite_aria()
+          }
           style={{
             position: 'absolute',
             right: 14,
@@ -298,7 +318,9 @@ export default function StationDetail() {
           {s.address && (
             <div style={{ color: C.mut, fontSize: 13, marginTop: 4 }}>
               {s.address}
-              {s.cp || s.city ? ` · ${[s.cp, s.city].filter(Boolean).join(' ')}` : ''}
+              {s.postalCode || s.city
+                ? ` · ${[s.postalCode, s.city].filter(Boolean).join(' ')}`
+                : ''}
             </div>
           )}
           <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
@@ -314,7 +336,7 @@ export default function StationDetail() {
                   whiteSpace: 'nowrap',
                 }}
               >
-                {status.label}
+                {openStatusLabel(status)}
               </span>
             )}
             <span
@@ -365,14 +387,16 @@ export default function StationDetail() {
             let note = '';
             let noteColor: string = C.mut;
             if (price == null) {
-              note = 'non distribué';
+              note = m.detail_fuel_not_sold();
             } else if (min != null && priceCents(price) <= priceCents(min)) {
               // Cent precision, like everywhere: a station reading the same
               // displayed price as the minimum IS the minimum for the user
               note = scopeLow;
               noteColor = C.accent;
             } else if (min != null) {
-              note = `+${fmtPrice((priceCents(price) - priceCents(min)) / 100)} vs le + bas`;
+              note = m.detail_price_above_min({
+                delta: fmtPrice((priceCents(price) - priceCents(min)) / 100),
+              });
             }
             const isCur = f === app.fuel;
             return (
@@ -387,7 +411,7 @@ export default function StationDetail() {
                 }}
               >
                 <span style={{ flex: 1, color: C.ink, fontSize: 15, fontWeight: 600 }}>
-                  {FUEL_LABELS[f]}
+                  {fuelLabel(f)}
                 </span>
                 <span style={{ textAlign: 'right' }}>
                   <span style={{ color: noteColor, fontSize: 11.5, fontWeight: 600, display: 'block' }}>
@@ -395,7 +419,7 @@ export default function StationDetail() {
                   </span>
                   {s.prices[f]?.updatedAt && (
                     <span style={{ color: C.faint, fontSize: 10.5, display: 'block', marginTop: 1 }}>
-                      MàJ {agoLabel(s.prices[f]?.updatedAt)}
+                      {m.detail_updated_ago({ ago: agoLabel(s.prices[f]?.updatedAt) })}
                     </span>
                   )}
                 </span>
@@ -428,7 +452,7 @@ export default function StationDetail() {
               marginBottom: 10,
             }}
           >
-            Services
+            {m.detail_services()}
           </div>
           {s.services.length > 0 ? (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -445,12 +469,12 @@ export default function StationDetail() {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {sv}
+                  {serviceLabel(sv)}
                 </span>
               ))}
             </div>
           ) : (
-            <div style={{ color: C.mut, fontSize: 13 }}>Aucun service renseigné</div>
+            <div style={{ color: C.mut, fontSize: 13 }}>{m.detail_no_services()}</div>
           )}
         </div>
 
@@ -470,7 +494,7 @@ export default function StationDetail() {
             {dSaveStr} €
           </div>
           <div style={{ color: '#aab2b7', fontSize: 12.5, lineHeight: 1.45 }}>
-            sur un plein de {app.tank} L {scopeSave}
+            {m.detail_saving_on_tank({ tank: app.tank, scope: scopeSave })}
           </div>
         </div>
 
@@ -482,7 +506,7 @@ export default function StationDetail() {
           screen. No NavBar below it, so the bar carries the safe-area inset. */}
       <div style={stickyBarStyle()}>
         <button onClick={() => app.openInMaps(s)} style={ctaStyle()}>
-          Y aller
+          {m.detail_go_there()}
         </button>
       </div>
     </div>

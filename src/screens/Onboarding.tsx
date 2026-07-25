@@ -1,15 +1,15 @@
 import { useApp } from '../state/store';
 import { C, ctaStyle, mono } from '../theme';
+import { m } from '../paraglide/messages.js';
 import { LogoLockup } from '../components/Logo';
-
-const STEPS: { n: string; title: string; sub: string }[] = [
-  { n: '01', title: 'Choisissez votre carburant', sub: 'Gazole, SP95-E10, E85…' },
-  { n: '02', title: 'Comparez autour de vous', sub: 'ou le long de votre itinéraire' },
-  { n: '03', title: 'Faites le plein via Maps', sub: 'itinéraire direct vers la station choisie' },
-];
 
 export default function Onboarding() {
   const app = useApp();
+  const steps = [
+    { n: '01', title: m.onboarding_step1_title(), sub: m.onboarding_step1_sub() },
+    { n: '02', title: m.onboarding_step2_title(), sub: m.onboarding_step2_sub() },
+    { n: '03', title: m.onboarding_step3_title(), sub: m.onboarding_step3_sub() },
+  ];
 
   return (
     <div
@@ -36,7 +36,7 @@ export default function Onboarding() {
           letterSpacing: '-.01em',
         }}
       >
-        Payez votre plein au juste prix.
+        {m.onboarding_headline()}
       </div>
       <div
         style={{
@@ -47,12 +47,12 @@ export default function Onboarding() {
           maxWidth: 300,
         }}
       >
-        Les prix des stations en France, en Espagne et en Andorre, comparés autour de vous et sur vos trajets.
+        {m.onboarding_intro()}
       </div>
 
       {/* Steps */}
       <div style={{ marginTop: 34, display: 'flex', flexDirection: 'column', gap: 20 }}>
-        {STEPS.map((s) => (
+        {steps.map((s) => (
           <div key={s.n} style={{ display: 'flex', gap: 16, alignItems: 'baseline' }}>
             <span style={{ font: mono(700, 15), color: C.accent }}>{s.n}</span>
             <div>
@@ -101,8 +101,8 @@ export default function Onboarding() {
             />
           </div>
           <div style={{ flex: 1, fontSize: 12.5, lineHeight: 1.4, color: C.mut }}>
-            <strong style={{ color: C.ink }}>Localisation</strong> — uniquement pour trouver les
-            stations proches
+            <strong style={{ color: C.ink }}>{m.onboarding_location_title()}</strong> —{' '}
+            {m.onboarding_location_body()}
           </div>
         </div>
 
@@ -110,7 +110,7 @@ export default function Onboarding() {
           onClick={() => app.finishOnboarding(true)}
           style={ctaStyle()}
         >
-          Commencer
+          {m.onboarding_start()}
         </button>
         <button
           onClick={() => app.finishOnboarding(false)}
@@ -122,7 +122,7 @@ export default function Onboarding() {
             padding: 4,
           }}
         >
-          Continuer sans localisation
+          {m.onboarding_skip_location()}
         </button>
       </div>
     </div>

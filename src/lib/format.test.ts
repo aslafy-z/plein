@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { agoLabel, clockLabel, distLabel, durationLabel, fmtPrice, plural } from './format'
+import { agoLabel, clockLabel, distLabel, durationLabel, fmtDecimal, fmtPrice, minutesLabel } from './format'
+
+// No locale is set, so every assertion below reads the base locale (French).
+// A second locale would need `setLocale` around the call — these tests exist to
+// pin the conventions, not to enumerate the catalog.
 
 describe('fmtPrice', () => {
   it('formats to two decimals with a French comma', () => {
@@ -12,6 +16,13 @@ describe('fmtPrice', () => {
     expect(fmtPrice(null)).toBe('—')
     expect(fmtPrice(undefined)).toBe('—')
     expect(fmtPrice(Infinity)).toBe('—')
+  })
+})
+
+describe('fmtDecimal', () => {
+  it('keeps the requested precision in the locale separator', () => {
+    expect(fmtDecimal(6.5, 1)).toBe('6,5')
+    expect(fmtDecimal(5, 1)).toBe('5,0')
   })
 })
 
@@ -30,35 +41,37 @@ describe('durationLabel', () => {
   })
 })
 
+describe('minutesLabel', () => {
+  it('reads minutes-from-midnight as a wall clock, wrapping past a day', () => {
+    expect(minutesLabel(21 * 60 + 30)).toBe('21 h 30')
+    expect(minutesLabel(8 * 60)).toBe('8 h')
+    expect(minutesLabel(30 * 60)).toBe('6 h')
+  })
+})
+
 describe('clockLabel', () => {
-  it('reads the local wall clock, minutes zero-padded', () => {
-    expect(clockLabel(new Date(2026, 6, 25, 17, 36))).toBe('17 h 36')
-    expect(clockLabel(new Date(2026, 6, 25, 9, 5))).toBe('9 h 05')
-    expect(clockLabel(new Date(2026, 6, 25, 0, 0))).toBe('0 h 00')
+  it('reads the local wall clock in the locale own convention', () => {
+    expect(clockLabel(new Date(2026, 6, 25, 17, 36))).toBe('17:36')
+    expect(clockLabel(new Date(2026, 6, 25, 9, 5))).toBe('9:05')
   })
 })
 
 describe('agoLabel', () => {
   const ago = (mins: number) => new Date(Date.now() - mins * 60_000).toISOString()
+  // Intl separates the count from its unit with a no-break space in French —
+  // correct typography, and invisible in a diff, hence the explicit escape.
+  const NB = '\u00A0'
 
   it('scales from minutes to days', () => {
     expect(agoLabel(ago(0))).toBe("à l'instant")
-    expect(agoLabel(ago(5))).toBe('il y a 5 min')
-    expect(agoLabel(ago(120))).toBe('il y a 2 h')
+    expect(agoLabel(ago(5))).toBe(`il y a 5${NB}min`)
+    expect(agoLabel(ago(120))).toBe(`il y a 2${NB}h`)
     expect(agoLabel(ago(26 * 60))).toBe('hier')
-    expect(agoLabel(ago(3 * 24 * 60))).toBe('il y a 3 j')
+    expect(agoLabel(ago(3 * 24 * 60))).toBe(`il y a 3${NB}j`)
   })
 
   it('degrades to an em-dash on missing or invalid input', () => {
     expect(agoLabel(undefined)).toBe('—')
     expect(agoLabel('not-a-date')).toBe('—')
-  })
-})
-
-describe('plural', () => {
-  it('appends an s from 2, supports irregular plurals', () => {
-    expect(plural(1, 'station')).toBe('1 station')
-    expect(plural(3, 'station')).toBe('3 stations')
-    expect(plural(2, 'cheval', 'chevaux')).toBe('2 chevaux')
   })
 })

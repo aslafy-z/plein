@@ -1,6 +1,8 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { C } from '../theme';
-import { FUEL_LABELS, SERVICE_TAGS } from '../data/types';
+import { SERVICE_TAGS } from '../data/types';
+import { fuelLabel } from '../lib/labels';
+import { m } from '../paraglide/messages.js';
 import { useApp, selectVisible } from '../state/store';
 import MapCanvas from '../components/MapCanvas';
 import MapSheet from '../components/MapSheet';
@@ -83,7 +85,7 @@ export default function MapScreen() {
                   fontWeight: 700,
                 }}
               >
-                {FUEL_LABELS[app.fuel]} ↻
+                {fuelLabel(app.fuel)} ↻
               </button>
               <button
                 onClick={() => app.setFiltersOpen(true)}
@@ -95,11 +97,11 @@ export default function MapScreen() {
                   border: `1px solid ${C.border09}`,
                 }}
               >
-                &lt; {app.radius} km
+                {m.map_radius_chip({ km: app.radius })}
               </button>
               <button
                 onClick={() => app.setFiltersOpen(true)}
-                aria-label={`Filtres, ${nbVisible} stations`}
+                aria-label={m.map_filters_aria({ count: nbVisible })}
                 style={{
                   ...chipBase,
                   display: 'flex',
@@ -116,7 +118,7 @@ export default function MapScreen() {
                     style={{ width: 6, height: 6, borderRadius: '50%', background: C.accent, flexShrink: 0 }}
                   />
                 )}
-                Filtres · {nbVisible}
+                {m.map_filters_chip({ count: nbVisible })}
               </button>
             </div>
 
@@ -134,9 +136,7 @@ export default function MapScreen() {
                     textAlign: 'left',
                   }}
                 >
-                  {app.hasKnownPos
-                    ? 'Dernière position connue — réactiver la localisation'
-                    : 'Position par défaut : Toulouse — activer la localisation'}
+                  {app.hasKnownPos ? m.map_geo_last_known() : m.map_geo_default_pos()}
                 </button>
               </div>
             )}
@@ -156,11 +156,11 @@ export default function MapScreen() {
                     border: `1px solid ${C.border09}`,
                   }}
                 >
-                  ⤓ Installer l'app
+                  {m.map_install_app()}
                 </button>
                 <button
                   onClick={() => app.dismissInstallBanner()}
-                  aria-label="Ne plus proposer l'installation"
+                  aria-label={m.map_install_dismiss()}
                   style={{
                     ...chipBase,
                     fontSize: 12,
@@ -182,7 +182,7 @@ export default function MapScreen() {
         {sheetOpen && (
           <button
             onClick={() => setSheetOpen(false)}
-            aria-label="Fermer la liste"
+            aria-label={m.map_close_list()}
             className="sheet-swap"
             style={{
               position: 'absolute',

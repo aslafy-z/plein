@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { FuelId, RouteStation, Station } from '../data/types'
+import { INDEPENDENT_BRAND_ID } from '../lib/brandIcons'
 import {
   CROW_ROAD_FACTOR,
   effectiveFuel,
@@ -49,26 +50,26 @@ function station(over: Partial<Station> & { id: string }): Station {
   }
 }
 
-const gazole = (value: number) => ({ gazole: { value } })
+const diesel = (value: number) => ({ diesel: { value } })
 
 /** Minimal AppStore stub — only the fields the pure selectors read. */
 function app(over: Partial<AppStore> = {}): AppStore {
   return {
-    fuel: 'gazole' as FuelId,
+    fuel: 'diesel' as FuelId,
     radius: 5,
     brandSel: [],
     serviceTags: {},
-    sort: 'prix',
+    sort: 'price',
     userPos: BASE,
     searchPos: BASE,
     focusStationId: null,
     stations: { status: 'ready', data: [], activeSource: 'demo', fellBack: false, refreshing: false },
     roadReach: {},
-    conso: 6.5,
+    consumption: 6.5,
     tank: 50,
     startTankPct: 70,
-    routeMode: 'compromis',
-    tour: {},
+    routeMode: 'balanced',
+    plannedStops: {},
     routeState: { status: 'idle', route: null, stations: [], fellBack: false },
     ...over,
   } as AppStore
@@ -77,16 +78,16 @@ function app(over: Partial<AppStore> = {}): AppStore {
 // ── Fuel substitution ────────────────────────────────────────────────────────
 describe('effectiveFuel', () => {
   it('lets Spanish and Andorran SP95 stand in for E10, never the reverse', () => {
-    const esp = station({ id: 'esp-1', prices: { sp95: { value: 1.6 } } })
-    const and = station({ id: 'and-1', prices: { sp95: { value: 1.5 } } })
-    const fra = station({ id: 'fra-1', prices: { sp95: { value: 1.7 } } })
-    expect(effectiveFuel(esp, 'e10')).toBe('sp95')
-    expect(effectiveFuel(and, 'e10')).toBe('sp95')
+    const esp = station({ id: 'esp-1', prices: { unleaded95: { value: 1.6 } } })
+    const and = station({ id: 'and-1', prices: { unleaded95: { value: 1.5 } } })
+    const fra = station({ id: 'fra-1', prices: { unleaded95: { value: 1.7 } } })
+    expect(effectiveFuel(esp, 'e10')).toBe('unleaded95')
+    expect(effectiveFuel(and, 'e10')).toBe('unleaded95')
     // French stations list both fuels separately — no substitution
     expect(effectiveFuel(fra, 'e10')).toBeNull()
     // An SP95-only engine must not be sent to an E10 pump
     const espE10 = station({ id: 'esp-2', prices: { e10: { value: 1.55 } } })
-    expect(effectiveFuel(espE10, 'sp95')).toBeNull()
+    expect(effectiveFuel(espE10, 'unleaded95')).toBeNull()
     expect(effectivePrice(esp, 'e10')?.value).toBe(1.6)
   })
 })
@@ -95,9 +96,9 @@ describe('effectiveFuel', () => {
 describe('fuelRange', () => {
   it('compares E10 on the Spanish SP95 prices instead of coming back empty', () => {
     const zone = [
-      station({ id: 'esp-1', prices: { sp95: { value: 1.6 } } }),
-      station({ id: 'esp-2', prices: { sp95: { value: 1.75 } } }),
-      station({ id: 'esp-3', prices: { sp95: { value: 1.68 }, gazole: { value: 1.5 } } }),
+      station({ id: 'esp-1', prices: { unleaded95: { value: 1.6 } } }),
+      station({ id: 'esp-2', prices: { unleaded95: { value: 1.75 } } }),
+      station({ id: 'esp-3', prices: { unleaded95: { value: 1.68 }, diesel: { value: 1.5 } } }),
     ]
     // Not one Spanish pump serves E10 — reading the raw prices left the fiche
     // with no maximum and a 0,00 € saving on every station
@@ -108,20 +109,20 @@ describe('fuelRange', () => {
   })
 
   it('holds a single-station range and nulls out a fuel nobody sells', () => {
-    const zone = [station({ id: 'fra-1', prices: gazole(1.82) })]
-    expect(fuelRange(zone, 'gazole')).toEqual({ min: 1.82, max: 1.82 })
+    const zone = [station({ id: 'fra-1', prices: diesel(1.82) })]
+    expect(fuelRange(zone, 'diesel')).toEqual({ min: 1.82, max: 1.82 })
     // No substitution towards SP95 in France — the E10 range stays empty
     expect(fuelRange(zone, 'e10')).toBeNull()
-    expect(fuelRange([], 'gazole')).toBeNull()
+    expect(fuelRange([], 'diesel')).toBeNull()
   })
 })
 
 // ── Zone filtering ───────────────────────────────────────────────────────────
 describe('selectVisible', () => {
   const zone = [
-    station({ id: 'near', ...north(1), prices: gazole(1.7), tags: ['24/24', 'Lavage'], brand: 'Intermarché' }),
-    station({ id: 'mid', ...north(4), prices: gazole(1.8), tags: ['24/24'] }),
-    station({ id: 'far', ...north(12), prices: gazole(1.6), tags: ['24/24', 'Lavage'] }),
+    station({ id: 'near', ...north(1), prices: diesel(1.7), tags: ['open24h', 'carWash'], brand: 'Intermarché' }),
+    station({ id: 'mid', ...north(4), prices: diesel(1.8), tags: ['open24h'] }),
+    station({ id: 'far', ...north(12), prices: diesel(1.6), tags: ['open24h', 'carWash'] }),
     station({ id: 'nofuel', ...north(2), prices: { e10: { value: 1.8 } } }),
   ]
 
@@ -132,50 +133,50 @@ describe('selectVisible', () => {
     expect(selectVisible(app({ ...base, radius: 25 })).map((s) => s.id)).toContain('far')
     // service tags compose with AND
     expect(
-      selectVisible(app({ ...base, serviceTags: { '24/24': true, Lavage: true } })).map((s) => s.id),
+      selectVisible(app({ ...base, serviceTags: { open24h: true, carWash: true } })).map((s) => s.id),
     ).toEqual(['near'])
   })
 
-  it('filters brands by group, brandless stations passing as « Indépendants »', () => {
+  it('filters brands by group, brandless stations passing as the « independent » group', () => {
     const base = app({ stations: { status: 'ready', data: zone, activeSource: 'demo', fellBack: false, refreshing: false } })
     expect(selectVisible(app({ ...base, brandSel: ['Intermarché'] })).map((s) => s.id)).toEqual(['near'])
     expect(
-      selectVisible(app({ ...base, brandSel: ['Indépendants & autres'] })).map((s) => s.id),
+      selectVisible(app({ ...base, brandSel: [INDEPENDENT_BRAND_ID] })).map((s) => s.id),
     ).toEqual(['mid'])
   })
 
   it('counts brand groups over the fuel/service filters, ignoring only the brand selection', () => {
     const brands = [
-      station({ id: 'i1', ...north(1), prices: gazole(1.7), tags: ['Lavage'], brand: 'Intermarché' }),
-      // Same brand, but sells no gazole → must not inflate the Intermarché row
+      station({ id: 'i1', ...north(1), prices: diesel(1.7), tags: ['carWash'], brand: 'Intermarché' }),
+      // Same brand, but sells no diesel → must not inflate the Intermarché row
       station({ id: 'i2', ...north(1), prices: { e85: { value: 0.9 } }, brand: 'Intermarché' }),
       // Right fuel, no « Lavage » → drops out as soon as the service is asked
-      station({ id: 'i3', ...north(2), prices: gazole(1.8), brand: 'Intermarché' }),
-      station({ id: 's1', ...north(2), prices: gazole(1.9), tags: ['Lavage'], brand: 'Shell' }),
+      station({ id: 'i3', ...north(2), prices: diesel(1.8), brand: 'Intermarché' }),
+      station({ id: 's1', ...north(2), prices: diesel(1.9), tags: ['carWash'], brand: 'Shell' }),
       // Out of the radius → counted nowhere
-      station({ id: 's2', ...north(12), prices: gazole(1.6), tags: ['Lavage'], brand: 'Shell' }),
-      station({ id: 'x1', ...north(3), prices: gazole(1.75), tags: ['Lavage'] }),
+      station({ id: 's2', ...north(12), prices: diesel(1.6), tags: ['carWash'], brand: 'Shell' }),
+      station({ id: 'x1', ...north(3), prices: diesel(1.75), tags: ['carWash'] }),
     ]
     const base = app({
       stations: { status: 'ready', data: brands, activeSource: 'demo', fellBack: false, refreshing: false },
     })
     expect([...selectZoneBrandCounts(base).entries()].sort()).toEqual([
-      ['Indépendants & autres', 1],
       ['Intermarché', 2],
       ['Shell', 1],
+      [INDEPENDENT_BRAND_ID, 1],
     ])
     // A selected brand never shrinks the other rows…
     expect([...selectZoneBrandCounts(app({ ...base, brandSel: ['Shell'] })).entries()].sort()).toEqual([
-      ['Indépendants & autres', 1],
       ['Intermarché', 2],
       ['Shell', 1],
+      [INDEPENDENT_BRAND_ID, 1],
     ])
     // …but a service filter does, and every row stays reachable
-    const washed = app({ ...base, serviceTags: { Lavage: true } })
+    const washed = app({ ...base, serviceTags: { carWash: true } })
     expect([...selectZoneBrandCounts(washed).entries()].sort()).toEqual([
-      ['Indépendants & autres', 1],
       ['Intermarché', 1],
       ['Shell', 1],
+      [INDEPENDENT_BRAND_ID, 1],
     ])
     // A fuel nobody serves here empties the list rather than promising rows
     expect([...selectZoneBrandCounts(app({ ...base, fuel: 'e85' })).entries()]).toEqual([
@@ -188,23 +189,23 @@ describe('selectVisible', () => {
   })
 
   it('selectZoneFuels only names fuels the pumps actually serve (no SP95 fallback)', () => {
-    const esp = station({ id: 'esp-9', ...north(1), prices: { sp95: { value: 1.6 } } })
+    const esp = station({ id: 'esp-9', ...north(1), prices: { unleaded95: { value: 1.6 } } })
     const a = app({ stations: { status: 'ready', data: [esp], activeSource: 'esp', fellBack: false, refreshing: false } })
-    expect(selectZoneFuels(a)).toEqual(['sp95'])
+    expect(selectZoneFuels(a)).toEqual(['unleaded95'])
   })
 
   it('selectZoneFuels lists every fuel of the zone, in the fuel order, filters applied', () => {
     const data = [
-      station({ id: 'a', ...north(1), prices: { gazole: { value: 1.7 }, e85: { value: 0.9 } }, brand: 'Shell' }),
-      station({ id: 'b', ...north(2), prices: { sp98: { value: 1.9 } }, tags: ['Lavage'] }),
+      station({ id: 'a', ...north(1), prices: { diesel: { value: 1.7 }, e85: { value: 0.9 } }, brand: 'Shell' }),
+      station({ id: 'b', ...north(2), prices: { unleaded98: { value: 1.9 } }, tags: ['carWash'] }),
       // Out of the radius — its GPL must not join the list
-      station({ id: 'c', ...north(30), prices: { gplc: { value: 0.99 } } }),
+      station({ id: 'c', ...north(30), prices: { lpg: { value: 0.99 } } }),
     ]
     const base = app({ stations: { status: 'ready', data, activeSource: 'demo', fellBack: false, refreshing: false } })
-    expect(selectZoneFuels(base)).toEqual(['gazole', 'sp98', 'e85'])
+    expect(selectZoneFuels(base)).toEqual(['diesel', 'unleaded98', 'e85'])
     // …and the brand/service filters narrow it like any other zone selector
-    expect(selectZoneFuels(app({ ...base, brandSel: ['Shell'] }))).toEqual(['gazole', 'e85'])
-    expect(selectZoneFuels(app({ ...base, serviceTags: { Lavage: true } }))).toEqual(['sp98'])
+    expect(selectZoneFuels(app({ ...base, brandSel: ['Shell'] }))).toEqual(['diesel', 'e85'])
+    expect(selectZoneFuels(app({ ...base, serviceTags: { carWash: true } }))).toEqual(['unleaded98'])
   })
 })
 
@@ -227,9 +228,9 @@ describe('selector memoization', () => {
   }
 
   const ZONE = [
-    station({ id: 'near', ...north(1), prices: gazole(1.7), brand: 'Shell' }),
-    station({ id: 'mid', ...north(3), prices: gazole(1.8) }),
-    station({ id: 'off-map', ...north(30), prices: gazole(1.6) }),
+    station({ id: 'near', ...north(1), prices: diesel(1.7), brand: 'Shell' }),
+    station({ id: 'mid', ...north(3), prices: diesel(1.8) }),
+    station({ id: 'off-map', ...north(30), prices: diesel(1.6) }),
   ]
 
   it('walks stations.data once per store identity, whatever the screen asks for', () => {
@@ -271,8 +272,8 @@ describe('selectByPrice / selectRecommended', () => {
   it('ranks at displayed cent precision, nearest first inside a cent', () => {
     // 1,896 and 1,904 both read « 1,90 € » — the nearest must come first
     const data = [
-      station({ id: 'far-sub-cent', ...north(3.3), prices: gazole(1.896) }),
-      station({ id: 'near', ...north(0.9), prices: gazole(1.904) }),
+      station({ id: 'far-sub-cent', ...north(3.3), prices: diesel(1.896) }),
+      station({ id: 'near', ...north(0.9), prices: diesel(1.904) }),
     ]
     const a = app({ stations: { status: 'ready', data, activeSource: 'demo', fellBack: false, refreshing: false } })
     expect(selectByPrice(a).map((s) => s.id)).toEqual(['near', 'far-sub-cent'])
@@ -283,9 +284,9 @@ describe('selectByPrice / selectRecommended', () => {
     // 1,86 € at ~15.9 km vs 1,89 € at ~11.8 km (6,5 L/100 km, 50 L):
     // effective 1,937 vs 1,948 €/L → within the 1-ct tie margin → NEAREST wins
     const data = [
-      station({ id: 'far-cheap', ...north(15.9), prices: gazole(1.86) }),
-      station({ id: 'near-deal', ...north(11.8), prices: gazole(1.89) }),
-      station({ id: 'filler', ...north(1), prices: gazole(1.99) }),
+      station({ id: 'far-cheap', ...north(15.9), prices: diesel(1.86) }),
+      station({ id: 'near-deal', ...north(11.8), prices: diesel(1.89) }),
+      station({ id: 'filler', ...north(1), prices: diesel(1.99) }),
     ]
     const a = app({ radius: 25, stations: { status: 'ready', data, activeSource: 'demo', fellBack: false, refreshing: false } })
     // The sticker ranking still puts the cheapest first…
@@ -299,8 +300,8 @@ describe('selectByPrice / selectRecommended', () => {
     // cheapest, but the river makes it 12 km by road; « direct » is 3,5 km.
     // Effective: 1,85 × (1 + 24×0,0013) ≈ 1,908 vs 1,87 × (1 + 7×0,0013) ≈ 1,887
     const data = [
-      station({ id: 'bridge', ...north(2.2), prices: gazole(1.85) }),
-      station({ id: 'direct', ...north(3.3), prices: gazole(1.87) }),
+      station({ id: 'bridge', ...north(2.2), prices: diesel(1.85) }),
+      station({ id: 'direct', ...north(3.3), prices: diesel(1.87) }),
     ]
     const stations = { status: 'ready', data, activeSource: 'demo', fellBack: false, refreshing: false } as AppStore['stations']
     // Crow-flies fallback (no matrix): the bridge station looks like the deal
@@ -324,8 +325,8 @@ describe('selectByPrice / selectRecommended', () => {
     // (1,75 × (1 + 24×0,0026) ≈ 1,859 vs 1,877 €/L) — but 24 km of straight
     // line is ~31 road km, and at that scale it loses (≈ 1,892 €/L).
     const data = [
-      station({ id: 'measured', ...north(3), prices: gazole(1.86) }),
-      station({ id: 'missed', ...north(24), prices: gazole(1.75) }),
+      station({ id: 'measured', ...north(3), prices: diesel(1.86) }),
+      station({ id: 'missed', ...north(24), prices: diesel(1.75) }),
     ]
     const a = app({
       radius: 25,
@@ -396,7 +397,7 @@ describe('selectPriceStats / priceTier', () => {
     app({
       stations: {
         status: 'ready',
-        data: prices.map((p, i) => station({ id: `s${i}`, ...(positions?.[i] ?? north(1)), prices: gazole(p) })),
+        data: prices.map((p, i) => station({ id: `s${i}`, ...(positions?.[i] ?? north(1)), prices: diesel(p) })),
         activeSource: 'demo',
         fellBack: false,
         refreshing: false,
@@ -451,7 +452,7 @@ describe('selectZoneDelta', () => {
     app({
       stations: {
         status: 'ready',
-        data: prices.map((p, i) => station({ id: `s${i}`, ...positions[i], prices: gazole(p) })),
+        data: prices.map((p, i) => station({ id: `s${i}`, ...positions[i], prices: diesel(p) })),
         activeSource: 'demo',
         fellBack: false,
         refreshing: false,
@@ -496,7 +497,7 @@ describe('selectZoneDelta', () => {
 
 // ── Favoris sorting ──────────────────────────────────────────────────────────
 describe('sortFavoriteRows', () => {
-  const cfg = { conso: 6.5, tank: 50 }
+  const cfg = { consumption: 6.5, tank: 50 }
   const rows = [
     { id: 'far-cheap', price: 1.65, distKm: 7.4 }, // effective ≈ 1,682
     { id: 'near', price: 1.67, distKm: 0.9 }, // effective ≈ 1,674
@@ -504,17 +505,17 @@ describe('sortFavoriteRows', () => {
   ]
 
   it('« Recommandé » counts the détour, « Prix » keeps the sticker order', () => {
-    expect(sortFavoriteRows(rows, 'reco', cfg).map((r) => r.id)).toEqual([
+    expect(sortFavoriteRows(rows, 'recommended', cfg).map((r) => r.id)).toEqual([
       'near',
       'far-cheap',
       'unloaded',
     ])
-    expect(sortFavoriteRows(rows, 'prix', cfg).map((r) => r.id)).toEqual([
+    expect(sortFavoriteRows(rows, 'price', cfg).map((r) => r.id)).toEqual([
       'far-cheap',
       'near',
       'unloaded',
     ])
-    expect(sortFavoriteRows(rows, 'dist', cfg).map((r) => r.id)).toEqual([
+    expect(sortFavoriteRows(rows, 'distance', cfg).map((r) => r.id)).toEqual([
       'near',
       'unloaded',
       'far-cheap',
@@ -526,8 +527,8 @@ describe('sortFavoriteRows', () => {
       { id: 'b', price: null, distKm: 9 },
       { id: 'a', price: null, distKm: 3 },
     ]
-    expect(sortFavoriteRows(blind, 'prix', cfg).map((r) => r.id)).toEqual(['a', 'b'])
-    expect(sortFavoriteRows(blind, 'reco', cfg).map((r) => r.id)).toEqual(['a', 'b'])
+    expect(sortFavoriteRows(blind, 'price', cfg).map((r) => r.id)).toEqual(['a', 'b'])
+    expect(sortFavoriteRows(blind, 'recommended', cfg).map((r) => r.id)).toEqual(['a', 'b'])
   })
 })
 
@@ -537,7 +538,7 @@ const routeStation = (
   price: number,
   kmAlong: number,
   detourMin: number,
-): RouteStation => ({ ...station({ id, prices: gazole(price) }), kmAlong, detourMin })
+): RouteStation => ({ ...station({ id, prices: diesel(price) }), kmAlong, detourMin })
 
 const CORRIDOR: RouteStation[] = [
   routeStation('cheapest-far-detour', 1.63, 119, 7),
@@ -558,7 +559,7 @@ const routeApp = (over: Partial<AppStore> = {}) =>
   })
 
 describe('selectAutonomy', () => {
-  it('derives autonomy from tank × level ÷ conso, with a ~20 % reserve', () => {
+  it('derives autonomy from tank × level ÷ consumption, with a ~20 % reserve', () => {
     expect(selectAutonomy(app())).toEqual({ autonomyKm: 538, limitKm: 430 })
     expect(selectAutonomy(app({ startTankPct: 10 }))).toEqual({ autonomyKm: 77, limitKm: 60 })
   })
@@ -566,18 +567,18 @@ describe('selectAutonomy', () => {
 
 describe('selectRouteAnalysis', () => {
   it('each strategy crowns its own stop with its own justification', () => {
-    const compromis = selectRouteAnalysis(routeApp())
+    const balanced = selectRouteAnalysis(routeApp())
     // 1,66 € + 2 min beats 1,63 € + 7 min once the détour minutes are priced
-    expect(compromis.recoId).toBe('balanced')
-    expect(compromis.recoSub).toBe('Le plein ici : −12,00 € vs le + cher du trajet')
+    expect(balanced.recoId).toBe('balanced')
+    expect(balanced.recoReason).toEqual({ kind: 'balanced', saving: 12 })
 
-    const prix = selectRouteAnalysis(routeApp({ routeMode: 'prix' }))
-    expect(prix.recoId).toBe('cheapest-far-detour')
-    expect(prix.recoSub).toBe('Prix le plus bas du trajet : −13,50 €')
+    const price = selectRouteAnalysis(routeApp({ routeMode: 'price' }))
+    expect(price.recoId).toBe('cheapest-far-detour')
+    expect(price.recoReason).toEqual({ kind: 'lowestPrice', saving: 13.5 })
 
     const detour = selectRouteAnalysis(routeApp({ routeMode: 'detour' }))
     expect(detour.recoId).toBe('on-route-pricey')
-    expect(detour.recoSub).toBe('Sur votre route · sans détour')
+    expect(detour.recoReason).toEqual({ kind: 'noDetour' })
   })
 
   it('a low departure tank forces a REACHABLE recommendation', () => {
@@ -587,7 +588,7 @@ describe('selectRouteAnalysis', () => {
     expect(a.needsStop).toBe(true)
     expect(a.limitKm).toBe(60)
     expect(a.recoId).toBe('on-route-pricey')
-    expect(a.arrivalLabel).toBe('sans arrêt : autonomie insuffisante (limite ≈ KM 60)')
+    expect(a.arrival).toEqual({ kind: 'autonomyShort', limitKm: 60 })
     // …and the shown stops always include the best reachable one
     expect(a.stops.map((s) => s.id)).toContain('on-route-pricey')
   })
@@ -599,9 +600,11 @@ describe('selectRouteAnalysis', () => {
     expect(a.tripCost).toBeCloseTo(16.9 * 1.66, 10)
   })
 
-  it('tour selections survive strategy switches even off the top list', () => {
-    const a = selectRouteAnalysis(routeApp({ routeMode: 'detour', tour: { max: true } }))
-    expect(a.tourStops.map((s) => s.id)).toEqual(['max'])
+  it('picked stops survive strategy switches even off the top list', () => {
+    const a = selectRouteAnalysis(
+      routeApp({ routeMode: 'detour', plannedStops: { max: true } }),
+    )
+    expect(a.plannedStops.map((s) => s.id)).toEqual(['max'])
   })
 })
 

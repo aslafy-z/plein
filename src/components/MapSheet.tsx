@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { C, mono } from '../theme';
-import { FUEL_LABELS } from '../data/types';
 import {
   useApp,
   selectSorted,
@@ -17,7 +16,9 @@ import {
   priceTier,
   priceCents,
 } from '../state/store';
-import { fmtPrice, distLabel, agoLabel, durationLabel, plural } from '../lib/format';
+import { fmtPrice, distLabel, agoLabel, durationLabel } from '../lib/format';
+import { fuelLabel, openStatusShort } from '../lib/labels';
+import { m } from '../paraglide/messages.js';
 import { openStatus } from '../lib/hours';
 import BrandAvatar from './BrandAvatar';
 import Freshness from './Freshness';
@@ -396,6 +397,16 @@ export default function MapSheet({
   // « +1,67 €/L » against a nonexistent floor is just the price again
   const zoneDelta = selectZoneDelta(app, shown);
 
+  const shownStatus = shown ? openStatus(shown.hours) : null;
+
+  const cardHeading = recoIsCheapest
+    ? app.searchedAway
+      ? m.sheet_cheapest_in_area()
+      : m.sheet_cheapest_nearby()
+    : app.searchedAway
+      ? m.sheet_best_choice_in_area()
+      : m.sheet_best_choice_nearby();
+
   return (
     <div
       ref={rootRef}
@@ -443,11 +454,7 @@ export default function MapSheet({
                 role="button"
                 tabIndex={0}
                 aria-expanded={expanded}
-                aria-label={
-                  expanded
-                    ? 'Réduire la liste des stations'
-                    : 'Voir la liste des stations de la zone'
-                }
+                aria-label={expanded ? m.sheet_collapse_aria() : m.sheet_expand_aria()}
                 onClick={() => {
                   if (g.current.toggled) {
                     g.current.toggled = false;
@@ -485,15 +492,16 @@ export default function MapSheet({
                     color: C.accent,
                   }}
                 >
-                  {focused
-                    ? 'Station sélectionnée'
-                    : (recoIsCheapest ? 'La moins chère' : 'Le meilleur choix') +
-                      (app.searchedAway ? ' dans cette zone' : ' près de vous')}
+                  {/* Four whole sentences, never two glued fragments: word
+                      order and adjective agreement differ per language, and
+                      « La moins chère » + « près de vous » only happens to
+                      concatenate in French. */}
+                  {focused ? m.sheet_selected_station() : cardHeading}
                 </span>
                 {focused && (
                   <button
                     onClick={() => app.setFocusStation(null)}
-                    aria-label="Désélectionner la station"
+                    aria-label={m.sheet_deselect_aria()}
                     style={{ color: C.mut, fontSize: 14, fontWeight: 700, padding: '0 2px' }}
                   >
                     ✕
@@ -512,8 +520,8 @@ export default function MapSheet({
                   }
                   aria-label={
                     app.isFavorite(shown.id)
-                      ? `Retirer ${shown.name} des favoris`
-                      : `Ajouter ${shown.name} aux favoris`
+                      ? m.sheet_remove_favorite_aria({ station: shown.name })
+                      : m.sheet_add_favorite_aria({ station: shown.name })
                   }
                   style={{ padding: '0 2px', display: 'flex', alignItems: 'center' }}
                 >
@@ -536,8 +544,10 @@ export default function MapSheet({
                   <div style={{ color: C.mut, fontSize: 13, marginTop: 2 }}>
                     {[
                       distLabel(shown.distKm),
-                      openStatus(shown.hours)?.short,
-                      `MàJ ${agoLabel(effectivePrice(shown, app.fuel)?.updatedAt)}`,
+                      shownStatus ? openStatusShort(shownStatus) : undefined,
+                      m.sheet_updated_ago({
+                        ago: agoLabel(effectivePrice(shown, app.fuel)?.updatedAt),
+                      }),
                     ]
                       .filter(Boolean)
                       .join(' · ')}
@@ -549,7 +559,7 @@ export default function MapSheet({
                   </div>
                   {/* Fuel of the SHOWN price — SP95 when E10 fell back on it */}
                   <div style={{ color: C.mut, fontSize: 11.5, whiteSpace: 'nowrap' }}>
-                    {FUEL_LABELS[effectiveFuel(shown, app.fuel) ?? app.fuel]} / L
+                    {m.sheet_per_litre({ fuel: fuelLabel(effectiveFuel(shown, app.fuel) ?? app.fuel) })}
                   </div>
                 </div>
               </button>
@@ -568,7 +578,7 @@ export default function MapSheet({
                     textAlign: 'center',
                   }}
                 >
-                  Y aller · {durationLabel(shown.driveMin)}
+                  {m.sheet_go_there({ duration: durationLabel(shown.driveMin) })}
                 </button>
                 {zoneDelta != null && (
                   <div
@@ -586,7 +596,10 @@ export default function MapSheet({
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    {`${zoneDelta.best ? '−' : '+'}${fmtPrice(zoneDelta.amount)} €/L`}
+                    {m.sheet_price_per_litre_delta({
+                      sign: zoneDelta.best ? '−' : '+',
+                      amount: fmtPrice(zoneDelta.amount),
+                    })}
                   </div>
                 )}
               </div>
@@ -595,7 +608,7 @@ export default function MapSheet({
             <div
               style={{ padding: '18px 20px', textAlign: 'center', color: C.mut, fontSize: 13.5 }}
             >
-              Recherche des stations autour de vous…
+              {m.sheet_loading()}
             </div>
           ) : soldFuels.length > 0 ? (
             // Stations around, but none sells the selected fuel (no E10/E85
@@ -603,7 +616,7 @@ export default function MapSheet({
             <div
               style={{ padding: '16px 20px 18px', textAlign: 'center', color: C.mut, fontSize: 13.5 }}
             >
-              Aucune station ne vend du {FUEL_LABELS[app.fuel]} dans cette zone.
+              {m.sheet_fuel_not_sold({ fuel: fuelLabel(app.fuel) })}
               <div
                 style={{
                   display: 'flex',
@@ -613,7 +626,7 @@ export default function MapSheet({
                   marginTop: 10,
                 }}
               >
-                <span style={{ alignSelf: 'center' }}>Vendus ici :</span>
+                <span style={{ alignSelf: 'center' }}>{m.sheet_sold_here()}</span>
                 {soldFuels.map((f) => (
                   <button
                     key={f}
@@ -629,7 +642,7 @@ export default function MapSheet({
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    {FUEL_LABELS[f]}
+                    {fuelLabel(f)}
                   </button>
                 ))}
               </div>
@@ -638,12 +651,12 @@ export default function MapSheet({
             <div
               style={{ padding: '18px 20px', textAlign: 'center', color: C.mut, fontSize: 13.5 }}
             >
-              Aucune station ne correspond à vos filtres.{' '}
+              {m.sheet_no_match()}{' '}
               <button
                 onClick={() => app.setFiltersOpen(true)}
                 style={{ color: C.accent, fontWeight: 700, display: 'inline' }}
               >
-                Ajuster
+                {m.sheet_adjust_filters()}
               </button>
             </div>
           )}
@@ -672,7 +685,7 @@ export default function MapSheet({
                 flex: 1,
               }}
             >
-              {plural(rows.length, 'station')} dans la zone
+              {m.sheet_zone_count({ count: rows.length })}
             </span>
             {dealCount > 1 && (
               <span
@@ -683,10 +696,15 @@ export default function MapSheet({
                   whiteSpace: 'nowrap',
                 }}
               >
-                {dealCount} bons plans
+                {m.sheet_deal_count({ count: dealCount })}
               </span>
             )}
-            {([['prix', 'Prix'], ['dist', 'Distance']] as const).map(([k, label]) => {
+            {(
+              [
+                ['price', m.sheet_sort_price()],
+                ['distance', m.sheet_sort_distance()],
+              ] as const
+            ).map(([k, label]) => {
               const active = app.sort === k;
               return (
                 <button
@@ -730,7 +748,7 @@ export default function MapSheet({
           >
             {rows.length === 0 && (
               <div style={{ textAlign: 'center', color: C.mut, fontSize: 13, padding: '18px 0' }}>
-                Aucune station dans le rayon.
+                {m.sheet_empty_radius()}
               </div>
             )}
             {rows.map((s) => {
@@ -746,6 +764,7 @@ export default function MapSheet({
               // tier, so it matches its card — without moving the tier bounds.
               const deal = priceTier(price, stats, true) === 'deal' || recoRow;
               const delta = (priceCents(price) - priceCents(min)) / 100;
+              const rowStatus = openStatus(s.hours);
               return (
                 <button
                   key={s.id}
@@ -754,7 +773,7 @@ export default function MapSheet({
                     app.setFocusStation(s.id);
                     onExpandedChange(false);
                   }}
-                  aria-label={`Voir ${s.name} sur la carte`}
+                  aria-label={m.sheet_locate_aria({ station: s.name })}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -784,7 +803,9 @@ export default function MapSheet({
                       {s.name}
                     </div>
                     <div style={{ fontSize: 12, color: C.mut, marginTop: 1 }}>
-                      {[distLabel(s.distKm), openStatus(s.hours)?.short].filter(Boolean).join(' · ')}
+                      {[distLabel(s.distKm), rowStatus ? openStatusShort(rowStatus) : undefined]
+                        .filter(Boolean)
+                        .join(' · ')}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -802,12 +823,14 @@ export default function MapSheet({
                       {/* Sub-cent deltas read « +0,00 » — at the displayed
                           precision these prices are simply equal, say nothing */}
                       {best
-                        ? 'meilleur prix'
+                        ? m.sheet_row_best_price()
                         : recoRow
-                          ? `recommandée · +${fmtPrice(delta)}`
+                          ? m.sheet_row_recommended({ delta: fmtPrice(delta) })
                           : deal
-                            ? `bon plan${Math.abs(delta) >= 0.005 ? ` · +${fmtPrice(delta)}` : ''}`
-                            : `+${fmtPrice(delta)}`}
+                            ? Math.abs(delta) >= 0.005
+                              ? m.sheet_row_deal_delta({ delta: fmtPrice(delta) })
+                              : m.sheet_row_deal()
+                            : m.sheet_row_delta({ delta: fmtPrice(delta) })}
                     </div>
                   </div>
                 </button>

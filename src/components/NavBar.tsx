@@ -1,4 +1,5 @@
 import { C } from '../theme';
+import { m } from '../paraglide/messages.js';
 import { LOGO_PATH } from './Logo';
 import { useApp, type Screen } from '../state/store';
 
@@ -49,12 +50,20 @@ function Icon({ tab, color }: { tab: TabKey; color: string }) {
   }
 }
 
-const ITEMS: { key: TabKey; label: string }[] = [
-  { key: 'map', label: 'Carte' },
-  { key: 'route', label: 'Trajet' },
-  { key: 'favs', label: 'Favoris' },
-  { key: 'settings', label: 'Réglages' },
-];
+const TABS: TabKey[] = ['map', 'route', 'favs', 'settings'];
+
+function tabLabel(tab: TabKey): string {
+  switch (tab) {
+    case 'map':
+      return m.nav_map();
+    case 'route':
+      return m.nav_route();
+    case 'favs':
+      return m.nav_favorites();
+    case 'settings':
+      return m.nav_settings();
+  }
+}
 
 export default function NavBar() {
   const app = useApp();
@@ -71,14 +80,14 @@ export default function NavBar() {
         flexShrink: 0,
       }}
     >
-      {ITEMS.map((it) => {
-        const active =
-          app.screen === it.key || (it.key === 'route' && app.screen === 'routeSetup');
+      {TABS.map((tab) => {
+        const label = tabLabel(tab);
+        const active = app.screen === tab || (tab === 'route' && app.screen === 'routeSetup');
         return (
           <button
-            key={it.key}
-            onClick={() => app.go(target(it.key))}
-            aria-label={it.label}
+            key={tab}
+            onClick={() => app.go(target(tab))}
+            aria-label={label}
             aria-current={active ? 'page' : undefined}
             style={{ flex: 1, textAlign: 'center', cursor: 'pointer' }}
           >
@@ -94,7 +103,7 @@ export default function NavBar() {
                 justifyContent: 'center',
               }}
             >
-              <Icon tab={it.key} color={active ? C.accent : C.faint} />
+              <Icon tab={tab} color={active ? C.accent : C.faint} />
             </div>
             <span
               style={{
@@ -103,7 +112,7 @@ export default function NavBar() {
                 fontWeight: active ? 800 : 600,
               }}
             >
-              {it.label}
+              {label}
             </span>
           </button>
         );

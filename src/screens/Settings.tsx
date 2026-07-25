@@ -1,6 +1,10 @@
 import { C, mono } from '../theme';
-import { ALL_FUELS, FUEL_LABELS, type DataSourceId } from '../data/types';
-import { useApp, MAPS_SITES, VEHICLE_PRESETS } from '../state/store';
+import { ALL_FUELS, type DataSourceId, type VehicleId } from '../data/types';
+import { useApp, MAPS_SITE_IDS, mapsSiteLabel, VEHICLE_PRESETS } from '../state/store';
+import { fmtDecimal } from '../lib/format';
+import { fuelLabel, sourceSublabel, sourceTitle, vehicleLabel } from '../lib/labels';
+import { LOCALES, type Locale } from '../lib/locale';
+import { m } from '../paraglide/messages.js';
 import { HAS_NATIVE_MAPS } from '../lib/env';
 import { APP_VERSION } from '../lib/appUpdate';
 
@@ -16,62 +20,62 @@ const SECTION_LABEL: React.CSSProperties = {
 /** Credits links — dimmer than the body text, they sit in the footer */
 const CREDIT_LINK: React.CSSProperties = { color: C.ghost, textDecoration: 'underline' };
 
-const GEO_STATUS_LABELS = {
-  granted: 'activée — la carte suit votre position',
-  denied: 'refusée pour ce site',
-  unavailable: 'indisponible sur cet appareil',
-  pending: 'non demandée',
-} as const;
+const SOURCES: DataSourceId[] = ['auto', 'fra', 'esp', 'and', 'demo'];
 
-const SOURCES: { id: DataSourceId; title: string; sub: string }[] = [
-  {
-    id: 'auto',
-    title: 'Automatique',
-    sub: 'France + Espagne + Andorre combinées selon la zone affichée',
-  },
-  {
-    id: 'fra',
-    title: 'prix-carburants.gouv.fr',
-    sub: 'temps réel · mis à jour toutes les 10 min',
-  },
-  {
-    id: 'esp',
-    title: 'geoportalgasolineras.es',
-    sub: 'Espagne · officiel MITECO · toutes les 30 min',
-  },
-  {
-    id: 'and',
-    title: 'sig.govern.ad',
-    sub: 'Andorre · officiel Govern d’Andorra · prix déclarés par les stations',
-  },
-  {
-    id: 'demo',
-    title: 'Données de démonstration',
-    sub: 'hors-ligne · jeu de données fictif',
-  },
-];
+const VEHICLES: VehicleId[] = ['car', 'motorcycle'];
+
+function geoStatusLabel(status: 'granted' | 'denied' | 'unavailable' | 'pending'): string {
+  switch (status) {
+    case 'granted':
+      return m.settings_geo_granted();
+    case 'denied':
+      return m.settings_geo_denied();
+    case 'unavailable':
+      return m.settings_geo_unavailable();
+    case 'pending':
+      return m.settings_geo_pending();
+  }
+}
+
+/**
+ * Each language names itself in its own words — someone who lands on a locale
+ * they can't read has to be able to find their way back out.
+ */
+function localeName(locale: Locale): string {
+  switch (locale) {
+    case 'en':
+      return m.locale_name_en({}, { locale: 'en' });
+    case 'es':
+      return m.locale_name_es({}, { locale: 'es' });
+    default:
+      return m.locale_name_fr({}, { locale: 'fr' });
+  }
+}
 
 export default function Settings() {
   const app = useApp();
-  const { fuel, vehicle, tank, conso, alerts, bgloc, sourceId, geoStatus, mapsSite } = app;
-  // Slider ranges follow the profile (a moto tank is far smaller than a car's)
-  const tankRange = vehicle === 'moto' ? { min: 5, max: 30, step: 1 } : { min: 30, max: 80, step: 5 };
+  const { fuel, vehicle, tank, consumption, alerts, backgroundLocation, sourceId, geoStatus, mapsSite } = app;
+  // Slider ranges follow the profile (a motorcycle tank is far smaller than a car's)
+  const tankRange =
+    vehicle === 'motorcycle' ? { min: 5, max: 30, step: 1 } : { min: 30, max: 80, step: 5 };
+  const otherVehicle: VehicleId = vehicle === 'car' ? 'motorcycle' : 'car';
+  const otherPreset = VEHICLE_PRESETS[otherVehicle];
 
   // `soon`: feature not built yet — activating shows a toast, like « Signaler »
   const toggles: { label: string; sub: string; on: boolean; set: (v: boolean) => void; soon: string }[] = [
     {
-      label: 'Alerte prix bas',
-      sub: 'quand une de vos stations favorites baisse son prix',
+      label: m.settings_alerts_title(),
+      sub: m.settings_alerts_sub(),
       on: alerts,
       set: app.setAlerts,
-      soon: 'Bientôt ! Les alertes ne sont pas encore actives.',
+      soon: m.toast_alerts_soon(),
     },
     {
-      label: 'Localisation en arrière-plan',
-      sub: 'suggestions de plein pendant la conduite',
-      on: bgloc,
-      set: app.setBgloc,
-      soon: "Bientôt ! Cette fonction n'est pas encore active.",
+      label: m.settings_background_location_title(),
+      sub: m.settings_background_location_sub(),
+      on: backgroundLocation,
+      set: app.setBackgroundLocation,
+      soon: m.toast_background_location_soon(),
     },
   ];
 
@@ -85,11 +89,11 @@ export default function Settings() {
         boxSizing: 'border-box',
       }}
     >
-      <div style={{ fontSize: 24, fontWeight: 800, color: C.ink }}>Réglages</div>
+      <div style={{ fontSize: 24, fontWeight: 800, color: C.ink }}>{m.settings_title()}</div>
 
-      {/* Véhicule */}
+      {/* Vehicle */}
       <div style={{ marginTop: 18 }}>
-        <div style={SECTION_LABEL}>Véhicule</div>
+        <div style={SECTION_LABEL}>{m.settings_vehicle_section()}</div>
         <div
           style={{
             background: C.surface,
@@ -99,10 +103,10 @@ export default function Settings() {
           }}
         >
           <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 10 }}>
-            Profil
+            {m.settings_profile()}
           </div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            {([['car', 'Voiture'], ['moto', 'Moto']] as const).map(([v, label]) => {
+            {VEHICLES.map((v) => {
               const active = vehicle === v;
               return (
                 <button
@@ -121,18 +125,20 @@ export default function Settings() {
                     textAlign: 'center',
                   }}
                 >
-                  {label}
+                  {vehicleLabel(v)}
                 </button>
               );
             })}
           </div>
           <div style={{ fontSize: 11.5, color: C.faint, marginTop: -10, marginBottom: 14 }}>
-            changer de profil applique {FUEL_LABELS[VEHICLE_PRESETS[vehicle === 'car' ? 'moto' : 'car'].fuel]}
-            · réservoir {VEHICLE_PRESETS[vehicle === 'car' ? 'moto' : 'car'].tank} L
-            · {VEHICLE_PRESETS[vehicle === 'car' ? 'moto' : 'car'].conso.toFixed(1).replace('.', ',')} L/100 km
+            {m.settings_profile_hint({
+              fuel: fuelLabel(otherPreset.fuel),
+              tank: otherPreset.tank,
+              consumption: fmtDecimal(otherPreset.consumption, 1),
+            })}
           </div>
           <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 10 }}>
-            Carburant par défaut
+            {m.settings_default_fuel()}
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {ALL_FUELS.map((f) => {
@@ -153,13 +159,15 @@ export default function Settings() {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {FUEL_LABELS[f]}
+                  {fuelLabel(f)}
                 </button>
               );
             })}
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', marginTop: 18, marginBottom: 6 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: C.ink, flex: 1 }}>Réservoir</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.ink, flex: 1 }}>
+              {m.settings_tank()}
+            </span>
             <span style={{ font: mono(700, 15), color: C.accent }}>{tank} L</span>
           </div>
           <input
@@ -172,14 +180,14 @@ export default function Settings() {
             style={{ width: '100%', cursor: 'pointer' }}
           />
           <div style={{ fontSize: 11.5, color: C.faint, marginTop: 6 }}>
-            sert au calcul des économies par plein
+            {m.settings_tank_hint()}
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', marginTop: 18, marginBottom: 6 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: C.ink, flex: 1 }}>
-              Consommation moyenne
+              {m.settings_consumption()}
             </span>
             <span style={{ font: mono(700, 15), color: C.accent }}>
-              {conso.toFixed(1).replace('.', ',')} L/100 km
+              {fmtDecimal(consumption, 1)} L/100 km
             </span>
           </div>
           <input
@@ -187,19 +195,19 @@ export default function Settings() {
             min={3}
             max={12}
             step={0.5}
-            value={conso}
-            onChange={(e) => app.setConso(+e.target.value)}
+            value={consumption}
+            onChange={(e) => app.setConsumption(+e.target.value)}
             style={{ width: '100%', cursor: 'pointer' }}
           />
           <div style={{ fontSize: 11.5, color: C.faint, marginTop: 6 }}>
-            sert au calcul de l'autonomie et du coût carburant du trajet
+            {m.settings_consumption_hint()}
           </div>
         </div>
       </div>
 
-      {/* Localisation */}
+      {/* Location */}
       <div style={{ marginTop: 18 }}>
-        <div style={SECTION_LABEL}>Localisation</div>
+        <div style={SECTION_LABEL}>{m.settings_location_section()}</div>
         <div
           style={{
             background: C.surface,
@@ -223,7 +231,7 @@ export default function Settings() {
           >
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>
-                Position de l'appareil
+                {m.settings_device_position()}
               </div>
               <div
                 style={{
@@ -232,27 +240,24 @@ export default function Settings() {
                   marginTop: 2,
                 }}
               >
-                {GEO_STATUS_LABELS[geoStatus]}
+                {geoStatusLabel(geoStatus)}
               </div>
             </div>
             {geoStatus !== 'granted' && (
               <span style={{ color: C.accent, fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
-                Activer
+                {m.settings_geo_enable()}
               </span>
             )}
           </button>
           <div style={{ fontSize: 11.5, color: C.faint, padding: '10px 16px', lineHeight: 1.5 }}>
-            Sans localisation, la carte s'ouvre sur la dernière zone consultée (par défaut :
-            Toulouse). Si la demande n'apparaît plus, autorisez la localisation pour ce site dans
-            les réglages du navigateur.
+            {m.settings_location_hint()}
           </div>
         </div>
       </div>
 
-      {/* Itinéraires — desktop only: on mobile « Y aller » opens the native GPS app */}
-      {!HAS_NATIVE_MAPS && (
+      {/* Language */}
       <div style={{ marginTop: 18 }}>
-        <div style={SECTION_LABEL}>Itinéraires</div>
+        <div style={SECTION_LABEL}>{m.settings_language_section()}</div>
         <div
           style={{
             background: C.surface,
@@ -261,16 +266,16 @@ export default function Settings() {
             padding: 16,
           }}
         >
-          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 10 }}>
-            Site pour « Y aller »
-          </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {MAPS_SITES.map((site) => {
-              const active = site.id === mapsSite;
+            {/* « Langue du navigateur » is the absence of a choice, not a
+                locale: picking it drops the override so detection applies
+                again — including after the user changes their browser. */}
+            {[null, ...LOCALES].map((l) => {
+              const active = l == null ? !app.localeIsExplicit : app.localeIsExplicit && app.locale === l;
               return (
                 <button
-                  key={site.id}
-                  onClick={() => app.setMapsSite(site.id)}
+                  key={l ?? 'auto'}
+                  onClick={() => app.setLocale(l)}
                   style={{
                     background: active ? C.accent : 'transparent',
                     color: active ? C.onAccent : C.body,
@@ -283,13 +288,58 @@ export default function Settings() {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {site.label}
+                  {l == null ? m.settings_language_auto() : localeName(l)}
                 </button>
               );
             })}
           </div>
           <div style={{ fontSize: 11.5, color: C.faint, marginTop: 10 }}>
-            site ouvert par le bouton « Y aller »
+            {m.settings_language_hint({ auto: m.settings_language_auto() })}
+          </div>
+        </div>
+      </div>
+
+      {/* Routes — desktop only: on mobile « Y aller » opens the native GPS app */}
+      {!HAS_NATIVE_MAPS && (
+      <div style={{ marginTop: 18 }}>
+        <div style={SECTION_LABEL}>{m.settings_routes_section()}</div>
+        <div
+          style={{
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            borderRadius: 16,
+            padding: 16,
+          }}
+        >
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 10 }}>
+            {m.settings_maps_site()}
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {MAPS_SITE_IDS.map((site) => {
+              const active = site === mapsSite;
+              return (
+                <button
+                  key={site}
+                  onClick={() => app.setMapsSite(site)}
+                  style={{
+                    background: active ? C.accent : 'transparent',
+                    color: active ? C.onAccent : C.body,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    padding: '8px 14px',
+                    borderRadius: 16,
+                    border: active ? `1px solid ${C.accent}` : `1px solid ${C.border12}`,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {mapsSiteLabel(site)}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: 11.5, color: C.faint, marginTop: 10 }}>
+            {m.settings_maps_site_hint()}
           </div>
         </div>
       </div>
@@ -297,7 +347,7 @@ export default function Settings() {
 
       {/* Notifications */}
       <div style={{ marginTop: 18 }}>
-        <div style={SECTION_LABEL}>Notifications</div>
+        <div style={SECTION_LABEL}>{m.settings_notifications_section()}</div>
         <div
           style={{
             background: C.surface,
@@ -357,9 +407,9 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* Données */}
+      {/* Data */}
       <div style={{ marginTop: 18 }}>
-        <div style={SECTION_LABEL}>Données</div>
+        <div style={SECTION_LABEL}>{m.settings_data_section()}</div>
         <div
           style={{
             background: C.surface,
@@ -371,12 +421,12 @@ export default function Settings() {
           {/* The demo dataset is a debug/fallback tool — only shown to users
               who already have it selected, so they can switch back to the
               real source (it stays the automatic fallback when gouv is down). */}
-          {SOURCES.filter((src) => src.id !== 'demo' || sourceId === 'demo').map((src) => {
-            const selected = sourceId === src.id;
+          {SOURCES.filter((src) => src !== 'demo' || sourceId === 'demo').map((src) => {
+            const selected = sourceId === src;
             return (
               <button
-                key={src.id}
-                onClick={() => app.setSourceId(src.id)}
+                key={src}
+                onClick={() => app.setSourceId(src)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -406,8 +456,12 @@ export default function Settings() {
                   )}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>{src.title}</div>
-                  <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>{src.sub}</div>
+                  <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>
+                    {sourceTitle(src)}
+                  </div>
+                  <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>
+                    {sourceSublabel(src)}
+                  </div>
                 </div>
               </button>
             );
@@ -424,7 +478,7 @@ export default function Settings() {
                 lineHeight: 1.4,
               }}
             >
-              Source temps réel indisponible actuellement — bascule automatique sur la démo.
+              {m.settings_fell_back()}
             </div>
           )}
 
@@ -437,16 +491,14 @@ export default function Settings() {
               color: C.mut,
             }}
           >
-            <span style={{ fontWeight: 700, color: C.body }}>Un mot sur les prix</span> — ils
-            proviennent des déclarations officielles des stations et sont donnés à titre
-            indicatif, sans garantie : nous ne pouvons pas les vérifier un par un, et il peut
-            arriver qu'un prix ait changé le temps d'arriver à la pompe. Jetez-y un œil sur
-            place avant de faire le plein — le détour reste à votre appréciation. Et si un prix
-            vous semble faux, dites-le-nous juste en dessous 💚
+            <span style={{ fontWeight: 700, color: C.body }}>
+              {m.settings_price_disclaimer_title()}
+            </span>
+            {m.settings_price_disclaimer_body()}
           </div>
 
           <button
-            onClick={() => app.notify('Merci ! Le signalement arrive bientôt.')}
+            onClick={() => app.notify(m.toast_price_report_soon())}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -458,7 +510,7 @@ export default function Settings() {
             }}
           >
             <span style={{ flex: 1, fontSize: 14.5, fontWeight: 600, color: C.ink }}>
-              Signaler un prix erroné
+              {m.settings_report_price()}
             </span>
             <span style={{ color: C.faint }}>›</span>
           </button>
@@ -468,7 +520,7 @@ export default function Settings() {
       {/* Application */}
       {app.installReady && (
         <div style={{ marginTop: 18 }}>
-          <div style={SECTION_LABEL}>Application</div>
+          <div style={SECTION_LABEL}>{m.settings_app_section()}</div>
           <div
             style={{
               background: C.surface,
@@ -491,10 +543,10 @@ export default function Settings() {
             >
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>
-                  Installer l'application
+                  {m.settings_install_title()}
                 </div>
                 <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>
-                  sur l'écran d'accueil, en plein écran
+                  {m.settings_install_sub()}
                 </div>
               </div>
               <span style={{ color: C.accent, fontWeight: 700 }}>›</span>
@@ -514,7 +566,7 @@ export default function Settings() {
         }}
       >
         <div style={{ color: C.faint }}>
-          Made with ❤️ in Toulouse par{' '}
+          {m.settings_credits_made_with()}{' '}
           <a
             href="https://zadkiel.fr"
             target="_blank"
@@ -526,31 +578,34 @@ export default function Settings() {
         </div>
         {/* Credits, one line per country so each flux is named where it applies */}
         <div>
-          Prix France :{' '}
+          {m.settings_credits_prices_fra()}{' '}
           <a href="https://prix-carburants.gouv.fr" target="_blank" rel="noreferrer" style={CREDIT_LINK}>prix-carburants.gouv.fr</a>
-          {' '}· adresses : BAN
+          {' '}
+          {m.settings_credits_addresses({ source: 'BAN' })}
         </div>
         <div>
-          Prix Espagne :{' '}
+          {m.settings_credits_prices_esp()}{' '}
           <a href="https://geoportalgasolineras.es" target="_blank" rel="noreferrer" style={CREDIT_LINK}>geoportalgasolineras.es</a>
-          {' '}· adresses : CartoCiudad
+          {' '}
+          {m.settings_credits_addresses({ source: 'CartoCiudad' })}
         </div>
         <div>
-          Prix Andorre :{' '}
+          {m.settings_credits_prices_and()}{' '}
           <a href="https://sig.govern.ad/IPE/PreusCarburants" target="_blank" rel="noreferrer" style={CREDIT_LINK}>sig.govern.ad</a>
-          {' '}· © Govern d'Andorra · adresses : IDE Andorra
+          {' '}
+          {m.settings_credits_and_extra()}
         </div>
         <div>
-          Prix à titre indicatif · itinéraires : OSRM / Valhalla · cartes : ©{' '}
+          {m.settings_credits_misc()}{' '}
           <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" style={CREDIT_LINK}>OpenStreetMap</a> · © CARTO
         </div>
         <div>
-          Plein. · version{' '}
+          {m.settings_credits_version()}{' '}
           <a
             href={`https://github.com/aslafy-z/plein/commit/${APP_VERSION.split('+')[0]}`}
             target="_blank"
             rel="noreferrer"
-            title="Voir le commit sur GitHub"
+            title={m.settings_credits_commit_title()}
             style={{
               color: C.mut,
               textDecoration: 'underline',

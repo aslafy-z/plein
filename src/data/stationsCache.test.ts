@@ -14,7 +14,7 @@ function station(id: string): Station {
     lng: 1.44,
     address: '1 rue du Test',
     city: 'Toulouse',
-    prices: { gazole: { value: 1.75 } },
+    prices: { diesel: { value: 1.75 } },
     tags: [],
     services: [],
     highway: false,

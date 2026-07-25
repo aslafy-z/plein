@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { C, ctaStyle, mono, stickyBarStyle } from '../theme';
-import { FUEL_LABELS, type GeocodeResult } from '../data/types';
-import { useApp } from '../state/store';
+import { type GeocodeResult } from '../data/types';
+import { dayMonthLabel } from '../lib/format';
+import { fuelLabel } from '../lib/labels';
+import { m } from '../paraglide/messages.js';
+import { useApp, routeFromLabel, type RecentPlace } from '../state/store';
 
 type Field = 'from' | 'to';
 
 export default function RouteSetup() {
   const app = useApp();
-  const { fromText, toText, fuel, tank } = app;
+  const { toText, fuel, tank } = app;
 
   const [focused, setFocused] = useState<Field | null>(null);
   const [suggestions, setSuggestions] = useState<GeocodeResult[]>([]);
@@ -46,8 +49,12 @@ export default function RouteSetup() {
   };
 
   const onChange = (field: Field, text: string) => {
-    if (field === 'from') app.setFrom(text);
-    else app.setTo(text);
+    // Emptying the departure field means « wherever I am » again — the same
+    // thing startRoute() does with a blank departure, made visible.
+    if (field === 'from') {
+      if (text.trim()) app.setFrom(text);
+      else app.useCurrentPositionAsStart();
+    } else app.setTo(text);
     setFocused(field);
     runSearch(text);
   };
@@ -60,6 +67,16 @@ export default function RouteSetup() {
   };
 
   const canGo = toText.trim().length > 0;
+
+  /**
+   * Sub label of a « Récents » row. Real trips carry their distance and date
+   * as numbers, so the sentence is written in the language in force NOW;
+   * the default suggestions carry a fixed place name instead.
+   */
+  const recentSublabel = (r: RecentPlace) =>
+    r.distanceKm != null && r.at != null
+      ? m.route_recent_trip({ km: Math.round(r.distanceKm), date: dayMonthLabel(r.at) })
+      : (r.sublabel ?? '');
 
   const dropdown = (field: Field) =>
     focused === field && suggestions.length > 0 ? (
@@ -110,10 +127,8 @@ export default function RouteSetup() {
       }}
     >
       <div style={{ padding: '16px 20px 4px' }}>
-        <div style={{ fontSize: 24, fontWeight: 800, color: C.ink }}>Itinéraire</div>
-        <div style={{ fontSize: 13, color: C.mut, marginTop: 4 }}>
-          Comparez les prix le long de votre trajet
-        </div>
+        <div style={{ fontSize: 24, fontWeight: 800, color: C.ink }}>{m.route_setup_title()}</div>
+        <div style={{ fontSize: 13, color: C.mut, marginTop: 4 }}>{m.route_setup_subtitle()}</div>
 
         {/* Inputs card */}
         <div
@@ -145,8 +160,8 @@ export default function RouteSetup() {
             />
             <input
               type="text"
-              value={fromText}
-              placeholder="Départ"
+              value={routeFromLabel(app)}
+              placeholder={m.route_from_placeholder()}
               onFocus={() => setFocused('from')}
               onChange={(e) => onChange('from', e.target.value)}
               style={inputStyle}
@@ -159,7 +174,7 @@ export default function RouteSetup() {
               ref={toInputRef}
               type="text"
               value={toText}
-              placeholder="Destination"
+              placeholder={m.route_to_placeholder()}
               onFocus={() => setFocused('to')}
               onChange={(e) => onChange('to', e.target.value)}
               style={inputStyle}
@@ -180,7 +195,7 @@ export default function RouteSetup() {
               marginBottom: 10,
             }}
           >
-            {app.hasTripHistory ? 'Récents' : 'Suggestions'}
+            {app.hasTripHistory ? m.route_recents() : m.route_suggestions()}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {app.recents.map((r, i) => (
@@ -214,7 +229,9 @@ export default function RouteSetup() {
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>{r.label}</div>
-                  <div style={{ fontSize: 12, color: C.faint, marginTop: 1 }}>{r.sublabel}</div>
+                  <div style={{ fontSize: 12, color: C.faint, marginTop: 1 }}>
+                    {recentSublabel(r)}
+                  </div>
                 </div>
               </button>
             ))}
@@ -225,8 +242,8 @@ export default function RouteSetup() {
         <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
           {(
             [
-              ['Éviter les autoroutes', app.avoidMotorway, app.setAvoidMotorway],
-              ['Éviter les péages', app.avoidToll, app.setAvoidToll],
+              [m.route_avoid_motorways(), app.avoidMotorway, app.setAvoidMotorway],
+              [m.route_avoid_tolls(), app.avoidToll, app.setAvoidToll],
             ] as const
           ).map(([label, on, set]) => (
             <button
@@ -262,7 +279,7 @@ export default function RouteSetup() {
         >
           <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 6 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: C.ink, flex: 1 }}>
-              Réservoir au départ
+              {m.route_start_tank()}
             </span>
             <span style={{ font: mono(700, 14), color: C.accent }}>{app.startTankPct} %</span>
           </div>
@@ -276,7 +293,7 @@ export default function RouteSetup() {
             style={{ width: '100%', cursor: 'pointer' }}
           />
           <div style={{ fontSize: 11.5, color: C.faint, marginTop: 4 }}>
-            sert au calcul de l'autonomie et de la limite « où s'arrêter »
+            {m.route_start_tank_hint()}
           </div>
         </div>
 
@@ -294,14 +311,14 @@ export default function RouteSetup() {
           }}
         >
           <div style={{ flex: 1, fontSize: 12.5, color: C.mut, lineHeight: 1.45 }}>
-            <strong style={{ color: C.ink }}>{FUEL_LABELS[fuel]}</strong> · réservoir {tank} L ·
-            modifiable dans Réglages
+            <strong style={{ color: C.ink }}>{fuelLabel(fuel)}</strong> ·{' '}
+            {m.route_settings_recap({ tank })}
           </div>
           <button
             onClick={() => app.go('settings')}
             style={{ fontSize: 12.5, fontWeight: 700, color: C.accent, cursor: 'pointer', whiteSpace: 'nowrap' }}
           >
-            Réglages ›
+            {m.route_settings_link()}
           </button>
         </div>
       </div>
@@ -311,7 +328,7 @@ export default function RouteSetup() {
           carries the safe-area inset, so this bar doesn't add its own. */}
       <div style={stickyBarStyle(false)}>
         <button onClick={() => app.startRoute()} disabled={!canGo} style={ctaStyle(canGo)}>
-          Comparer les stations sur le trajet
+          {m.route_compare_cta()}
         </button>
       </div>
     </div>

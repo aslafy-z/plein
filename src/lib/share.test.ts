@@ -38,17 +38,17 @@ describe('mapViewShareData', () => {
   const VIEW: MapUrlView = {
     center: { lat: 43.6047, lng: 1.4442 },
     zoom: 14,
-    fuel: 'gazole',
+    fuel: 'diesel',
     radius: 5,
     brands: [],
     services: [],
   }
 
   it('links to the map view itself, filters included', () => {
-    const d = mapViewShareData({ ...VIEW, services: ['24/24'] }, 'https://plein.app', {
+    const d = mapViewShareData({ ...VIEW, services: ['open24h'] }, 'https://plein.app', {
       fuelLabel: 'Gazole',
     })
-    expect(d.url).toBe('https://plein.app/?ll=43.6047,1.4442&z=14&f=gazole&r=5&s=24%2F24')
+    expect(d.url).toBe('https://plein.app/?ll=43.6047,1.4442&z=14&f=diesel&r=5&s=open24h')
   })
 
   it('names the searched place when there is one', () => {
@@ -63,6 +63,6 @@ describe('mapViewShareData', () => {
   it('falls back on the zone after a free pan', () => {
     const d = mapViewShareData(VIEW, 'https://plein.app/', { fuelLabel: 'Gazole', place: null })
     expect(d.text).toBe('Les prix du Gazole dans cette zone sur Plein.')
-    expect(d.url).toBe('https://plein.app/?ll=43.6047,1.4442&z=14&f=gazole&r=5')
+    expect(d.url).toBe('https://plein.app/?ll=43.6047,1.4442&z=14&f=diesel&r=5')
   })
 })

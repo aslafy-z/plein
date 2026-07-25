@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { watchForUpdate } from '../lib/appUpdate';
+import { m } from '../paraglide/messages.js';
 import { C } from '../theme';
 
 /**
@@ -30,12 +31,12 @@ export default function UpdatePrompt() {
         zIndex: 40,
       }}
     >
-      <span style={{ flex: 1 }}>Nouvelle version disponible.</span>
+      <span style={{ flex: 1 }}>{m.update_available()}</span>
       <button
         onClick={() => location.reload()}
         style={{ color: C.accent, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}
       >
-        Recharger
+        {m.update_reload()}
       </button>
     </div>
   );

@@ -126,7 +126,7 @@ test('the map share button hands the current view to the native sheet', async ({
   const data = sheet[0] as { title: string; text: string; url: string }
   // The link is the very one the address bar carries
   expect(data.url).toBe(page.url())
-  expect(data.url).toContain('f=gazole')
+  expect(data.url).toContain('f=diesel')
   expect(data.title).toBe('Plein. — Gazole dans cette zone')
   expect(await copied(page)).toEqual([])
 })
