@@ -152,8 +152,19 @@ export interface GeocodeResult {
   kind: PlaceKind;
 }
 
+export interface GeocodeSearchOptions {
+  /**
+   * Suggestions known SO FAR, published each time a source lands. « Automatique »
+   * queries four national geocoders at once and one of them can be seconds
+   * behind the others: the list fills in as they answer instead of waiting for
+   * the slowest. The promise still resolves with the complete merge, so a view
+   * can keep its spinner up until every source has concluded.
+   */
+  onPartial?(results: GeocodeResult[]): void;
+}
+
 export interface GeocodeProvider {
-  search(query: string): Promise<GeocodeResult[]>;
+  search(query: string, opts?: GeocodeSearchOptions): Promise<GeocodeResult[]>;
 }
 
 export interface Route {

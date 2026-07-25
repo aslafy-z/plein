@@ -14,8 +14,10 @@ export default function RouteSetup() {
 
   const [focused, setFocused] = useState<Field | null>(null);
   const [suggestions, setSuggestions] = useState<GeocodeResult[]>([]);
+  const [searching, setSearching] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const reqId = useRef(0);
+  const fromInputRef = useRef<HTMLInputElement>(null);
   const toInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => () => clearTimeout(timer.current), []);
@@ -33,19 +35,41 @@ export default function RouteSetup() {
     clearTimeout(timer.current);
     if (text.trim().length < 3) {
       setSuggestions([]);
+      setSearching(false);
       return;
     }
     const id = ++reqId.current;
+    // The spinner covers the debounce too: from the typist's point of view the
+    // search is already under way, and geocoders can take seconds to answer.
+    setSearching(true);
     timer.current = setTimeout(() => {
       app
-        .searchPlaces(text)
+        // « Automatique » queries three geocoders: show each country's hits as
+        // they land, and keep spinning until the last one has answered.
+        .searchPlaces(text, {
+          onPartial: (res) => {
+            if (id === reqId.current) setSuggestions(res);
+          },
+        })
         .then((res) => {
-          if (id === reqId.current) setSuggestions(res);
+          if (id !== reqId.current) return;
+          setSuggestions(res);
+          setSearching(false);
         })
         .catch(() => {
-          if (id === reqId.current) setSuggestions([]);
+          if (id !== reqId.current) return;
+          setSuggestions([]);
+          setSearching(false);
         });
     }, 300);
+  };
+
+  /** Drop the pending search: nothing in flight may land after this. */
+  const cancelSearch = () => {
+    clearTimeout(timer.current);
+    reqId.current++;
+    setSuggestions([]);
+    setSearching(false);
   };
 
   const onChange = (field: Field, text: string) => {
@@ -62,8 +86,19 @@ export default function RouteSetup() {
   const pick = (field: Field, r: GeocodeResult) => {
     if (field === 'from') app.setFrom(r.label, r.point);
     else app.setTo(r.label, r.point);
-    setSuggestions([]);
+    cancelSearch();
     setFocused(null);
+  };
+
+  // Emptying a field from its ✕ means the same as emptying it by hand: the
+  // departure falls back to « wherever I am », the destination to nothing. The
+  // input keeps the focus so the next destination can be typed straight away.
+  const clear = (field: Field) => {
+    if (field === 'from') app.useCurrentPositionAsStart();
+    else app.setTo('');
+    cancelSearch();
+    setFocused(field);
+    (field === 'from' ? fromInputRef : toInputRef).current?.focus();
   };
 
   const canGo = toText.trim().length > 0;
@@ -116,6 +151,43 @@ export default function RouteSetup() {
         ))}
       </div>
     ) : null;
+
+  /**
+   * Trailing controls of a field, as on the map's place search: a spinner while
+   * the geocoder is answering the field being typed in, and a ✕ that empties a
+   * field carrying something.
+   */
+  const controls = (field: Field, filled: boolean) => (
+    <>
+      {searching && focused === field && (
+        <span
+          className="spin"
+          role="status"
+          aria-label={m.route_search_in_progress()}
+          style={{ flexShrink: 0, color: C.accent, fontSize: 14, lineHeight: 1 }}
+        >
+          ↻
+        </span>
+      )}
+      {filled && (
+        <button
+          onClick={() => clear(field)}
+          aria-label={field === 'from' ? m.route_from_clear_aria() : m.route_to_clear_aria()}
+          style={{
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            color: C.mut,
+            fontSize: 16,
+            fontWeight: 700,
+            padding: '0 2px',
+          }}
+        >
+          ✕
+        </button>
+      )}
+    </>
+  );
 
   const inputStyle: React.CSSProperties = {
     flex: 1,
@@ -174,6 +246,7 @@ export default function RouteSetup() {
               }}
             />
             <input
+              ref={fromInputRef}
               type="text"
               value={routeFromLabel(app)}
               placeholder={m.route_from_placeholder()}
@@ -181,6 +254,8 @@ export default function RouteSetup() {
               onChange={(e) => onChange('from', e.target.value)}
               style={inputStyle}
             />
+            {/* « Ma position » is the empty state, not something to clear */}
+            {controls('from', !app.fromIsCurrentPosition)}
           </div>
           {dropdown('from')}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0' }}>
@@ -194,6 +269,7 @@ export default function RouteSetup() {
               onChange={(e) => onChange('to', e.target.value)}
               style={inputStyle}
             />
+            {controls('to', toText.trim().length > 0)}
           </div>
           {dropdown('to')}
         </div>

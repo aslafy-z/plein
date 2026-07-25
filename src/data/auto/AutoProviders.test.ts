@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { capNearest } from './AutoProviders'
+import { capNearest, mergeAsTheyLand } from './AutoProviders'
 import { haversineKm } from '../../lib/geo'
-import type { Station } from '../types'
+import type { GeocodeResult, Station } from '../types'
 
 const CENTER = { lat: 42.47, lng: 2.86 } // Le Perthus — France · Spain overlap
 
@@ -58,5 +58,81 @@ describe('capNearest', () => {
   it('defaults to the same cap as a single source', () => {
     const stations = Array.from({ length: 660 }, (_, i) => station(`fra-${i}`, (i + 1) * 0.001))
     expect(capNearest(stations, CENTER)).toHaveLength(300)
+  })
+})
+
+describe('mergeAsTheyLand', () => {
+  const place = (label: string): GeocodeResult => ({
+    label,
+    sublabel: '',
+    point: CENTER,
+    kind: 'locality',
+  })
+
+  /** A promise resolved from the outside, i.e. a geocoder on a leash. */
+  const deferred = <T,>() => {
+    let settle!: (value: T) => void
+    let fail!: (reason: unknown) => void
+    const promise = new Promise<T>((resolve, reject) => {
+      settle = resolve
+      fail = reject
+    })
+    return { promise, settle, fail }
+  }
+
+  it('publishes the fast sources before the slow one has answered', async () => {
+    const fast = deferred<GeocodeResult[]>()
+    const slow = deferred<GeocodeResult[]>()
+    const partials: string[][] = []
+    const merged = mergeAsTheyLand(
+      [fast.promise, slow.promise],
+      (res) => partials.push(res.map((r) => r.label)),
+    )
+
+    fast.settle([place('Toulouse')])
+    await Promise.resolve()
+    expect(partials).toEqual([['Toulouse']])
+
+    slow.settle([place('Girona')])
+    expect(await merged).toEqual([place('Toulouse'), place('Girona')])
+    // The last source to land comes back as the promise's result, not as a
+    // partial: the view would otherwise render the same list twice.
+    expect(partials).toHaveLength(1)
+  })
+
+  it('resolves only once every source has concluded', async () => {
+    const fast = deferred<GeocodeResult[]>()
+    const slow = deferred<GeocodeResult[]>()
+    let done = false
+    const merged = mergeAsTheyLand([fast.promise, slow.promise]).then((res) => {
+      done = true
+      return res
+    })
+
+    fast.settle([place('Toulouse')])
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(done).toBe(false)
+
+    slow.settle([])
+    await merged
+    expect(done).toBe(true)
+  })
+
+  it('keeps the survivors when a source fails', async () => {
+    const res = await mergeAsTheyLand([
+      Promise.reject(new Error('cartociudad down')),
+      Promise.resolve([place('Toulouse')]),
+    ])
+    expect(res).toEqual([place('Toulouse')])
+  })
+
+  it('throws only when every source failed', async () => {
+    await expect(
+      mergeAsTheyLand([
+        Promise.reject(new Error('first')),
+        Promise.reject(new Error('second')),
+      ]),
+    ).rejects.toThrow('first')
   })
 })

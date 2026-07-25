@@ -30,6 +30,9 @@ test('les suggestions n\'attendent pas la source la plus lente', async ({ page }
     }),
   )
   await page.route('**/proxy/and/**', (route) => route.fulfill({ json: { suggestions: [] } }))
+  await page.route('**/proxy/photon/**', (route) =>
+    route.fulfill({ json: { type: 'FeatureCollection', features: [] } }),
+  )
   // CartoCiudad en pleine léthargie : rien avant 20 s.
   await page.route('**/proxy/cartociudad/**', async (route) => {
     await new Promise((r) => setTimeout(r, 20_000))
@@ -41,7 +44,11 @@ test('les suggestions n\'attendent pas la source la plus lente', async ({ page }
   await page.getByLabel('Rechercher un lieu').click()
   await page.getByPlaceholder('Ville, adresse…').fill('Toulouse')
 
-  // BAN répond tout de suite ; la grâce accordée aux retardataires est de
-  // 1,5 s — les suggestions doivent tomber bien avant les 20 s espagnoles.
+  // La BAN répond tout de suite : ses résultats s'affichent sans attendre
+  // l'Espagne, bien avant ses 20 s.
   await expect(page.getByText('voir les stations ici').first()).toBeVisible({ timeout: 6_000 })
+
+  // …et l'indicateur tourne toujours, parce qu'une source n'a pas conclu :
+  // la liste peut encore s'allonger.
+  await expect(page.getByRole('status', { name: 'Recherche en cours…' })).toBeVisible()
 })

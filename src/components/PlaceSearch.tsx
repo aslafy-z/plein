@@ -37,7 +37,13 @@ export default function PlaceSearch() {
     setSearching(true);
     timer.current = setTimeout(() => {
       app
-        .searchPlaces(text)
+        // « Automatique » queries three geocoders: show each country's hits as
+        // they land, and keep spinning until the last one has answered.
+        .searchPlaces(text, {
+          onPartial: (res) => {
+            if (id === reqId.current) setSuggestions(res);
+          },
+        })
         .then((res) => {
           if (id !== reqId.current) return;
           setSuggestions(res);
