@@ -215,7 +215,20 @@ export default function PlaceSearch() {
       </div>
 
       {suggestions.length > 0 && (
-        <div style={{ borderTop: `1px solid ${C.border}` }}>
+        // Scrollable: geocoders return a dozen candidates and the panel floats
+        // over the map, so it is capped to part of the viewport rather than
+        // covering it. `overscroll-behavior: contain` keeps a flick at the end
+        // of the list from reaching the map underneath.
+        <div
+          data-testid="search-suggestions"
+          style={{
+            borderTop: `1px solid ${C.border}`,
+            maxHeight: 'min(46vh, 320px)',
+            overflowY: 'auto',
+            overscrollBehavior: 'contain',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
           {suggestions.map((r, i) => (
             <div
               key={`${r.label}-${i}`}

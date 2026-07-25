@@ -21,6 +21,7 @@ import { EspStationsProvider, espCoversAlong, espCoversNear } from '../esp/EspSt
 import { CartoCiudadGeocodeProvider } from '../esp/CartoCiudadGeocodeProvider';
 import { AndStationsProvider, andCoversAlong, andCoversNear } from '../and/AndStationsProvider';
 import { AndGeocodeProvider } from '../and/AndGeocodeProvider';
+import { mergeByKind } from '../geocodeRank';
 
 // ── French flux coverage ─────────────────────────────────────────────────────
 // The gouv flux serves métropole + DOM; the ODS API filters geographically
@@ -113,7 +114,9 @@ export class AutoStationsProvider implements StationsProvider {
 }
 
 // ── Geocoding ────────────────────────────────────────────────────────────────
-const MAX_RESULTS = 6;
+// The suggestion list scrolls, so it is worth carrying more than a screenful —
+// three countries answering at once fill six rows with their first hits alone.
+const MAX_RESULTS = 15;
 // Once one country has actual results, the laggards get this long to land
 // before being dropped from this round of suggestions.
 const SLOW_SOURCE_GRACE_MS = 1500;
@@ -165,18 +168,9 @@ export class AutoGeocodeProvider implements GeocodeProvider {
     const a = fr?.status === 'fulfilled' ? fr.value : [];
     const b = es?.status === 'fulfilled' ? es.value : [];
     const c = ad?.status === 'fulfilled' ? ad.value : [];
-    // Interleave (France first, then Andorra, then Spain) so every country
-    // stays visible in the top 6
-    const out: GeocodeResult[] = [];
-    const seen = new Set<string>();
-    for (let i = 0; i < Math.max(a.length, b.length, c.length); i++) {
-      for (const r of [a[i], c[i], b[i]]) {
-        if (r && !seen.has(r.label)) {
-          seen.add(r.label);
-          out.push(r);
-        }
-      }
-    }
-    return out.slice(0, MAX_RESULTS);
+    // Localities of all three countries first, then their streets, then their
+    // house numbers; inside one kind the sources interleave (France first,
+    // then Andorra, then Spain) so every country stays visible at the top.
+    return mergeByKind([a, c, b]).slice(0, MAX_RESULTS);
   }
 }

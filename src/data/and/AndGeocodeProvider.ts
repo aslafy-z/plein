@@ -6,20 +6,22 @@
 // `findAddressCandidates` (its magicKey) into WGS84 coordinates — the same
 // two-step pattern as CartoCiudad for Spain.
 import { IS_DEV } from '../../lib/env';
-import type { GeocodeProvider, GeocodeResult } from '../types';
+import { rankByKind } from '../geocodeRank';
+import type { GeocodeProvider, GeocodeResult, PlaceKind } from '../types';
 
 const BASE = (IS_DEV ? '/proxy/and' : 'https://sig.govern.ad') + '/server/rest/services/IDE';
 const TIMEOUT_MS = 6000;
 const MIN_QUERY = 3;
 /** Suggestions pulled per locator — place names first, streets as a bonus */
-const PLACES_MAX = 4;
-const STREETS_MAX = 2;
-const MAX_RESULTS = 5;
+const PLACES_MAX = 6;
+const STREETS_MAX = 4;
+const MAX_RESULTS = 10;
 
 interface Suggestion {
   text: string;
   magicKey: string;
   locator: string;
+  kind: PlaceKind;
 }
 
 async function fetchJson(url: string): Promise<unknown> {
@@ -40,7 +42,12 @@ function splitLabel(text: string): Pick<GeocodeResult, 'label' | 'sublabel' | 'c
   return { label, sublabel: parish !== label ? parish : '', country: 'and' };
 }
 
-async function suggest(locator: string, q: string, max: number): Promise<Suggestion[]> {
+async function suggest(
+  locator: string,
+  q: string,
+  max: number,
+  kind: PlaceKind,
+): Promise<Suggestion[]> {
   const params = new URLSearchParams({ text: q, maxSuggestions: String(max), f: 'json' });
   const json = (await fetchJson(`${BASE}/${locator}/GeocodeServer/suggest?${params}`)) as {
     suggestions?: unknown[];
@@ -51,7 +58,7 @@ async function suggest(locator: string, q: string, max: number): Promise<Suggest
     const text = (s as { text?: unknown }).text;
     const magicKey = (s as { magicKey?: unknown }).magicKey;
     if (typeof text === 'string' && text && typeof magicKey === 'string' && magicKey) {
-      out.push({ text, magicKey, locator });
+      out.push({ text, magicKey, locator, kind });
     }
   }
   return out;
@@ -74,7 +81,7 @@ async function resolve(s: Suggestion): Promise<GeocodeResult | null> {
     const lat = loc?.y;
     const lng = loc?.x;
     if (typeof lat !== 'number' || typeof lng !== 'number' || Math.abs(lat) > 90) return null;
-    return { ...splitLabel(s.text), point: { lat, lng } };
+    return { ...splitLabel(s.text), point: { lat, lng }, kind: s.kind };
   } catch {
     return null;
   }
@@ -86,8 +93,8 @@ export class AndGeocodeProvider implements GeocodeProvider {
     if (q.length < MIN_QUERY) return [];
 
     const [places, streets] = await Promise.allSettled([
-      suggest('nomenclator2025v2', q, PLACES_MAX),
-      suggest('LocatorIDE', q, STREETS_MAX),
+      suggest('nomenclator2025v2', q, PLACES_MAX, 'locality'),
+      suggest('LocatorIDE', q, STREETS_MAX, 'street'),
     ]);
     if (places.status === 'rejected' && streets.status === 'rejected') throw places.reason;
     const merged = [
@@ -96,15 +103,7 @@ export class AndGeocodeProvider implements GeocodeProvider {
     ];
 
     const resolved = await Promise.all(merged.map(resolve));
-    const seen = new Set<string>();
-    const out: GeocodeResult[] = [];
-    for (const r of resolved) {
-      if (r && !seen.has(r.label)) {
-        seen.add(r.label);
-        out.push(r);
-        if (out.length >= MAX_RESULTS) break;
-      }
-    }
-    return out;
+    const ranked = rankByKind(resolved.filter((r): r is GeocodeResult => r !== null));
+    return ranked.slice(0, MAX_RESULTS);
   }
 }

@@ -78,9 +78,21 @@ export default function RouteSetup() {
       ? m.route_recent_trip({ km: Math.round(r.distanceKm), date: dayMonthLabel(r.at) })
       : (r.sublabel ?? '');
 
+  // Capped and scrollable: a dozen suggestions would otherwise push the rest
+  // of the form (and the CTA) far below the fold.
   const dropdown = (field: Field) =>
     focused === field && suggestions.length > 0 ? (
-      <div style={{ display: 'flex', flexDirection: 'column', paddingBottom: 8 }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          paddingBottom: 8,
+          maxHeight: 260,
+          overflowY: 'auto',
+          overscrollBehavior: 'contain',
+          WebkitOverflowScrolling: 'touch',
+        }}
+      >
         {suggestions.map((r, i) => (
           <button
             key={`${r.label}-${i}`}
@@ -93,6 +105,9 @@ export default function RouteSetup() {
               cursor: 'pointer',
               width: '100%',
               textAlign: 'left',
+              // The list scrolls: rows keep their height instead of being
+              // squeezed to fit the capped container.
+              flexShrink: 0,
             }}
           >
             <span style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>{r.label}</span>
