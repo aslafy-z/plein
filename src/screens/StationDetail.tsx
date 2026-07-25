@@ -2,7 +2,14 @@ import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { C, mono } from '../theme';
 import { ALL_FUELS, MAIN_FUELS, FUEL_LABELS, type FuelId, type Station } from '../data/types';
-import { useApp, selectVisibleForFuel, effectivePrice, priceCents, roadReachOf } from '../state/store';
+import {
+  useApp,
+  selectVisibleForFuel,
+  effectivePrice,
+  fuelRange,
+  priceCents,
+  roadReachOf,
+} from '../state/store';
 import { stationCountry } from '../data/stationIds';
 import { fmtPrice, distLabel, agoLabel, durationLabel } from '../lib/format';
 import { haversineKm } from '../lib/geo';
@@ -128,24 +135,15 @@ export default function StationDetail() {
 
   // Comparison set per fuel: stations along the route, or the stations
   // passing the current filters around the user — the SAME set the list
-  // and map derive their numbers from.
-  const comparables = (f: FuelId) =>
-    (isRoute ? app.routeState.stations : selectVisibleForFuel(app, f))
-      .filter((x) => x.prices[f] != null)
-      .map((x) => x.prices[f]!.value);
-
-  const minFor = (f: FuelId): number | null => {
-    const values = comparables(f);
-    return values.length ? Math.min(...values) : null;
-  };
+  // and map derive their numbers from, substitution included (fuelRange
+  // reads effectivePrice, so a Spanish zone compares E10 on SP95 prices).
+  const rangeFor = (f: FuelId) =>
+    fuelRange(isRoute ? app.routeState.stations : selectVisibleForFuel(app, f), f);
 
   const scopeLow = isRoute ? '▼ le + bas du trajet' : '▼ le + bas dans le rayon';
   const scopeSave = isRoute ? 'vs le + cher du trajet' : 'vs la plus chère dans le rayon';
 
-  const maxForCurrentFuel = (() => {
-    const values = comparables(app.fuel);
-    return values.length ? Math.max(...values) : null;
-  })();
+  const maxForCurrentFuel = rangeFor(app.fuel)?.max ?? null;
 
   // SP95 stands in for E10 in Spain/Andorra — same substitution as the map
   const cur = effectivePrice(s, app.fuel)?.value;
@@ -363,7 +361,7 @@ export default function StationDetail() {
         >
           {shownFuels.map((f) => {
             const price = s.prices[f]?.value;
-            const min = minFor(f);
+            const min = rangeFor(f)?.min ?? null;
             let note = '';
             let noteColor: string = C.mut;
             if (price == null) {

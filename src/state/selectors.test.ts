@@ -4,6 +4,7 @@ import {
   CROW_ROAD_FACTOR,
   effectiveFuel,
   effectivePrice,
+  fuelRange,
   priceCents,
   priceTier,
   roadReachOf,
@@ -84,6 +85,31 @@ describe('effectiveFuel', () => {
     const espE10 = station({ id: 'esp-2', prices: { e10: { value: 1.55 } } })
     expect(effectiveFuel(espE10, 'sp95')).toBeNull()
     expect(effectivePrice(esp, 'e10')?.value).toBe(1.6)
+  })
+})
+
+// ── Comparison range (fiche : « le + bas », économie sur un plein) ────────────
+describe('fuelRange', () => {
+  it('compares E10 on the Spanish SP95 prices instead of coming back empty', () => {
+    const zone = [
+      station({ id: 'esp-1', prices: { sp95: { value: 1.6 } } }),
+      station({ id: 'esp-2', prices: { sp95: { value: 1.75 } } }),
+      station({ id: 'esp-3', prices: { sp95: { value: 1.68 }, gazole: { value: 1.5 } } }),
+    ]
+    // Not one Spanish pump serves E10 — reading the raw prices left the fiche
+    // with no maximum and a 0,00 € saving on every station
+    expect(zone.every((s) => s.prices.e10 == null)).toBe(true)
+    expect(fuelRange(zone, 'e10')).toEqual({ min: 1.6, max: 1.75 })
+    // (1,75 − 1,60) × 50 L = 7,50 € saved on a tank at the cheapest station
+    expect((fuelRange(zone, 'e10')!.max - 1.6) * 50).toBeCloseTo(7.5, 5)
+  })
+
+  it('holds a single-station range and nulls out a fuel nobody sells', () => {
+    const zone = [station({ id: 'fra-1', prices: gazole(1.82) })]
+    expect(fuelRange(zone, 'gazole')).toEqual({ min: 1.82, max: 1.82 })
+    // No substitution towards SP95 in France — the E10 range stays empty
+    expect(fuelRange(zone, 'e10')).toBeNull()
+    expect(fuelRange([], 'gazole')).toBeNull()
   })
 })
 

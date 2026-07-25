@@ -1488,6 +1488,29 @@ export function effectivePrice(s: Station, fuel: FuelId): FuelPrice | undefined 
 }
 
 /**
+ * Cheapest and dearest price for a fuel across a comparison set — what the
+ * fiche's « le + bas » note and its savings figure are measured against.
+ * Read through effectivePrice so the set holds the same stations the map and
+ * the list show: an E10 comparison in Spain or Andorra is made of SP95
+ * prices, and reading the raw `prices.e10` would leave it empty — no max, no
+ * saving, a fiche claiming 0,00 € on every Spanish station.
+ */
+export function fuelRange(
+  stations: Station[],
+  fuel: FuelId,
+): { min: number; max: number } | null {
+  let min = Infinity;
+  let max = -Infinity;
+  for (const s of stations) {
+    const p = effectivePrice(s, fuel)?.value;
+    if (p == null) continue;
+    if (p < min) min = p;
+    if (p > max) max = p;
+  }
+  return min === Infinity ? null : { min, max };
+}
+
+/**
  * Stations worth one road-matrix call: the ROAD_REACH_MAX nearest ones, and
  * only those within MAX_RADIUS_KM of the user. When the user searches a
  * faraway area, its stations are not "near me" in any sense worth a routing
