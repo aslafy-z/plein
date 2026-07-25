@@ -140,7 +140,7 @@
   "sheet_sold_here": "Vendus ici :",
   "sheet_no_match": "Aucune station ne correspond à vos filtres.",
   "sheet_adjust_filters": "Ajuster",
-  "sheet_zone_count": [
+  "sheet_zone_count_compact": [
     {
       "declarations": [
         "input count",
@@ -150,8 +150,8 @@
         "countPlural"
       ],
       "match": {
-        "countPlural=one": "{count} station dans la zone",
-        "countPlural=other": "{count} stations dans la zone"
+        "countPlural=one": "{count} station",
+        "countPlural=other": "{count} stations"
       }
     }
   ],
@@ -335,6 +335,7 @@
   "detail_highway": "Autoroute",
   "detail_view_on_map": "Voir sur la carte ›",
   "detail_back_aria": "Retour",
+  "detail_close_aria": "Fermer la fiche",
   "detail_share_aria": "Partager la station",
   "detail_add_favorite_aria": "Ajouter aux favoris",
   "detail_remove_favorite_aria": "Retirer des favoris",

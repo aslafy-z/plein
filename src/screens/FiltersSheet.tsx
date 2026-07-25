@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { C, ctaStyle, mono } from '../theme';
+import { useEffect, useRef, useState } from 'react';
+import { C, ctaStyle, glass, mono } from '../theme';
 import { ALL_FUELS, SERVICE_TAGS } from '../data/types';
 import { useApp, selectVisible, selectZoneBrandCounts } from '../state/store';
 import { brandGroupLabel, fuelLabel, serviceTagLabel } from '../lib/labels';
@@ -10,7 +10,6 @@ import {
   INDEPENDENT_BRAND_ID,
   KNOWN_BRAND_GROUPS,
 } from '../lib/brandIcons';
-import Dialog from '../components/Dialog';
 
 const sectionLabel = {
   fontSize: 12,
@@ -30,6 +29,28 @@ export default function FiltersSheet() {
   const [brandsOpen, setBrandsOpen] = useState(false);
 
   const close = () => app.setFiltersOpen(false);
+
+  // Escape closes — the popover has no drag handle and the sheet's swipe
+  // means nothing to a keyboard. Captured on the window: focus may still sit
+  // on the map, which runs its own key loop.
+  const appRef = useRef(app);
+  appRef.current = app;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      appRef.current.setFiltersOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  // The popover takes focus on open, so the keyboard lands inside the thing
+  // that just appeared instead of staying on the chip that opened it
+  const cardRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (desktop) cardRef.current?.focus({ preventScroll: true });
+  }, [desktop]);
 
   // Brand groups present in the zone with their station count, most frequent
   // first; brandless stations count as the « independent » group, pinned last
@@ -343,17 +364,35 @@ export default function FiltersSheet() {
   );
 
   if (desktop) {
+    // A popover anchored under the chips that opened it, not a centered
+    // modal: filters correct a detail of the map being looked at, so the map
+    // stays fully visible — no dim, a click anywhere else closes, Escape too.
     return (
-      <Dialog
-        onClose={close}
-        label={m.filters_title()}
-        scrimLabel={m.filters_close_overlay_aria()}
-        maxWidth={540}
-        zIndex={1100}
-      >
+      <div style={{ position: 'absolute', inset: 0, zIndex: 1100 }}>
+        <button
+          onClick={close}
+          aria-label={m.filters_close_overlay_aria()}
+          style={{ position: 'absolute', inset: 0, background: 'transparent', cursor: 'default' }}
+        />
         <div
+          ref={cardRef}
+          role="dialog"
+          aria-label={m.filters_title()}
+          tabIndex={-1}
+          className="anim-dialog"
           style={{
-            padding: '22px 24px 24px',
+            position: 'absolute',
+            top: 68,
+            right: 16,
+            width: 430,
+            maxWidth: 'calc(100% - 32px)',
+            maxHeight: 'calc(100% - 92px)',
+            overflow: 'auto',
+            borderRadius: 18,
+            ...glass,
+            background: 'rgba(16,18,20,.94)',
+            outline: 'none',
+            padding: '20px 22px 22px',
             display: 'flex',
             flexDirection: 'column',
             gap: 18,
@@ -361,7 +400,7 @@ export default function FiltersSheet() {
         >
           {body}
         </div>
-      </Dialog>
+      </div>
     );
   }
 

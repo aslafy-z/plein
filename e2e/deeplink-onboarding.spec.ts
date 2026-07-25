@@ -12,7 +12,7 @@ test('a station link followed before onboarding opens after it', async ({ page }
 
   await page.getByText('Continuer sans localisation').click()
 
-  await expect(page.getByText('Station U · Croix-Blanche')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Station U · Croix-Blanche').first()).toBeVisible({ timeout: 15_000 })
   expect(new URL(page.url()).pathname).toBe('/station/su')
 })
 
@@ -24,7 +24,7 @@ test('the link survives a refresh in the middle of the walkthrough', async ({ pa
   await expect(page.getByText('Payez votre plein au juste prix.')).toBeVisible()
   await page.getByText('Continuer sans localisation').click()
 
-  await expect(page.getByText('Station U · Croix-Blanche')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Station U · Croix-Blanche').first()).toBeVisible({ timeout: 15_000 })
 })
 
 test('a tab link followed before onboarding opens after it', async ({ page }) => {
@@ -52,9 +52,9 @@ test('onboarding opened on / still lands on the map', async ({ page }) => {
 test('back from a fiche reached through onboarding stays in the app', async ({ page }) => {
   await page.goto('/station/su')
   await page.getByText('Continuer sans localisation').click()
-  await expect(page.getByText('Station U · Croix-Blanche')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Station U · Croix-Blanche').first()).toBeVisible({ timeout: 15_000 })
 
-  await page.getByRole('button', { name: 'Retour' }).click()
+  await page.getByRole('button', { name: /^(Retour|Fermer la fiche)$/ }).click()
 
   await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
   expect(new URL(page.url()).pathname).toBe('/')

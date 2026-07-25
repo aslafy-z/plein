@@ -36,7 +36,7 @@ const copied = (page: import('@playwright/test').Page) =>
 
 async function openFiche(page: import('@playwright/test').Page) {
   await page.goto('/station/su')
-  await expect(page.getByText('Station U · Croix-Blanche')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Station U · Croix-Blanche').first()).toBeVisible({ timeout: 15_000 })
 }
 
 /**
@@ -84,7 +84,7 @@ test('a dismissed share sheet leaves the fiche alone', async ({ page }) => {
 
   // No toast, no navigation: the user simply changed their mind
   await expect(page.getByText('Lien copié')).toHaveCount(0)
-  await expect(page.getByText('Station U · Croix-Blanche')).toBeVisible()
+  await expect(page.getByText('Station U · Croix-Blanche').first()).toBeVisible()
 })
 
 test('without the Web Share API the link goes to the clipboard', async ({ page }) => {

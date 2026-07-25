@@ -31,7 +31,9 @@ test('route comparison: ribbon, tour, station detail and history', async ({ page
 
   // ── Station detail from the recommended stop ──
   await page.getByRole('button', { name: /Fiche de/ }).click()
-  await expect(page.locator('[aria-label="Carte de la station"]')).toBeVisible()
+  // « Services » is the fiche section both arrangements render — the desktop
+  // fiche has no mini-map
+  await expect(page.getByText('Services')).toBeVisible()
   await expect(page.getByText(/MàJ il y a/).first()).toBeVisible()
   await page.goBack()
 

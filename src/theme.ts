@@ -1,6 +1,7 @@
 // Plein. design tokens — from the Claude Design prototype (« Cap nuit » dark system)
 
 import type { CSSProperties } from 'react';
+import { PANEL_GAP, PANEL_WIDTH } from './lib/layout';
 
 export const C = {
   bg: '#101214', // app background
@@ -38,6 +39,42 @@ export const FONT = {
 /** Price in mono accent, e.g. font: mono(700, 22) */
 export const mono = (weight: number, sizePx: number) =>
   `${weight} ${sizePx}px ${FONT.mono}`;
+
+/**
+ * « Glass » surface — the language of everything floating over the map on
+ * desktop: the zone panel, the route timeline, the fiche, control clusters
+ * and pills. The background stays near-opaque ON PURPOSE: a browser without
+ * backdrop-filter simply skips the blur, and the content has to stay readable
+ * over a busy map with nothing but this rgba behind it.
+ */
+export const glass: CSSProperties = {
+  background: 'rgba(16,18,20,.86)',
+  backdropFilter: 'blur(16px)',
+  WebkitBackdropFilter: 'blur(16px)',
+  border: '1px solid rgba(255,255,255,.1)',
+  boxShadow: '0 18px 50px rgba(0,0,0,.45)',
+};
+
+/**
+ * The floating panel slot: left edge of the map stage, full height, panel
+ * width. MapScreen puts the zone list or the fiche in it, RouteRibbon its
+ * timeline — one geometry, so the two screens can never drift apart. The
+ * children fill it (transparent background, their own scroll).
+ */
+export const floatingPanelStyle: CSSProperties = {
+  position: 'absolute',
+  left: PANEL_GAP,
+  top: PANEL_GAP,
+  bottom: PANEL_GAP,
+  width: PANEL_WIDTH,
+  zIndex: 1100,
+  display: 'flex',
+  flexDirection: 'column',
+  minHeight: 0,
+  borderRadius: 18,
+  overflow: 'hidden',
+  ...glass,
+};
 
 /**
  * Primary CTA button — one single look across the app (onboarding, filtres,

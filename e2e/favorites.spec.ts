@@ -12,7 +12,7 @@ test('starring a station pins it to Favoris, which jumps back to the map', async
   await page.getByText(/MàJ /).first().click()
   await page.getByRole('button', { name: 'Ajouter aux favoris' }).click()
   await expect(page.getByRole('button', { name: 'Retirer des favoris' })).toBeVisible()
-  await page.getByRole('button', { name: 'Retour' }).click()
+  await page.getByRole('button', { name: /^(Retour|Fermer la fiche)$/ }).click()
 
   // Listed with a live price and the sort chips (Recommandé by default)
   await page.getByText('Favoris', { exact: true }).click()

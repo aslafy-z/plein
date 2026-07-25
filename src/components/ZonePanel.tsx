@@ -1,19 +1,18 @@
-import { C } from '../theme';
-import { PANEL_WIDTH } from '../lib/layout';
 import { useApp, selectFocusStation, selectRecommended } from '../state/store';
 import ZoneCard from './ZoneCard';
 import ZoneList from './ZoneList';
 
 /**
- * The zone docked beside the map — the DESKTOP arrangement.
+ * The zone floating over the map — the DESKTOP arrangement.
  *
  * Same card and same list as the phone's bottom sheet (ZoneCard / ZoneList),
- * minus the gesture. A window has room for the map and the results at once,
- * so nothing has to be pulled up and nothing overlays the map: Leaflet gets
- * its true size from this flex row instead of being told to keep a strip
- * free at the bottom, which is why MapScreen hands it `bottomInset={0}` here.
+ * minus the gesture. MapScreen owns the slot this fills (position, width,
+ * glass surface — see floatingPanelStyle in theme.ts); the panel itself is
+ * only the content, transparent over the glass. With a fiche open under the
+ * list, `listOnly` drops the leading card: the fiche IS the lead then, and
+ * the card would repeat it a few pixels above.
  */
-export default function ZonePanel() {
+export default function ZonePanel({ listOnly = false }: { listOnly?: boolean }) {
   const app = useApp();
   // Nothing to lead with (loading, or no station passes the filters) → the
   // card says so on its own and there is no list to put under it
@@ -22,19 +21,18 @@ export default function ZonePanel() {
   return (
     <aside
       style={{
-        width: PANEL_WIDTH,
-        flexShrink: 0,
-        background: C.surface,
-        borderRight: `1px solid ${C.border}`,
+        flex: 1,
         display: 'flex',
         flexDirection: 'column',
         minHeight: 0,
         overflow: 'hidden',
       }}
     >
-      <div style={{ flexShrink: 0 }}>
-        <ZoneCard />
-      </div>
+      {!listOnly && (
+        <div style={{ flexShrink: 0 }}>
+          <ZoneCard />
+        </div>
+      )}
       {hasCard && <ZoneList />}
     </aside>
   );

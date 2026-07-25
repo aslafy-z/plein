@@ -18,10 +18,20 @@ function pointAtKm(polyline: GeoPoint[], cum: number[], km: number): GeoPoint | 
   return null;
 }
 
-export default function RouteMap({ fill = false }: { fill?: boolean }) {
+export default function RouteMap({
+  fill = false,
+  leftInset = 0,
+}: {
+  fill?: boolean;
+  /** Width of the floating timeline covering the map's left edge (desktop) —
+      route fits pad on that side so the corridor lands in the visible part */
+  leftInset?: number;
+}) {
   const app = useApp();
   const analysis = selectRouteAnalysis(app);
   const route = app.routeState.route;
+  const leftInsetRef = useRef(leftInset);
+  leftInsetRef.current = leftInset;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -63,7 +73,11 @@ export default function RouteMap({ fill = false }: { fill?: boolean }) {
     const ro = new ResizeObserver(() => {
       map.invalidateSize();
       const box = lineBoundsRef.current;
-      if (box && !userMovedRef.current) map.fitBounds(box, { padding: [26, 26] });
+      if (box && !userMovedRef.current)
+        map.fitBounds(box, {
+          paddingTopLeft: [26 + leftInsetRef.current, 26],
+          paddingBottomRight: [26, 26],
+        });
     });
     ro.observe(containerRef.current);
     return () => {
@@ -150,7 +164,10 @@ export default function RouteMap({ fill = false }: { fill?: boolean }) {
     if (fittedRouteRef.current !== route) {
       fittedRouteRef.current = route;
       userMovedRef.current = false; // a new route deserves its own framing
-      map.fitBounds(box, { padding: [26, 26] });
+      map.fitBounds(box, {
+        paddingTopLeft: [26 + leftInsetRef.current, 26],
+        paddingBottomRight: [26, 26],
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route, app.routeState.stations, app.fuel, app.routeMode, analysis.recoId]);
@@ -159,13 +176,17 @@ export default function RouteMap({ fill = false }: { fill?: boolean }) {
     <div
       aria-label={m.map_route_aria()}
       style={{
-        position: 'relative',
         background: C.mapBg,
-        // A strip above the timeline on a phone; the whole stage next to it
-        // on a window, where there is room to read the corridor properly
+        // A strip above the timeline on a phone; the whole stage on a
+        // window, where the floating timeline rides over it
         ...(fill
-          ? { flex: 1, minWidth: 0, minHeight: 0 }
-          : { height: 210, flexShrink: 0, borderBottom: `1px solid ${C.border}` }),
+          ? { position: 'absolute' as const, inset: 0 }
+          : {
+              position: 'relative' as const,
+              height: 210,
+              flexShrink: 0,
+              borderBottom: `1px solid ${C.border}`,
+            }),
       }}
     >
       <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />

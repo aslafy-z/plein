@@ -125,6 +125,28 @@ export default function StationDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s, pending]);
 
+  // Desktop: the fiche floats over the LIVE map (MapScreen keeps it mounted
+  // behind) — select the station there so the map pans onto it and its pin
+  // wears the halo, the same link a list row makes. Only when the station
+  // belongs to the loaded area: a route stop far from the zone must not
+  // teleport the map. The selection is the fiche's own: closing it hands the
+  // map back as it was, with the default card heading, not a leftover
+  // « station sélectionnée ».
+  const nearbyId = nearby?.id;
+  const appRef = useRef(app);
+  appRef.current = app;
+  // « Voir sur la carte » hands the selection over to the map screen — the
+  // one exit where clearing it would undo the very thing the user asked for
+  const keepFocusRef = useRef(false);
+  useEffect(() => {
+    if (!desktop || !nearbyId) return;
+    appRef.current.setFocusStation(nearbyId);
+    return () => {
+      if (keepFocusRef.current) return;
+      appRef.current.setFocusStation(null);
+    };
+  }, [desktop, nearbyId]);
+
   if (!s) return pending ? <StationDetailPending desktop={desktop} /> : null;
 
   const { distKm, driveMin } = roadReachOf(
@@ -200,112 +222,168 @@ export default function StationDetail() {
   const thirdChip = s.brand ?? (s.highway ? m.detail_highway() : s.address ? null : s.city);
   const status = openStatus(s.hours);
 
+  const onViewOnMap = () => {
+    keepFocusRef.current = true;
+    app.setSearchArea({ lat: s.lat, lng: s.lng }, s.name);
+    // …with THIS station selected on the map (highlighted pin + card)
+    app.setFocusStation(s.id);
+    app.go('map');
+  };
+  const onToggleFavorite = () =>
+    app.toggleFavorite({
+      id: s.id,
+      name: s.name,
+      init: s.init,
+      city: s.city,
+      lat: s.lat,
+      lng: s.lng,
+    });
+  const favoriteAria = app.isFavorite(s.id)
+    ? m.detail_remove_favorite_aria()
+    : m.detail_add_favorite_aria();
+
+  /** Round icon button of the desktop header row */
+  const headerButton = {
+    width: 34,
+    height: 34,
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  } as const;
+
   // The fiche itself — the same document in both arrangements. It fills the
-  // screen on a phone; on a window it becomes a bordered card centered in the
-  // region next to the navigation, because a fiche is a narrow document and
-  // nothing is gained by dragging its address line across 1200px.
+  // screen on a phone, opening on a mini-map that gives the address a place.
+  // On a window it stacks under the zone list, over the LIVE map that is
+  // already showing the station — a second map there would say nothing, so
+  // its actions move to a compact header row instead.
   const body = (
     <>
-      {/* Header mini-map */}
-      <div style={{ position: 'relative', height: 160, flexShrink: 0, background: C.mapBg }}>
-        <StationMiniMap station={s} />
-        <button
-          onClick={() => {
-            app.setSearchArea({ lat: s.lat, lng: s.lng }, s.name);
-            // …with THIS station selected on the map (highlighted pin + card)
-            app.setFocusStation(s.id);
-            app.go('map');
-          }}
+      {desktop ? (
+        // Stacked under the list, the fiche is dismissed like a panel — a
+        // cross, not a « back ». No « view on map » either: the live map at
+        // the right is already showing the station.
+        <div
           style={{
-            position: 'absolute',
-            right: 12,
-            bottom: 26,
-            zIndex: 1000,
-            background: '#101214d9',
-            color: C.accent,
-            fontSize: 12,
-            fontWeight: 700,
-            padding: '7px 12px',
-            borderRadius: 16,
-            border: `1px solid ${C.accentBorder}`,
-          }}
-        >
-          {m.detail_view_on_map()}
-        </button>
-        <button
-          onClick={() => app.back()}
-          aria-label={m.detail_back_aria()}
-          title={m.detail_back_aria()}
-          style={{
-            position: 'absolute',
-            left: 14,
-            top: 14,
-            width: 40,
-            height: 40,
-            borderRadius: '50%',
-            background: '#101214d9',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            color: C.ink,
-            fontSize: 18,
-            zIndex: 1000,
+            gap: 4,
+            padding: '10px 12px 0',
+            flexShrink: 0,
           }}
         >
-          ←
-        </button>
-        {/* Share the fiche — native sheet where it exists, clipboard elsewhere */}
-        <button
-          onClick={() => app.shareStation(s)}
-          aria-label={m.detail_share_aria()}
-          style={{
-            position: 'absolute',
-            right: 62,
-            top: 14,
-            width: 40,
-            height: 40,
-            borderRadius: '50%',
-            background: '#101214d9',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}
-        >
-          <ShareIcon color={C.ink} size={18} />
-        </button>
-        {/* Pin to Favoris */}
-        <button
-          onClick={() =>
-            app.toggleFavorite({
-              id: s.id,
-              name: s.name,
-              init: s.init,
-              city: s.city,
-              lat: s.lat,
-              lng: s.lng,
-            })
-          }
-          aria-label={
-            app.isFavorite(s.id) ? m.detail_remove_favorite_aria() : m.detail_add_favorite_aria()
-          }
-          style={{
-            position: 'absolute',
-            right: 14,
-            top: 14,
-            width: 40,
-            height: 40,
-            borderRadius: '50%',
-            background: '#101214d9',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}
-        >
-          <Star filled={app.isFavorite(s.id)} color={app.isFavorite(s.id) ? C.accent : C.ink} size={19} />
-        </button>
-      </div>
+          <button
+            onClick={() => app.back()}
+            aria-label={m.detail_close_aria()}
+            title={m.detail_close_aria()}
+            style={{ ...headerButton, color: C.ink, fontSize: 15, fontWeight: 700 }}
+          >
+            ✕
+          </button>
+          <span style={{ flex: 1 }} />
+          {/* Share the fiche — native sheet where it exists, clipboard elsewhere */}
+          <button
+            onClick={() => app.shareStation(s)}
+            aria-label={m.detail_share_aria()}
+            style={headerButton}
+          >
+            <ShareIcon color={C.ink} size={17} />
+          </button>
+          {/* Pin to Favoris */}
+          <button onClick={onToggleFavorite} aria-label={favoriteAria} style={headerButton}>
+            <Star
+              filled={app.isFavorite(s.id)}
+              color={app.isFavorite(s.id) ? C.accent : C.ink}
+              size={18}
+            />
+          </button>
+        </div>
+      ) : (
+        <div style={{ position: 'relative', height: 160, flexShrink: 0, background: C.mapBg }}>
+          <StationMiniMap station={s} />
+          <button
+            onClick={onViewOnMap}
+            style={{
+              position: 'absolute',
+              right: 12,
+              bottom: 26,
+              zIndex: 1000,
+              background: '#101214d9',
+              color: C.accent,
+              fontSize: 12,
+              fontWeight: 700,
+              padding: '7px 12px',
+              borderRadius: 16,
+              border: `1px solid ${C.accentBorder}`,
+            }}
+          >
+            {m.detail_view_on_map()}
+          </button>
+          <button
+            onClick={() => app.back()}
+            aria-label={m.detail_back_aria()}
+            title={m.detail_back_aria()}
+            style={{
+              position: 'absolute',
+              left: 14,
+              top: 14,
+              width: 40,
+              height: 40,
+              borderRadius: '50%',
+              background: '#101214d9',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: C.ink,
+              fontSize: 18,
+              zIndex: 1000,
+            }}
+          >
+            ←
+          </button>
+          {/* Share the fiche — native sheet where it exists, clipboard elsewhere */}
+          <button
+            onClick={() => app.shareStation(s)}
+            aria-label={m.detail_share_aria()}
+            style={{
+              position: 'absolute',
+              right: 62,
+              top: 14,
+              width: 40,
+              height: 40,
+              borderRadius: '50%',
+              background: '#101214d9',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+            }}
+          >
+            <ShareIcon color={C.ink} size={18} />
+          </button>
+          {/* Pin to Favoris */}
+          <button
+            onClick={onToggleFavorite}
+            aria-label={favoriteAria}
+            style={{
+              position: 'absolute',
+              right: 14,
+              top: 14,
+              width: 40,
+              height: 40,
+              borderRadius: '50%',
+              background: '#101214d9',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+            }}
+          >
+            <Star filled={app.isFavorite(s.id)} color={app.isFavorite(s.id) ? C.accent : C.ink} size={19} />
+          </button>
+        </div>
+      )}
 
       <div style={{ padding: '18px 20px 8px', display: 'flex', flexDirection: 'column', gap: 18 }}>
         {/* Title + chips */}
@@ -511,7 +589,6 @@ export default function StationDetail() {
   return (
     <div
       style={{
-        background: '#101214',
         overflow: 'auto',
         // Column layout so the CTA can be pushed to the bottom on a short
         // fiche (margin-top: auto) and stick there on a long one
@@ -520,18 +597,15 @@ export default function StationDetail() {
         boxSizing: 'border-box',
         ...(desktop
           ? {
-              // A card in the region, not an overlay: the side navigation
-              // stays visible and the browser Back button still means Back.
-              // The radius clips the header map at the top.
+              // The content of the floating panel slot (MapScreen owns the
+              // glass, the width and the radius): transparent fill, the map
+              // stays alive behind and the rail stays up — the browser Back
+              // button still means Back.
               flex: 1,
               minHeight: 0,
-              maxWidth: 660,
-              width: '100%',
-              margin: '24px auto',
-              border: `1px solid ${C.border}`,
-              borderRadius: 20,
+              background: 'transparent',
             }
-          : { position: 'absolute', inset: 0, zIndex: 1200 }),
+          : { position: 'absolute', inset: 0, zIndex: 1200, background: '#101214' }),
       }}
     >
       {body}
