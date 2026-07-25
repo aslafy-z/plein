@@ -154,6 +154,34 @@ const ROUNDING_CLAMP_MIN = -2;
  */
 const PRICE_STOP_COST = REFUEL_STOP_MIN * VALUE_OF_TIME_CENTS_PER_MIN * 20;
 
+/**
+ * Cents per minute of travel time each strategy charges. This weight is the
+ * ONLY difference between the three: ONE additive objective, money + time × a
+ * per-strategy value, so every comparison stays an integer sum.
+ *
+ * That matters for more than tidiness. A lexicographic primary/secondary split
+ * (« minutes, then price ») made the secondary key unreachable: routed
+ * durations tie to the tenth of a minute essentially never, so « détour min. »
+ * ignored price outright and would take a station 30 c/L dearer to save six
+ * seconds. A tolerance band would fix the symptom and break the solver — a
+ * comparator with a band is not transitive, and the DP's per-state pruning
+ * needs a total order compatible with addition to stay optimal. A weighted sum
+ * is both.
+ */
+const STRATEGY_VALUE_OF_TIME: Record<RouteStrategy, number> = {
+  /**
+   * Money is the objective; time only separates plans that cost the same, and
+   * each halt still carries PRICE_STOP_COST so a few cents never buys a stop.
+   */
+  price: 2,
+  balanced: VALUE_OF_TIME_CENTS_PER_MIN,
+  /**
+   * Minutes dominate: at 10 €/min a one-minute-longer plan has to be ~20 c/L
+   * cheaper across a 50 L tank to win, so price decides close calls only.
+   */
+  detour: 1000,
+};
+
 /** Additive cost components every DP state carries (all integers) */
 interface CostTuple {
   money: number;
@@ -205,23 +233,12 @@ export function planRoute(input: OptimizerInput): RoutePlan {
   for (let k = 0; k < n; k++) if (requiredIds.has(stationAt(k).id)) requiredNodes.push(k);
 
   const strategy = input.strategy;
-  /** Strictly better under the strategy's lexicographic objective? */
+  const vot = STRATEGY_VALUE_OF_TIME[strategy];
+  /** Strictly better under the strategy's objective? */
   function better(a: CostTuple, b: CostTuple): boolean {
-    let d: number;
-    if (strategy === 'balanced') {
-      // money[1/20 c] + VOT[c/min] × time[0.1 min] → both in 1/20 cent
-      d =
-        a.money +
-        2 * VALUE_OF_TIME_CENTS_PER_MIN * a.timeTenths -
-        (b.money + 2 * VALUE_OF_TIME_CENTS_PER_MIN * b.timeTenths);
-      if (d) return d < 0;
-    } else if (strategy === 'detour') {
-      d = a.timeTenths - b.timeTenths;
-      if (d) return d < 0;
-    }
-    d = a.money - b.money;
-    if (d) return d < 0;
-    d = a.timeTenths - b.timeTenths;
+    // money[1/20 c] + VOT[c/min] × time[0.1 min] → one integer in 1/20 cent
+    let d =
+      a.money + 2 * vot * a.timeTenths - (b.money + 2 * vot * b.timeTenths);
     if (d) return d < 0;
     d = a.stops - b.stops;
     if (d) return d < 0;
