@@ -10,6 +10,7 @@ import { haversineKm, nearestOnPolyline } from '../../lib/geo';
 import type {
   GeocodeProvider,
   GeocodeResult,
+  GeocodeSearchOptions,
   SourceCapabilities,
   Station,
   StationsFetchOptions,
@@ -122,9 +123,49 @@ export class AutoStationsProvider implements StationsProvider {
 // The suggestion list scrolls, so it is worth carrying more than a screenful —
 // four countries answering at once fill six rows with their first hits alone.
 const MAX_RESULTS = 15;
-// Once one country has actual results, the laggards get this long to land
-// before being dropped from this round of suggestions.
-const SLOW_SOURCE_GRACE_MS = 1500;
+
+/**
+ * Merge geocoders that answer at their own pace. One slow source must not hold
+ * the suggestions hostage (CartoCiudad has spells where it only answers after
+ * its timeout, which used to make the whole search look dead), so what has
+ * landed is published through `onPartial` as soon as it lands; the promise
+ * resolves once EVERY source has concluded, which is what keeps a view's
+ * spinner honest — results are already on screen while it still turns.
+ *
+ * `lists` are merged in the order given, so pass them in display order. The
+ * call throws only when every source failed.
+ */
+export async function mergeAsTheyLand(
+  tasks: readonly Promise<GeocodeResult[]>[],
+  onPartial?: (results: GeocodeResult[]) => void,
+): Promise<GeocodeResult[]> {
+  const lists: GeocodeResult[][] = tasks.map(() => []);
+  let landed = 0;
+  let failed = 0;
+  let firstReason: unknown;
+  const merged = () => mergeByKind(lists).slice(0, MAX_RESULTS);
+
+  await Promise.all(
+    tasks.map((task, i) =>
+      task.then(
+        (value) => {
+          lists[i] = value;
+          landed++;
+          // The last source to land is the promise's own result; publishing it
+          // here too would only make every view render the same list twice.
+          if (landed + failed < tasks.length) onPartial?.(merged());
+        },
+        (reason: unknown) => {
+          failed++;
+          if (firstReason === undefined) firstReason = reason;
+        },
+      ),
+    ),
+  );
+
+  if (tasks.length > 0 && failed === tasks.length) throw firstReason;
+  return merged();
+}
 
 export class AutoGeocodeProvider implements GeocodeProvider {
   private readonly ban = new BanGeocodeProvider();
@@ -132,51 +173,15 @@ export class AutoGeocodeProvider implements GeocodeProvider {
   private readonly and = new AndGeocodeProvider();
   private readonly photon = new PhotonGeocodeProvider();
 
-  async search(query: string): Promise<GeocodeResult[]> {
-    // Queried, and interleaved below, in this order: France, Andorra,
-    // Portugal, Spain — so no country fills the visible rows on its own.
-    const sources = [this.ban, this.and, this.photon, this.cartociudad];
-    // One slow geocoder must not hold the suggestions hostage (CartoCiudad
-    // has spells where it only answers after its 6 s timeout, which used to
-    // make the whole search look dead): a source still pending after the
-    // grace simply counts as empty for this keystroke.
-    const settled: (PromiseSettledResult<GeocodeResult[]> | undefined)[] = [];
-    const wrapped = sources.map((source, i) =>
-      source.search(query).then(
-        (value) => {
-          settled[i] = { status: 'fulfilled', value };
-          return value;
-        },
-        (reason: unknown) => {
-          settled[i] = { status: 'rejected', reason };
-          return null;
-        },
-      ),
-    );
-    let graceTimer: ReturnType<typeof setTimeout> | undefined;
-    const grace = new Promise<void>((resolve) => {
-      for (const w of wrapped) {
-        void w.then((value) => {
-          if (value && value.length > 0 && graceTimer === undefined) {
-            graceTimer = setTimeout(resolve, SLOW_SOURCE_GRACE_MS);
-          }
-        });
-      }
-    });
-    await Promise.race([Promise.all(wrapped), grace]);
-    clearTimeout(graceTimer);
-
-    // A source still pending is a hole in `settled`, not a rejection — only a
-    // round where every source actually failed is a failed search.
-    const outcomes = sources.map((_, i) => settled[i]);
-    const failures = outcomes.filter((s) => s?.status === 'rejected');
-    if (failures.length === outcomes.length) {
-      throw (failures[0] as PromiseRejectedResult).reason;
-    }
+  search(query: string, opts?: GeocodeSearchOptions): Promise<GeocodeResult[]> {
     // Localities of all four countries first, then their streets, then their
-    // house numbers; inside one kind the sources interleave in `sources` order
-    // so every country stays visible at the top.
-    const lists = outcomes.map((s) => (s?.status === 'fulfilled' ? s.value : []));
-    return mergeByKind(lists).slice(0, MAX_RESULTS);
+    // house numbers; inside one kind the sources interleave in the order given
+    // here — France, Andorra, Portugal, Spain — so no country fills the visible
+    // rows on its own.
+    const sources = [this.ban, this.and, this.photon, this.cartociudad];
+    return mergeAsTheyLand(
+      sources.map((source) => source.search(query)),
+      opts?.onPartial,
+    );
   }
 }

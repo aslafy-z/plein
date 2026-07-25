@@ -32,6 +32,7 @@ import {
   type FuelId,
   type FuelPrice,
   type GeocodeResult,
+  type GeocodeSearchOptions,
   type NearbyStation,
   type ReachInfo,
   type Route,
@@ -291,7 +292,7 @@ export interface AppStore {
   /** Put the departure field back on the user's position */
   useCurrentPositionAsStart(): void;
   setTo(text: string, point?: GeoPoint | null): void;
-  searchPlaces(q: string): Promise<GeocodeResult[]>;
+  searchPlaces(q: string, opts?: GeocodeSearchOptions): Promise<GeocodeResult[]>;
   recents: RecentPlace[];
   /** false while `recents` still shows the default suggestions */
   hasTripHistory: boolean;
@@ -1145,7 +1146,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [setFuel, setRadius]);
 
   const searchPlaces = useCallback(
-    (q: string) => getProviders(sourceId).geocode.search(q),
+    (q: string, opts?: GeocodeSearchOptions) => getProviders(sourceId).geocode.search(q, opts),
     [sourceId],
   );
 
