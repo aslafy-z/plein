@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "npm run messages",
     "build": "tsc -b && vite build",
     "preview": "npm run build && wrangler dev",
     "messages": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide --strategy custom-appSettings preferredLanguage baseLocale --emit-ts-declarations",

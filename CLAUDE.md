@@ -26,9 +26,13 @@ lives only in `messages/fr.json`.
 
 [Paraglide JS](https://paraglidejs.com) is a **devDependency**: a compiler,
 not a runtime. `npm run messages` turns `messages/{locale}.json` into typed,
-tree-shakable functions under `src/paraglide/` (gitignored). `vite.config.ts`
-runs it on dev and build; `npm run typecheck`, `npm test` and `npm run e2e`
-run it from their `pre*` scripts, because they don't go through `vite.config.ts`.
+tree-shakable functions under `src/paraglide/` (gitignored).
+
+**Anything that reads the generated code needs it compiled first**, and only
+`npm run dev` gets that from the Vite plugin. `typecheck`, `test`, `e2e` and
+`build` each run `npm run messages` from a `pre*` script — `build` included,
+because its `tsc -b` runs *before* Vite loads the plugin. A fresh clone that
+skips those scripts sees `Cannot find module '../paraglide/messages.js'`.
 
 - Message keys are `area_element_purpose` (`settings_vehicle_section`,
   `sheet_cheapest_nearby`) and compile to `m.settings_vehicle_section()`.
