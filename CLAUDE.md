@@ -10,10 +10,8 @@ Cloudflare Workers. UI copy is French — keep it that way.
   messages, `aria-label`s, page titles — is written in French.
 - **Everything else you produce is written in English**: code comments,
   JSDoc/TSDoc, docs and Markdown files, test names and descriptions, GitHub
-  issues, pull request titles and bodies, and PR/issue comments and review
+  issues, pull request titles and bodies, commit messages, and PR/issue comments and review
   replies.
-- Commit messages follow the existing history, which is French — match the
-  surrounding log.
 - Don't translate existing French comments or copy you happen to touch;
   only what you newly write follows this rule.
 
