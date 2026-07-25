@@ -5,6 +5,7 @@ import L from 'leaflet';
 import { C } from '../theme';
 import { cumulativeKm, type GeoPoint } from '../lib/geo';
 import { addDarkBasemap } from '../lib/tiles';
+import { installSmoothKeyboard } from '../lib/mapKeyboard';
 import { useApp, selectRouteAnalysis, effectivePrice } from '../state/store';
 
 /** Vertex at a given km along the polyline (vertex precision is plenty here) */
@@ -31,16 +32,20 @@ export default function RouteMap() {
     const map = L.map(containerRef.current, {
       zoomControl: false,
       attributionControl: true,
+      // Leaflet's stepped arrows/± give way to the smooth loop below
+      keyboard: false,
     });
     map.setView([46.6, 2.4], 6);
     addDarkBasemap(map);
     layerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
+    const stopKeyboard = installSmoothKeyboard(map);
 
     const ro = new ResizeObserver(() => map.invalidateSize());
     ro.observe(containerRef.current);
     return () => {
       ro.disconnect();
+      stopKeyboard();
       map.remove();
       mapRef.current = null;
       layerRef.current = null;
