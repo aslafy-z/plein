@@ -7,8 +7,8 @@
 import { IS_DEV } from '../../lib/env';
 import type { GeoPoint } from '../../lib/geo';
 import { haversineKm, nearestOnPolyline } from '../../lib/geo';
+import { initialsOf } from '../../lib/text';
 import type {
-  BrandCat,
   FuelId,
   FuelPrice,
   SourceCapabilities,
@@ -64,16 +64,16 @@ const EXTRA_PRODUCTS: ReadonlyArray<readonly [number, string]> = [
 // ── Brands ───────────────────────────────────────────────────────────────────
 // The banner lives in the station name (NOM); Marca_importador is the
 // importer, which differs on franchised stations (Dyneff imports via Elf…).
-const BANNERS: ReadonlyArray<readonly [RegExp, string, BrandCat]> = [
-  [/dyneff/i, 'Dyneff', 'pet'],
-  [/meroil/i, 'Meroil', 'pet'],
-  [/total/i, 'TotalEnergies', 'pet'],
-  [/\belf\b/i, 'Elf', 'pet'],
-  [/cepsa/i, 'Cepsa', 'pet'],
-  [/repsol/i, 'Repsol', 'pet'],
-  [/shell/i, 'Shell', 'pet'],
-  [/\bbp\b/i, 'BP', 'pet'],
-  [/gasopas/i, 'Gasopas', 'ind'],
+const BANNERS: ReadonlyArray<readonly [RegExp, string]> = [
+  [/dyneff/i, 'Dyneff'],
+  [/meroil/i, 'Meroil'],
+  [/total/i, 'TotalEnergies'],
+  [/\belf\b/i, 'Elf'],
+  [/cepsa/i, 'Cepsa'],
+  [/repsol/i, 'Repsol'],
+  [/shell/i, 'Shell'],
+  [/\bbp\b/i, 'BP'],
+  [/gasopas/i, 'Gasopas'],
 ];
 
 /** "TotalEnergies - LA MASSANA I" → "TotalEnergies · La Massana I" */
@@ -90,12 +90,6 @@ function tidyName(nom: string): string {
         : part,
     )
     .join(' · ');
-}
-
-function initialsOf(label: string): string {
-  const words = label.split(/[\s·-]+/).filter((w) => w.length > 1 || /\d/.test(w));
-  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
-  return label.slice(0, 2).toUpperCase();
 }
 
 // ── Rows → Stations ──────────────────────────────────────────────────────────
@@ -209,7 +203,6 @@ export function groupStations(features: unknown[]): Station[] {
       name,
       init: initialsOf(name),
       brand: banner?.[1],
-      cat: banner?.[2] ?? 'unknown',
       lat: acc.point.lat,
       lng: acc.point.lng,
       address: '', // the flux carries no street addresses

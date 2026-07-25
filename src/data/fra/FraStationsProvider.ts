@@ -8,6 +8,7 @@ import { enrichWithBrands, fuelPoisAlong, fuelPoisNear } from './osmBrands';
 import type { GeoPoint } from '../../lib/geo';
 import { nearestOnPolyline, polylineLengthKm, samplePolyline } from '../../lib/geo';
 import type { DayHours, StationHours } from '../../lib/hours';
+import { titleCase } from '../../lib/text';
 import type {
   FuelId,
   FuelPrice,
@@ -269,14 +270,6 @@ function deriveTags(services: string[], rec: Raw): ServiceTag[] {
 }
 
 // ── Misc ─────────────────────────────────────────────────────────────────────
-function titleCase(s: string): string {
-  return s
-    .toLowerCase()
-    .split(/([ \-']+)/)
-    .map((part) => (/^[ \-']+$/.test(part) ? part : part.charAt(0).toUpperCase() + part.slice(1)))
-    .join('');
-}
-
 function isHighway(rec: Raw): boolean {
   const pop = toStr(rec.pop) ?? '';
   return pop === 'A' || /^a(utoroute)?$/i.test(pop);
@@ -297,7 +290,6 @@ function parseRecord(rec: Raw): Station | null {
     name: pretty ? `Station · ${pretty}` : 'Station',
     init: (ville.slice(0, 2) || 'ST').toUpperCase(),
     brand: undefined,
-    cat: 'unknown',
     lat: coords.lat,
     lng: coords.lng,
     address: toStr(rec.adresse) ?? '',

@@ -10,7 +10,6 @@ function station(id: string, lat: number, lng: number, city = 'Toulouse'): Stati
     id,
     name: `Station · ${city}`,
     init: 'ST',
-    cat: 'unknown',
     lat,
     lng,
     address: '1 rue du Test',
@@ -70,7 +69,6 @@ function enrichByFullScan(stations: Station[], pois: FuelPoi[]): Station[] {
     return {
       ...s,
       brand: mm.label,
-      cat: catForTest(mm.label),
       name: city ? `${mm.label} · ${city}` : mm.label,
       init: initialsForTest(mm.label),
       ...snap,
@@ -78,13 +76,8 @@ function enrichByFullScan(stations: Station[], pois: FuelPoi[]): Station[] {
   });
 }
 
-// Minimal stand-ins so the oracle stays self-contained; the real tables live in
-// osmBrands.ts and are exercised through enrichWithBrands below.
-function catForTest(label: string): Station['cat'] {
-  if (/leclerc|carrefour|intermarch|super\s?u|auchan/i.test(label)) return 'gs';
-  if (/total|\bbp\b|esso|shell|avia/i.test(label)) return 'pet';
-  return 'ind';
-}
+// A stand-in so the oracle stays self-contained; the real helper lives in
+// src/lib/text.ts and is exercised through enrichWithBrands below.
 function initialsForTest(label: string): string {
   const words = label.split(/[\s·-]+/).filter((w) => w.length > 1 || /\d/.test(w));
   if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
@@ -120,7 +113,6 @@ describe('enrichWithBrands', () => {
     // ~50 m off — the kind of drift the gouv geocoder produces
     const [out] = enrichWithBrands([station('a', poi.lat + m(50), poi.lng)], [poi]);
     expect(out.brand).toBe('Carrefour');
-    expect(out.cat).toBe('gs');
     expect(out.name).toBe('Carrefour · Toulouse');
     expect(out.init).toBe('CA');
     expect(out.lat).toBe(poi.lat);
@@ -146,7 +138,6 @@ describe('enrichWithBrands', () => {
       branded,
     ]);
     expect(out.brand).toBe('TotalEnergies');
-    expect(out.cat).toBe('pet');
     expect(out.lat).toBe(unlabeled.lat);
   });
 

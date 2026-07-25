@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from 'react';
 import { IS_ANDROID, IS_IOS } from '../lib/env';
+import { clockLabel } from '../lib/format';
 import type { GeoPoint } from '../lib/geo';
 import { cumulativeKm, haversineKm, nearestOnPolyline } from '../lib/geo';
 import {
@@ -2004,12 +2005,12 @@ export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
       const extra = tourStops.reduce((a, s) => a + s.detourMin + REFUEL_MIN, 0);
       const arr = new Date(Date.now() + (base + extra) * 60000);
       const n = tourStops.length;
-      arrivalLabel = `avec ${n} arrêt${n > 1 ? 's' : ''} : ${arr.getHours()} h ${String(arr.getMinutes()).padStart(2, '0')} (+${extra} min pleins compris)`;
+      arrivalLabel = `avec ${n} arrêt${n > 1 ? 's' : ''} : ${clockLabel(arr)} (+${extra} min pleins compris)`;
     } else if (needsStop) {
       arrivalLabel = `sans arrêt : autonomie insuffisante (limite ≈ KM ${limitKm})`;
     } else {
       const arr = new Date(Date.now() + base * 60000);
-      arrivalLabel = `arrivée estimée ${arr.getHours()} h ${String(arr.getMinutes()).padStart(2, '0')} · autonomie OK`;
+      arrivalLabel = `arrivée estimée ${clockLabel(arr)} · autonomie OK`;
     }
   }
 

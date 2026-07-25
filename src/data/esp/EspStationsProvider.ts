@@ -8,9 +8,9 @@ import { IS_DEV } from '../../lib/env';
 import type { GeoPoint } from '../../lib/geo';
 import { haversineKm, nearestOnPolyline } from '../../lib/geo';
 import type { DayHours, StationHours } from '../../lib/hours';
+import { initialsOf, titleCase } from '../../lib/text';
 import { zonedTimeToMs } from '../../lib/time';
 import type {
-  BrandCat,
   FuelId,
   FuelPrice,
   ServiceTag,
@@ -195,35 +195,6 @@ function parseHorario(v: unknown): StationHours | undefined {
   return Object.keys(days).length ? { auto24: false, days } : undefined;
 }
 
-// ── Brands ───────────────────────────────────────────────────────────────────
-const BRAND_CATS: ReadonlyArray<readonly [RegExp, BrandCat]> = [
-  [/carrefour|alcampo|eroski|bonarea|e\.?\s?leclerc|esclatoil|bon\s?preu/i, 'gs'],
-  [
-    /repsol|cepsa|moeve|galp|petronor|\bbp\b|shell|\bq8\b|avia|esso|tamoil|texaco|campsa|meroil|valcarce|\bdisa\b|petrocat|petromiralles|beroil|\bagla\b|gas\s?express|\bham\b/i,
-    'pet',
-  ],
-];
-
-function catFor(brand: string): BrandCat {
-  for (const [re, cat] of BRAND_CATS) if (re.test(brand)) return cat;
-  return 'ind';
-}
-
-/** "ESTACIÓN DE SERVICIO..." rótulos stay readable once title-cased */
-function titleCase(s: string): string {
-  return s
-    .toLowerCase()
-    .split(/([ \-']+)/)
-    .map((part) => (/^[ \-']+$/.test(part) ? part : part.charAt(0).toUpperCase() + part.slice(1)))
-    .join('');
-}
-
-function initialsOf(label: string): string {
-  const words = label.split(/[\s·-]+/).filter((w) => w.length > 1 || /\d/.test(w));
-  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
-  return label.slice(0, 2).toUpperCase();
-}
-
 // ── Record → Station ─────────────────────────────────────────────────────────
 function parseRecord(rec: Raw, updatedAt: string | undefined): Station | null {
   const lat = toNum(rec['Latitud']);
@@ -236,6 +207,7 @@ function parseRecord(rec: Raw, updatedAt: string | undefined): Station | null {
     if (v != null && v >= MIN_PRICE && v <= MAX_PRICE) prices[fuel] = { value: v, updatedAt };
   }
 
+  // "ESTACIÓN DE SERVICIO..." rótulos stay readable once title-cased
   const rotulo = toStr(rec['Rótulo']);
   const brand = rotulo ? titleCase(rotulo) : undefined;
   const city = toStr(rec['Municipio']) ?? toStr(rec['Localidad']) ?? '';
@@ -255,7 +227,6 @@ function parseRecord(rec: Raw, updatedAt: string | undefined): Station | null {
     name: brand ? (city ? `${brand} · ${city}` : brand) : city ? `Station · ${city}` : 'Station',
     init: brand ? initialsOf(brand) : (city.slice(0, 2) || 'ST').toUpperCase(),
     brand,
-    cat: brand ? catFor(brand) : 'unknown',
     lat,
     lng,
     address: titleCase(address),

@@ -32,18 +32,17 @@ const SYNTH_TEMPLATES: ReadonlyArray<{
   name: string;
   init: string;
   brand: string;
-  cat: Station['cat'];
   gazole: number;
   detourMin: number;
   highway: boolean;
   services: string[];
 }> = [
-  { frac: 0.14, name: 'Intermarché · Aire des Chênes', init: 'IN', brand: 'Intermarché', cat: 'gs', gazole: 1.71, detourMin: 4, highway: false, services: ['Ouvert 24/24', 'Lavage'] },
-  { frac: 0.3, name: 'Total Relais · Aire du Val', init: 'TR', brand: 'TotalEnergies', cat: 'pet', gazole: 1.84, detourMin: 0, highway: true, services: ['Ouvert 24/24', 'Boutique', 'Gonflage'] },
-  { frac: 0.46, name: 'Leclerc · Les Quatre Vents', init: 'LE', brand: 'E.Leclerc', cat: 'gs', gazole: 1.66, detourMin: 2, highway: false, services: ['Ouvert 24/24', 'Lavage', 'Boutique'] },
-  { frac: 0.6, name: 'Carrefour · Porte du Sud', init: 'CA', brand: 'Carrefour', cat: 'gs', gazole: 1.63, detourMin: 9, highway: false, services: ['Boutique'] },
-  { frac: 0.74, name: 'Avia · Relais des Bruyères', init: 'AV', brand: 'Avia', cat: 'ind', gazole: 1.68, detourMin: 7, highway: false, services: ['Gonflage'] },
-  { frac: 0.88, name: 'Super U · La Croisée', init: 'SU', brand: 'Système U', cat: 'gs', gazole: 1.73, detourMin: 4, highway: false, services: ['Ouvert 24/24', 'Lavage', 'Boutique'] },
+  { frac: 0.14, name: 'Intermarché · Aire des Chênes', init: 'IN', brand: 'Intermarché', gazole: 1.71, detourMin: 4, highway: false, services: ['Ouvert 24/24', 'Lavage'] },
+  { frac: 0.3, name: 'Total Relais · Aire du Val', init: 'TR', brand: 'TotalEnergies', gazole: 1.84, detourMin: 0, highway: true, services: ['Ouvert 24/24', 'Boutique', 'Gonflage'] },
+  { frac: 0.46, name: 'Leclerc · Les Quatre Vents', init: 'LE', brand: 'E.Leclerc', gazole: 1.66, detourMin: 2, highway: false, services: ['Ouvert 24/24', 'Lavage', 'Boutique'] },
+  { frac: 0.6, name: 'Carrefour · Porte du Sud', init: 'CA', brand: 'Carrefour', gazole: 1.63, detourMin: 9, highway: false, services: ['Boutique'] },
+  { frac: 0.74, name: 'Avia · Relais des Bruyères', init: 'AV', brand: 'Avia', gazole: 1.68, detourMin: 7, highway: false, services: ['Gonflage'] },
+  { frac: 0.88, name: 'Super U · La Croisée', init: 'SU', brand: 'Système U', gazole: 1.73, detourMin: 4, highway: false, services: ['Ouvert 24/24', 'Lavage', 'Boutique'] },
 ];
 
 function synthCorridorStations(polyline: GeoPoint[]): Station[] {
@@ -57,7 +56,6 @@ function synthCorridorStations(polyline: GeoPoint[]): Station[] {
       name: t.name,
       init: t.init,
       brand: t.brand,
-      cat: t.cat,
       lat: at.lat + (i % 2 === 0 ? off : -off),
       lng: at.lng,
       address: 'Aire de service',

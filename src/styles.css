@@ -198,12 +198,6 @@ button {
 }
 
 /* Price pin markers (Leaflet divIcon) */
-.pin-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  cursor: pointer;
-}
 .pin-bubble {
   font-family: 'Spline Sans Mono', ui-monospace, monospace;
   white-space: nowrap;
