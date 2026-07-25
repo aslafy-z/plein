@@ -12,6 +12,12 @@
    latin-ext are vendored (fr · es · ca · an); `unicode-range` keeps
    latin-ext off the wire until a name actually needs it. Filenames carry
    the upstream version so /fonts/* can be served immutable.
+
+   index.html preloads the two latin files, since this stylesheet only
+   reveals them one round-trip later — with `crossorigin`, mandatory even
+   same-origin: fonts are fetched in CORS mode, and a preload that doesn't
+   match the later request is simply downloaded twice.
+
    Licences: public/fonts/*-OFL.txt (SIL Open Font License 1.1). */
 @font-face {
   font-family: 'Archivo';
