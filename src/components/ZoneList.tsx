@@ -64,10 +64,30 @@ export default function ZoneList({
   };
   const focusId = app.focusStationId;
   useEffect(() => {
-    if (!focusId || !listRef.current) return;
-    listRef.current
-      .querySelector(`[data-station-id="${CSS.escape(focusId)}"]`)
-      ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    const scroller = listRef.current;
+    if (!focusId || !scroller) return;
+    // Scroll THE LIST only — scrollIntoView also scrolls every scrollable
+    // ancestor, and on the phone that dragged the absolutely-positioned map
+    // stage along and cut it at the bottom. Under the collapsed sheet the
+    // scroller has no height yet, so the attempt re-runs when it gets one
+    // (the sheet expanding) and stops after the first success.
+    let pending = true;
+    const ro = new ResizeObserver(() => attempt());
+    const attempt = () => {
+      if (!pending) return;
+      const row = scroller.querySelector(`[data-station-id="${CSS.escape(focusId)}"]`);
+      if (!row || scroller.clientHeight < 60) return;
+      const s = scroller.getBoundingClientRect();
+      const r = row.getBoundingClientRect();
+      if (r.top < s.top) scroller.scrollBy({ top: r.top - s.top - 8, behavior: 'smooth' });
+      else if (r.bottom > s.bottom)
+        scroller.scrollBy({ top: r.bottom - s.bottom + 8, behavior: 'smooth' });
+      pending = false;
+      ro.disconnect();
+    };
+    attempt();
+    if (pending) ro.observe(scroller);
+    return () => ro.disconnect();
   }, [focusId]);
 
   return (
