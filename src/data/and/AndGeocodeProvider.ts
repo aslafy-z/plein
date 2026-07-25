@@ -28,12 +28,16 @@ async function fetchJson(url: string): Promise<unknown> {
   return res.json();
 }
 
-/** "el Pas de la Casa, Encamp" → label + « Andorre · Encamp » */
-function splitLabel(text: string): { label: string; sublabel: string } {
+/**
+ * "el Pas de la Casa, Encamp" → label + the parish alone. Naming the country
+ * in front of it is the view's job (`placeSublabel`): « Andorre » is a word
+ * the app chooses, not one the flux returns.
+ */
+function splitLabel(text: string): Pick<GeocodeResult, 'label' | 'sublabel' | 'country'> {
   const i = text.lastIndexOf(',');
   const label = (i > 0 ? text.slice(0, i) : text).trim();
   const parish = i > 0 ? text.slice(i + 1).trim() : '';
-  return { label, sublabel: parish && parish !== label ? `Andorre · ${parish}` : 'Andorre' };
+  return { label, sublabel: parish !== label ? parish : '', country: 'and' };
 }
 
 async function suggest(locator: string, q: string, max: number): Promise<Suggestion[]> {

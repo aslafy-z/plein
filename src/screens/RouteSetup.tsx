@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { C, ctaStyle, mono, stickyBarStyle } from '../theme';
 import { type GeocodeResult } from '../data/types';
 import { dayMonthLabel } from '../lib/format';
-import { fuelLabel } from '../lib/labels';
+import { fuelLabel, placeSublabel } from '../lib/labels';
 import { m } from '../paraglide/messages.js';
 import { useApp, routeFromLabel, type RecentPlace } from '../state/store';
 
@@ -96,7 +96,7 @@ export default function RouteSetup() {
             }}
           >
             <span style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>{r.label}</span>
-            <span style={{ fontSize: 12, color: C.faint, marginTop: 1 }}>{r.sublabel}</span>
+            <span style={{ fontSize: 12, color: C.faint, marginTop: 1 }}>{placeSublabel(r)}</span>
           </button>
         ))}
       </div>

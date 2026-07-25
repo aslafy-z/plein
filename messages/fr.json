@@ -55,6 +55,8 @@
   "source_and_sub": "Andorre · officiel Govern d’Andorra · prix déclarés par les stations",
   "source_demo_title": "Données de démonstration",
   "source_demo_sub": "hors-ligne · jeu de données fictif",
+  "place_andorra": "Andorre",
+  "place_andorra_parish": "Andorre · {parish}",
   "toast_opening_gps_app": "Ouverture de l'app GPS…",
   "toast_opening_maps": "Ouverture de {site}…",
   "toast_link_copied": "Lien copié",

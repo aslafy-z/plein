@@ -128,8 +128,15 @@ export interface StationsProvider {
 
 export interface GeocodeResult {
   label: string; // "Bordeaux centre"
-  sublabel: string; // "Gironde"
+  sublabel: string; // "Gironde" — as the source spells it, empty when it has none
   point: GeoPoint;
+  /**
+   * Country to name in front of `sublabel`. The French and Spanish sources say
+   * where a place is themselves (a département, a province) — proper nouns no
+   * locale translates. The Andorran one returns the parish alone, so the
+   * country is the app's own word and belongs to the catalog.
+   */
+  country?: 'and';
 }
 
 export interface GeocodeProvider {

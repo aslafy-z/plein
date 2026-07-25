@@ -55,6 +55,8 @@
   "source_and_sub": "Andorra · official Govern d’Andorra · prices declared by the stations",
   "source_demo_title": "Demo data",
   "source_demo_sub": "offline · fictional dataset",
+  "place_andorra": "Andorra",
+  "place_andorra_parish": "Andorra · {parish}",
   "toast_opening_gps_app": "Opening the GPS app…",
   "toast_opening_maps": "Opening {site}…",
   "toast_link_copied": "Link copied",

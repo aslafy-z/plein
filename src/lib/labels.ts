@@ -2,7 +2,14 @@
 // is an English id; this is the single place those ids become words, and the
 // words themselves live in the message catalog.
 import { m } from '../paraglide/messages.js';
-import type { DataSourceId, ExtraProductId, FuelId, ServiceTag, VehicleId } from '../data/types';
+import type {
+  DataSourceId,
+  ExtraProductId,
+  FuelId,
+  GeocodeResult,
+  ServiceTag,
+  VehicleId,
+} from '../data/types';
 import { EXTRA_PRODUCT_IDS, SERVICE_TAGS } from '../data/types';
 import { INDEPENDENT_BRAND_ID } from './brandIcons';
 import { minutesLabel } from './format';
@@ -50,6 +57,17 @@ export function vehicleLabel(id: VehicleId): string {
  */
 export function brandGroupLabel(group: string): string {
   return group === INDEPENDENT_BRAND_ID ? m.brand_independent() : group;
+}
+
+/**
+ * Where a search result is, in one line. Most sources spell it out themselves
+ * — « Gironde », « Girona » — and that proper noun passes straight through.
+ * Andorra's returns the parish alone, so the app names the country, and it has
+ * to follow a language switch like any other sentence.
+ */
+export function placeSublabel(place: GeocodeResult): string {
+  if (place.country !== 'and') return place.sublabel;
+  return place.sublabel ? m.place_andorra_parish({ parish: place.sublabel }) : m.place_andorra();
 }
 
 function extraProductLabel(id: ExtraProductId): string {
