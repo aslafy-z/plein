@@ -1,6 +1,6 @@
 // The map auto-fit frames the SEARCH CIRCLE, so the zoom level always reads
 // the radius the user asked for — not the density of the stations inside it.
-import { test, expect, gotoMap, tileZoom } from './fixtures'
+import { test, expect, gotoMap, mapZoom } from './fixtures'
 
 test.beforeEach(async ({ page }) => {
   await gotoMap(page)
@@ -14,12 +14,14 @@ test.beforeEach(async ({ page }) => {
 async function setRadius(page: import('@playwright/test').Page, km: string) {
   await page.getByText(/^Filtres · \d+$/).click()
   const slider = page.locator('input[type=range]')
+  // The anchor MUST be read before the slider moves: the radius applies on the
+  // input event (FiltersSheet), not on the button below — which only closes
+  // the sheet. Reading it after would already be the post-fit level, and the
+  // fit could then never be seen to land. The sheet standing open has not
+  // moved the map: the map's inset follows the COLLAPSED sheet height.
+  const before = await mapZoom(page)
   await slider.fill(km)
   await expect(slider).toHaveValue(km)
-  // Read the level here, not before opening the sheet: the map's inset follows
-  // the COLLAPSED sheet height, so the sheet standing open has not moved the
-  // view — and by now any earlier fit has long landed.
-  const before = await tileZoom(page)
   await page.getByText(/^Voir \d+ stations?$/).click()
   await expect(page.getByText(`< ${km} km`)).toBeVisible()
   return before
@@ -37,7 +39,7 @@ async function settled(page: import('@playwright/test').Page, previous: number) 
   // The reading is recorded BEFORE the assertion: throwing first would leave
   // `last` at NaN for every retry, and no two readings could ever match.
   await expect(async () => {
-    const z = await tileZoom(page)
+    const z = await mapZoom(page)
     const settledOn = z === last && z !== previous
     level = z
     last = z
@@ -67,6 +69,6 @@ test('searching a place lands on the radius, whatever the stations do there', as
   // Same radius, same viewport → the searched place is framed exactly as
   // wide as home was, however few (or many) stations sit around it
   await expect(async () => {
-    expect(await tileZoom(page)).toBe(home)
+    expect(await mapZoom(page)).toBe(home)
   }).toPass()
 })
