@@ -261,7 +261,7 @@ describe('demo corridor (Toulouse → Bordeaux)', () => {
     `)
     expect(names('price')).toMatchInlineSnapshot(`
       [
-        "r-grisolles",
+        "au",
       ]
     `)
     expect(names('detour')).toMatchInlineSnapshot(`

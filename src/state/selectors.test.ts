@@ -564,8 +564,8 @@ const corridorStation = (
 // Positions sit on polyline vertices (5 km grid) so the projection is exact
 const CORRIDOR: RouteStation[] = [
   corridorStation('on-route-pricey', 1.84, 55, 0),
-  corridorStation('balanced', 1.66, 85, 0.5),
-  corridorStation('cheapest-far-detour', 1.63, 120, 6),
+  corridorStation('balanced', 1.55, 85, 0.5),
+  corridorStation('cheapest-far-detour', 1.52, 120, 8),
   corridorStation('max', 1.9, 150, 0),
 ]
 
@@ -620,9 +620,10 @@ describe('selectRouteAnalysis', () => {
     const detour = selectRouteAnalysis(routeApp({ startTankPct: 10, routeMode: 'detour' }))
     // Detour: one forced stop, no hop to a cheaper pump
     expect(detour.planStops.map((p) => p.station.id)).toEqual(['on-route-pricey'])
-    // Price: tops up at the forced stop, buys the bulk at the fair on-corridor
-    // pump. The 1,63 € sticker never wins: its 6 km off-road access burns more
-    // fuel than the 3 ct/L discount pays for — it stays an alternative.
+    // Price: tops up at the forced stop, buys the bulk at the cheap
+    // on-corridor pump. The 1,52 € sticker never wins: its 8 km off-road
+    // access burns more fuel than the 3 ct/L discount pays for — it stays
+    // an alternative.
     const priceIds = price.planStops.map((p) => p.station.id)
     expect(priceIds.slice(0, 2)).toEqual(['on-route-pricey', 'balanced'])
     expect(priceIds).not.toContain('cheapest-far-detour')

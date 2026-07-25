@@ -41,6 +41,28 @@ export function litresForKm(distanceKm: number, consumptionLitresPer100Km: numbe
   return (distanceKm * consumptionLitresPer100Km) / 100;
 }
 
+/** Above this average speed the consumption uplift starts */
+const SPEED_UPLIFT_START_KMH = 90;
+/** …and reaches its maximum at this speed (sustained motorway pace) */
+const SPEED_UPLIFT_FULL_KMH = 130;
+/** Maximum uplift over the configured mixed average (aero drag ≈ v²) */
+const SPEED_UPLIFT_MAX = 0.25;
+
+/**
+ * Consumption multiplier for a leg driven at `avgSpeedKmh`. The consumption
+ * in Réglages is a MIXED average; a leg cruised at motorway pace burns
+ * measurably more (drag grows with v²), so planning it at the mixed average
+ * silently spends the safety reserve on a bias we can predict. The ramp is
+ * deliberately simple and documented: ×1 up to 90 km/h, linear to ×1.25 at
+ * 130 km/h and above. The reserve then only has to absorb the true unknowns
+ * (gauge optimism, wind, traffic, the driver's real-world average).
+ */
+export function speedConsumptionFactor(avgSpeedKmh: number): number {
+  const over =
+    (avgSpeedKmh - SPEED_UPLIFT_START_KMH) / (SPEED_UPLIFT_FULL_KMH - SPEED_UPLIFT_START_KMH);
+  return 1 + SPEED_UPLIFT_MAX * Math.min(1, Math.max(0, over));
+}
+
 /**
  * How far `fuelLitres` safely takes the vehicle while honouring the reserve.
  * The explicit form of the legacy « limite d'autonomie » line.

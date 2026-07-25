@@ -37,6 +37,7 @@ import {
   RESERVE_FRACTION,
   VALUE_OF_TIME_CENTS_PER_MIN,
   litresForKm,
+  speedConsumptionFactor,
   usableRangeKm,
 } from './fuelEconomics';
 
@@ -236,13 +237,24 @@ export function planRoute(input: OptimizerInput): RoutePlan {
     () => new Array<ArriveState | undefined>(tankUnits + 1),
   );
 
+  // Motorway pace burns more than the configured mixed average, so every leg
+  // is planned at the route's speed factor (see speedConsumptionFactor). The
+  // factor keys on the DIRECT route's average speed, not each leg's own: a
+  // leg mixing fast cruise with slow station access averages below cruise
+  // speed, and a per-leg factor would under-charge exactly the legs that
+  // detour — rewarding detours with cheaper fuel physics.
+  const directSpeedKmh =
+    input.direct.durationMin > 0 ? (input.direct.distanceKm / input.direct.durationMin) * 60 : 0;
+  const consFactor = speedConsumptionFactor(directSpeedKmh);
+  const legLitres = (leg: TravelLeg): number => litresForKm(leg.distanceKm, cons) * consFactor;
+
   function traverse(
     fromNode: number,
     departRow: ReadonlyArray<DepartState | undefined>,
     leg: TravelLeg,
     target: number,
   ) {
-    const litres = litresForKm(leg.distanceKm, cons);
+    const litres = legLitres(leg);
     // The reserve constrains the DEPARTURE fuel of each leg (legIsFeasible)
     const minUnits = Math.max(0, Math.ceil(litres / (1 - RESERVE_FRACTION) / unit - EPS));
     const timeT = Math.max(0, Math.round(leg.durationMin * 10));
@@ -435,7 +447,7 @@ export function planRoute(input: OptimizerInput): RoutePlan {
         : node === DEST
           ? legToDest(from)
           : legBetween(from, node);
-    if (leg) fuelConsumedLitres += litresForKm(leg.distanceKm, cons);
+    if (leg) fuelConsumedLitres += legLitres(leg);
     if (from === ORIGIN) break;
     const fromState = arrive[from][state.fromArrivalUnits];
     if (!fromState) break; // unreachable by construction

@@ -8,7 +8,13 @@ import {
   type RouteStrategy,
   type TravelLeg,
 } from './routeOptimizer'
-import { RESERVE_FRACTION, legIsFeasible, litresForKm, usableRangeKm } from './fuelEconomics'
+import {
+  RESERVE_FRACTION,
+  legIsFeasible,
+  litresForKm,
+  speedConsumptionFactor,
+  usableRangeKm,
+} from './fuelEconomics'
 
 // ── Fixture builder ──────────────────────────────────────────────────────────
 // A synthetic straight-road world: driving between two corridor points costs
@@ -274,7 +280,7 @@ describe('partial purchases', () => {
     const plan = planRoute(
       buildInput({
         routeKm: 280,
-        startFuel: 6, // usable 73.8 km — the expensive stop is unavoidable
+        startFuel: 7, // barely covers the first 70 km — the expensive stop is unavoidable
         strategy: 'price',
         stations: [
           { id: 'expensive-early', km: 70, price: 2.0 },
@@ -436,6 +442,46 @@ describe('no absurd micro-stops', () => {
     for (const stop of plan.stops) {
       expect(stop.purchasedLitres).toBeGreaterThanOrEqual(MIN_PURCHASE_LITRES)
     }
+  })
+})
+
+// ── Speed-aware consumption ──────────────────────────────────────────────────
+describe('motorway consumption uplift', () => {
+  it('a leg cruised at motorway pace burns more and forces bigger purchases', () => {
+    const base: Spec = {
+      routeKm: 300,
+      startFuel: 12,
+      strategy: 'price',
+      stations: [{ id: 'only', km: 100, price: 1.7 }],
+    }
+    const mixed = planRoute(buildInput(base)) // fixture cruise ≈ 100 km/h
+    const motorway = planRoute(
+      buildInput({
+        ...base,
+        patch: (legs) => {
+          // Same km, driven faster: 130 km/h everywhere
+          const fast = (l: TravelLeg | null): TravelLeg | null =>
+            l && { distanceKm: l.distanceKm, durationMin: (l.distanceKm / 130) * 60 }
+          legs.direct = fast(legs.direct)!
+          legs.origin = legs.origin.map(fast)
+          legs.destination = legs.destination.map(fast)
+          legs.between = legs.between.map((row) => row.map(fast))
+        },
+      }),
+    )
+    expect(motorway.fuelConsumedLitres).toBeGreaterThan(mixed.fuelConsumedLitres)
+    expect(motorway.stops[0].purchasedLitres).toBeGreaterThanOrEqual(
+      mixed.stops[0].purchasedLitres,
+    )
+  })
+
+  it('slow local access hops stay at the configured mixed average', () => {
+    // 40 km/h access → factor 1: the uplift only targets sustained high speed
+    expect(speedConsumptionFactor(40)).toBe(1)
+    expect(speedConsumptionFactor(90)).toBe(1)
+    expect(speedConsumptionFactor(110)).toBeCloseTo(1.125, 10)
+    expect(speedConsumptionFactor(130)).toBeCloseTo(1.25, 10)
+    expect(speedConsumptionFactor(180)).toBeCloseTo(1.25, 10)
   })
 })
 
