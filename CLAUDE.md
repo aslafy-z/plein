@@ -1,17 +1,18 @@
 # Plein. — notes for agents
 
 PWA React 18 + TypeScript (strict) + Vite + Leaflet. Cheapest fuel stations
-around you and along a route (France · Spain · Andorra), deployed on
-Cloudflare Workers. The app is localized: French is the source locale, and it
-lives only in `messages/fr.json`.
+around you and along a route (France · Spain · Andorra · Portugal), deployed
+on Cloudflare Workers. The app is localized: French is the source locale, and
+it lives only in `messages/fr.json`.
 
 ## Language
 
 - **French is the source locale and lives in exactly one place**:
-  `messages/fr.json`. `messages/en.json`, `messages/es.json` and
-  `messages/ca.json` (Catalan, the language of Andorra) translate it.
-  **No bare string literal reaches JSX** — labels, empty states, toasts,
-  `aria-label`s, `placeholder`s, `title`s all come from a message function.
+  `messages/fr.json`. `messages/en.json`, `messages/es.json`,
+  `messages/ca.json` (Catalan, the language of Andorra) and `messages/pt.json`
+  translate it. **No bare string literal reaches JSX** — labels, empty states,
+  toasts, `aria-label`s, `placeholder`s, `title`s all come from a message
+  function.
 - **Everything else is English**: type names, union literal values, object
   keys, store fields, constants, function names, message keys, code comments,
   JSDoc/TSDoc, docs and Markdown files, test names and descriptions, GitHub

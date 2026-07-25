@@ -5,13 +5,14 @@
 # Plein.
 
 **Le plein au juste prix** — trouvez les stations-service les moins chères
-autour de vous et le long de vos trajets, en France, en Espagne et en Andorre.
+autour de vous et le long de vos trajets, en France, en Espagne, en Andorre et
+au Portugal.
 
 [![Ouvrir l'app](https://img.shields.io/badge/%E2%96%B6%EF%B8%8E%20Ouvrir%20l'app-plein.zadkiel.fr-3ddc84?style=for-the-badge&labelColor=0f1a14)](https://plein.zadkiel.fr)
 
 [![Licence MIT](https://img.shields.io/badge/licence-MIT-3ddc84?labelColor=0f1a14)](LICENSE)
 [![PWA](https://img.shields.io/badge/PWA-installable-3ddc84?labelColor=0f1a14)](#-utilisation)
-[![Données](https://img.shields.io/badge/donn%C3%A9es-%F0%9F%87%AB%F0%9F%87%B7%20France%20%C2%B7%20%F0%9F%87%AA%F0%9F%87%B8%20Espagne%20%C2%B7%20%F0%9F%87%A6%F0%9F%87%A9%20Andorre-blue?labelColor=0f1a14)](#-sources-de-données)
+[![Données](https://img.shields.io/badge/donn%C3%A9es-%F0%9F%87%AB%F0%9F%87%B7%20France%20%C2%B7%20%F0%9F%87%AA%F0%9F%87%B8%20Espagne%20%C2%B7%20%F0%9F%87%A6%F0%9F%87%A9%20Andorre%20%C2%B7%20%F0%9F%87%B5%F0%9F%87%B9%20Portugal-blue?labelColor=0f1a14)](#-sources-de-données)
 [![React 18](https://img.shields.io/badge/React-18-61dafb?labelColor=0f1a14&logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?labelColor=0f1a14&logo=typescript)](https://www.typescriptlang.org)
 [![Leaflet](https://img.shields.io/badge/Leaflet-1.9-199900?labelColor=0f1a14)](https://leafletjs.com)
@@ -31,10 +32,10 @@ autour de vous et le long de vos trajets, en France, en Espagne et en Andorre.
   meilleur prix, pas seulement la première) en vert, les plus chères teintées
   orange ; déplacez la carte, les stations de la zone se chargent automatiquement,
   et dans les zones denses seules les moins chères gardent leur bulle de prix.
-- 🇫🇷🇪🇸🇦🇩 **Trois pays sur la même carte** — la source « Automatique » combine
-  les flux officiels de la France, de l'Espagne et de l'Andorre selon la zone
-  affichée : les pleins frontaliers (Le Perthus, Irún, le Pas de la Case…) se
-  comparent d'un seul coup d'œil.
+- 🇫🇷🇪🇸🇦🇩🇵🇹 **Quatre pays sur la même carte** — la source « Automatique »
+  combine les flux officiels de la France, de l'Espagne, de l'Andorre et du
+  Portugal selon la zone affichée : les pleins frontaliers (Le Perthus, Irún,
+  le Pas de la Case, Vilar Formoso…) se comparent d'un seul coup d'œil.
 - 📋 **Liste de la zone** — tirez le volet du bas : toutes les stations visibles,
   triables par prix ou distance, les bons plans surlignés, synchronisées avec la
   carte. La station mise en avant est le **meilleur choix réel** : le carburant
@@ -49,15 +50,16 @@ autour de vous et le long de vos trajets, en France, en Espagne et en Andorre.
 - ⛽ **Tous les carburants** — Gazole, SP95/98, E10, E85, GPLc ; filtres par
   rayon, enseignes, type de distributeur et services (24/24, lavage, boutique,
   gonflage, additifs type AdBlue…). L'E10 n'existant quasi pas hors de France,
-  les stations espagnoles et andorranes affichent leur SP95 (compatible E10)
-  sur la carte E10 — libellé « SP95 / L » à l'appui.
+  les stations espagnoles, andorranes et portugaises affichent leur SP95
+  (compatible E10) sur la carte E10 — libellé « SP95 / L » à l'appui.
 - 🕐 **Horaires réels** — « Ouvert 24/24 », « Fermé · ouvre à 6 h 30 »… calculés
   depuis les horaires officiels ; fraîcheur des prix affichée (et signalée quand
   ils datent).
 - 🏷️ **Enseignes reconnues** — logos et noms des stations (TotalEnergies,
-  E.Leclerc, Intermarché… et Repsol, Cepsa, Galp côté espagnol et andorran)
-  appariés depuis OpenStreetMap en France (positions recalées sur les vraies
-  coordonnées OSM), portés directement par les flux officiels ailleurs.
+  E.Leclerc, Intermarché… et Repsol, Cepsa, Galp, Prio côté espagnol, andorran
+  et portugais) appariés depuis OpenStreetMap en France (positions recalées sur
+  les vraies coordonnées OSM), portés directement par les flux officiels
+  ailleurs.
 - 🧭 **« Y aller »** — ouvre la fiche du lieu dans votre app GPS : choix de
   l'app sur Android (`geo:`), Plans sur iOS, Google Maps sur desktop ; tournée
   multi-arrêts possible.
@@ -73,7 +75,7 @@ autour de vous et le long de vos trajets, en France, en Espagne et en Andorre.
 
 1. Ouvrez **[plein.zadkiel.fr](https://plein.zadkiel.fr)** (le déploiement officiel).
 2. Autorisez la géolocalisation — ou continuez sans, et cherchez une ville, en
-   France, en Espagne ou en Andorre.
+   France, en Espagne, en Andorre ou au Portugal.
 3. Choisissez votre carburant en haut de la carte : le meilleur choix (prix ET
    distance, détour compté) apparaît dans le volet du bas, **Y aller** lance le
    guidage.
@@ -88,7 +90,7 @@ Aucun compte, aucun tracker : vos favoris et réglages restent dans votre naviga
 
 Chaque pays couvert a ses propres flux officiels — prix et géocodage — que
 l'app choisit selon la zone affichée (source *Automatique*). Le reste
-(itinéraires, fonds de carte) est commun aux trois.
+(itinéraires, fonds de carte) est commun aux quatre.
 
 ### 🇫🇷 France
 
@@ -112,7 +114,14 @@ l'app choisit selon la zone affichée (source *Automatique*). Le reste
 | Prix des carburants & enseignes | [Preus dels carburants](https://sig.govern.ad/IPE/PreusCarburants) (sig.govern.ad, Govern d'Andorra — Oficina de l'energia i del canvi climàtic) — l'enseigne est déduite du nom de la station ; le flux ne porte ni adresse ni horaires | © Govern d'Andorra |
 | Géocodage & autocomplétion | Nomenclàtor (gazetteer officiel) & LocatorIDE (sig.govern.ad, IDE Andorra) | © Govern d'Andorra |
 
-### Communs aux trois pays
+### 🇵🇹 Portugal
+
+| Donnée | Source | Licence |
+| --- | --- | --- |
+| Prix des carburants & enseignes | [Preços dos combustíveis](https://precoscombustiveis.dgeg.gov.pt) (DGEG — Direção-Geral de Energia e Geologia) — l'enseigne (*marca*) est portée par le flux, qui ne donne ni horaires ni E10 ; couverture continentale (les Açores et Madère ont leur propre régime) | Dados abertos |
+| Géocodage & autocomplétion | [Photon](https://photon.komoot.io) (instance publique Komoot, index OpenStreetMap), borné au Portugal continental — le pays ne publie pas de géocodeur d'adresses sans clé | ODbL |
+
+### Communs aux quatre pays
 
 | Donnée | Source | Licence |
 | --- | --- | --- |
@@ -134,7 +143,7 @@ npm install
 npm run dev          # http://localhost:5173
 npm run build        # build de production (dist/)
 npm run e2e          # E2E Playwright : parcourt tous les écrans
-npm run verify:live  # vérifie les providers réels (France, Espagne, Andorre, géocodeurs, OSRM) contre les vrais endpoints
+npm run verify:live  # vérifie les providers réels (France, Espagne, Andorre, Portugal, géocodeurs, OSRM) contre les vrais endpoints
 npm run deploy       # build + wrangler deploy
 ```
 
@@ -152,7 +161,7 @@ Code sous licence [MIT](LICENSE) © Zadkiel Aharonian.
 Les données affichées restent soumises aux licences de leurs producteurs
 respectifs (Licence Ouverte pour les données publiques françaises, datos
 abiertos du MITECO pour les prix espagnols, © Govern d'Andorra pour l'Andorre,
-ODbL pour OpenStreetMap).
+dados abertos de la DGEG pour les prix portugais, ODbL pour OpenStreetMap).
 Les polices **Archivo** et **Spline Sans Mono**, embarquées dans
 `public/fonts/`, sont sous [SIL Open Font License 1.1](public/fonts/) (voir les
 fichiers `*-OFL.txt` du même dossier).

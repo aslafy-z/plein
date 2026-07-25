@@ -47,10 +47,12 @@ export { EspStationsProvider } from './src/data/esp/EspStationsProvider';
 export { CartoCiudadGeocodeProvider } from './src/data/esp/CartoCiudadGeocodeProvider';
 export { AndStationsProvider } from './src/data/and/AndStationsProvider';
 export { AndGeocodeProvider } from './src/data/and/AndGeocodeProvider';
+export { PrtStationsProvider } from './src/data/prt/PrtStationsProvider';
+export { PhotonGeocodeProvider } from './src/data/prt/PhotonGeocodeProvider';
 export { AutoStationsProvider, AutoGeocodeProvider } from './src/data/auto/AutoProviders';
 export { nearestOnPolyline, polylineLengthKm } from './src/lib/geo';
 export { openStatus } from './src/lib/hours';
-export { brandGroup, INDEPENDENT_GROUP } from './src/lib/brandIcons';
+export { brandGroup, INDEPENDENT_BRAND_ID } from './src/lib/brandIcons';
 `;
 const out = await build({
   stdin: { contents: entry, resolveDir: process.cwd(), loader: 'ts' },
@@ -81,13 +83,13 @@ const fra = new P.FraStationsProvider();
 const near = await fra.getStationsNear(TOULOUSE, 5);
 ok('fra: stations within 5 km of Toulouse', near.length >= 10, `${near.length} stations`);
 ok('fra: coordinates all in France', near.every(inFrance));
-const priced = near.filter((s) => s.prices.gazole || s.prices.e10 || s.prices.sp98);
+const priced = near.filter((s) => s.prices.diesel || s.prices.e10 || s.prices.unleaded98);
 ok('fra: most stations carry prices', priced.length >= near.length * 0.7, `${priced.length}/${near.length} priced`);
 const cheapest = [...near]
-  .filter((s) => s.prices.gazole)
-  .sort((a, b) => a.prices.gazole.value - b.prices.gazole.value)[0];
-ok('fra: plausible gazole price', cheapest && cheapest.prices.gazole.value > 1 && cheapest.prices.gazole.value < 3,
-  cheapest ? `${cheapest.prices.gazole.value} €/L (${cheapest.name})` : 'none');
+  .filter((s) => s.prices.diesel)
+  .sort((a, b) => a.prices.diesel.value - b.prices.diesel.value)[0];
+ok('fra: plausible diesel price', cheapest && cheapest.prices.diesel.value > 1 && cheapest.prices.diesel.value < 3,
+  cheapest ? `${cheapest.prices.diesel.value} €/L (${cheapest.name})` : 'none');
 const branded = near.filter((s) => s.brand);
 ok('fra: brands enriched from OSM', branded.length >= near.length * 0.4,
   `${branded.length}/${near.length} · ex: ${branded.slice(0, 3).map((s) => s.name).join(' / ')}`);
@@ -135,14 +137,14 @@ const espNear = await esp.getStationsNear(MADRID, 5);
 ok('esp: stations within 5 km of Madrid', espNear.length >= 10, `${espNear.length} stations`);
 const inSpain = (s) => s.lat > 27 && s.lat < 44.5 && s.lng > -19 && s.lng < 5;
 ok('esp: coordinates all in Spain', espNear.every(inSpain));
-const espPriced = espNear.filter((s) => s.prices.gazole || s.prices.sp95 || s.prices.sp98);
+const espPriced = espNear.filter((s) => s.prices.diesel || s.prices.unleaded95 || s.prices.unleaded98);
 ok('esp: most stations carry prices', espPriced.length >= espNear.length * 0.7,
   `${espPriced.length}/${espNear.length} priced`);
 const espCheapest = [...espNear]
-  .filter((s) => s.prices.gazole)
-  .sort((a, b) => a.prices.gazole.value - b.prices.gazole.value)[0];
-ok('esp: plausible gazole price', espCheapest && espCheapest.prices.gazole.value > 1 && espCheapest.prices.gazole.value < 3,
-  espCheapest ? `${espCheapest.prices.gazole.value} €/L (${espCheapest.name})` : 'none');
+  .filter((s) => s.prices.diesel)
+  .sort((a, b) => a.prices.diesel.value - b.prices.diesel.value)[0];
+ok('esp: plausible diesel price', espCheapest && espCheapest.prices.diesel.value > 1 && espCheapest.prices.diesel.value < 3,
+  espCheapest ? `${espCheapest.prices.diesel.value} €/L (${espCheapest.name})` : 'none');
 const espBranded = espNear.filter((s) => s.brand);
 ok('esp: brands from the flux rótulo', espBranded.length >= espNear.length * 0.6,
   `${espBranded.length}/${espNear.length} · ex: ${espBranded.slice(0, 3).map((s) => s.name).join(' / ')}`);
@@ -159,7 +161,7 @@ ok('esp: extra products exposed as services', espServed.length > 0,
 // named « Marques » group (BonÀrea, Repsol…), not fall into Indépendants.
 const LLEIDA = { lat: 41.617, lng: 0.62 };
 const lleida = await esp.getStationsNear(LLEIDA, 25);
-const grouped = lleida.filter((s) => P.brandGroup(s.brand) !== P.INDEPENDENT_GROUP);
+const grouped = lleida.filter((s) => P.brandGroup(s.brand) !== P.INDEPENDENT_BRAND_ID);
 ok('esp: Lleida brands resolve to filter groups', lleida.length >= 10 && grouped.length >= lleida.length * 0.5,
   `${grouped.length}/${lleida.length} grouped`);
 
@@ -203,16 +205,16 @@ ok('and: stations within 10 km of Andorra la Vella', andNear.length >= 10, `${an
 const inAndorra = (s) => s.lat > 42.4 && s.lat < 42.7 && s.lng > 1.4 && s.lng < 1.8;
 ok('and: coordinates all in Andorra', andNear.every(inAndorra));
 ok('and: every station carries prices',
-  andNear.every((s) => s.prices.gazole || s.prices.sp95 || s.prices.sp98));
+  andNear.every((s) => s.prices.diesel || s.prices.unleaded95 || s.prices.unleaded98));
 const andCheapest = [...andNear]
-  .filter((s) => s.prices.gazole)
-  .sort((a, b) => a.prices.gazole.value - b.prices.gazole.value)[0];
-ok('and: plausible gazole price', andCheapest && andCheapest.prices.gazole.value > 0.8 && andCheapest.prices.gazole.value < 3,
-  andCheapest ? `${andCheapest.prices.gazole.value} €/L (${andCheapest.name})` : 'none');
+  .filter((s) => s.prices.diesel)
+  .sort((a, b) => a.prices.diesel.value - b.prices.diesel.value)[0];
+ok('and: plausible diesel price', andCheapest && andCheapest.prices.diesel.value > 0.8 && andCheapest.prices.diesel.value < 3,
+  andCheapest ? `${andCheapest.prices.diesel.value} €/L (${andCheapest.name})` : 'none');
 const andBranded = andNear.filter((s) => s.brand);
 ok('and: banners from the station names', andBranded.length >= andNear.length * 0.7,
   `${andBranded.length}/${andNear.length} · ex: ${andBranded.slice(0, 3).map((s) => s.name).join(' / ')}`);
-const andGrouped = andNear.filter((s) => P.brandGroup(s.brand) !== P.INDEPENDENT_GROUP);
+const andGrouped = andNear.filter((s) => P.brandGroup(s.brand) !== P.INDEPENDENT_BRAND_ID);
 ok('and: brands resolve to filter groups', andGrouped.length >= andNear.length * 0.6,
   `${andGrouped.length}/${andNear.length} grouped`);
 const andGeo = new P.AndGeocodeProvider();
@@ -232,6 +234,58 @@ const autoAndPlaces = await autoGeo.search('Soldeu');
 ok('auto: geocoder finds Andorran places',
   autoAndPlaces.some((p) => Math.abs(p.point.lat - 42.577) < 0.1 && Math.abs(p.point.lng - 1.667) < 0.1),
   autoAndPlaces.slice(0, 2).map((p) => p.label).join(' / '));
+
+// 10 — Portuguese source (DGEG flux, per-district)
+const LISBOA = { lat: 38.7223, lng: -9.1393 };
+const prt = new P.PrtStationsProvider();
+const prtNear = await prt.getStationsNear(LISBOA, 5);
+ok('prt: stations within 5 km of Lisboa', prtNear.length >= 10, `${prtNear.length} stations`);
+const inPortugal = (s) => s.lat > 36.9 && s.lat < 42.2 && s.lng > -9.6 && s.lng < -6.1;
+ok('prt: coordinates all in Portugal', prtNear.every(inPortugal));
+ok('prt: every station carries a road-fuel price',
+  prtNear.every((s) => s.prices.diesel || s.prices.unleaded95 || s.prices.unleaded98 || s.prices.lpg));
+const prtCheapest = [...prtNear]
+  .filter((s) => s.prices.diesel)
+  .sort((a, b) => a.prices.diesel.value - b.prices.diesel.value)[0];
+ok('prt: plausible diesel price', prtCheapest && prtCheapest.prices.diesel.value > 1 && prtCheapest.prices.diesel.value < 3,
+  prtCheapest ? `${prtCheapest.prices.diesel.value} €/L (${prtCheapest.name})` : 'none');
+const prtBranded = prtNear.filter((s) => s.brand);
+ok('prt: banners from the flux marca', prtBranded.length >= prtNear.length * 0.6,
+  `${prtBranded.length}/${prtNear.length} · ex: ${prtBranded.slice(0, 3).map((s) => s.brand).join(' / ')}`);
+const prtGrouped = prtNear.filter((s) => P.brandGroup(s.brand) !== P.INDEPENDENT_BRAND_ID);
+ok('prt: brands resolve to filter groups', prtGrouped.length >= prtNear.length * 0.5,
+  `${prtGrouped.length}/${prtNear.length} grouped`);
+const prtServed = prtNear.filter((s) => s.services.length > 0);
+ok('prt: extra products exposed as services', prtServed.length > 0,
+  `${prtServed.length}/${prtNear.length} · ex: ${prtServed[0]?.services.slice(0, 3).join(' / ')}`);
+
+// 11 — Photon geocoding, pinned to Portugal
+const photon = new P.PhotonGeocodeProvider();
+const prtPlaces = await photon.search('Coimbra');
+ok('Photon: geocodes "Coimbra"', prtPlaces.length >= 1, prtPlaces[0]?.label);
+ok('Photon: the town comes before its streets',
+  prtPlaces[0]?.kind === 'locality' && Math.abs(prtPlaces[0].point.lat - 40.21) < 0.5 &&
+  Math.abs(prtPlaces[0].point.lng + 8.43) < 0.5,
+  prtPlaces.slice(0, 3).map((p) => `${p.label} (${p.kind})`).join(' / '));
+ok('Photon: stays inside Portugal', prtPlaces.every((p) => p.country === 'prt' &&
+  p.point.lat > 36.9 && p.point.lat < 42.2 && p.point.lng > -9.6 && p.point.lng < -6.1));
+
+// 12 — stations along a Portuguese route, and « auto » over Portugal
+const PORTO = { lat: 41.1496, lng: -8.611 };
+const prtRoute = await osrm.getRoute(LISBOA, { lat: 39.7436, lng: -8.8072 }); // Leiria
+ok('OSRM: Lisboa → Leiria distance', prtRoute.distanceKm > 100 && prtRoute.distanceKm < 200,
+  `${Math.round(prtRoute.distanceKm)} km`);
+const prtAlong = await prt.getStationsAlong(prtRoute.polyline, 5);
+ok('prt: stations along the corridor', prtAlong.length >= 5, `${prtAlong.length} stations`);
+ok('prt: every corridor station is within 5 km of the route',
+  prtAlong.every((s) => P.nearestOnPolyline({ lat: s.lat, lng: s.lng }, prtRoute.polyline).distKm <= 5));
+const autoPorto = await auto.getStationsNear(PORTO, 5);
+ok('auto: Porto yields Portuguese stations only', autoPorto.length >= 10 && autoPorto.every((s) => s.id.startsWith('prt-')),
+  `${autoPorto.length} stations`);
+const autoPrtPlaces = await autoGeo.search('Guimarães');
+ok('auto: geocoder finds Portuguese places',
+  autoPrtPlaces.some((p) => Math.abs(p.point.lat - 41.44) < 0.2 && Math.abs(p.point.lng + 8.29) < 0.2),
+  autoPrtPlaces.slice(0, 2).map((p) => p.label).join(' / '));
 
 const failed = results.filter((r) => !r.pass);
 console.log(`\n${results.length - failed.length}/${results.length} live checks passed`);

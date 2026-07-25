@@ -19,6 +19,7 @@ test('credits name the price source of each covered country', async ({ page }) =
   await expect(page.getByText('Prix France :')).toBeVisible()
   await expect(page.getByText('Prix Espagne :')).toBeVisible()
   await expect(page.getByText('Prix Andorre :')).toBeVisible()
+  await expect(page.getByText('Prix Portugal :')).toBeVisible()
   await expect(page.getByRole('link', { name: 'sig.govern.ad' })).toHaveAttribute(
     'href',
     'https://sig.govern.ad/IPE/PreusCarburants',
