@@ -207,6 +207,22 @@ describe('estimatePlanLegs', () => {
     expect(detour).toBeGreaterThan(5)
   })
 
+  it('lets two stations at the same projection chain in id order', () => {
+    // The optimizer orders its graph by (projectionKm, id), so an identical
+    // projection is a tie it resolves — not a pair that cannot connect. A
+    // `between` built on projectionKm alone returned null both ways.
+    const route = northRoute(200)
+    const candidates = candidatesFor(route, [station('b-twin', 100, 1.8), station('a-twin', 100, 1.6)], {
+      maxCandidates: 5,
+      firstWindowKm: 500,
+    })
+    expect(candidates.map((c) => c.station.id)).toEqual(['a-twin', 'b-twin'])
+    const legs = estimatePlanLegs(route, candidates)
+    expect(legs.between[0][1]).not.toBeNull()
+    expect(legs.between[0][1]!.distanceKm).toBe(0)
+    expect(legs.between[1][0]).toBeNull()
+  })
+
   it('scales polyline projections up to the claimed road distance', () => {
     // The demo draws straight polylines shorter than the road distance it
     // claims — projections must live on the road-distance axis.

@@ -231,10 +231,14 @@ export function estimatePlanLegs(route: Route, candidates: readonly RouteCandida
     direct: { distanceKm: route.distanceKm, durationMin: route.durationMin },
     origin: candidates.map((c) => leg(c.projectionKm, accessKm(c))),
     destination: candidates.map((c) => leg(route.distanceKm - c.projectionKm, accessKm(c))),
+    // Forward pairs under the SAME total order the optimizer sorts its graph by
+    // — comparing projectionKm alone left two stations at an identical
+    // projection unable to chain in either direction, though the solver orders
+    // them by id and would happily drive from one to the other.
     between: candidates.map((a) =>
       candidates.map((b) =>
-        b.projectionKm > a.projectionKm
-          ? leg(b.projectionKm - a.projectionKm, accessKm(a) + accessKm(b))
+        byRoute(a, b) < 0
+          ? leg(Math.max(0, b.projectionKm - a.projectionKm), accessKm(a) + accessKm(b))
           : null,
       ),
     ),
