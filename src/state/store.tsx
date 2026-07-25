@@ -43,7 +43,13 @@ import {
 import { getProviders } from '../data/providers';
 import { fuelLabel } from '../lib/labels';
 import { brandGroup } from '../lib/brandIcons';
-import { CROW_ROAD_FACTOR, effectiveLiterPrice, usableRangeKm } from '../lib/fuelEconomics';
+import {
+  CROW_ROAD_FACTOR,
+  REFUEL_STOP_MIN,
+  VALUE_OF_TIME_CENTS_PER_MIN,
+  effectiveLiterPrice,
+  usableRangeKm,
+} from '../lib/fuelEconomics';
 import {
   estimatePlanLegs,
   matrixPlanLegs,
@@ -2353,6 +2359,44 @@ export interface RouteAnalysis {
 /** Number of alternative stations offered around the plan */
 const MAX_ALTERNATIVES = 4;
 
+/**
+ * What a lone stop at candidate `i` would add to the trip — km and minutes over
+ * the direct leg, refuelling time included. Measured on the plan's own legs, so
+ * it is a routed figure whenever the matrix answered. `null` when the candidate
+ * is not connected in both directions.
+ */
+function alternativeDetour(legs: PlanLegs, i: number): { km: number; min: number } | null {
+  const there = legs.origin[i];
+  const back = legs.destination[i];
+  if (!there || !back) return null;
+  return {
+    km: Math.max(0, there.distanceKm + back.distanceKm - legs.direct.distanceKm),
+    min:
+      Math.max(0, there.durationMin + back.durationMin - legs.direct.durationMin) + REFUEL_STOP_MIN,
+  };
+}
+
+/**
+ * Alternatives ranked the way the SELECTED STRATEGY ranks the plan — the chips
+ * have to act on the whole ribbon, not only on the stops the solver kept. Price
+ * folds the fuel burnt reaching the pump into the per-litre price (the same
+ * effectiveLiterPrice the map recommendation uses), « détour min. » ranks on the
+ * minutes the halt adds, « compromis » values those minutes in money. Ranking a
+ * « détour min. » list by raw price offered the cheapest bargains 20 km off the
+ * road under a chip that promises the opposite.
+ */
+function alternativeScore(
+  app: Pick<AppStore, 'consumption' | 'tank' | 'routeMode'>,
+  priceMilli: number,
+  detour: { km: number; min: number },
+): number {
+  // Half the round trip: effectiveLiterPrice charges the drive there AND back
+  const effective = effectiveLiterPrice(app, priceMilli / 1000, detour.km / 2);
+  if (app.routeMode === 'price') return effective;
+  if (app.routeMode === 'detour') return detour.min;
+  return effective * app.tank + (VALUE_OF_TIME_CENTS_PER_MIN / 100) * detour.min;
+}
+
 /** Everything the route ribbon needs, computed from real data */
 export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
   const { routeState } = app;
@@ -2370,11 +2414,26 @@ export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
     }
   }
   const planIds = new Set(plan?.stops.map((s) => s.stationId) ?? []);
+  const legs = selectPlanLegs(app);
   const alternatives = candidates
-    .filter((c) => !planIds.has(c.station.id))
-    .sort((a, b) => a.priceMilli - b.priceMilli || (a.station.id < b.station.id ? -1 : 1))
+    .map((c, i) => ({ c, detour: legs ? alternativeDetour(legs, i) : null }))
+    .filter((e) => !planIds.has(e.c.station.id) && e.detour != null)
+    .map((e) => ({
+      station: e.c.station,
+      // A candidate past the no-stop autonomy limit cannot be driven to on the
+      // departure tank, so it leads no list — offered, but after the ones that
+      // can actually be reached.
+      reachable: e.c.projectionKm <= limitKm,
+      score: alternativeScore(app, e.c.priceMilli, e.detour!),
+    }))
+    .sort(
+      (a, b) =>
+        Number(b.reachable) - Number(a.reachable) ||
+        a.score - b.score ||
+        (a.station.id < b.station.id ? -1 : 1),
+    )
     .slice(0, MAX_ALTERNATIVES)
-    .map((c) => c.station)
+    .map((e) => e.station)
     .sort((a, b) => a.kmAlong - b.kmAlong);
 
   const picked = routeState.stations.filter((s) => app.plannedStops[s.id]);

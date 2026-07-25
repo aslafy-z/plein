@@ -29,6 +29,7 @@ import {
   selectZoneFuels,
   sortFavoriteRows,
   type AppStore,
+  type RouteMode,
 } from './store'
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -639,6 +640,48 @@ describe('selectRouteAnalysis', () => {
         Math.round((p.stop.purchasedLitres * p.stop.priceMilli) / 10),
       )
     }
+  })
+
+  it('picks WHICH alternatives to offer by the selected strategy', () => {
+    // Six candidates for four slots, so the chip decides who makes the cut:
+    // four sticker-priced pumps right on the road, two bargains 10 km off it.
+    // A full tank crosses without a stop, so all six are alternatives.
+    const wide: RouteStation[] = [
+      corridorStation('onroute-a', 1.8, 40, 0),
+      corridorStation('onroute-b', 1.82, 80, 0),
+      corridorStation('far-cheap-1', 1.5, 100, 10),
+      corridorStation('onroute-c', 1.84, 120, 0),
+      corridorStation('onroute-d', 1.86, 160, 0),
+      corridorStation('far-cheap-2', 1.51, 200, 10),
+    ]
+    const offered = (routeMode: RouteMode) =>
+      selectRouteAnalysis(
+        routeApp({
+          routeMode,
+          routeState: {
+            status: 'ready',
+            route: { distanceKm: ROUTE_KM, durationMin: 156, polyline: routeLine() },
+            stations: wide,
+            fellBack: false,
+          },
+        }),
+      ).alternatives.map((s) => s.id)
+
+    // « Prix » folds the fuel burnt reaching the pump into the per-litre price:
+    // 30 ct/L still pays for 13 km of access, so both bargains make the cut.
+    expect(offered('price')).toContain('far-cheap-1')
+    expect(offered('price')).toContain('far-cheap-2')
+    // « Détour min. » ranks on the minutes the halt adds — the same two
+    // bargains cost ~40 min each and lose every slot to the on-route pumps.
+    expect(offered('detour')).toEqual(['onroute-a', 'onroute-b', 'onroute-c', 'onroute-d'])
+  })
+
+  it('offers alternatives past the autonomy limit only after the reachable ones', () => {
+    // Limit KM 60: only the KM 55 station can be driven to on the departure
+    // tank. It is in the plan, so the rest are alternatives — in reach order.
+    const a = selectRouteAnalysis(routeApp({ startTankPct: 10, routeMode: 'detour' }))
+    expect(a.limitKm).toBe(60)
+    expect(a.alternatives.every((s) => s.kmAlong > a.limitKm)).toBe(true)
   })
 
   it('no reachable station at all → infeasible, with the arrival saying so', () => {
