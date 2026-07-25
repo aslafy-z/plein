@@ -12,6 +12,7 @@ import NavBar from './components/NavBar';
 import SideNav from './components/SideNav';
 import Toast from './components/Toast';
 import FallbackBanner from './components/FallbackBanner';
+import InstallPrompt from './components/InstallPrompt';
 import UpdatePrompt from './components/UpdatePrompt';
 
 /** Screens the tab bar / side navigation belongs on */
@@ -37,6 +38,7 @@ export default function App() {
         <div className="app-main">
           <UpdatePrompt />
           <FallbackBanner />
+          <InstallPrompt />
           {screen === 'onboarding' && <Onboarding />}
           {screen === 'map' && <MapScreen />}
           {screen === 'favs' && <FavoritesScreen />}

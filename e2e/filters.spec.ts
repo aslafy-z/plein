@@ -1,4 +1,4 @@
-import { test, expect, gotoMap } from './fixtures'
+import { test, expect, gotoMap, openZoneList, closeZoneList } from './fixtures'
 
 // The zone-count math is unit-tested (selectVisible) — these tests check the
 // sheet's WIRING: counts land on the buttons and the map chip, and the
@@ -19,12 +19,10 @@ test('service filters narrow the live count and Réinitialiser restores it', asy
   await expect(page.getByText('Filtres · 4')).toBeVisible()
 
   // The list only keeps the matching stations
-  await page.getByRole('button', { name: /liste des stations/ }).click()
+  await openZoneList(page)
   await expect(page.getByText('Station U · Croix-Blanche').first()).toBeVisible()
   await expect(page.getByText('Carrefour Market')).toHaveCount(0)
-  await page
-    .getByRole('button', { name: 'Fermer la liste' })
-    .click({ position: { x: 40, y: 30 } })
+  await closeZoneList(page)
 
   // Réinitialiser clears the selection with the rest of the filters
   await page.getByText('Filtres · 4').click()

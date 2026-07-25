@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures'
+import { test, expect, phoneOnly } from './fixtures'
 
 // The bounce lives for about a second and a half, which a polling locator can
 // miss entirely on a loaded machine. A MutationObserver installed before boot
@@ -27,6 +27,9 @@ const played = (page: import('@playwright/test').Page) =>
   page.locator('html[data-sheet-hint-seen]')
 
 test.describe('a newcomer', () => {
+  // The bounce shows that the sheet pulls up. There is no sheet on a window —
+  // the list is docked and already open, so there is nothing to teach.
+  phoneOnly('the pull-up hint belongs to the phone arrangement')
   test.use({ seed: { sourceId: 'demo' } })
 
   test('the sheet bounces once after onboarding, then never again', async ({ page }) => {

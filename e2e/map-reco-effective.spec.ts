@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures'
+import { test, expect, openZoneList } from './fixtures'
 
 // A cheaper pump farther away can cost as much as a closer one once the fuel
 // burnt to reach it is counted (consumption & tank size from Réglages). The card
@@ -59,7 +59,7 @@ test('a closer station wins when the détour eats the savings', async ({ page })
 
   // The list keeps the sticker-price order and its labels: the cheapest
   // first with « meilleur prix », the recommended one flagged as such
-  await page.getByRole('button', { name: /liste des stations/ }).click()
+  await openZoneList(page)
   const rows = page.getByRole('button', { name: /^Voir / })
   await expect(rows.first()).toContainText('Lointaine')
   await expect(rows.first()).toContainText('meilleur prix')

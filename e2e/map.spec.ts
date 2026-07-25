@@ -1,4 +1,4 @@
-import { test, expect, gotoMap, mapZoom } from './fixtures'
+import { test, expect, gotoMap, mapZoom, openZoneList, phoneOnly } from './fixtures'
 
 test.beforeEach(async ({ page }) => {
   await gotoMap(page)
@@ -39,8 +39,7 @@ test('selecting favorite brands keeps only their stations', async ({ page }) => 
   await page.getByText('Intermarché', { exact: true }).click()
   await page.getByText(/^Voir \d+ stations?$/).click()
 
-  const handle = page.getByRole('button', { name: /liste des stations/ })
-  await handle.click()
+  await openZoneList(page)
   await expect(page.getByText('Intermarché · Les Vignes').first()).toBeVisible()
   await expect(page.getByText('TotalEnergies · Centre')).toHaveCount(0)
 
@@ -55,90 +54,99 @@ test('selecting favorite brands keeps only their stations', async ({ page }) => 
   await expect(page.getByRole('button', { name: /Distributeurs Tous/ })).toBeVisible()
 })
 
-test('pull-up sheet lists the zone stations, a row selects on the map', async ({ page }) => {
-  const handle = page.getByRole('button', { name: /liste des stations/ })
-  const before = (await handle.boundingBox())?.y ?? 0
-  await handle.click()
-  // The sheet must expand upwards AND settle: a row tapped while the open
-  // animation still runs can land on whatever slid under the tap point.
-  let last = Number.NaN
-  await expect(async () => {
-    const after = (await handle.boundingBox())?.y ?? 0
-    const settled = after === last && after < before - 100
-    last = after
-    expect(settled, 'the sheet must expand upwards and settle').toBe(true)
-  }).toPass()
+// ── Sheet gestures ─────────────────────────────────────────────────────────
+// The sheet itself only exists on a phone: a window docks the list beside the
+// map, always open, so there is nothing to pull, fling or tap away. What these
+// tests cover functionally — a row selecting its station on the map — is
+// checked for the docked panel in desktop.spec.ts.
+test.describe('the bottom sheet', () => {
+  phoneOnly()
 
-  await page.locator('button[aria-label^="Voir "][aria-label$="sur la carte"]').nth(1).click()
-  await expect(page.getByText('Station sélectionnée')).toBeVisible()
+  test('pull-up sheet lists the zone stations, a row selects on the map', async ({ page }) => {
+    const handle = page.getByRole('button', { name: /liste des stations/ })
+    const before = (await handle.boundingBox())?.y ?? 0
+    await handle.click()
+    // The sheet must expand upwards AND settle: a row tapped while the open
+    // animation still runs can land on whatever slid under the tap point.
+    let last = Number.NaN
+    await expect(async () => {
+      const after = (await handle.boundingBox())?.y ?? 0
+      const settled = after === last && after < before - 100
+      last = after
+      expect(settled, 'the sheet must expand upwards and settle').toBe(true)
+    }).toPass()
 
-  await page.getByRole('button', { name: 'Désélectionner la station' }).click()
-  await expect(page.getByText(/La moins chère/).first()).toBeVisible()
-})
+    await page.locator('button[aria-label^="Voir "][aria-label$="sur la carte"]').nth(1).click()
+    await expect(page.getByText('Station sélectionnée')).toBeVisible()
 
-test('swiping the list down from its top closes the sheet', async ({ page }) => {
-  const handle = page.getByRole('button', { name: /liste des stations/ })
-  await handle.click()
-  await expect(handle).toHaveAttribute('aria-expanded', 'true')
-  await page.waitForTimeout(400) // open animation
-
-  const box = await page.getByTestId('zone-list').boundingBox()
-  if (!box) throw new Error('zone list not visible')
-  await page.mouse.move(box.x + box.width / 2, box.y + 20)
-  await page.mouse.down()
-  await page.mouse.move(box.x + box.width / 2, box.y + 320, { steps: 12 })
-  await page.mouse.up()
-
-  await expect(handle).toHaveAttribute('aria-expanded', 'false')
-})
-
-test('a quick upward flick on the station card opens the list', async ({ page }) => {
-  const handle = page.getByRole('button', { name: /liste des stations/ })
-  const box = await page.getByText('La moins chère près de vous').boundingBox()
-  if (!box) throw new Error('station card not visible')
-
-  // Short (way under half the travel) but fast → the fling rule must open
-  const x = box.x + box.width / 2
-  await page.mouse.move(x, box.y + 4)
-  await page.mouse.down()
-  await page.mouse.move(x, box.y - 110, { steps: 3 })
-  await page.mouse.up()
-
-  await expect(handle).toHaveAttribute('aria-expanded', 'true')
-})
-
-test('swiping down a scrolled list scrolls it instead of closing the sheet', async ({ page }) => {
-  const handle = page.getByRole('button', { name: /liste des stations/ })
-  await handle.click()
-  await page.waitForTimeout(400)
-
-  const list = page.getByTestId('zone-list')
-  const scrollable = await list.evaluate((el) => el.scrollHeight > el.clientHeight + 10)
-  test.skip(!scrollable, 'the demo list fits this viewport without scrolling')
-
-  await list.evaluate((el) => {
-    el.scrollTop = 50
+    await page.getByRole('button', { name: 'Désélectionner la station' }).click()
+    await expect(page.getByText(/La moins chère/).first()).toBeVisible()
   })
-  const box = await list.boundingBox()
-  if (!box) throw new Error('zone list not visible')
-  await page.mouse.move(box.x + box.width / 2, box.y + 20)
-  await page.mouse.down()
-  await page.mouse.move(box.x + box.width / 2, box.y + 250, { steps: 10 })
-  await page.mouse.up()
 
-  await expect(handle).toHaveAttribute('aria-expanded', 'true')
-})
+  test('swiping the list down from its top closes the sheet', async ({ page }) => {
+    const handle = page.getByRole('button', { name: /liste des stations/ })
+    await handle.click()
+    await expect(handle).toHaveAttribute('aria-expanded', 'true')
+    await page.waitForTimeout(400) // open animation
 
-test('tapping the dimmed map closes the list', async ({ page }) => {
-  const handle = page.getByRole('button', { name: /liste des stations/ })
-  await handle.click()
-  // The scrim spans the whole stage but the expanded sheet (above it) covers
-  // its center — Playwright's default click point. Tap near the top, on the
-  // strip of dimmed map the sheet never reaches (≥ 64px stays free).
-  await page
-    .getByRole('button', { name: 'Fermer la liste' })
-    .click({ position: { x: 40, y: 30 } })
-  await expect(handle).toHaveAttribute('aria-expanded', 'false')
+    const box = await page.getByTestId('zone-list').boundingBox()
+    if (!box) throw new Error('zone list not visible')
+    await page.mouse.move(box.x + box.width / 2, box.y + 20)
+    await page.mouse.down()
+    await page.mouse.move(box.x + box.width / 2, box.y + 320, { steps: 12 })
+    await page.mouse.up()
+
+    await expect(handle).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  test('a quick upward flick on the station card opens the list', async ({ page }) => {
+    const handle = page.getByRole('button', { name: /liste des stations/ })
+    const box = await page.getByText('La moins chère près de vous').boundingBox()
+    if (!box) throw new Error('station card not visible')
+
+    // Short (way under half the travel) but fast → the fling rule must open
+    const x = box.x + box.width / 2
+    await page.mouse.move(x, box.y + 4)
+    await page.mouse.down()
+    await page.mouse.move(x, box.y - 110, { steps: 3 })
+    await page.mouse.up()
+
+    await expect(handle).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  test('swiping down a scrolled list scrolls it instead of closing the sheet', async ({ page }) => {
+    const handle = page.getByRole('button', { name: /liste des stations/ })
+    await handle.click()
+    await page.waitForTimeout(400)
+
+    const list = page.getByTestId('zone-list')
+    const scrollable = await list.evaluate((el) => el.scrollHeight > el.clientHeight + 10)
+    test.skip(!scrollable, 'the demo list fits this viewport without scrolling')
+
+    await list.evaluate((el) => {
+      el.scrollTop = 50
+    })
+    const box = await list.boundingBox()
+    if (!box) throw new Error('zone list not visible')
+    await page.mouse.move(box.x + box.width / 2, box.y + 20)
+    await page.mouse.down()
+    await page.mouse.move(box.x + box.width / 2, box.y + 250, { steps: 10 })
+    await page.mouse.up()
+
+    await expect(handle).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  test('tapping the dimmed map closes the list', async ({ page }) => {
+    const handle = page.getByRole('button', { name: /liste des stations/ })
+    await handle.click()
+    // The scrim spans the whole stage but the expanded sheet (above it) covers
+    // its center — Playwright's default click point. Tap near the top, on the
+    // strip of dimmed map the sheet never reaches (≥ 64px stays free).
+    await page
+      .getByRole('button', { name: 'Fermer la liste' })
+      .click({ position: { x: 40, y: 30 } })
+    await expect(handle).toHaveAttribute('aria-expanded', 'false')
+  })
 })
 
 test('station detail opens from the sheet and jumps back with the station selected', async ({ page }) => {
