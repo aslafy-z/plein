@@ -130,7 +130,12 @@ export class DemoGeocodeProvider implements GeocodeProvider {
     return DEMO_PLACES.filter((p) => {
       const label = norm(p.label);
       return label.includes(q) || q.includes(label);
-    }).map((p) => ({ label: p.label, sublabel: p.sublabel, point: p.point }));
+    }).map((p) => ({
+      label: p.label,
+      sublabel: p.sublabel,
+      point: p.point,
+      kind: 'locality' as const,
+    }));
   }
 }
 

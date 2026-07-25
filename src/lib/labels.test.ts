@@ -8,6 +8,7 @@ const at = (extra: Partial<GeocodeResult>): GeocodeResult => ({
   label: 'Somewhere',
   sublabel: '',
   point: { lat: 42.5, lng: 1.5 },
+  kind: 'locality',
   ...extra,
 })
 

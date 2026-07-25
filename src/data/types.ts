@@ -126,6 +126,14 @@ export interface StationsProvider {
   getStationsAlong(polyline: GeoPoint[], corridorKm: number): Promise<Station[]>;
 }
 
+/**
+ * What a geocoder result denotes, normalized across the three national
+ * geocoders. Suggestions are ranked by this (see `geocodeRank.ts`): someone
+ * looking for cheap fuel means the town far more often than the street of the
+ * same name three départements away.
+ */
+export type PlaceKind = 'locality' | 'street' | 'address' | 'other';
+
 export interface GeocodeResult {
   label: string; // "Bordeaux centre"
   sublabel: string; // "Gironde" — as the source spells it, empty when it has none
@@ -137,6 +145,7 @@ export interface GeocodeResult {
    * country is the app's own word and belongs to the catalog.
    */
   country?: 'and';
+  kind: PlaceKind;
 }
 
 export interface GeocodeProvider {

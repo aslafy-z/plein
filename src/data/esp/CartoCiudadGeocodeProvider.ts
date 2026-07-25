@@ -3,7 +3,8 @@
 // `candidates` autocompletes but never carries coordinates (lat/lng arrive as
 // 0), so each retained candidate is resolved through `find`, which does.
 import { IS_DEV } from '../../lib/env';
-import type { GeocodeProvider, GeocodeResult } from '../types';
+import { rankByKind } from '../geocodeRank';
+import type { GeocodeProvider, GeocodeResult, PlaceKind } from '../types';
 
 const BASE =
   (IS_DEV ? '/proxy/cartociudad' : 'https://www.cartociudad.es') + '/geocoder/api/geocoder';
@@ -11,7 +12,36 @@ const BASE =
 // timeout turned those into a dead Spanish search, so give it real room.
 const TIMEOUT_MS = 10_000;
 const MIN_QUERY = 3;
-const MAX_RESULTS = 4;
+// Each retained candidate costs one extra `find` request, so this cap is the
+// concurrency against a geocoder that already has slow spells — but the list
+// scrolls now, and 4 suggestions for a whole country was thin.
+const MAX_RESULTS = 8;
+
+/**
+ * CartoCiudad `type` — a geographic taxonomy rather than an address one:
+ * « Municipio » / « poblacion » / « toponimo » for places, « callejero » for a
+ * street and « carretera » for a road, « portal » for a house number.
+ */
+function kindOf(type: unknown): PlaceKind {
+  switch (typeof type === 'string' ? type.toLowerCase() : '') {
+    case 'municipio':
+    case 'poblacion':
+    case 'provincia':
+    case 'comunidad autonoma':
+    case 'toponimo':
+    case 'ngbe':
+      return 'locality';
+    case 'callejero':
+    case 'carretera':
+      return 'street';
+    case 'portal':
+    case 'punto_kilometrico':
+    case 'refcatastral':
+      return 'address';
+    default:
+      return 'other';
+  }
+}
 
 interface Candidate {
   address?: unknown;
@@ -49,7 +79,12 @@ async function resolve(c: Candidate): Promise<GeocodeResult | null> {
     if (typeof c.type === 'string' && c.type) params.set('type', c.type);
     const found = (await fetchJson(`${BASE}/find?${params.toString()}`)) as Candidate | null;
     if (!found || !isPoint(found.lat, found.lng)) return null;
-    return { label: address, sublabel, point: { lat: found.lat as number, lng: found.lng as number } };
+    return {
+      label: address,
+      sublabel,
+      point: { lat: found.lat as number, lng: found.lng as number },
+      kind: kindOf(c.type),
+    };
   } catch {
     return null;
   }
@@ -63,16 +98,8 @@ export class CartoCiudadGeocodeProvider implements GeocodeProvider {
     const json = await fetchJson(`${BASE}/candidates?${params.toString()}`);
     const candidates = Array.isArray(json) ? (json as Candidate[]) : [];
     const resolved = await Promise.all(candidates.slice(0, MAX_RESULTS).map(resolve));
-    // Deduplicate labels (`candidates` often lists a town twice as
-    // poblacion + Municipio)
-    const seen = new Set<string>();
-    const out: GeocodeResult[] = [];
-    for (const r of resolved) {
-      if (r && !seen.has(r.label)) {
-        seen.add(r.label);
-        out.push(r);
-      }
-    }
-    return out;
+    // rankByKind also deduplicates labels — `candidates` often lists a town
+    // twice as poblacion + Municipio.
+    return rankByKind(resolved.filter((r): r is GeocodeResult => r !== null));
   }
 }
