@@ -1,4 +1,4 @@
-import { test, expect, gotoMap } from './fixtures'
+import { test, expect, gotoMap, openZoneList } from './fixtures'
 
 // Pin & dot colors follow the loaded area's price tiers: the « bon plan » tier
 // (within 1 ct of the cheapest, widened to a quarter of the cheapest→average
@@ -62,7 +62,7 @@ test('the sheet preselects one station, the expanded list highlights every bon p
   await expect(page.getByText('La moins chère près de vous')).toBeVisible()
   await expect(page.getByText('1,60 €').first()).toBeVisible()
 
-  await page.getByRole('button', { name: /liste des stations/ }).click()
+  await openZoneList(page)
   await expect(page.getByText(`${DEALS} bons plans`)).toBeVisible()
   // The cheapest keeps its label; its near-equals are flagged as bons plans
   await expect(page.getByText('meilleur prix')).toHaveCount(1)

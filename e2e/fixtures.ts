@@ -49,10 +49,63 @@ export const test = base.extend<Options>({
   },
 })
 
-// The bottom sheet appearing means stations are loaded and the map is live.
+// The zone card appearing means stations are loaded and the map is live.
 export async function gotoMap(page: import('@playwright/test').Page) {
   await page.goto('/')
   await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
+}
+
+// ── Which arrangement is under test ──────────────────────────────────────────
+// The suite runs two projects, and they no longer see the same layout: below
+// this width the zone is a bottom sheet dragged over the map, above it a panel
+// docked beside it (src/lib/layout.ts — the two numbers must agree).
+export const DESKTOP_MIN_WIDTH = 960
+
+/**
+ * Restricts a spec to the phone arrangement — for the gestures a window has
+ * no equivalent of (dragging a sheet open, flicking it shut, tapping the
+ * dimmed map behind it). Reads the project's own viewport rather than its
+ * name, so renaming a project can't silently un-skip anything.
+ *
+ * Call at file or describe scope, before the tests.
+ */
+export function phoneOnly(reason = 'gesture of the phone arrangement — a window docks the list') {
+  test.skip(({ viewport }) => viewport != null && viewport.width >= DESKTOP_MIN_WIDTH, reason)
+}
+
+/** The mirror image: a spec about the desktop arrangement only */
+export function desktopOnly(reason = 'the desktop arrangement — a phone has no room for it') {
+  test.skip(({ viewport }) => viewport == null || viewport.width < DESKTOP_MIN_WIDTH, reason)
+}
+
+/**
+ * Reveal the zone's station list. On a phone it is what the bottom sheet
+ * expands into, so its handle has to be tapped and the open animation waited
+ * out; on a window it is docked beside the map and already on screen.
+ */
+export async function openZoneList(page: import('@playwright/test').Page) {
+  const handle = page.getByRole('button', { name: /liste des stations/ })
+  if ((await handle.count()) === 0) {
+    await expect(page.getByTestId('zone-list')).toBeVisible()
+    return
+  }
+  await handle.click()
+  await expect(handle).toHaveAttribute('aria-expanded', 'true')
+  await page.waitForTimeout(400) // the height transition (.3s) — rows must not move under a click
+}
+
+/** The reverse: collapse the sheet on a phone, nothing to do on a window. */
+export async function closeZoneList(page: import('@playwright/test').Page) {
+  const scrim = page.getByRole('button', { name: 'Fermer la liste' })
+  if ((await scrim.count()) === 0) return
+  // The scrim spans the whole stage but the expanded sheet (above it) covers
+  // its center — Playwright's default click point. Tap near the top, on the
+  // strip of dimmed map the sheet never reaches (≥ 64px stays free).
+  await scrim.click({ position: { x: 40, y: 30 } })
+  await expect(page.getByRole('button', { name: /liste des stations/ })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  )
 }
 
 /**

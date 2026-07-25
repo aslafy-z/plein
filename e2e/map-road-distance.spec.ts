@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures'
+import { test, expect, openZoneList } from './fixtures'
 
 // Distances shown (and fed into the effective-price ranking) come from a real
 // road matrix (OSRM /table), not crow-flies. Two stations north of the user:
@@ -79,7 +79,7 @@ test('the reco and distances follow the road matrix, not crow-flies', async ({ p
 
   // The list keeps sticker order: crow-flies-close Rivegauche stays the
   // « meilleur prix » but shows its real 12 km; Rivedroite is recommended
-  await page.getByRole('button', { name: /liste des stations/ }).click()
+  await openZoneList(page)
   const rows = page.getByRole('button', { name: /^Voir / })
   await expect(rows.first()).toContainText('Rivegauche')
   await expect(rows.first()).toContainText('meilleur prix')

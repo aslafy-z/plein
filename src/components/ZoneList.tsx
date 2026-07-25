@@ -14,6 +14,7 @@ import {
 } from '../state/store';
 import { fmtPrice, distLabel } from '../lib/format';
 import { openStatusShort } from '../lib/labels';
+import { useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
 import { openStatus } from '../lib/hours';
 import BrandAvatar from './BrandAvatar';
@@ -42,6 +43,7 @@ export default function ZoneList({
   onRowPick?: () => void;
 }) {
   const app = useApp();
+  const desktop = useIsDesktop();
   const rows = selectSorted(app);
   const cheapest = selectCheapest(app);
   const reco = selectRecommended(app);
@@ -149,9 +151,8 @@ export default function ZoneList({
           const deal = priceTier(price, stats, true) === 'deal' || recoRow;
           const delta = (priceCents(price) - priceCents(min)) / 100;
           const rowStatus = openStatus(s.hours);
-          return (
+          const locate = (
             <button
-              key={s.id}
               onClick={() => {
                 // Locate on the map: highlighted pin + pan, card at the top
                 app.setFocusStation(s.id);
@@ -163,13 +164,8 @@ export default function ZoneList({
                 alignItems: 'center',
                 gap: 12,
                 width: '100%',
-                background: deal ? C.accentSoft09 : C.surface2,
-                borderRadius: 14,
-                padding: '11px 14px',
-                flexShrink: 0,
-                border: isFocus
-                  ? `1.5px solid ${C.accent}`
-                  : `1px solid ${deal ? C.accentBorderStrong : C.border}`,
+                flex: 1,
+                minWidth: 0,
               }}
             >
               <BrandAvatar label={s.brand ?? s.name} init={s.init} size={38} fontSize={12.5} />
@@ -224,6 +220,58 @@ export default function ZoneList({
                 </div>
               </div>
             </button>
+          );
+
+          const rowStyle = {
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            width: '100%',
+            background: deal ? C.accentSoft09 : C.surface2,
+            borderRadius: 14,
+            padding: '11px 14px',
+            flexShrink: 0,
+            border: isFocus
+              ? `1.5px solid ${C.accent}`
+              : `1px solid ${deal ? C.accentBorderStrong : C.border}`,
+          };
+
+          // A phone row does one thing: it locates the station, and the sheet
+          // collapses onto the map where the card — the way into the fiche —
+          // is now showing that station. Nothing collapses on a window: the
+          // list stays put, so a row that only re-highlights a pin reads as
+          // dead, and the fiche needs a door of its own on every row.
+          if (!desktop) {
+            return (
+              <div key={s.id} style={rowStyle}>
+                {locate}
+              </div>
+            );
+          }
+
+          return (
+            <div key={s.id} style={rowStyle}>
+              {locate}
+              <button
+                onClick={() => app.openStation(s.id)}
+                aria-label={m.sheet_open_station_aria({ station: s.name })}
+                title={m.sheet_open_station_aria({ station: s.name })}
+                style={{
+                  flexShrink: 0,
+                  alignSelf: 'stretch',
+                  display: 'flex',
+                  alignItems: 'center',
+                  paddingLeft: 10,
+                  marginLeft: 2,
+                  borderLeft: `1px solid ${deal ? C.accentBorder : C.border}`,
+                  color: C.mut,
+                  fontSize: 15,
+                  fontWeight: 700,
+                }}
+              >
+                ›
+              </button>
+            </div>
           );
         })}
       </div>

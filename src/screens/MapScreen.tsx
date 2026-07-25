@@ -173,41 +173,6 @@ export default function MapScreen() {
               </div>
             )}
 
-            {/* PWA install — discreet chip (native dialog on tap; also in Réglages) */}
-            {app.installBannerVisible && (
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
-                <button
-                  onClick={() => app.promptInstall()}
-                  style={{
-                    ...chipBase,
-                    fontSize: 12,
-                    padding: '6px 12px',
-                    fontWeight: 600,
-                    background: C.surface2,
-                    color: C.body,
-                    border: `1px solid ${C.border09}`,
-                  }}
-                >
-                  {m.map_install_app()}
-                </button>
-                <button
-                  onClick={() => app.dismissInstallBanner()}
-                  aria-label={m.map_install_dismiss()}
-                  title={m.map_install_dismiss()}
-                  style={{
-                    ...chipBase,
-                    fontSize: 12,
-                    padding: '6px 10px',
-                    fontWeight: 600,
-                    background: C.surface2,
-                    color: C.mut,
-                    border: `1px solid ${C.border09}`,
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-            )}
           </div>
         </div>
 

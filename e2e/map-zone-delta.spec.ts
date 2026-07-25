@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures'
+import { test, expect, openZoneList } from './fixtures'
 import type { Page } from '@playwright/test'
 
 // The « vs la zone » chip of the collapsed card compares the shown station to
@@ -36,7 +36,7 @@ async function mockStations(page: Page, pins: { price: number; km: number }[]) {
 
 /** Select a zone station by its price, from the pull-up list */
 async function selectFromList(page: Page, price: string) {
-  await page.getByRole('button', { name: /liste des stations/ }).click()
+  await openZoneList(page)
   await page.getByTestId('zone-list').getByText(price).click()
   await expect(page.getByText('Station sélectionnée')).toBeVisible()
 }

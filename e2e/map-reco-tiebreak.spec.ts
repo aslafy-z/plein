@@ -1,4 +1,4 @@
-import { test, expect, gotoMap } from './fixtures'
+import { test, expect, gotoMap, openZoneList } from './fixtures'
 
 // The French feed carries tenths of a cent (1,896 vs 1,904) while the app
 // displays cents — both read « 1,90 € ». The recommendation must not send
@@ -60,7 +60,7 @@ test('at the same displayed price the nearest station is recommended', async ({ 
 
   // …and the list keeps the sub-cent-cheaper one a bon plan without the
   // silly « +0,00 » delta
-  await page.getByRole('button', { name: /liste des stations/ }).click()
+  await openZoneList(page)
   await expect(page.getByText('meilleur prix')).toHaveCount(1)
   const rows = page.getByRole('button', { name: /^Voir / })
   await expect(rows.first()).toContainText('Proche')

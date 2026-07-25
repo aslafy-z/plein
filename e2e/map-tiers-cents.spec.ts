@@ -1,4 +1,4 @@
-import { test, expect, gotoMap } from './fixtures'
+import { test, expect, gotoMap, openZoneList } from './fixtures'
 
 // Tiers are judged at DISPLAYED precision (cents). The raw « bon plan »
 // threshold can fall inside a cent — here dealMax ≈ 1,9001 — and used to
@@ -47,6 +47,6 @@ test('two stations reading the same price share the same tier', async ({ page })
   await expect(page.locator('.pin-bubble--high', { hasText: '2,15' })).toHaveCount(1)
 
   // And both rows carry the same displayed delta: 1,90 − 1,87 = +0,03
-  await page.getByRole('button', { name: /liste des stations/ }).click()
+  await openZoneList(page)
   await expect(page.getByText('bon plan · +0,03')).toHaveCount(2)
 })
