@@ -65,6 +65,12 @@ autour de vous et le long de vos trajets, en France, en Espagne et en Andorre.
   zoom, carburant, rayon et filtres) : le bouton *Partager* envoie un lien qui
   rouvre exactement la même vue chez qui le reçoit — pratique pour dire « le
   plein est là ». Les fiches station gardent leur lien direct `/station/:id`.
+- 🖥️ **La même app sur téléphone et sur navigateur** — sur mobile, la carte en
+  plein écran et son volet qu'on tire ; sur un écran large, la navigation passe
+  sur le côté et la liste des stations se cale **à côté** de la carte au lieu de
+  la recouvrir, les filtres et les fiches deviennent des panneaux, et la souris
+  retrouve ce qui lui manquait (boutons de zoom, survols, Échap pour fermer).
+  Plus de cadre de téléphone posé au milieu de l'écran.
 - 📱 **PWA installable et tolérante au hors-ligne** — ajoutez-la à l'écran
   d'accueil ; les dernières zones consultées et les tuiles de carte restent
   disponibles sans réseau, avec indicateur d'ancienneté des prix.

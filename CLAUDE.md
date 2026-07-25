@@ -56,6 +56,39 @@ skips those scripts sees `Cannot find module '../paraglide/messages.js'`.
 - Adding a locale: add it to `project.inlang/settings.json`, add
   `messages/<locale>.json`, add its name to `localeName()` in `Settings.tsx`.
 
+## Layout: one app, two arrangements
+
+There is no desktop build and no phone frame. The same screens rearrange, and
+**`src/lib/layout.ts` is the only place that decides which arrangement is on**
+**screen**: `useIsDesktop()` (a `useSyncExternalStore` wrapper over `matchMedia`)
+against `DESKTOP_MIN_WIDTH` = 960. Components branch on that boolean in React
+rather than on a media query of their own — a duplicated breakpoint in CSS is
+how a layout and the components inside it end up disagreeing. The gate is
+width, never pointer type: a window gets resized and the layout has to follow.
+
+| | phone | desktop |
+| --- | --- | --- |
+| navigation | `NavBar` (bottom tabs) | `SideNav` (rail) |
+| zone card + list | `MapSheet` (dragged) | `ZonePanel` (docked) |
+| filters | bottom sheet | `Dialog` |
+| station fiche | full screen | narrow page in the region |
+| route | 210px map strip + timeline | timeline panel + `RouteMap fill` |
+
+- **Presentation is shared, never forked.** `ZoneCard` and `ZoneList` are what
+  the phone sheet and the desktop panel both render; the sheet passes its drag
+  handle and the pointer handlers its drag-to-close needs, the panel passes
+  neither. The gesture engine is the only phone-only code. Anything you add to
+  the zone goes in those two components, not in one arrangement.
+- `PANEL_WIDTH` and `CONTENT_MAX_WIDTH` live in `layout.ts` too. The panel floor
+  is what a station row needs to fit on one line — below it names wrap and the
+  list stops being scannable.
+- The docked panel sits *beside* the map, so Leaflet's own size is already
+  right: `MapCanvas` gets `bottomInset={0}` there. The inset only exists because
+  the phone sheet overlays the map.
+- App-level notices (`UpdatePrompt`, `FallbackBanner`, `InstallPrompt`) are bars
+  at the top of `.app-main`, not map controls — the install offer used to ride
+  the map's floating column and covered the thing it was offering to install.
+
 ## Commands
 
 ```sh
@@ -88,6 +121,14 @@ npm run build       # tsc + vite build
   page logs a console error. It also pins `locale: 'fr'` into every seed —
   the runner's Chromium asks for `en-US`, and the assertions read French.
   Override it in a spec's `seed` to assert on another language.
+- **Two projects, two layouts.** `mobile` (Pixel 7) and `desktop` (1440×900)
+  now see genuinely different arrangements, so a spec must say which one it is
+  about: `phoneOnly()` / `desktopOnly()` from `e2e/fixtures.ts` gate on the
+  project's own viewport against the same 960px number. Reveal the zone list
+  through `openZoneList()` / `closeZoneList()` rather than clicking the sheet
+  handle — the handle only exists on a phone. Layout-agnostic behaviour (price
+  tiers, the recommendation, filters wiring) stays in one spec that runs on
+  both; `desktop.spec.ts` covers the desktop arrangement itself.
 
 ## Where to run the e2e suite
 
