@@ -152,7 +152,6 @@ test('station detail opens from the sheet and jumps back with the station select
 })
 
 test('the user zoom survives a detail round-trip via the back button', async ({ page }) => {
-  // We only ever zoom IN here, so the max across the live tiles is the level
   const zoom = () => tileZoom(page)
   const initial = await zoom()
 

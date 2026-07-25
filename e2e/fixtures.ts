@@ -41,20 +41,32 @@ export async function gotoMap(page: import('@playwright/test').Page) {
 }
 
 /**
- * Current zoom level, read from the tile URLs (…/{z}/{x}/{y}.png). Max across
- * the tiles: during (and right after) an animation Leaflet still holds the
- * outgoing level's tiles, so a settle-and-retry is the caller's job.
+ * Current zoom level, read from the tile URLs (…/{z}/{x}/{y}.png).
+ *
+ * Leaflet keeps the outgoing level's tiles during a zoom animation, so the
+ * tiles on screen span two levels — and the stale one is the HIGHER of the two
+ * when zooming out. Reading the max across every tile therefore reports a
+ * level the map is not at, for as long as the animation runs. Each level lives
+ * in its own `.leaflet-tile-container`, scaled by `getZoomScale(current,
+ * level)`: only the level the map is actually on is left at scale 1, which is
+ * what identifies it here. Mid-animation no container qualifies, so the read
+ * waits for the map to land instead of returning a lie.
  */
 export async function tileZoom(page: import('@playwright/test').Page) {
-  const srcs = await page
-    .locator('.leaflet-tile')
-    .evaluateAll((els) => els.map((el) => (el as HTMLImageElement).src))
-  const zooms = srcs
-    .map((s) => s.match(/\/(\d+)\/\d+\/\d+(?:@2x)?\.png/))
-    .filter((m): m is RegExpMatchArray => m != null)
-    .map((m) => Number(m[1]))
-  if (!zooms.length) throw new Error('no tiles on the map')
-  return Math.max(...zooms)
+  const live = await page.waitForFunction(() => {
+    const zooms: number[] = []
+    for (const el of document.querySelectorAll('.leaflet-tile-container')) {
+      const t = getComputedStyle(el).transform
+      // A container that is only translated has no scale in its matrix
+      if (Math.abs((t === 'none' ? 1 : new DOMMatrixReadOnly(t).a) - 1) > 1e-3) continue
+      for (const img of el.querySelectorAll('img')) {
+        const m = (img as HTMLImageElement).src.match(/\/(\d+)\/\d+\/\d+(?:@2x)?\.png/)
+        if (m) zooms.push(Number(m[1]))
+      }
+    }
+    return zooms.length ? { zoom: Math.max(...zooms) } : null
+  })
+  return (await live.jsonValue()).zoom
 }
 
 export { expect }
