@@ -144,7 +144,7 @@
   "sheet_sold_here": "Sold here:",
   "sheet_no_match": "No station matches your filters.",
   "sheet_adjust_filters": "Adjust",
-  "sheet_zone_count": [
+  "sheet_zone_count_compact": [
     {
       "declarations": [
         "input count",
@@ -154,8 +154,8 @@
         "countPlural"
       ],
       "match": {
-        "countPlural=one": "{count} station in the area",
-        "countPlural=other": "{count} stations in the area"
+        "countPlural=one": "{count} station",
+        "countPlural=other": "{count} stations"
       }
     }
   ],
@@ -342,6 +342,7 @@
   "detail_highway": "Motorway",
   "detail_view_on_map": "Show on the map ›",
   "detail_back_aria": "Back",
+  "detail_close_aria": "Close the station page",
   "detail_share_aria": "Share the station",
   "detail_add_favorite_aria": "Add to favorites",
   "detail_remove_favorite_aria": "Remove from favorites",

@@ -1,4 +1,4 @@
-import type { DOMAttributes, Ref } from 'react';
+import { useEffect, useRef, type DOMAttributes, type MutableRefObject, type Ref } from 'react';
 import { C, mono } from '../theme';
 import {
   useApp,
@@ -54,6 +54,22 @@ export default function ZoneList({
   const dealCount = selectDeals(app).length;
   const min = range?.min ?? 0;
 
+  // The list follows the map: selecting a pin scrolls its row into view —
+  // the sheet (phone) already hands us a scroller ref, so tee into it
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const setScroller = (el: HTMLDivElement | null) => {
+    listRef.current = el;
+    if (typeof scrollerRef === 'function') scrollerRef(el);
+    else if (scrollerRef) (scrollerRef as MutableRefObject<HTMLDivElement | null>).current = el;
+  };
+  const focusId = app.focusStationId;
+  useEffect(() => {
+    if (!focusId || !listRef.current) return;
+    listRef.current
+      .querySelector(`[data-station-id="${CSS.escape(focusId)}"]`)
+      ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [focusId]);
+
   return (
     <div
       style={{
@@ -64,18 +80,23 @@ export default function ZoneList({
         borderTop: `1px solid ${C.border}`,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 20px 10px' }}>
+      {/* One line, whatever the width: the compact count, the deals beside
+          it, the sort at the right edge. The panel floor (PANEL_WIDTH) is
+          exactly what this row needs — « {n} stations dans la zone » wrapped
+          onto three lines there, so the count dropped the zone suffix the
+          list already IS. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 20px 10px' }}>
         <span
           style={{
-            fontSize: 12,
+            fontSize: 11.5,
             fontWeight: 700,
-            letterSpacing: '.1em',
+            letterSpacing: '.08em',
             textTransform: 'uppercase',
             color: C.mut,
-            flex: 1,
+            whiteSpace: 'nowrap',
           }}
         >
-          {m.sheet_zone_count({ count: rows.length })}
+          {m.sheet_zone_count_compact({ count: rows.length })}
         </span>
         {dealCount > 1 && (
           <span
@@ -84,11 +105,15 @@ export default function ZoneList({
               fontWeight: 700,
               color: C.accent,
               whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              minWidth: 0,
             }}
           >
             {m.sheet_deal_count({ count: dealCount })}
           </span>
         )}
+        <span style={{ flex: 1 }} />
         {(
           [
             ['price', m.sheet_sort_price()],
@@ -101,13 +126,14 @@ export default function ZoneList({
               key={k}
               onClick={() => app.setSort(k)}
               style={{
-                fontSize: 12.5,
+                fontSize: 12,
                 fontWeight: 700,
                 color: active ? C.onAccent : C.mut,
                 background: active ? C.accent : C.surface2,
-                padding: '6px 12px',
+                padding: '5px 11px',
                 borderRadius: 14,
                 whiteSpace: 'nowrap',
+                flexShrink: 0,
               }}
             >
               {label}
@@ -117,7 +143,7 @@ export default function ZoneList({
       </div>
 
       <div
-        ref={scrollerRef}
+        ref={setScroller}
         data-testid="zone-list"
         {...gestures}
         style={{
@@ -243,42 +269,35 @@ export default function ZoneList({
 
           // A phone row does one thing: it locates the station, and the sheet
           // collapses onto the map where the card — the way into the fiche —
-          // is now showing it. Nothing collapses on a window: the list stays
-          // put, so a row that only re-highlights a pin reads as dead and the
-          // fiche needs a door of its own here.
+          // is now showing it. A window skips that intermediate step: one
+          // click opens the fiche right under the list (which stays put, so
+          // the next station is one click too) and the fiche itself selects
+          // the station on the live map.
           if (!desktop) {
             return (
-              <div key={s.id} data-testid="zone-row" style={rowStyle}>
+              <div key={s.id} data-station-id={s.id} data-testid="zone-row" style={rowStyle}>
                 {locate}
               </div>
             );
           }
 
-          // The door shows a chevron and nothing else, but its hit area is the
-          // whole block right of the divider, full row height — a bare 15px
-          // glyph is a target asking to be missed.
           return (
-            <div key={s.id} data-testid="zone-row" style={rowStyle}>
-              {locate}
+            <div key={s.id} data-station-id={s.id} data-testid="zone-row" style={rowStyle}>
               <button
                 onClick={() => app.openStation(s.id)}
                 aria-label={m.sheet_open_station_aria({ station: s.name })}
                 title={m.sheet_open_station_aria({ station: s.name })}
                 style={{
-                  flexShrink: 0,
-                  alignSelf: 'stretch',
-                  width: 34,
-                  marginRight: -6,
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  borderLeft: `1px solid ${deal ? C.accentBorder : C.border}`,
-                  color: C.mut,
-                  fontSize: 15,
-                  fontWeight: 700,
+                  gap: 12,
+                  flex: 1,
+                  minWidth: 0,
+                  alignSelf: 'stretch',
                 }}
               >
-                ›
+                {identity}
+                {priceBlock}
               </button>
             </div>
           );

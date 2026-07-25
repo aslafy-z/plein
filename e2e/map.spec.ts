@@ -149,14 +149,21 @@ test.describe('the bottom sheet', () => {
   })
 })
 
-test('station detail opens from the sheet and jumps back with the station selected', async ({ page }) => {
-  await page.getByText(/MàJ /).first().click()
+// « Voir sur la carte » is the phone's bridge from the full-screen fiche back
+// to the map — the desktop fiche sits NEXT to the live map, which is already
+// showing the station, so the button (and this flow) doesn't exist there
+test.describe('fiche → map bridge', () => {
+  phoneOnly('the desktop fiche has no « view on map » — the live map is beside it')
 
-  await expect(page.locator('[aria-label="Carte de la station"]')).toBeVisible()
-  await expect(page.getByText(/Ouvert|Fermé/).first()).toBeVisible()
+  test('station detail opens from the sheet and jumps back with the station selected', async ({ page }) => {
+    await page.getByText(/MàJ /).first().click()
 
-  await page.getByText('Voir sur la carte ›').click()
-  await expect(page.getByText('Station sélectionnée')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('Voir sur la carte ›')).toBeVisible()
+    await expect(page.getByText(/Ouvert|Fermé/).first()).toBeVisible()
+
+    await page.getByText('Voir sur la carte ›').click()
+    await expect(page.getByText('Station sélectionnée')).toBeVisible({ timeout: 15_000 })
+  })
 })
 
 test('the user zoom survives a detail round-trip via the back button', async ({ page }) => {
@@ -177,9 +184,10 @@ test('the user zoom survives a detail round-trip via the back button', async ({ 
   await page.waitForTimeout(500) // let the zoom animation settle
   const zoomed = await zoom()
 
-  // Detail round-trip with the (Android) back button
+  // Detail round-trip with the (Android) back button — « Services » is the
+  // fiche section both arrangements render
   await page.getByText(/MàJ /).first().click()
-  await expect(page.locator('[aria-label="Carte de la station"]')).toBeVisible()
+  await expect(page.getByText('Services')).toBeVisible()
   await page.goBack()
 
   // Back on the map — the card's kicker depends on where the zoomed view

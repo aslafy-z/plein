@@ -39,19 +39,19 @@ test.beforeEach(async ({ page }) => {
 test('a French station is reachable under its prefixed id', async ({ page }) => {
   await page.goto('/station/fra-31000009')
 
-  await expect(page.getByText('Station · Prefixville')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Station · Prefixville').first()).toBeVisible({ timeout: 15_000 })
   await expect(page.getByText('source : prix-carburants.gouv.fr')).toBeVisible()
 })
 
 test('a link made before the prefix still opens the fiche', async ({ page }) => {
   await page.goto('/station/31000009')
 
-  await expect(page.getByText('Station · Prefixville')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Station · Prefixville').first()).toBeVisible({ timeout: 15_000 })
 })
 
 test('a favorite pinned before the prefix is still recognised', async ({ page }) => {
   await page.goto('/station/fra-31000009')
-  await expect(page.getByText('Station · Prefixville')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Station · Prefixville').first()).toBeVisible({ timeout: 15_000 })
   // Nothing migrated yet: the star reflects an empty favorites list
   await expect(page.getByRole('button', { name: 'Ajouter aux favoris' })).toBeVisible()
 
@@ -66,6 +66,6 @@ test('a favorite pinned before the prefix is still recognised', async ({ page })
   })
   await page.reload()
 
-  await expect(page.getByText('Station · Prefixville')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Station · Prefixville').first()).toBeVisible({ timeout: 15_000 })
   await expect(page.getByRole('button', { name: 'Retirer des favoris' })).toBeVisible()
 })

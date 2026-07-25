@@ -144,7 +144,7 @@
   "sheet_sold_here": "Se vende aquí:",
   "sheet_no_match": "Ninguna gasolinera coincide con tus filtros.",
   "sheet_adjust_filters": "Ajustar",
-  "sheet_zone_count": [
+  "sheet_zone_count_compact": [
     {
       "declarations": [
         "input count",
@@ -154,8 +154,8 @@
         "countPlural"
       ],
       "match": {
-        "countPlural=one": "{count} gasolinera en la zona",
-        "countPlural=other": "{count} gasolineras en la zona"
+        "countPlural=one": "{count} gasolinera",
+        "countPlural=other": "{count} gasolineras"
       }
     }
   ],
@@ -342,6 +342,7 @@
   "detail_highway": "Autopista",
   "detail_view_on_map": "Ver en el mapa ›",
   "detail_back_aria": "Volver",
+  "detail_close_aria": "Cerrar la ficha",
   "detail_share_aria": "Compartir la gasolinera",
   "detail_add_favorite_aria": "Añadir a favoritas",
   "detail_remove_favorite_aria": "Quitar de favoritas",

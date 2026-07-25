@@ -70,25 +70,36 @@ width, never pointer type: a window gets resized and the layout has to follow.
 | | phone | desktop |
 | --- | --- | --- |
 | navigation | `NavBar` (bottom tabs) | `SideNav` (rail) |
-| zone card + list | `MapSheet` (dragged) | `ZonePanel` (docked) |
-| filters | bottom sheet | `Dialog` |
-| station fiche | full screen | narrow page in the region |
-| route | 210px map strip + timeline | timeline panel + `RouteMap fill` |
+| zone card + list | `MapSheet` (dragged) | `ZonePanel` (floating glass panel) |
+| filters | bottom sheet | popover anchored under the chips |
+| station fiche | full screen, mini-map header | stacked under the list, no mini-map |
+| route | 210px map strip + timeline | floating timeline over `RouteMap fill` |
 
 - **Presentation is shared, never forked.** `ZoneCard` and `ZoneList` are what
   the phone sheet and the desktop panel both render; the sheet passes its drag
   handle and the pointer handlers its drag-to-close needs, the panel passes
   neither. The gesture engine is the only phone-only code. Anything you add to
   the zone goes in those two components, not in one arrangement.
-- `PANEL_WIDTH` and `CONTENT_MAX_WIDTH` live in `layout.ts` too. The panel floor
-  is what a station row needs to fit on one line — below it names wrap and the
-  list stops being scannable.
-- The docked panel sits *beside* the map, so Leaflet's own size is already
-  right: `MapCanvas` gets `bottomInset={0}` there. The inset only exists because
-  the phone sheet overlays the map.
-- App-level notices (`UpdatePrompt`, `FallbackBanner`, `InstallPrompt`) are bars
-  at the top of `.app-main`, not map controls — the install offer used to ride
-  the map's floating column and covered the thing it was offering to install.
+- On desktop the map runs edge to edge and everything else floats over it in
+  one « glass » language: `glass` and `floatingPanelStyle` in `theme.ts` are
+  the whole vocabulary. MapScreen owns the panel slot; RouteRibbon puts its
+  timeline in the same slot. Opening `/station/:id` keeps the map mounted and
+  stacks the fiche UNDER the zone list inside that panel — a list row opens it
+  in one click, and the fiche selects its station on the live map (halo +
+  pan to the VISIBLE center) and releases it on close.
+- `PANEL_WIDTH`, `PANEL_GAP` and `CONTENT_MAX_WIDTH` live in `layout.ts`. The
+  panel floor is what a station row needs to fit on one line — below it names
+  wrap and the list stops being scannable.
+- The floating panel covers the map's LEFT edge, so `MapCanvas` and `RouteMap`
+  take a `leftInset` (the measured panel width + gaps) and pad their auto-fits
+  with it: the zone circle and the route corridor land centered in the VISIBLE
+  part of the map. It is the desktop mirror of the phone sheet's
+  `bottomInset`, which desktop passes as 0.
+- App-level notices (`UpdatePrompt`, `FallbackBanner`) are bars at the top of
+  `.app-main`, not map controls. The install offer is a bar on the phone only
+  (`InstallPrompt`); on desktop it lives in the side rail's bottom slot with
+  the geolocation notice and the app version — permanent chrome, so it never
+  covers the map it is offering to install.
 
 ## Commands
 

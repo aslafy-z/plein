@@ -144,7 +144,7 @@
   "sheet_sold_here": "Es ven aquí:",
   "sheet_no_match": "Cap benzinera no coincideix amb els teus filtres.",
   "sheet_adjust_filters": "Ajusta",
-  "sheet_zone_count": [
+  "sheet_zone_count_compact": [
     {
       "declarations": [
         "input count",
@@ -154,8 +154,8 @@
         "countPlural"
       ],
       "match": {
-        "countPlural=one": "{count} benzinera a la zona",
-        "countPlural=other": "{count} benzineres a la zona"
+        "countPlural=one": "{count} benzinera",
+        "countPlural=other": "{count} benzineres"
       }
     }
   ],
@@ -342,6 +342,7 @@
   "detail_highway": "Autopista",
   "detail_view_on_map": "Veure al mapa ›",
   "detail_back_aria": "Torna",
+  "detail_close_aria": "Tanca la fitxa",
   "detail_share_aria": "Comparteix la benzinera",
   "detail_add_favorite_aria": "Afegeix a preferides",
   "detail_remove_favorite_aria": "Treu de preferides",
