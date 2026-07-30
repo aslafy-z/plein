@@ -333,25 +333,36 @@ button {
    underneath. Either alone is free; together they are not. So the phone, whose
    timeline sits below the map rather than over it, animates; the desktop panel
    shows the same bars, still. RouteRibbon decides, via `useIsDesktop()` —
-   never a media query of its own (see "one app, two arrangements"). */
-.skeleton-sweep {
-  background-image: linear-gradient(
+   never a media query of its own (see "one app, two arrangements").
+
+   ONE light crosses the whole row, so it must ride the row and not the bars:
+   a per-bar `background-position` sweep travels a distance proportional to
+   each bar's own width, which turns one row into four flickers at four
+   speeds. The overlay is fully off-screen at both ends of the travel, so the
+   loop has no visible reset, and `linear` keeps the light at constant speed.
+   Frozen (reduced motion) it stays off-screen and the bars simply sit still. */
+.skeleton-row {
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-row::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
     100deg,
-    rgba(255, 255, 255, 0) 40%,
-    rgba(255, 255, 255, 0.09) 50%,
-    rgba(255, 255, 255, 0) 60%
+    rgba(255, 255, 255, 0) 35%,
+    rgba(255, 255, 255, 0.07) 50%,
+    rgba(255, 255, 255, 0) 65%
   );
-  background-size: 220% 100%;
-  background-repeat: no-repeat;
-  animation: skeleton-sweep 1.3s ease-in-out infinite;
+  transform: translateX(-100%);
+  animation: skeleton-sweep 1.5s linear infinite;
 }
 
 @keyframes skeleton-sweep {
-  from {
-    background-position: 100% 0;
-  }
   to {
-    background-position: 0% 0;
+    transform: translateX(100%);
   }
 }
 
@@ -435,7 +446,7 @@ button {
   .anim-fade,
   .anim-dialog,
   .sheet-hint,
-  .skeleton-sweep,
+  .skeleton-row::after,
   .spin {
     animation: none;
   }

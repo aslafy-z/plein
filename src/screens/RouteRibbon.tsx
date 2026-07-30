@@ -111,8 +111,8 @@ const retryStyle = {
   cursor: 'pointer',
 } as const;
 
-const skeletonBar = (sweep: boolean, width: number | string, height: number) => (
-  <div className={sweep ? 'skeleton skeleton-sweep' : 'skeleton'} style={{ width, height, borderRadius: 5 }} />
+const skeletonBar = (width: number | string, height: number) => (
+  <div className="skeleton" style={{ width, height, borderRadius: 5 }} />
 );
 
 /**
@@ -136,6 +136,7 @@ const skeletonNode = (i: number, sweep: boolean) => (
       }}
     />
     <div
+      className={sweep ? 'skeleton-row' : undefined}
       style={{
         background: C.surface,
         border: `1px solid ${C.border}`,
@@ -147,14 +148,11 @@ const skeletonNode = (i: number, sweep: boolean) => (
       }}
     >
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {skeletonBar(sweep, ['42%', '52%', '46%'][i % 3], 10)}
-        {skeletonBar(sweep, ['68%', '58%', '75%'][i % 3], 13)}
+        {skeletonBar(['42%', '52%', '46%'][i % 3], 10)}
+        {skeletonBar(['68%', '58%', '75%'][i % 3], 13)}
       </div>
-      {skeletonBar(sweep, 52, 16)}
-      <div
-        className={sweep ? 'skeleton skeleton-sweep' : 'skeleton'}
-        style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0 }}
-      />
+      {skeletonBar(52, 16)}
+      <div className="skeleton" style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0 }} />
     </div>
   </div>
 );
