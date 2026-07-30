@@ -272,6 +272,10 @@ export default function RouteSetup() {
               type="text"
               value={fromCleared ? '' : routeFromLabel(app)}
               placeholder={m.route_from_placeholder()}
+              // A place is not a login: keep autofill overlays off the field
+              // (same as the map search).
+              autoComplete="off"
+              data-1p-ignore=""
               onFocus={() => setFocused('from')}
               // Left empty, the field says again what the route really departs
               // from — the user's position.
@@ -289,6 +293,8 @@ export default function RouteSetup() {
               type="text"
               value={toText}
               placeholder={m.route_to_placeholder()}
+              autoComplete="off"
+              data-1p-ignore=""
               onFocus={() => setFocused('to')}
               onChange={(e) => onChange('to', e.target.value)}
               style={inputStyle}

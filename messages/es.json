@@ -122,6 +122,7 @@
   "search_placeholder": "Ciudad, dirección…",
   "search_in_progress": "Buscando…",
   "search_close_aria": "Cerrar la búsqueda",
+  "search_close_overlay_aria": "Volver al mapa",
   "search_see_stations_here": "ver las gasolineras aquí",
   "search_route_to_aria": "Ruta hasta {place}",
   "search_route_shortcut": "Ruta ›",

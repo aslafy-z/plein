@@ -243,6 +243,19 @@ button {
   outline-offset: 2px;
 }
 
+/* The place search reads as ONE control: the ring wraps its rounded box, not
+   the stretched button or the bare input inside it — a focused text input
+   always matches :focus-visible, so even a click would ring the naked input.
+   The other buttons in the box (✕, suggestions) keep their own ring: they are
+   separate actions a keyboard must be able to tell apart. */
+.app-shell .search-box :is(input, .search-box-hit):focus-visible {
+  outline: none;
+}
+.app-shell .search-box:has(input:focus-visible, .search-box-hit:focus-visible) {
+  outline: 2px solid #3ddc84;
+  outline-offset: 2px;
+}
+
 /* Leaflet map must inherit the dark look */
 .leaflet-container {
   background: #14181a;

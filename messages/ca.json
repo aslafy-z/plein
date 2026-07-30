@@ -122,6 +122,7 @@
   "search_placeholder": "Ciutat, adreça…",
   "search_in_progress": "S'està cercant…",
   "search_close_aria": "Tanca la cerca",
+  "search_close_overlay_aria": "Torna al mapa",
   "search_see_stations_here": "veure les benzineres aquí",
   "search_route_to_aria": "Ruta fins a {place}",
   "search_route_shortcut": "Ruta ›",

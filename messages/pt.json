@@ -117,6 +117,7 @@
   "search_placeholder": "Cidade, morada…",
   "search_in_progress": "A procurar…",
   "search_close_aria": "Fechar a pesquisa",
+  "search_close_overlay_aria": "Voltar ao mapa",
   "search_see_stations_here": "ver os postos aqui",
   "search_route_to_aria": "Rota até {place}",
   "search_route_shortcut": "Rota ›",

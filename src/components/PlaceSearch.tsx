@@ -66,6 +66,19 @@ export default function PlaceSearch() {
     setSearching(false);
   };
 
+  // Escape closes, like the filters popover — the ✕ must not be the only way
+  // out. On the window: focus may sit on a suggestion, or on the map.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      close();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+
   const pickArea = (r: GeocodeResult) => {
     app.setSearchArea(r.point, r.label);
     close();
@@ -77,14 +90,14 @@ export default function PlaceSearch() {
     close();
   };
 
+  // No padding of its own: the buttons inside carry it, so the whole box is
+  // clickable and the focus ring wraps the box (`.search-box` in styles.css).
   const barStyle = {
     display: 'flex',
     alignItems: 'center',
-    gap: 12,
     background: C.surface2,
     border: `1px solid ${C.border09}`,
     borderRadius: 28,
-    padding: '14px 18px',
     boxShadow: '0 8px 24px rgba(0,0,0,.4)',
     pointerEvents: 'auto' as const,
     width: '100%',
@@ -119,8 +132,9 @@ export default function PlaceSearch() {
   if (!open) {
     // Collapsed: current searched place (clearable in-bar) or the search prompt
     return (
-      <div style={barStyle}>
+      <div className="search-box" style={barStyle}>
         <button
+          className="search-box-hit"
           onClick={() => setOpen(true)}
           aria-label={m.search_open_aria()}
           style={{
@@ -129,6 +143,7 @@ export default function PlaceSearch() {
             gap: 12,
             flex: 1,
             minWidth: 0,
+            padding: app.searchLabel ? '14px 6px 14px 18px' : '14px 18px',
           }}
         >
           {pinIcon}
@@ -153,12 +168,13 @@ export default function PlaceSearch() {
             aria-label={m.search_reset_aria()}
             style={{
               flexShrink: 0,
+              alignSelf: 'stretch',
               display: 'flex',
               alignItems: 'center',
               color: C.mut,
               fontSize: 16,
               fontWeight: 700,
-              padding: '0 2px',
+              padding: '0 16px 0 6px',
             }}
           >
             ✕
@@ -169,107 +185,130 @@ export default function PlaceSearch() {
   }
 
   return (
-    <div
-      style={{
-        background: C.surface,
-        border: `1px solid ${C.border09}`,
-        borderRadius: 22,
-        boxShadow: '0 14px 40px rgba(0,0,0,.55)',
-        overflow: 'hidden',
-        pointerEvents: 'auto',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px' }}>
-        {pinIcon}
-        <input
-          ref={inputRef}
-          type="text"
-          value={query}
-          placeholder={m.search_placeholder()}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            runSearch(e.target.value);
-          }}
-          style={{
-            flex: 1,
-            minWidth: 0,
-            background: 'transparent',
-            border: 'none',
-            color: C.ink,
-            fontSize: 15,
-            fontFamily: 'Archivo, sans-serif',
-            padding: 0,
-          }}
-        />
-        {searching && (
-          <span
-            className="spin"
-            role="status"
-            aria-label={m.search_in_progress()}
-            style={{ flexShrink: 0, color: C.accent, fontSize: 14, lineHeight: 1 }}
-          >
-            ↻
-          </span>
-        )}
-        <button
-          onClick={close}
-          aria-label={m.search_close_aria()}
-          style={{ color: C.mut, fontSize: 16, fontWeight: 700, padding: '0 2px' }}
-        >
-          ✕
-        </button>
-      </div>
-
-      {suggestions.length > 0 && (
-        // Scrollable: geocoders return a dozen candidates and the panel floats
-        // over the map, so it is capped to part of the viewport rather than
-        // covering it. `overscroll-behavior: contain` keeps a flick at the end
-        // of the list from reaching the map underneath.
-        <div
-          data-testid="search-suggestions"
-          style={{
-            borderTop: `1px solid ${C.border}`,
-            maxHeight: 'min(46vh, 320px)',
-            overflowY: 'auto',
-            overscrollBehavior: 'contain',
-            WebkitOverflowScrolling: 'touch',
-          }}
-        >
-          {suggestions.map((r, i) => (
-            <div
-              key={`${r.label}-${i}`}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px 4px 16px' }}
+    <>
+      {/* A click anywhere else closes, like the filters popover. Fixed so it
+          covers the stage from inside the overlay slot; the panel after it is
+          positioned, so it paints above. */}
+      <button
+        onClick={close}
+        aria-label={m.search_close_overlay_aria()}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'transparent',
+          cursor: 'default',
+          pointerEvents: 'auto',
+        }}
+      />
+      <div
+        className="search-box"
+        style={{
+          position: 'relative',
+          background: C.surface,
+          border: `1px solid ${C.border09}`,
+          borderRadius: 22,
+          boxShadow: '0 14px 40px rgba(0,0,0,.55)',
+          overflow: 'hidden',
+          pointerEvents: 'auto',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px' }}>
+          {pinIcon}
+          <input
+            ref={inputRef}
+            type="text"
+            value={query}
+            placeholder={m.search_placeholder()}
+            // A place is not a login: opt out of autofill overlays, which
+            // cover the map and swallow Escape. 1Password ignores the
+            // standard attribute and needs its own.
+            autoComplete="off"
+            data-1p-ignore=""
+            onChange={(e) => {
+              setQuery(e.target.value);
+              runSearch(e.target.value);
+            }}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              background: 'transparent',
+              border: 'none',
+              color: C.ink,
+              fontSize: 15,
+              fontFamily: 'Archivo, sans-serif',
+              padding: 0,
+            }}
+          />
+          {searching && (
+            <span
+              className="spin"
+              role="status"
+              aria-label={m.search_in_progress()}
+              style={{ flexShrink: 0, color: C.accent, fontSize: 14, lineHeight: 1 }}
             >
-              <button
-                onClick={() => pickArea(r)}
-                style={{ flex: 1, minWidth: 0, textAlign: 'left', padding: '8px 0', cursor: 'pointer' }}
-              >
-                <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>{r.label}</div>
-                <div style={{ fontSize: 12, color: C.faint, marginTop: 1 }}>
-                  {placeSublabel(r)} — {m.search_see_stations_here()}
-                </div>
-              </button>
-              <button
-                onClick={() => pickRoute(r)}
-                aria-label={m.search_route_to_aria({ place: r.label })}
-                style={{
-                  flexShrink: 0,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: C.accent,
-                  border: `1px solid ${C.accentBorder}`,
-                  borderRadius: 14,
-                  padding: '6px 10px',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {m.search_route_shortcut()}
-              </button>
-            </div>
-          ))}
+              ↻
+            </span>
+          )}
+          <button
+            onClick={close}
+            aria-label={m.search_close_aria()}
+            style={{ color: C.mut, fontSize: 16, fontWeight: 700, padding: '0 2px' }}
+          >
+            ✕
+          </button>
         </div>
-      )}
-    </div>
+
+        {suggestions.length > 0 && (
+          // Scrollable: geocoders return a dozen candidates and the panel floats
+          // over the map, so it is capped to part of the viewport rather than
+          // covering it. `overscroll-behavior: contain` keeps a flick at the end
+          // of the list from reaching the map underneath.
+          <div
+            data-testid="search-suggestions"
+            style={{
+              borderTop: `1px solid ${C.border}`,
+              maxHeight: 'min(46vh, 320px)',
+              overflowY: 'auto',
+              overscrollBehavior: 'contain',
+              WebkitOverflowScrolling: 'touch',
+            }}
+          >
+            {suggestions.map((r, i) => (
+              <div
+                key={`${r.label}-${i}`}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px 4px 16px' }}
+              >
+                <button
+                  onClick={() => pickArea(r)}
+                  style={{ flex: 1, minWidth: 0, textAlign: 'left', padding: '8px 0', cursor: 'pointer' }}
+                >
+                  <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>{r.label}</div>
+                  <div style={{ fontSize: 12, color: C.faint, marginTop: 1 }}>
+                    {placeSublabel(r)} — {m.search_see_stations_here()}
+                  </div>
+                </button>
+                <button
+                  onClick={() => pickRoute(r)}
+                  aria-label={m.search_route_to_aria({ place: r.label })}
+                  style={{
+                    flexShrink: 0,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: C.accent,
+                    border: `1px solid ${C.accentBorder}`,
+                    borderRadius: 14,
+                    padding: '6px 10px',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {m.search_route_shortcut()}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
   );
 }
