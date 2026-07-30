@@ -318,26 +318,29 @@ button {
   border: 0;
 }
 
-/* Placeholder rows for a stage that has been started but has not answered */
+/* Placeholder bars for a stage that has been started but has not answered.
+   The base colour carries the whole meaning — the sweep is decoration on top,
+   so a frozen bar (reduced motion) still reads as "content is coming" rather
+   than as an empty box. */
 .skeleton {
-  background: linear-gradient(
+  background-color: #272d33;
+  background-image: linear-gradient(
     100deg,
-    #1a1d20 0%,
-    #1a1d20 35%,
-    #22282c 50%,
-    #1a1d20 65%,
-    #1a1d20 100%
+    rgba(255, 255, 255, 0) 40%,
+    rgba(255, 255, 255, 0.09) 50%,
+    rgba(255, 255, 255, 0) 60%
   );
-  background-size: 300% 100%;
-  animation: skeleton-sweep 1.4s ease-in-out infinite;
+  background-size: 220% 100%;
+  background-repeat: no-repeat;
+  animation: skeleton-sweep 1.3s ease-in-out infinite;
 }
 
 @keyframes skeleton-sweep {
   from {
-    background-position: 130% 0;
+    background-position: 100% 0;
   }
   to {
-    background-position: -30% 0;
+    background-position: 0% 0;
   }
 }
 

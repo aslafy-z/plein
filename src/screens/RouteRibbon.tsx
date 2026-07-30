@@ -111,7 +111,16 @@ const retryStyle = {
   cursor: 'pointer',
 } as const;
 
-/** A stop the corridor stage has been asked for but has not returned yet */
+const skeletonBar = (width: number | string, height: number) => (
+  <div className="skeleton" style={{ width, height, borderRadius: 5 }} />
+);
+
+/**
+ * A stop the corridor stage has been asked for but has not returned yet. It
+ * mirrors the real row — km line, name, price, add button — so the wait reads
+ * as « a stop is coming here » instead of as an empty card. Widths vary per
+ * row: three identical bars read as a rendering glitch.
+ */
 const skeletonNode = (i: number) => (
   <div key={`skeleton-${i}`} aria-hidden="true" style={{ position: 'relative', padding: '0 0 14px' }}>
     <div
@@ -126,7 +135,24 @@ const skeletonNode = (i: number) => (
         border: `3px solid ${C.faint}`,
       }}
     />
-    <div className="skeleton" style={{ height: 62, borderRadius: 14, border: `1px solid ${C.border}` }} />
+    <div
+      style={{
+        background: C.surface,
+        border: `1px solid ${C.border}`,
+        borderRadius: 14,
+        padding: '12px 14px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {skeletonBar(['42%', '52%', '46%'][i % 3], 10)}
+        {skeletonBar(['68%', '58%', '75%'][i % 3], 13)}
+      </div>
+      {skeletonBar(52, 16)}
+      <div className="skeleton" style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0 }} />
+    </div>
   </div>
 );
 
