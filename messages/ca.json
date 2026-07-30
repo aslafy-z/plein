@@ -146,7 +146,8 @@
   "sheet_fuel_not_sold": "Cap benzinera no ven {fuel} en aquesta zona.",
   "sheet_sold_here": "Es ven aquí:",
   "sheet_no_match": "Cap benzinera no coincideix amb els teus filtres.",
-  "sheet_adjust_filters": "Ajusta",
+  "sheet_adjust_filters": "Ajusta els filtres",
+  "sheet_active_filters": "Filtres actius:",
   "sheet_zone_count_compact": [
     {
       "declarations": [

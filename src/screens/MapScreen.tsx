@@ -4,7 +4,7 @@ import { SERVICE_TAGS } from '../data/types';
 import { fuelLabel } from '../lib/labels';
 import { PANEL_GAP, useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
-import { useApp, selectVisible } from '../state/store';
+import { useApp, selectVisible, selectZoneLead } from '../state/store';
 import MapCanvas from '../components/MapCanvas';
 import MapSheet from '../components/MapSheet';
 import ZonePanel from '../components/ZonePanel';
@@ -28,6 +28,14 @@ export default function MapScreen() {
 
   const visible = selectVisible(app);
   const nbVisible = visible.length;
+
+  // An empty zone has no list under its card — ZoneEmpty is then the whole of
+  // the panel's content. The slot hugs it instead of stretching to the bottom
+  // edge: a full-height pane of glass around one block reads as broken, and
+  // the map has to show through where the void would have been. The fiche
+  // keeps the full height; it is a long document that scrolls.
+  const hasZone = selectZoneLead(app) != null;
+  const hugPanel = !fiche && !hasZone;
 
   const filtersActive =
     SERVICE_TAGS.some((t) => app.serviceTags[t]) || app.brandSel.length > 0;
@@ -253,10 +261,24 @@ export default function MapScreen() {
             next station is one click away while its details are read — the
             map at the right never gets covered. */}
         {desktop && (
-          <div ref={panelRef} style={floatingPanelStyle}>
+          <div
+            ref={panelRef}
+            data-testid="zone-panel"
+            style={
+              hugPanel
+                ? {
+                    ...floatingPanelStyle,
+                    bottom: 'auto',
+                    maxHeight: `calc(100% - ${PANEL_GAP * 2}px)`,
+                  }
+                : floatingPanelStyle
+            }
+          >
             <div
               style={{
-                flex: fiche ? '0 1 38%' : 1,
+                // Nothing to list above a fiche either: the zone gives its
+                // share of the panel back rather than leaving a gap over it
+                flex: fiche ? (hasZone ? '0 1 38%' : '0 0 auto') : 1,
                 minHeight: 0,
                 display: 'flex',
                 flexDirection: 'column',

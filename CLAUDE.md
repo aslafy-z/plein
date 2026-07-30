@@ -75,11 +75,18 @@ width, never pointer type: a window gets resized and the layout has to follow.
 | station fiche | full screen, mini-map header | stacked under the list, no mini-map |
 | route | 210px map strip + timeline | floating timeline over `RouteMap fill` |
 
-- **Presentation is shared, never forked.** `ZoneCard` and `ZoneList` are what
-  the phone sheet and the desktop panel both render; the sheet passes its drag
-  handle and the pointer handlers its drag-to-close needs, the panel passes
-  neither. The gesture engine is the only phone-only code. Anything you add to
-  the zone goes in those two components, not in one arrangement.
+- **Presentation is shared, never forked.** `ZoneCard`, `ZoneList` and
+  `ZoneEmpty` are what the phone sheet and the desktop panel both render; the
+  sheet passes its drag handle and the pointer handlers its drag-to-close
+  needs, the panel passes neither. The gesture engine is the only phone-only
+  code. Anything you add to the zone goes in those three components, not in
+  one arrangement.
+- `selectZoneLead` is the one answer to « does the zone have anything to
+  show ». Null means no card, and therefore no list: `ZoneCard` hands over to
+  `ZoneEmpty`, the sheet has nothing to expand to, and the desktop panel slot
+  hugs that block instead of stretching to the bottom edge — a full-height
+  pane of glass around one sentence reads as broken rather than as an empty
+  state. The block is shared; the sizing is the slot's call.
 - On desktop the map runs edge to edge and everything else floats over it in
   one « glass » language: `glass` and `floatingPanelStyle` in `theme.ts` are
   the whole vocabulary. MapScreen owns the panel slot; RouteRibbon puts its
