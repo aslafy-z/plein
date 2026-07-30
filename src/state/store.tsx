@@ -496,7 +496,7 @@ function navFromPath(path: string): { screen: Screen; detailId: string | null } 
 }
 
 /** What the app stores in `history.state` for each of its own entries */
-type NavHistoryState = {
+export type NavHistoryState = {
   plein?: boolean;
   screen?: Screen;
   detailId?: string | null;
@@ -504,6 +504,28 @@ type NavHistoryState = {
   /** 0 = the entry the app was opened on (nothing of ours to pop below it) */
   idx?: number;
 };
+
+/**
+ * Whether moving to `next` swaps one fiche for another. On screen this reads
+ * as a swap — the panel changes station in place, the map and the list stay
+ * put — so it swaps the history entry too. Stacking one entry per station
+ * compared would make ✕ (and Back) walk every fiche read instead of closing
+ * the panel.
+ */
+export function isFicheSwap(
+  cur: NavHistoryState | null,
+  next: { screen: Screen; detailId: string | null; filtersOpen: boolean },
+): boolean {
+  return (
+    !!cur?.plein &&
+    cur.screen === 'detail' &&
+    next.screen === 'detail' &&
+    (cur.detailId ?? null) !== next.detailId &&
+    // The filters sheet owns its own entry (Back closes it) — a fiche swap
+    // that also opens or closes it is not just a swap.
+    !!cur.filtersOpen === next.filtersOpen
+  );
+}
 
 const Ctx = createContext<AppStore | null>(null);
 
@@ -797,7 +819,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const url = pathFor(screen, detailId) + (screen === 'map' ? mapQuery : '');
     if (sameNav && url === window.location.pathname + window.location.search) return;
     // First entry — and leaving onboarding must not be back-navigable
-    const replace = !cur?.plein || cameFrom === 'onboarding' || replaceAsked || sameNav;
+    const replace =
+      !cur?.plein ||
+      cameFrom === 'onboarding' ||
+      replaceAsked ||
+      sameNav ||
+      isFicheSwap(cur, { screen, detailId, filtersOpen });
     // How deep the app is in ITS OWN history: entry 0 is the one the app was
     // opened on, and popping it would leave the app entirely.
     const idx = replace ? (cur?.plein ? (cur.idx ?? 0) : 0) : (cur?.idx ?? 0) + 1;
@@ -1142,7 +1169,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ── Actions ────────────────────────────────────────────────────────────────
   const go = useCallback((s: Screen) => {
     setScreen((cur) => {
-      if (s === 'detail') setPrevScreen(cur);
+      // Swapping one fiche for another keeps the screen the first one was
+      // opened from: that is still where closing the panel has to land, and
+      // it is what tells the fiche whether it is read in route context.
+      if (s === 'detail' && cur !== 'detail') setPrevScreen(cur);
       return s;
     });
   }, []);

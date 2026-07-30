@@ -129,6 +129,42 @@ test('a station fiche stacks under the list, with the rail still up', async ({ p
   await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
 })
 
+test('comparing stations leaves one fiche to close, not a pile', async ({ page }) => {
+  const rows = page.locator('button[aria-label^="Ouvrir la fiche"]')
+  const depth = await page.evaluate(() => history.length)
+
+  await rows.nth(0).click()
+  await expect(page.getByText('Services')).toBeVisible()
+  const first = new URL(page.url()).pathname
+
+  // Reading the next station is a swap: the panel changes fiche in place, so
+  // it must swap the history entry rather than stack one per station read.
+  await rows.nth(1).click()
+  await expect(page).not.toHaveURL(new RegExp(`${first}$`))
+  await rows.nth(2).click()
+  await expect(page.getByText('Services')).toBeVisible()
+  expect(await page.evaluate(() => history.length)).toBe(depth + 1)
+
+  // One ✕ — not one per station compared
+  await page.getByRole('button', { name: 'Fermer la fiche' }).click()
+  await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
+  expect(new URL(page.url()).pathname).toBe('/')
+})
+
+test('browser back leaves the fiche instead of replaying the stations read', async ({ page }) => {
+  const rows = page.locator('button[aria-label^="Ouvrir la fiche"]')
+
+  await rows.nth(0).click()
+  await expect(page.getByText('Services')).toBeVisible()
+  const first = new URL(page.url()).pathname
+  await rows.nth(1).click()
+  await expect(page).not.toHaveURL(new RegExp(`${first}$`))
+
+  await page.goBack()
+  await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
+  expect(new URL(page.url()).pathname).toBe('/')
+})
+
 test('an empty zone hugs the panel instead of filling it with void', async ({ page }) => {
   const stage = await page.locator('.leaflet-container').first().boundingBox()
   if (!stage) throw new Error('layout not measurable')
