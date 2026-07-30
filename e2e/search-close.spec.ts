@@ -1,8 +1,9 @@
-import { test, expect, gotoMap } from './fixtures'
+import { test, expect, gotoMap, desktopOnly } from './fixtures'
 
-// The open place search is a popover: Escape closes it and a click anywhere
-// else closes it too, like the filters. The ✕ used to be the only way out,
-// which neither a keyboard nor a misclick ever found.
+// The open place search closes without hunting for a target: Escape closes it,
+// its own button closes it, and on a window a click anywhere else closes it
+// too, like the filters. The ✕ used to be the only way out, which neither a
+// keyboard nor a misclick ever found.
 
 async function openSearch(page: import('@playwright/test').Page) {
   await gotoMap(page)
@@ -17,11 +18,33 @@ test('Escape closes the search', async ({ page }) => {
   await expect(page.getByLabel('Rechercher un lieu')).toBeVisible()
 })
 
-test('a click outside closes the search', async ({ page }) => {
+// The ✕ of the desktop dropdown, the ← of the phone's full-screen search
+test('the close button closes the search', async ({ page }) => {
   await openSearch(page)
-  // exact: the desktop rail's logo is « Plein. — revenir à la carte »
-  await page.getByRole('button', { name: 'Revenir à la carte', exact: true }).click()
+  await page.getByRole('button', { name: 'Fermer la recherche' }).click()
   await expect(page.getByPlaceholder('Ville, adresse…')).toHaveCount(0)
+  await expect(page.getByLabel('Rechercher un lieu')).toBeVisible()
+})
+
+// Opening the search stacks a history entry: on a phone it is a screen of its
+// own, and the system Back is how a screen is left. Closing it from the UI
+// pops that entry back, so Back never has to walk a closed search.
+test('the system back button closes the search', async ({ page }) => {
+  await openSearch(page)
+  await page.goBack()
+  await expect(page.getByPlaceholder('Ville, adresse…')).toHaveCount(0)
+  await expect(page.getByText('La moins chère près de vous')).toBeVisible()
+})
+
+test.describe('window', () => {
+  desktopOnly('a dropdown has an outside — the phone search covers the screen')
+
+  test('a click outside closes the search', async ({ page }) => {
+    await openSearch(page)
+    // exact: the desktop rail's logo is « Plein. — revenir à la carte »
+    await page.getByRole('button', { name: 'Revenir à la carte', exact: true }).click()
+    await expect(page.getByPlaceholder('Ville, adresse…')).toHaveCount(0)
+  })
 })
 
 test('the focus ring wraps the box, and password managers stay away', async ({ page }) => {

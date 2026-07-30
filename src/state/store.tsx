@@ -359,6 +359,11 @@ export interface AppStore {
   searchLabel: string | null;
   setSearchArea(p: GeoPoint, label?: string): void;
   resetSearchToUser(): void;
+  /** true while the place search is open. A nav state like the filters sheet:
+      opening it stacks a history entry, so the system Back closes it — on a
+      phone it takes the whole screen, and Back is how a screen is left. */
+  searchOpen: boolean;
+  setSearchOpen(open: boolean): void;
   /** Station highlighted on the map & shown in the map bottom-sheet card */
   focusStationId: string | null;
   setFocusStation(id: string | null): void;
@@ -501,6 +506,7 @@ export type NavHistoryState = {
   screen?: Screen;
   detailId?: string | null;
   filtersOpen?: boolean;
+  searchOpen?: boolean;
   /** 0 = the entry the app was opened on (nothing of ours to pop below it) */
   idx?: number;
 };
@@ -570,6 +576,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
   usePersisted('serviceTags', activeServiceTags);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [routeMode, setRouteMode] = useState<RouteMode>('balanced');
   const [plannedStops, setPlannedStops] = useState<Record<string, boolean>>({});
   const [detailId, setDetailId] = useState<string | null>(
@@ -753,19 +760,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const onPop = (e: PopStateEvent) => {
-      const st = e.state as
-        | { plein?: boolean; screen?: Screen; detailId?: string | null; filtersOpen?: boolean }
-        | null;
+      const st = e.state as NavHistoryState | null;
       popNavRef.current = true;
       if (st?.plein && st.screen) {
         setScreen(st.screen);
         setDetailId(st.detailId ?? null);
         setFiltersOpen(!!st.filtersOpen);
+        setSearchOpen(!!st.searchOpen);
       } else {
         const nav = navFromPath(window.location.pathname);
         setScreen(nav.screen);
         setDetailId(nav.detailId);
         setFiltersOpen(false);
+        setSearchOpen(false);
       }
     };
     window.addEventListener('popstate', onPop);
@@ -815,7 +822,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       !!cur?.plein &&
       cur.screen === screen &&
       (cur.detailId ?? null) === detailId &&
-      !!cur.filtersOpen === filtersOpen;
+      !!cur.filtersOpen === filtersOpen &&
+      !!cur.searchOpen === searchOpen;
     const url = pathFor(screen, detailId) + (screen === 'map' ? mapQuery : '');
     if (sameNav && url === window.location.pathname + window.location.search) return;
     // First entry — and leaving onboarding must not be back-navigable
@@ -828,7 +836,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // How deep the app is in ITS OWN history: entry 0 is the one the app was
     // opened on, and popping it would leave the app entirely.
     const idx = replace ? (cur?.plein ? (cur.idx ?? 0) : 0) : (cur?.idx ?? 0) + 1;
-    const state: NavHistoryState = { plein: true, screen, detailId, filtersOpen, idx };
+    const state: NavHistoryState = {
+      plein: true,
+      screen,
+      detailId,
+      filtersOpen,
+      searchOpen,
+      idx,
+    };
     const write = () => {
       urlWrite.current.at = Date.now();
       if (replace) window.history.replaceState(state, '', url);
@@ -837,7 +852,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const wait = sameNav ? MAP_URL_MIN_MS - (Date.now() - urlWrite.current.at) : 0;
     if (wait <= 0) write();
     else urlWrite.current.timer = setTimeout(write, wait);
-  }, [screen, detailId, filtersOpen, mapQuery]);
+  }, [screen, detailId, filtersOpen, searchOpen, mapQuery]);
 
   // ── Stations near me (fetch at MAX radius, filter client-side) ─────────────
   // Stale-while-revalidate: a cached area paints instantly (refreshing: true)
@@ -1168,6 +1183,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // ── Actions ────────────────────────────────────────────────────────────────
   const go = useCallback((s: Screen) => {
+    // Leaving the map leaves its search behind — plainly, without popping its
+    // entry: the screen being pushed goes ON TOP of it, so Back walks from the
+    // new screen right back into the search the user came from.
+    setSearchOpen(false);
     setScreen((cur) => {
       // Swapping one fiche for another keeps the screen the first one was
       // opened from: that is still where closing the panel has to land, and
@@ -1206,6 +1225,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const cur = window.history.state as { plein?: boolean; filtersOpen?: boolean } | null;
     if (!open && cur?.plein && cur.filtersOpen) window.history.back();
     else setFiltersOpen(open);
+  }, []);
+
+  // Same for the place search: closing it from the UI (✕, Escape, a picked
+  // place) pops the entry its opening pushed, instead of stacking a second
+  // one that Back would then have to walk.
+  const setSearchOpenNav = useCallback((open: boolean) => {
+    const cur = window.history.state as NavHistoryState | null;
+    if (!open && cur?.plein && cur.searchOpen) window.history.back();
+    else setSearchOpen(open);
   }, []);
 
   const cycleFuel = useCallback(() => {
@@ -1570,6 +1598,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       searchLabel,
       setSearchArea,
       resetSearchToUser,
+      searchOpen,
+      setSearchOpen: setSearchOpenNav,
       focusStationId,
       setFocusStation: setFocusStationId,
       mapZoom,
@@ -1646,6 +1676,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       screen, prevScreen, go, back, openStation, fuel, setFuel, cycleFuel, sort, radius, setRadius,
       brandSel, toggleBrand, serviceTags, filtersOpen, resetFilters, userPos, geoStatus,
       requestGeolocation, searchPos, searchLabel, setSearchArea, resetSearchToUser,
+      searchOpen, setSearchOpenNav,
       focusStationId, mapZoom, setMapZoom,
       favorites, toggleFavorite, stations, roadReach, loadStations, fromText, fromIsCurrentPosition,
       toText, fromPoint, toPoint,

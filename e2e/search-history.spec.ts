@@ -85,10 +85,9 @@ test.describe('with places already searched', () => {
     await expect(list.getByText('Récents')).toBeVisible()
     expect(await rowLabels(page, 2)).toEqual(['Bordeaux centre', 'Annecy'])
 
-    // Told apart from a geocoder hit, and behind the same cap as the results:
-    // the panel may not grow until it covers the map.
+    // Told apart from a geocoder hit. How much room the panel takes is the
+    // arrangement's business — search-results.spec.ts holds it.
     await expect(list.getByRole('img', { name: 'Lieu déjà recherché' })).toHaveCount(2)
-    expect(await list.evaluate((el) => el.clientHeight)).toBeLessThanOrEqual(320)
   })
 
   test('a matching remembered place outranks the geocoder answers', async ({ page }) => {
