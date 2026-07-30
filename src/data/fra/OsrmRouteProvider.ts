@@ -4,6 +4,7 @@
 //   costing options support use_highways / use_tolls.
 import { IS_DEV } from '../../lib/env';
 import type { GeoPoint } from '../../lib/geo';
+import { TtlLru } from '../../lib/lru';
 import type { ReachInfo, Route, RouteOptions, RouteProvider } from '../types';
 
 const OSRM_ROOT = IS_DEV ? '/proxy/osrm' : 'https://router.project-osrm.org';
@@ -153,14 +154,42 @@ async function valhallaRoute(from: GeoPoint, to: GeoPoint, opts: RouteOptions): 
 }
 
 // ── Provider ─────────────────────────────────────────────────────────────────
+// A route is a heavy answer (a full polyline) to a question the user asks
+// again and again: toggling « éviter les autoroutes » back and forth, coming
+// back to a trip after a détour through the map. The memo is module-level so
+// every bundle sharing this provider shares it; session-scoped, because a
+// route is only worth reusing as long as the traffic-free estimate behind it
+// still resembles reality. Ten trips is more than a session revisits.
+const ROUTE_MAX_ENTRIES = 10;
+const ROUTE_TTL_MS = 30 * 60_000;
+const routeMemo = new TtlLru<Route>(ROUTE_MAX_ENTRIES, ROUTE_TTL_MS);
+
+/** 4 decimals ≈ 11 m — finer than any pin the user can place by hand */
+function routeKey(from: GeoPoint, to: GeoPoint, opts: RouteOptions): string {
+  return [
+    from.lat.toFixed(4),
+    from.lng.toFixed(4),
+    to.lat.toFixed(4),
+    to.lng.toFixed(4),
+    opts.vehicle ?? 'car',
+    opts.avoidMotorway ? 'nomw' : '',
+    opts.avoidToll ? 'notoll' : '',
+  ].join('|');
+}
+
 export class RealRouteProvider implements RouteProvider {
   async getRoute(from: GeoPoint, to: GeoPoint, options: RouteOptions = {}): Promise<Route> {
+    const key = routeKey(from, to, options);
+    const hit = routeMemo.get(key);
+    if (hit) return hit;
     // Valhalla handles everything OSRM's demo profile can't: road-class /
     // toll avoidance and the motorcycle profile.
-    if (options.avoidMotorway || options.avoidToll || options.vehicle === 'motorcycle') {
-      return valhallaRoute(from, to, options);
-    }
-    return osrmRoute(from, to);
+    const route =
+      options.avoidMotorway || options.avoidToll || options.vehicle === 'motorcycle'
+        ? await valhallaRoute(from, to, options)
+        : await osrmRoute(from, to);
+    routeMemo.set(key, route);
+    return route;
   }
 
   // Road-class / vehicle nuances shift a short hop by seconds, not km — the

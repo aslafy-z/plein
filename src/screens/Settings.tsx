@@ -1,7 +1,13 @@
+import { useEffect, useState } from 'react';
 import { C, mono } from '../theme';
 import { ALL_FUELS, type DataSourceId, type VehicleId } from '../data/types';
 import { useApp, MAPS_SITE_IDS, mapsSiteLabel, VEHICLE_PRESETS } from '../state/store';
-import { fmtDecimal } from '../lib/format';
+import {
+  cacheStats,
+  clearStationsCache,
+  type StationsCacheStats,
+} from '../data/stationsCache';
+import { agoLabelFrom, fmtDecimal, sizeLabel } from '../lib/format';
 import { fuelLabel, sourceSublabel, sourceTitle, vehicleLabel } from '../lib/labels';
 import { CONTENT_MAX_WIDTH, useIsDesktop } from '../lib/layout';
 import { LOCALES, type Locale } from '../lib/locale';
@@ -55,6 +61,84 @@ function localeName(locale: Locale): string {
     default:
       return m.locale_name_fr({}, { locale: 'fr' });
   }
+}
+
+/**
+ * What the app is holding for offline use, and the way to drop it. The same
+ * numbers the acceptance criteria talk about (areas, footprint, oldest fetch,
+ * whether any of it survives a reload) — there is nothing else to look at,
+ * since instrumentation here has to be data rather than console logs.
+ */
+function CachedData({ onCleared }: { onCleared: () => void }) {
+  const [stats, setStats] = useState<StationsCacheStats | null>(null);
+  const [round, setRound] = useState(0);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    let live = true;
+    void cacheStats().then((next) => {
+      if (live) setStats(next);
+    });
+    return () => {
+      live = false;
+    };
+  }, [round]);
+
+  const clear = async () => {
+    setBusy(true);
+    await clearStationsCache();
+    setBusy(false);
+    setRound((n) => n + 1);
+    onCleared();
+  };
+
+  return (
+    <>
+      <div
+        style={{
+          padding: '12px 16px',
+          borderBottom: '1px solid rgba(255,255,255,.06)',
+          fontSize: 12,
+          lineHeight: 1.55,
+          color: C.mut,
+        }}
+      >
+        <div style={{ fontWeight: 700, color: C.body, fontSize: 13 }}>
+          {m.settings_cache_title()}
+        </div>
+        <div data-testid="cache-stats">
+          {stats == null || stats.areas === 0
+            ? m.settings_cache_empty()
+            : m.settings_cache_summary({
+                count: stats.areas,
+                size: sizeLabel(stats.bytes),
+                age: stats.oldestFetchedAt != null ? agoLabelFrom(stats.oldestFetchedAt) : '',
+              })}
+        </div>
+        {stats != null && !stats.durable && (
+          <div style={{ color: C.warn, marginTop: 2 }}>{m.settings_cache_volatile()}</div>
+        )}
+      </div>
+      <button
+        onClick={() => void clear()}
+        disabled={busy || stats == null || stats.areas === 0}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: '14px 16px',
+          cursor: stats?.areas ? 'pointer' : 'default',
+          width: '100%',
+          textAlign: 'left',
+          opacity: stats?.areas ? 1 : 0.5,
+        }}
+      >
+        <span style={{ flex: 1, fontSize: 14.5, fontWeight: 600, color: C.ink }}>
+          {m.settings_cache_clear()}
+        </span>
+        <span style={{ color: C.faint }}>›</span>
+      </button>
+    </>
+  );
 }
 
 export default function Settings() {
@@ -518,6 +602,7 @@ export default function Settings() {
               alignItems: 'center',
               gap: 12,
               padding: '14px 16px',
+              borderBottom: '1px solid rgba(255,255,255,.06)',
               cursor: 'pointer',
               width: '100%',
               textAlign: 'left',
@@ -528,6 +613,8 @@ export default function Settings() {
             </span>
             <span style={{ color: C.faint }}>›</span>
           </button>
+
+          <CachedData onCleared={() => app.notify(m.toast_cache_cleared())} />
         </div>
       </div>
 

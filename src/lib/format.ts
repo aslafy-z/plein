@@ -38,6 +38,26 @@ export function fmtPrice(v: number | null | undefined): string {
   return decimals(2).format(v);
 }
 
+const sizeFormats = new Map<string, Intl.NumberFormat>();
+
+/** Storage footprint: 220_000 -> "215 ko" in French, "215 kB" in English */
+export function sizeLabel(bytes: number): string {
+  const mega = bytes >= 1024 * 1024;
+  const unit = mega ? 'megabyte' : 'kilobyte';
+  const key = `${getLocale()}:${unit}`;
+  let f = sizeFormats.get(key);
+  if (!f) {
+    f = new Intl.NumberFormat(getLocale(), {
+      style: 'unit',
+      unit,
+      unitDisplay: 'short',
+      maximumFractionDigits: mega ? 1 : 0,
+    });
+    sizeFormats.set(key, f);
+  }
+  return f.format(mega ? bytes / (1024 * 1024) : Math.round(bytes / 1024));
+}
+
 /** 0.85 -> "850 m" ; 2.34 -> "2,3 km" */
 export function distLabel(km: number): string {
   if (km < 1) return m.unit_metres({ metres: Math.round(km * 1000) });

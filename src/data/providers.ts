@@ -1,4 +1,5 @@
 // Provider registry — resolves a DataSourceId to a memoized bundle of providers.
+import { withGeocodeMemo } from './geocodeMemo';
 import type { DataSourceId, ProviderBundle } from './types';
 import { FraStationsProvider } from './fra/FraStationsProvider';
 import { BanGeocodeProvider } from './fra/BanGeocodeProvider';
@@ -68,7 +69,8 @@ function createBundle(id: DataSourceId): ProviderBundle {
 export function getProviders(id: DataSourceId): ProviderBundle {
   let bundle = cache.get(id);
   if (!bundle) {
-    bundle = createBundle(id);
+    const built = createBundle(id);
+    bundle = { ...built, geocode: withGeocodeMemo(built.geocode) };
     cache.set(id, bundle);
   }
   return bundle;

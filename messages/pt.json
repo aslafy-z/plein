@@ -69,6 +69,7 @@
   "toast_alerts_soon": "Em breve! Os alertas ainda não estão ativos.",
   "toast_background_location_soon": "Em breve! Esta função ainda não está ativa.",
   "toast_price_report_soon": "Obrigado! A comunicação de preços chega em breve.",
+  "toast_cache_cleared": "Dados offline apagados",
   "nav_map": "Mapa",
   "nav_route": "Viagem",
   "nav_favorites": "Favoritos",
@@ -192,6 +193,8 @@
   "freshness_offline": "Preços desatualizados — não é possível recarregar de momento",
   "freshness_reload_aria": "Recarregar os preços",
   "freshness_age": "{age} · ↻",
+  "freshness_old": "Preços de {date} · ↻",
+  "freshness_old_title": "Preços lidos a {date} — toque para recarregar",
   "banner_offline": "Sem ligação — os preços apresentados podem estar desatualizados.",
   "banner_source_down": "Fonte em tempo real indisponível — os preços apresentados podem estar desatualizados.",
   "banner_retry": "Tentar novamente",
@@ -400,6 +403,27 @@
   "settings_price_disclaimer_title": "Uma palavra sobre os preços",
   "settings_price_disclaimer_body": " — vêm das declarações oficiais dos postos e são indicativos, sem garantia: não os podemos verificar um a um, e um preço pode ter mudado até chegar à bomba. Confirme no local antes de abastecer — o desvio fica ao seu critério. E se um preço lhe parecer errado, diga-nos já a seguir 💚",
   "settings_report_price": "Comunicar um preço errado",
+  "settings_cache_title": "Dados offline",
+  "settings_cache_empty": "Ainda não há nenhuma zona guardada",
+  "settings_cache_summary": [
+    {
+      "declarations": [
+        "input count",
+        "input size",
+        "input age",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} zona guardada · {size} · a mais antiga {age}",
+        "countPlural=other": "{count} zonas guardadas · {size} · a mais antiga {age}"
+      }
+    }
+  ],
+  "settings_cache_volatile": "Armazenamento persistente indisponível — a cache perde-se ao recarregar",
+  "settings_cache_clear": "Apagar os dados offline",
   "settings_app_section": "Aplicação",
   "settings_install_title": "Instalar a aplicação",
   "settings_install_sub": "no ecrã principal, em ecrã inteiro",

@@ -118,6 +118,43 @@ width, never pointer type: a window gets resized and the layout has to follow.
   the geolocation notice and the app version — permanent chrome, so it never
   covers the map it is offering to install.
 
+## Storage: four classes, one home each
+
+Every piece of data the app holds belongs to exactly one of these, and the
+class decides where it lives, how long it may be shown, and how it is dropped.
+Anything that does not fit one of them does not get cached.
+
+| class | data | where | lifetime |
+| --- | --- | --- | --- |
+| durable, app-owned | settings, filters, favorites, recents, `lastPos` | localStorage `plein.settings.v1` | none; shape migrations in `persist.ts` `migrate()` |
+| durable, app-owned | station arrays per fetched area | IndexedDB `plein.cache` (`src/data/cacheStore.ts`) | three tiers, below |
+| memory | province/district memos, `roadReach`, selector memos, brand POI index, geocode + route LRUs | JS maps | the session |
+| static, SW-owned | bundles, icons, fonts, shell, tiles, `/brands-fra.json`, `/brand-icons/*` | Cache Storage (`public/sw.js`) | cache-name version bump + FIFO caps |
+
+- **Prices never go in the service worker.** `fetchedAt` per fetched area is
+  the single source of truth about how old the numbers on screen are; an HTTP
+  cache in front of a price API would age them without anything knowing.
+- **Three tiers, all off `fetchedAt`** (`src/data/stationsCache.ts`):
+  under `STALE_MS` (10 min) the network is not touched at all; under
+  `MAX_CACHE_AGE_MS` (7 d) the area paints immediately and revalidates behind,
+  the freshness chip naming the day past `REVALIDATE_MS` (6 h) instead of
+  saying « il y a N j »; beyond, the area is dropped and the app shows its
+  loading/error path rather than last week's prices.
+- **The index is eager, the payloads are lazy.** `areas` (a few hundred bytes)
+  loads at boot so the containment test runs in memory; a station array is read
+  only when its area actually matches. `writeStationsCache` stays synchronous
+  and `readStationsCache` is async — the `loadedArea` fast path in
+  `store.tsx` must stay synchronous or live circle drags start waiting on IO.
+- **Durability is best-effort.** `openCacheStore()` never rejects: a blocked
+  open, a private window or a refusing browser yields the in-memory store, and
+  the app behaves as before minus persistence. A `QuotaExceededError` sheds
+  the oldest area and retries once; a second failure stops persisting for the
+  session. `cacheStats()` is what Settings « Données » renders — the
+  instrumentation is data, since the e2e fixture fails on a console error.
+- Seeding a cached area in e2e goes through `seedStationsCache()`
+  (`e2e/fixtures.ts`), which writes IndexedDB from a loaded page and expects a
+  reload; its record shape mirrors `AreaMeta` and the two have to agree.
+
 ## Commands
 
 ```sh

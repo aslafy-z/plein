@@ -69,6 +69,7 @@
   "toast_alerts_soon": "Ben aviat! Les alertes encara no estan actives.",
   "toast_background_location_soon": "Ben aviat! Aquesta funció encara no està activa.",
   "toast_price_report_soon": "Gràcies! Els avisos arribaran ben aviat.",
+  "toast_cache_cleared": "Dades sense connexió esborrades",
   "nav_map": "Mapa",
   "nav_route": "Ruta",
   "nav_favorites": "Preferides",
@@ -198,6 +199,8 @@
   "freshness_offline": "Preus desactualitzats — ara mateix no es pot recarregar",
   "freshness_reload_aria": "Recarrega els preus",
   "freshness_age": "{age} · ↻",
+  "freshness_old": "Preus del {date} · ↻",
+  "freshness_old_title": "Preus llegits el {date} — toca per recarregar",
   "banner_offline": "Sense connexió — els preus mostrats poden estar desactualitzats.",
   "banner_source_down": "Font en temps real no disponible — els preus mostrats poden estar desactualitzats.",
   "banner_retry": "Torna-ho a provar",
@@ -407,6 +410,27 @@
   "settings_price_disclaimer_title": "Unes paraules sobre els preus",
   "settings_price_disclaimer_body": " — provenen de les declaracions oficials de les benzineres i són només orientatius, sense garantia: no els podem comprovar un per un i un preu pot haver canviat quan arribis al sortidor. Fes-hi un cop d'ull in situ abans de fer el ple — el desviament queda al teu criteri. I si un preu et sembla erroni, digues-nos-ho just a sota 💚",
   "settings_report_price": "Avisa d'un preu erroni",
+  "settings_cache_title": "Dades sense connexió",
+  "settings_cache_empty": "Encara no hi ha cap zona desada",
+  "settings_cache_summary": [
+    {
+      "declarations": [
+        "input count",
+        "input size",
+        "input age",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} zona desada · {size} · la més antiga {age}",
+        "countPlural=other": "{count} zones desades · {size} · la més antiga {age}"
+      }
+    }
+  ],
+  "settings_cache_volatile": "Emmagatzematge persistent no disponible — la memòria cau es perd en recarregar",
+  "settings_cache_clear": "Esborra les dades sense connexió",
   "settings_app_section": "Aplicació",
   "settings_install_title": "Instal·la l'aplicació",
   "settings_install_sub": "a la pantalla d'inici, a pantalla completa",

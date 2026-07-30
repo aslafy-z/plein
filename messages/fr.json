@@ -69,6 +69,7 @@
   "toast_alerts_soon": "Bientôt ! Les alertes ne sont pas encore actives.",
   "toast_background_location_soon": "Bientôt ! Cette fonction n'est pas encore active.",
   "toast_price_report_soon": "Merci ! Le signalement arrive bientôt.",
+  "toast_cache_cleared": "Données en cache supprimées",
   "nav_map": "Carte",
   "nav_route": "Trajet",
   "nav_favorites": "Favoris",
@@ -198,6 +199,8 @@
   "freshness_offline": "Prix non actualisés — impossible de recharger pour le moment",
   "freshness_reload_aria": "Recharger les prix",
   "freshness_age": "{age} · ↻",
+  "freshness_old": "Prix du {date} · ↻",
+  "freshness_old_title": "Prix relevés le {date} — toucher pour recharger",
   "banner_offline": "Hors ligne — les prix affichés peuvent dater.",
   "banner_source_down": "Source temps réel indisponible — les prix affichés peuvent dater.",
   "banner_retry": "Réessayer",
@@ -407,6 +410,27 @@
   "settings_price_disclaimer_title": "Un mot sur les prix",
   "settings_price_disclaimer_body": " — ils proviennent des déclarations officielles des stations et sont donnés à titre indicatif, sans garantie : nous ne pouvons pas les vérifier un par un, et il peut arriver qu'un prix ait changé le temps d'arriver à la pompe. Jetez-y un œil sur place avant de faire le plein — le détour reste à votre appréciation. Et si un prix vous semble faux, dites-le-nous juste en dessous 💚",
   "settings_report_price": "Signaler un prix erroné",
+  "settings_cache_title": "Données hors ligne",
+  "settings_cache_empty": "Aucune zone enregistrée pour l'instant",
+  "settings_cache_summary": [
+    {
+      "declarations": [
+        "input count",
+        "input size",
+        "input age",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} zone enregistrée · {size} · la plus ancienne {age}",
+        "countPlural=other": "{count} zones enregistrées · {size} · la plus ancienne {age}"
+      }
+    }
+  ],
+  "settings_cache_volatile": "Stockage persistant indisponible — le cache est perdu au rechargement",
+  "settings_cache_clear": "Effacer les données hors ligne",
   "settings_app_section": "Application",
   "settings_install_title": "Installer l'application",
   "settings_install_sub": "sur l'écran d'accueil, en plein écran",
