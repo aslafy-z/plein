@@ -70,3 +70,50 @@ export function useMediaQuery(query: string): boolean {
 export function useIsDesktop(): boolean {
   return useMediaQuery(DESKTOP_QUERY);
 }
+
+/** What `visualViewport` reports: the part of the window actually on screen */
+export interface VisualViewport {
+  /** visible height in CSS pixels, 0 when the API is missing */
+  height: number;
+  /** how far the visible part has slid down the layout viewport */
+  offsetTop: number;
+}
+
+const NO_VIEWPORT: VisualViewport = { height: 0, offsetTop: 0 };
+let viewport = NO_VIEWPORT;
+
+// One cached object: `useSyncExternalStore` calls this on every render and
+// re-allocating it each time would loop forever on the identity check.
+function readViewport(): VisualViewport {
+  if (typeof window === 'undefined') return NO_VIEWPORT;
+  const vv = window.visualViewport;
+  if (!vv) return NO_VIEWPORT;
+  if (viewport.height !== vv.height || viewport.offsetTop !== vv.offsetTop) {
+    viewport = { height: vv.height, offsetTop: vv.offsetTop };
+  }
+  return viewport;
+}
+
+/**
+ * The visible viewport, keyboard included.
+ *
+ * A phone keyboard does NOT shrink the layout viewport — Chrome's
+ * `interactive-widget` defaults to `resizes-visual` — so a
+ * `position: fixed; inset: 0` overlay keeps its full height and lays half its
+ * content behind the keys. Anything that opens WITH a keyboard (the map's
+ * place search) sizes itself on this instead, and `height: 0` means the API
+ * is missing: fall back to `100dvh` rather than collapsing.
+ */
+export function useVisualViewport(): VisualViewport {
+  const subscribe = useCallback((onChange: () => void) => {
+    const vv = typeof window === 'undefined' ? null : window.visualViewport;
+    if (!vv) return () => {};
+    vv.addEventListener('resize', onChange);
+    vv.addEventListener('scroll', onChange);
+    return () => {
+      vv.removeEventListener('resize', onChange);
+      vv.removeEventListener('scroll', onChange);
+    };
+  }, []);
+  return useSyncExternalStore(subscribe, readViewport, () => NO_VIEWPORT);
+}

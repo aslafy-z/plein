@@ -72,6 +72,7 @@ width, never pointer type: a window gets resized and the layout has to follow.
 | navigation | `NavBar` (bottom tabs) | `SideNav` (rail) |
 | zone card + list | `MapSheet` (dragged) | `ZonePanel` (floating glass panel) |
 | filters | bottom sheet | popover anchored under the chips |
+| place search | full screen over the map | dropdown attached under the bar |
 | station fiche | full screen, mini-map header | stacked under the list, no mini-map |
 | route | 210px map strip + timeline | floating timeline over `RouteMap fill` |
 
@@ -102,6 +103,15 @@ width, never pointer type: a window gets resized and the layout has to follow.
   with it: the zone circle and the route corridor land centered in the VISIBLE
   part of the map. It is the desktop mirror of the phone sheet's
   `bottomInset`, which desktop passes as 0.
+- `PlaceSearch` shares its rows, its field and its ranking across the two
+  arrangements and forks only the container: a dropdown under the bar on a
+  window, the whole screen on a phone. Two things make the phone one work —
+  it is portalled OUT of the map's overlay (whose `z-index` opens a stacking
+  context the bottom sheet would otherwise win), and it is sized on
+  `useVisualViewport()` rather than `inset: 0`, because a keyboard does not
+  shrink the layout viewport and the last rows would sit behind the keys.
+  Being open is nav state (`searchOpen` in the store, like `filtersOpen`), so
+  the system Back closes it instead of leaving the map.
 - App-level notices (`UpdatePrompt`, `FallbackBanner`) are bars at the top of
   `.app-main`, not map controls. The install offer is a bar on the phone only
   (`InstallPrompt`); on desktop it lives in the side rail's bottom slot with
