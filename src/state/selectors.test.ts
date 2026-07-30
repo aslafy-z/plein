@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { FuelId, RouteStation, Station } from '../data/types'
 import { INDEPENDENT_BRAND_ID } from '../lib/brandIcons'
 import {
+  answersAdBlue,
   CROW_ROAD_FACTOR,
   effectiveFuel,
   effectivePrice,
@@ -9,6 +10,7 @@ import {
   priceCents,
   priceTier,
   roadReachOf,
+  selectAdBlueAnswerable,
   selectAutonomy,
   selectByPrice,
   selectCheapest,
@@ -135,6 +137,69 @@ describe('selectVisible', () => {
     expect(
       selectVisible(app({ ...base, serviceTags: { open24h: true, carWash: true } })).map((s) => s.id),
     ).toEqual(['near'])
+  })
+
+  it('keeps stations whose source never publishes AdBlue, drops those that declare none', () => {
+    // esp/and declare the products on sale; fra/prt never mention AdBlue, so
+    // their silence is « never asked », not « not sold ». Demo ids sit outside
+    // the scheme and the fixture speaks the app's own ids, so they answer.
+    const mixed = [
+      station({ id: 'esp-1', ...north(1), prices: diesel(1.7), tags: ['adBlue'] }),
+      station({ id: 'esp-2', ...north(1), prices: diesel(1.7) }),
+      station({ id: 'and-1', ...north(1), prices: diesel(1.7), tags: ['adBlue'] }),
+      station({ id: 'fra-1', ...north(1), prices: diesel(1.7) }),
+      station({ id: 'prt-1', ...north(1), prices: diesel(1.7) }),
+      station({ id: 'demo1', ...north(1), prices: diesel(1.7) }),
+    ]
+    const base = app({
+      stations: { status: 'ready', data: mixed, activeSource: 'auto', refreshing: false },
+    })
+    expect(selectVisible(base).map((s) => s.id)).toHaveLength(6)
+    expect(selectVisible(app({ ...base, serviceTags: { adBlue: true } })).map((s) => s.id)).toEqual([
+      'esp-1',
+      'and-1',
+      'fra-1',
+      'prt-1',
+    ])
+  })
+
+  it('composes AdBlue with the other tags, which stay strict', () => {
+    const data = [
+      station({ id: 'esp-1', ...north(1), prices: diesel(1.7), tags: ['adBlue', 'carWash'] }),
+      station({ id: 'esp-2', ...north(1), prices: diesel(1.7), tags: ['adBlue'] }),
+      // Unknown for AdBlue, but « Lavage » is a tag every source can answer
+      station({ id: 'fra-1', ...north(1), prices: diesel(1.7), tags: ['carWash'] }),
+      station({ id: 'fra-2', ...north(1), prices: diesel(1.7) }),
+    ]
+    const base = app({
+      stations: { status: 'ready', data, activeSource: 'auto', refreshing: false },
+    })
+    expect(
+      selectVisible(app({ ...base, serviceTags: { adBlue: true, carWash: true } })).map((s) => s.id),
+    ).toEqual(['esp-1', 'fra-1'])
+  })
+
+  it('selectAdBlueAnswerable gates the chip on what is actually loaded', () => {
+    const ready = (data: Station[]) =>
+      app({ stations: { status: 'ready', data, activeSource: 'auto', refreshing: false } })
+    expect(selectAdBlueAnswerable(ready([]))).toBe(false)
+    expect(
+      selectAdBlueAnswerable(ready([station({ id: 'fra-1' }), station({ id: 'prt-1' })])),
+    ).toBe(false)
+    expect(selectAdBlueAnswerable(ready([station({ id: 'fra-1' }), station({ id: 'esp-1' })]))).toBe(
+      true,
+    )
+    expect(selectAdBlueAnswerable(ready([station({ id: 'and-1' })]))).toBe(true)
+    // Demo ids are outside the country scheme and the fixture does declare it
+    expect(selectAdBlueAnswerable(ready([station({ id: 'su' })]))).toBe(true)
+  })
+
+  it('answersAdBlue reads the country out of the station id', () => {
+    expect(answersAdBlue(station({ id: 'esp-1' }))).toBe(true)
+    expect(answersAdBlue(station({ id: 'and-1' }))).toBe(true)
+    expect(answersAdBlue(station({ id: 'fra-1' }))).toBe(false)
+    expect(answersAdBlue(station({ id: 'prt-1' }))).toBe(false)
+    expect(answersAdBlue(station({ id: 'su' }))).toBe(true)
   })
 
   it('filters brands by group, brandless stations passing as the « independent » group', () => {

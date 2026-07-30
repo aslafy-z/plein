@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { C, ctaStyle, glass, mono } from '../theme';
 import { ALL_FUELS, SERVICE_TAGS } from '../data/types';
-import { useApp, selectVisible, selectZoneBrandCounts } from '../state/store';
+import {
+  useApp,
+  selectAdBlueAnswerable,
+  selectVisible,
+  selectZoneBrandCounts,
+} from '../state/store';
 import { brandGroupLabel, fuelLabel, serviceTagLabel } from '../lib/labels';
 import { useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
@@ -24,6 +29,14 @@ export default function FiltersSheet() {
   const desktop = useIsDesktop();
   const nbVisible = selectVisible(app).length;
   const knowsBrands = app.stations.data.some((s) => s.brand != null);
+  // AdBlue is the one service tag a source may simply not publish (France and
+  // Portugal never do). Offer the chip only where the loaded stations can
+  // answer, and never strand a selection made in a zone that could: an active
+  // filter keeps its chip so it stays switchable off.
+  const adBlueAnswerable = selectAdBlueAnswerable(app);
+  const shownTags = SERVICE_TAGS.filter(
+    (t) => t !== 'adBlue' || adBlueAnswerable || app.serviceTags.adBlue,
+  );
   // The brand list is collapsed by default so a brand-rich zone doesn't
   // stretch the sheet — the header always shows what's selected.
   const [brandsOpen, setBrandsOpen] = useState(false);
@@ -330,12 +343,13 @@ export default function FiltersSheet() {
       <div>
         <div style={{ ...sectionLabel, marginBottom: 10 }}>{m.filters_services_section()}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {SERVICE_TAGS.map((t) => {
+          {shownTags.map((t) => {
             const on = !!app.serviceTags[t];
             return (
               <button
                 key={t}
                 onClick={() => app.toggleServiceTag(t)}
+                aria-pressed={on}
                 style={{
                   background: on ? C.accent : 'transparent',
                   color: on ? C.onAccent : C.body,
@@ -352,6 +366,22 @@ export default function FiltersSheet() {
             );
           })}
         </div>
+        {/* The AdBlue caveat, only while it is being relied on: unknown
+            stations are KEPT under the filter, and the user has to know which
+            sources actually answered. When nothing loaded can answer at all,
+            the chip is gone and the line says why — the `knowsBrands` treatment
+            one section up. */}
+        {adBlueAnswerable
+          ? app.serviceTags.adBlue && (
+              <div style={{ fontSize: 12, color: C.faint, marginTop: 8 }}>
+                {m.filters_adblue_hint()}
+              </div>
+            )
+          : (
+            <div style={{ fontSize: 12, color: C.faint, marginTop: 8 }}>
+              {m.filters_adblue_unknown()}
+            </div>
+          )}
       </div>
 
       <button

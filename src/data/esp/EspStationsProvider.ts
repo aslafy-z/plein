@@ -201,7 +201,8 @@ export function parseOpeningHours(v: unknown): StationHours | undefined {
 }
 
 // ── Record → Station ─────────────────────────────────────────────────────────
-function parseRecord(rec: Raw, updatedAt: string | undefined): Station | null {
+/** @internal exported for unit tests */
+export function parseRecord(rec: Raw, updatedAt: string | undefined): Station | null {
   const lat = toNum(rec['Latitud']);
   const lng = toNum(rec['Longitud (WGS84)']);
   if (lat == null || lng == null || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
@@ -219,10 +220,21 @@ function parseRecord(rec: Raw, updatedAt: string | undefined): Station | null {
   const address = toStr(rec['Dirección']) ?? '';
   const hours = parseOpeningHours(rec['Horario']);
   const tags: ServiceTag[] = hours?.auto24 ? ['open24h'] : [];
-  // A price on an extra product means the station sells it
-  const services = EXTRA_PRODUCTS.filter(([col]) => toNum(rec[col]) != null).map(([, id]) => id);
+  // A price on an extra product means the station sells it — and the flux
+  // prices every one of them, so keep the figure instead of dropping it
+  const services: ExtraProductId[] = [];
+  const extraPrices: Partial<Record<ExtraProductId, FuelPrice>> = {};
+  for (const [col, product] of EXTRA_PRODUCTS) {
+    const v = toNum(rec[col]);
+    if (v == null) continue;
+    services.push(product);
+    extraPrices[product] = { value: v, updatedAt };
+  }
   // AdBlue / Gasóleo Premium are what the « additives » filter looks for
   if (services.some((s) => s === 'adBlue' || s === 'dieselPremium')) tags.push('additives');
+  // …and AdBlue is filterable on its own: this source declares the products on
+  // sale, so its silence really does mean the pump isn't there
+  if (services.includes('adBlue')) tags.push('adBlue');
   const id = toStr(rec['IDEESS']);
 
   return {
@@ -238,6 +250,7 @@ function parseRecord(rec: Raw, updatedAt: string | undefined): Station | null {
     prices,
     tags,
     services,
+    extraPrices,
     // Autovías/autopistas are the Spanish motorway network
     highway: /autov[ií]a|autopista|\bAP-?\d/i.test(address),
     hours,

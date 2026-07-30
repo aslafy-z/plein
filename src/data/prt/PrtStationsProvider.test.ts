@@ -145,6 +145,35 @@ describe('groupStations', () => {
     expect(stations[0].tags).toEqual(['additives'])
   })
 
+  it('never claims AdBlue: the DGEG flux carries no such product', () => {
+    // Every product the flux does publish, on one station
+    const products = [
+      'Gasóleo simples',
+      'Gasóleo especial',
+      'Gasolina simples 95',
+      'Gasolina especial 95',
+      'Gasolina 98',
+      'Gasolina especial 98',
+      'GPL Auto',
+      'Gasóleo colorido',
+      'Gasóleo de aquecimento',
+      'Biodiesel B15',
+      'GNC (gás natural comprimido) - €/kg',
+      'GNC (gás natural comprimido) - €/m3',
+      'GNL (gás natural liquefeito) - €/kg',
+    ]
+    const stations = groupStations(products.map((p) => row(1, p, '1,199 €')))
+    expect(stations[0].tags).not.toContain('adBlue')
+    expect(stations[0].services).not.toContain('adBlue')
+    // An AdBlue-looking product name is not in the mapping either
+    const invented = groupStations([
+      row(2, 'Gasóleo simples', '1,719 €'),
+      row(2, 'AdBlue', '0,799 €'),
+    ])
+    expect(invented[0].tags).not.toContain('adBlue')
+    expect(invented[0].services).toEqual([])
+  })
+
   it('reads the motorway flag from the station type', () => {
     const stations = groupStations([
       row(1, 'Gasóleo simples', '1,719 €', { TipoPosto: 'Auto-estrada' }),

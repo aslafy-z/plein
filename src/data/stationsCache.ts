@@ -11,7 +11,10 @@ import type { DataSourceId, Station } from './types';
 
 // v2: French ids gained their `fra-` prefix — v1 blobs hold the bare ones and
 // would paint stations that no longer match favorites or /station/<id> links.
-const LS_KEY = 'plein.stations.cache.v2';
+// v3: `adBlue` became a filterable tag. v2 entries were parsed before it
+// existed, so a Spanish station that does sell AdBlue carries no such tag and
+// the filter would hide it until the background refresh landed.
+const LS_KEY = 'plein.stations.cache.v3';
 const MAX_AREAS = 4;
 /** Without containment, a cached area still paints when its center is close */
 const MATCH_KM = 3;

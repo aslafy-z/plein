@@ -1,7 +1,13 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { C, ctaStyle, mono, stickyBarStyle } from '../theme';
-import { ALL_FUELS, MAIN_FUELS, type FuelId, type Station } from '../data/types';
+import {
+  ALL_FUELS,
+  MAIN_FUELS,
+  type ExtraProductId,
+  type FuelId,
+  type Station,
+} from '../data/types';
 import {
   useApp,
   selectVisibleForFuel,
@@ -527,22 +533,37 @@ export default function StationDetail() {
           </div>
           {s.services.length > 0 ? (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {s.services.map((sv, i) => (
-                <span
-                  key={`${sv}-${i}`}
-                  style={{
-                    background: C.surface2,
-                    color: C.body,
-                    fontSize: 13,
-                    padding: '8px 13px',
-                    borderRadius: 16,
-                    border: `1px solid ${C.border09}`,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {serviceLabel(sv)}
-                </span>
-              ))}
+              {s.services.map((sv, i) => {
+                // The Spanish and Andorran fluxes price the extra products
+                // they list (AdBlue included) — showing the figure is both
+                // the honest reason the station carries the chip and data
+                // the app used to parse and throw away.
+                const price = s.extraPrices?.[sv as ExtraProductId];
+                return (
+                  <span
+                    key={`${sv}-${i}`}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'baseline',
+                      gap: 7,
+                      background: C.surface2,
+                      color: C.body,
+                      fontSize: 13,
+                      padding: '8px 13px',
+                      borderRadius: 16,
+                      border: `1px solid ${C.border09}`,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {serviceLabel(sv)}
+                    {price && (
+                      <span style={{ font: mono(700, 12.5), color: C.ink }}>
+                        {m.detail_service_price({ price: fmtPrice(price.value) })}
+                      </span>
+                    )}
+                  </span>
+                );
+              })}
             </div>
           ) : (
             <div style={{ color: C.mut, fontSize: 13 }}>{m.detail_no_services()}</div>

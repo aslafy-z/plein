@@ -265,7 +265,15 @@ export function parseOpeningHours(rec: Raw): StationHours | undefined {
   return { auto24, days };
 }
 
-function deriveTags(services: string[], rec: Raw): ServiceTag[] {
+/**
+ * The gouv flux publishes a closed vocabulary of free-text service strings and
+ * none of them mentions AdBlue, so `adBlue` is a tag this source can never
+ * emit. « Vente d'additifs carburants » is bottled additives in the shop and
+ * « Carburant additivé » is premium fuel at the pump: both feed `additives`,
+ * neither asserts an AdBlue dispenser.
+ * @internal exported for unit tests
+ */
+export function deriveTags(services: string[], rec: Raw): ServiceTag[] {
   const joined = services.join(' ');
   const tags: ServiceTag[] = [];
   const auto = rec.horaires_automate_24_24;

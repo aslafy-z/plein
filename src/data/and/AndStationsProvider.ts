@@ -12,6 +12,7 @@ import type {
   ExtraProductId,
   FuelId,
   FuelPrice,
+  ServiceTag,
   SourceCapabilities,
   Station,
   StationsFetchOptions,
@@ -151,7 +152,8 @@ export function groupStations(features: unknown[]): Station[] {
     /** Filled by the first row carrying a usable ring; no point, no station */
     point: GeoPoint | null;
     prices: Partial<Record<FuelId, FuelPrice>>;
-    services: Map<number, ExtraProductId>;
+    /** idProducte → what it is and what it costs (the flux prices every row) */
+    services: Map<number, { id: ExtraProductId; price: FuelPrice }>;
   }
   const byId = new Map<number, Acc>();
 
@@ -184,7 +186,9 @@ export function groupStations(features: unknown[]): Station[] {
       acc.prices[fuel] = { value: price, updatedAt };
     } else {
       const extra = EXTRA_PRODUCTS.find(([p]) => p === product)?.[1];
-      if (extra && price != null && price > 0) acc.services.set(product as number, extra);
+      if (extra && price != null && price > 0) {
+        acc.services.set(product as number, { id: extra, price: { value: price, updatedAt } });
+      }
     }
   }
 
@@ -199,6 +203,12 @@ export function groupStations(features: unknown[]): Station[] {
     // AdBlue / Gasoil millorat are what the « additives » filter looks for
     // (same rule as the Spanish source)
     const hasAdditives = acc.services.has(8) || acc.services.has(9);
+    const tags: ServiceTag[] = hasAdditives ? ['additives'] : [];
+    // …and AdBlue filters on its own: the flux declares the products on sale,
+    // so a station without product 9 really doesn't dispense it
+    if (acc.services.has(9)) tags.push('adBlue');
+    const extraPrices: Partial<Record<ExtraProductId, FuelPrice>> = {};
+    for (const [, { id: product, price }] of acc.services) extraPrices[product] = price;
     stations.push({
       id: `and-${id}`,
       name,
@@ -210,8 +220,9 @@ export function groupStations(features: unknown[]): Station[] {
       city: acc.parroquia,
       postalCode: acc.postalCode,
       prices: acc.prices,
-      tags: hasAdditives ? ['additives'] : [],
+      tags,
       services: EXTRA_PRODUCTS.filter(([p]) => acc.services.has(p)).map(([, id]) => id),
+      extraPrices,
       highway: false, // Andorra has no motorways
       hours: undefined, // the flux carries no opening hours
     });

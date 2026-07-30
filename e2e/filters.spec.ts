@@ -49,6 +49,52 @@ test('brand rows count with the other filters applied, never promising an empty 
   await expect(page.getByText('Voir 1 station', { exact: true })).toBeVisible()
 })
 
+// AdBlue is the one service tag whose absence can mean « the source never
+// says ». The demo fixture declares it like the Spanish and Andorran fluxes
+// do, so the chip is offered and it bites: 2 of the 6 zone stations sell it.
+test('the AdBlue filter narrows the zone and survives a reload', async ({ page }) => {
+  await page.getByText('Filtres · 6').click()
+
+  const chip = page.getByRole('button', { name: 'AdBlue', exact: true })
+  await expect(chip).toHaveAttribute('aria-pressed', 'false')
+  await chip.click()
+  await expect(chip).toHaveAttribute('aria-pressed', 'true')
+
+  // Only TotalEnergies · Centre and BP · Rocade Est dispense it
+  await expect(page.getByText('Voir 2 stations')).toBeVisible()
+  // …and the caveat about the sources that publish nothing is on screen
+  await expect(page.getByText(/Les stations françaises et portugaises restent affichées/)).toBeVisible()
+  await page.getByText('Voir 2 stations').click()
+  await expect(page.getByText('Filtres · 2')).toBeVisible()
+
+  await openZoneList(page)
+  await expect(page.getByText('TotalEnergies · Centre').first()).toBeVisible()
+  await expect(page.getByText('Station U · Croix-Blanche')).toHaveCount(0)
+  await closeZoneList(page)
+
+  // The selection is in the settings blob: landing on a bare URL, which
+  // carries no filter of its own, must still come back to the same map
+  // (`map-share.spec` covers the link half of the round trip)
+  await page.goto('/')
+  await expect(page.getByText('Filtres · 2')).toBeVisible({ timeout: 15_000 })
+  await page.getByText('Filtres · 2').click()
+  await expect(page.getByRole('button', { name: 'AdBlue', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+})
+
+test('the fiche prices AdBlue where the source declares one', async ({ page }) => {
+  // Presence AND price on BP · Rocade Est, the one demo station priced the way
+  // the Spanish and Andorran fluxes price theirs…
+  await page.goto('/station/bp')
+  await expect(page.getByText(/AdBlue\s*0,89\s*€\/L/)).toBeVisible({ timeout: 15_000 })
+
+  // …and a bare chip where the source declares presence only
+  await page.goto('/station/te')
+  await expect(page.getByText('AdBlue', { exact: true })).toBeVisible({ timeout: 15_000 })
+})
+
 test('a fuel nobody sells in the zone names itself and offers what IS sold', async ({ page }) => {
   // No station within 5 km sells GPLc (the demo GPLc pumps sit farther out)
   await page.getByText('Filtres · 6').click()

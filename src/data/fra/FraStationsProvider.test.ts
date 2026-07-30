@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  deriveTags,
   parseClock,
   parseCoords,
   parseOpeningHours,
@@ -223,6 +224,47 @@ describe('parseServices', () => {
     expect(parseServices({ services: '//' })).toEqual([]);
   });
 });
+
+describe('deriveTags', () => {
+  // The gouv flux's service vocabulary is closed and free-text. These are the
+  // strings the tag rules actually key on, plus the two « additifs » ones the
+  // AdBlue filter must NOT be fooled by.
+  const VOCABULARY = [
+    'Boutique alimentaire',
+    'Boutique non alimentaire',
+    'Lavage automatique',
+    'Lavage manuel',
+    'Gonflage',
+    'Station de gonflage',
+    'Vente de gaz domestique',
+    "Vente d'additifs carburants",
+    'Carburant additivé',
+    'Piste poids lourds',
+    'Automate CB 24/24',
+    'Restauration à emporter',
+    'Toilettes publiques',
+    'Aire de camping-cars',
+    'GNV',
+  ]
+
+  it('never claims AdBlue: the source publishes no such signal', () => {
+    // One at a time, and all of them at once — no combination may produce it
+    for (const service of VOCABULARY) {
+      expect(deriveTags([service], {})).not.toContain('adBlue')
+    }
+    expect(deriveTags(VOCABULARY, {})).not.toContain('adBlue')
+  })
+
+  it('still reads « Carburant additivé » as « additives »', () => {
+    expect(deriveTags(['Carburant additivé'], {})).toContain('additives')
+    // The `/additiv/i` rule keys on the ACCENTED adjective, so the bottled
+    // « additifs » of the shop have never set the tag — documenting the rule
+    // as it stands, not endorsing it
+    expect(deriveTags(["Vente d'additifs carburants"], {})).toEqual([])
+    // « Piste poids lourds » correlates with an AdBlue lane but asserts nothing
+    expect(deriveTags(['Piste poids lourds'], {})).toEqual([])
+  })
+})
 
 describe('parseClock', () => {
   it('reads the dotted, colon and h separators', () => {

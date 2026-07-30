@@ -14,9 +14,25 @@ export const MAIN_FUELS: FuelId[] = ['diesel', 'e10', 'e85'];
 export const ALL_FUELS: FuelId[] = ['diesel', 'e10', 'unleaded98', 'unleaded95', 'e85', 'lpg'];
 
 // ── Stations ─────────────────────────────────────────────────────────────────
-/** Normalized, filterable service tags (raw services kept for the detail screen) */
-export type ServiceTag = 'open24h' | 'carWash' | 'shop' | 'airPump' | 'additives';
-export const SERVICE_TAGS: ServiceTag[] = ['open24h', 'carWash', 'shop', 'airPump', 'additives'];
+/**
+ * Normalized, filterable service tags (raw services kept for the detail
+ * screen).
+ *
+ * `adBlue` is the one tag no source can be assumed to answer: Spain and
+ * Andorra publish the product on sale, France and Portugal publish nothing at
+ * all. Its absence therefore means « not sold » on one half of the coverage
+ * and « never asked » on the other, which is why the filter reads it through
+ * `answersAdBlue` (state/store) instead of a bare `tags.includes`.
+ */
+export type ServiceTag = 'open24h' | 'carWash' | 'shop' | 'airPump' | 'additives' | 'adBlue';
+export const SERVICE_TAGS: ServiceTag[] = [
+  'open24h',
+  'carWash',
+  'shop',
+  'airPump',
+  'additives',
+  'adBlue',
+];
 
 /**
  * Extra products a source may list beyond the six graded fuels. The Spanish
@@ -85,6 +101,13 @@ export interface Station {
    * text nobody can translate).
    */
   services: string[];
+  /**
+   * Price of an extra product, when the source publishes one. The Spanish and
+   * Andorran fluxes price every product they list (AdBlue included) while the
+   * French and Portuguese ones only ever name theirs, so this stays sparse and
+   * a chip without an entry means « on sale, price unknown ».
+   */
+  extraPrices?: Partial<Record<ExtraProductId, FuelPrice>>;
   /** true when on a motorway (gouv `pop === 'A'`) */
   highway: boolean;
   /** Opening hours when the source provides them (undefined = unknown) */

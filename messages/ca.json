@@ -213,6 +213,8 @@
   "filters_brands_out_of_zone": "Cap benzinera aquí amb aquests filtres — per a un pròxim trajecte",
   "filters_brands_unknown": "La font pública no indica la marca de les benzineres.",
   "filters_services_section": "Serveis",
+  "filters_adblue_hint": "Només les fonts espanyola i andorrana publiquen la venda d'AdBlue, i la cobertura varia d'una província a una altra. Les benzineres franceses i portugueses continuen apareixent, a falta d'informació.",
+  "filters_adblue_unknown": "Cap font carregada aquí no publica la venda d'AdBlue.",
   "filters_apply": [
     {
       "declarations": [
@@ -360,6 +362,7 @@
   "detail_footer_demo": "Actualitzat {ago} · dades de demostració",
   "detail_source_and": "Govern d’Andorra (sig.govern.ad)",
   "detail_services": "Serveis",
+  "detail_service_price": "{price} €/L",
   "detail_no_services": "Sense serveis indicats",
   "detail_saving_on_tank": "en un dipòsit de {tank} L {scope}",
   "detail_go_there": "Anar-hi",

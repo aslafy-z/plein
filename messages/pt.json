@@ -207,6 +207,8 @@
   "filters_brands_out_of_zone": "Nenhum posto aqui com estes filtros — para uma próxima viagem",
   "filters_brands_unknown": "A fonte pública não indica as marcas dos postos.",
   "filters_services_section": "Serviços",
+  "filters_adblue_hint": "Apenas as fontes espanhola e andorrana publicam a venda de AdBlue, e a cobertura varia de província para província. Os postos franceses e portugueses continuam listados, por falta de informação.",
+  "filters_adblue_unknown": "Nenhuma fonte carregada aqui publica a venda de AdBlue.",
   "filters_apply": [
     {
       "declarations": [
@@ -353,6 +355,7 @@
   "detail_footer_demo": "Atualizado {ago} · dados de demonstração",
   "detail_source_and": "Govern d’Andorra (sig.govern.ad)",
   "detail_services": "Serviços",
+  "detail_service_price": "{price} €/L",
   "detail_no_services": "Nenhum serviço indicado",
   "detail_saving_on_tank": "num depósito de {tank} L {scope}",
   "detail_go_there": "Ir",

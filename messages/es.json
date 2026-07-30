@@ -213,6 +213,8 @@
   "filters_brands_out_of_zone": "Ninguna gasolinera aquí con estos filtros — para un próximo viaje",
   "filters_brands_unknown": "La fuente pública no indica la marca de las gasolineras.",
   "filters_services_section": "Servicios",
+  "filters_adblue_hint": "Solo las fuentes española y andorrana publican la venta de AdBlue, y la cobertura varía de una provincia a otra. Las gasolineras francesas y portuguesas siguen apareciendo, a falta de información.",
+  "filters_adblue_unknown": "Ninguna fuente cargada aquí publica la venta de AdBlue.",
   "filters_apply": [
     {
       "declarations": [
@@ -360,6 +362,7 @@
   "detail_footer_demo": "Actualizado {ago} · datos de demostración",
   "detail_source_and": "Govern d’Andorra (sig.govern.ad)",
   "detail_services": "Servicios",
+  "detail_service_price": "{price} €/L",
   "detail_no_services": "Sin servicios indicados",
   "detail_saving_on_tank": "en un depósito de {tank} L {scope}",
   "detail_go_there": "Ir",

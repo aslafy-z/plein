@@ -98,6 +98,14 @@ describe('parseMapUrl', () => {
     expect(parseMapUrl('?s=Piscine').services).toBeNull();
   });
 
+  it('round-trips the AdBlue filter', () => {
+    const q = mapUrlQuery({ ...VIEW, services: ['carWash', 'adBlue'] });
+    expect(q).toContain('s=carWash,adBlue');
+    expect(parseMapUrl(q).services).toEqual(['carWash', 'adBlue']);
+    // The id is case-sensitive, like every other tag in the link
+    expect(parseMapUrl('?s=adblue').services).toBeNull();
+  });
+
   it('bounds the brand list a hand-edited link could carry', () => {
     const many = Array.from({ length: 60 }, (_, i) => `B${i}`).join(',');
     expect(parseMapUrl(`?b=${many}`).brands).toHaveLength(40);
