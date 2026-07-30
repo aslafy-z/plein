@@ -1,4 +1,4 @@
-import { test, expect, gotoMap } from './fixtures'
+import { test, expect, gotoMap, phoneOnly } from './fixtures'
 
 // The place search used to show whatever fitted, capped at a handful of rows.
 // Geocoders return a dozen candidates: the panel keeps them all behind a
@@ -44,6 +44,41 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/proxy/ban/**', (route) =>
     route.fulfill({ json: { type: 'FeatureCollection', features: BAN_FEATURES } }),
   )
+})
+
+test('the suggestion list floats over the chips instead of pushing them', async ({ page }) => {
+  await gotoMap(page)
+  await page.getByLabel('Rechercher un lieu').click()
+  const chip = page.getByRole('button', { name: /Filtres/ })
+  const before = await chip.boundingBox()
+
+  await page.getByPlaceholder('Ville, adresse…').fill('Bayonne')
+  const list = page.getByTestId('search-suggestions')
+  await expect(list.getByRole('button', { name: /Itinéraire vers/ }).first()).toBeVisible({
+    timeout: 10_000,
+  })
+
+  // The list is an overlay: nothing under the bar may move when it appears —
+  // on the phone the chips sit right below and used to be shoved down.
+  expect(await chip.boundingBox()).toEqual(before)
+})
+
+test.describe('phone', () => {
+  phoneOnly('full-bleed suggestions are a phone affordance — desktop matches the bar')
+
+  test('the suggestion list spans the whole width', async ({ page, viewport }) => {
+    await gotoMap(page)
+    await page.getByLabel('Rechercher un lieu').click()
+    await page.getByPlaceholder('Ville, adresse…').fill('Bayonne')
+
+    const list = page.getByTestId('search-suggestions')
+    await expect(list.getByRole('button', { name: /Itinéraire vers/ }).first()).toBeVisible({
+      timeout: 10_000,
+    })
+    const box = await list.boundingBox()
+    expect(box?.x).toBe(0)
+    expect(box?.width).toBe(viewport?.width)
+  })
 })
 
 test('la liste de suggestions défile et place les localités en tête', async ({ page }) => {
