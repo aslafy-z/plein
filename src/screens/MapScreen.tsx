@@ -182,7 +182,9 @@ export default function MapScreen() {
           />
 
           {/* Top overlay controls — one row beside the panel on desktop, a
-              column under the phone's status bar otherwise */}
+              column under the phone's status bar otherwise. 1010: the search
+              suggestion dropdown must cover the map's floating controls
+              (1000) while staying under the scrim (1050) and the sheets. */}
           {desktop ? (
             <div
               style={{
@@ -190,7 +192,7 @@ export default function MapScreen() {
                 left: panelInset || undefined,
                 right: 16,
                 top: PANEL_GAP,
-                zIndex: 1000,
+                zIndex: 1010,
                 display: 'flex',
                 alignItems: 'flex-start',
                 gap: 8,
@@ -211,7 +213,7 @@ export default function MapScreen() {
                 right: 16,
                 top: 14,
                 maxWidth: OVERLAY_MAX_WIDTH,
-                zIndex: 1000,
+                zIndex: 1010,
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 10,

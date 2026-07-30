@@ -7,10 +7,12 @@ import { C } from '../theme';
 import { m } from '../paraglide/messages.js';
 import type { GeocodeResult } from '../data/types';
 import { placeSublabel } from '../lib/labels';
+import { useIsDesktop } from '../lib/layout';
 import { useApp } from '../state/store';
 
 export default function PlaceSearch() {
   const app = useApp();
+  const desktop = useIsDesktop();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<GeocodeResult[]>([]);
@@ -208,7 +210,6 @@ export default function PlaceSearch() {
           border: `1px solid ${C.border09}`,
           borderRadius: 22,
           boxShadow: '0 14px 40px rgba(0,0,0,.55)',
-          overflow: 'hidden',
           pointerEvents: 'auto',
         }}
       >
@@ -259,14 +260,26 @@ export default function PlaceSearch() {
         </div>
 
         {suggestions.length > 0 && (
-          // Scrollable: geocoders return a dozen candidates and the panel floats
-          // over the map, so it is capped to part of the viewport rather than
-          // covering it. `overscroll-behavior: contain` keeps a flick at the end
-          // of the list from reaching the map underneath.
+          // A dropdown OVER whatever sits under the bar — the phone's chips
+          // and the map's floating controls — never part of the flow: opening
+          // it must not push anything. On the phone it goes full-bleed: -17
+          // undoes the overlay's 16px side insets (MapScreen) plus the bar's
+          // own 1px border, since offsets count from the padding box.
+          // Scrollable and capped to part of the viewport rather than
+          // covering it; `overscroll-behavior: contain` keeps a flick at the
+          // end of the list from reaching the map underneath.
           <div
             data-testid="search-suggestions"
             style={{
-              borderTop: `1px solid ${C.border}`,
+              position: 'absolute',
+              top: 'calc(100% + 8px)',
+              left: desktop ? -1 : -17,
+              right: desktop ? -1 : -17,
+              zIndex: 1,
+              background: C.surface,
+              border: `1px solid ${C.border09}`,
+              borderRadius: desktop ? 18 : '0 0 18px 18px',
+              boxShadow: '0 14px 40px rgba(0,0,0,.55)',
               maxHeight: 'min(46vh, 320px)',
               overflowY: 'auto',
               overscrollBehavior: 'contain',
