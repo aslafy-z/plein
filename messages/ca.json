@@ -199,6 +199,7 @@
   "freshness_offline": "Preus desactualitzats — ara mateix no es pot recarregar",
   "freshness_reload_aria": "Recarrega els preus",
   "freshness_age": "{age} · ↻",
+  "freshness_not_refreshed": "no actualitzat · {age} · ↻",
   "freshness_old": "Preus del {date} · ↻",
   "freshness_old_title": "Preus llegits el {date} — toca per recarregar",
   "banner_offline": "Sense connexió — els preus mostrats poden estar desactualitzats.",

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { GeoPoint } from '../lib/geo';
 import type { CacheStore, StoreName } from './cacheStore';
+import { freshnessLevel, REVALIDATE_MS, STALE_MS } from './stationsCache';
 import type { Station } from './types';
 
 const LEGACY_KEY = 'plein.stations.cache.v3';
@@ -403,5 +404,35 @@ describe('stationsCache', () => {
     expect(await reloaded.readStationsCache('fra', CENTER, 5)).toBeNull();
     await vi.runAllTimersAsync();
     expect(store.records.get('areas')?.size).toBe(0);
+  });
+});
+
+describe('freshnessLevel', () => {
+  const NOW = 1_000_000_000;
+
+  it('says nothing about data that was just fetched', () => {
+    expect(freshnessLevel(NOW - 1_000, false, NOW)).toBe('fresh');
+    expect(freshnessLevel(NOW - STALE_MS, false, NOW)).toBe('fresh');
+  });
+
+  it('names the age once the data is past the staleness window', () => {
+    expect(freshnessLevel(NOW - STALE_MS - 1, false, NOW)).toBe('stale');
+  });
+
+  it('owns up to a failed refresh rather than reporting a reassuring age', () => {
+    // « à l'instant » under a banner saying the source is down is the exact
+    // contradiction this level exists to prevent
+    expect(freshnessLevel(NOW - 1_000, true, NOW)).toBe('unrefreshed');
+    expect(freshnessLevel(NOW - STALE_MS - 1, true, NOW)).toBe('unrefreshed');
+  });
+
+  it('names the day past the revalidation window, failing or not', () => {
+    expect(freshnessLevel(NOW - REVALIDATE_MS - 1, false, NOW)).toBe('dated');
+    // The date outranks the failure: at that age the failure is implied
+    expect(freshnessLevel(NOW - REVALIDATE_MS - 1, true, NOW)).toBe('dated');
+  });
+
+  it('has nothing to say without a fetch time', () => {
+    expect(freshnessLevel(undefined, true, NOW)).toBe('fresh');
   });
 });

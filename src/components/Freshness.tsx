@@ -3,7 +3,7 @@
 // – amber clock pictogram when the shown prices are outdated
 import { useEffect, useReducer } from 'react';
 import { C } from '../theme';
-import { REVALIDATE_MS, STALE_MS } from '../data/stationsCache';
+import { freshnessLevel } from '../data/stationsCache';
 import { agoLabelFrom, dayMonthLabel } from '../lib/format';
 import { m } from '../paraglide/messages.js';
 import { useApp } from '../state/store';
@@ -40,16 +40,16 @@ export default function Freshness() {
     );
   }
 
-  const age = fetchedAt ? Date.now() - fetchedAt : 0;
   // A standing failure makes ANY age worth flagging: the next refresh is not
-  // coming on its own schedule, so the chip owns up even under STALE_MS.
-  if (!fetchedAt || (age <= STALE_MS && lastError == null)) return null;
+  // coming on its own schedule, so the chip owns up even under STALE_MS — but
+  // then it has to SAY the refresh failed. « à l'instant » under a banner
+  // announcing the source is down reads as reassurance, which is the one thing
+  // the chip must never be.
+  const level = freshnessLevel(fetchedAt, lastError != null);
+  if (level === 'fresh' || !fetchedAt) return null;
 
-  // « il y a 21 j » reads like a rounding error next to today's prices. Past
-  // the revalidation window the chip names the day the prices were read
-  // instead, so the number on screen can't be mistaken for a current one.
-  const old = age > REVALIDATE_MS;
   const day = dayMonthLabel(fetchedAt);
+  const age = agoLabelFrom(fetchedAt);
 
   return (
     <button
@@ -57,7 +57,7 @@ export default function Freshness() {
       title={
         lastError != null
           ? m.freshness_offline()
-          : old
+          : level === 'dated'
             ? m.freshness_old_title({ date: day })
             : m.freshness_stale_title()
       }
@@ -110,7 +110,11 @@ export default function Freshness() {
           }}
         />
       </span>
-      {old ? m.freshness_old({ date: day }) : m.freshness_age({ age: agoLabelFrom(fetchedAt) })}
+      {level === 'dated'
+        ? m.freshness_old({ date: day })
+        : level === 'unrefreshed'
+          ? m.freshness_not_refreshed({ age })
+          : m.freshness_age({ age })}
     </button>
   );
 }

@@ -199,6 +199,7 @@
   "freshness_offline": "Precios desactualizados — no se puede recargar por ahora",
   "freshness_reload_aria": "Recargar los precios",
   "freshness_age": "{age} · ↻",
+  "freshness_not_refreshed": "no actualizado · {age} · ↻",
   "freshness_old": "Precios del {date} · ↻",
   "freshness_old_title": "Precios leídos el {date} — toca para recargar",
   "banner_offline": "Sin conexión — los precios mostrados pueden estar desactualizados.",

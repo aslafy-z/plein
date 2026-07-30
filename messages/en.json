@@ -199,6 +199,7 @@
   "freshness_offline": "Prices are out of date — reloading is unavailable right now",
   "freshness_reload_aria": "Reload the prices",
   "freshness_age": "{age} · ↻",
+  "freshness_not_refreshed": "not refreshed · {age} · ↻",
   "freshness_old": "Prices from {date} · ↻",
   "freshness_old_title": "Prices read on {date} — tap to reload",
   "banner_offline": "Offline — the prices shown may be out of date.",
