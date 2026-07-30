@@ -5,7 +5,7 @@
 // storage key of its own, and « what the app thinks the locale is » can never
 // drift from « what Paraglide thinks it is ».
 import type { GeoPoint } from '../lib/geo';
-import type { DataSourceId, FuelId, VehicleId } from '../data/types';
+import type { DataSourceId, FuelId, GeocodeResult, VehicleId } from '../data/types';
 
 const LS_KEY = 'plein.settings.v1';
 
@@ -33,6 +33,17 @@ export interface RecentPlace {
   at?: number;
 }
 
+/**
+ * One entry of the map search history — a place looked up in the place search
+ * and picked. Stored exactly as the geocoder returned it, so the row reads the
+ * same whether it comes back from here or from a fresh answer, and picking it
+ * again moves the same search circle to the same point.
+ */
+export interface SearchedPlace extends GeocodeResult {
+  /** When it was last picked (epoch ms) — the history reads most recent first */
+  at: number;
+}
+
 export interface PersistedSettings {
   fuel: FuelId;
   vehicle: VehicleId;
@@ -57,6 +68,8 @@ export interface PersistedSettings {
   installDismissed: boolean;
   backgroundLocation: boolean;
   recents: RecentPlace[];
+  /** Places picked in the map's place search, most recent first */
+  searchHistory: SearchedPlace[];
   /** Pinned stations — snapshot so they render even out of the loaded area */
   favorites: FavoriteStation[];
   /** Selected brand groups in the filters (empty/absent = every brand) */

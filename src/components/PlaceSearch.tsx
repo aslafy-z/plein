@@ -2,13 +2,18 @@
 // (stations reload around it) — it does not start a route. Each suggestion
 // also offers a secondary « Itinéraire › » shortcut that pre-fills the route
 // setup for people who did want directions.
-import { useEffect, useRef, useState } from 'react';
+//
+// A picked place is remembered: opening the search offers the history straight
+// away, and typing ranks the matching entries above the geocoder's answers
+// (src/state/searchHistory.ts).
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { C } from '../theme';
 import { m } from '../paraglide/messages.js';
 import type { GeocodeResult } from '../data/types';
 import { placeSublabel } from '../lib/labels';
 import { useIsDesktop } from '../lib/layout';
 import { useApp } from '../state/store';
+import { searchRows } from '../state/searchHistory';
 
 export default function PlaceSearch() {
   const app = useApp();
@@ -81,16 +86,26 @@ export default function PlaceSearch() {
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
+  // Both shortcuts are a place the user looked up, so both feed the history:
+  // what matters is that the place was searched, not what was done with it.
   const pickArea = (r: GeocodeResult) => {
+    app.rememberSearchedPlace(r);
     app.setSearchArea(r.point, r.label);
     close();
   };
 
   const pickRoute = (r: GeocodeResult) => {
+    app.rememberSearchedPlace(r);
     app.setTo(r.label, r.point);
     app.go('routeSetup');
     close();
   };
+
+  const rows = useMemo(
+    () => searchRows(app.searchHistory, suggestions, query),
+    [app.searchHistory, suggestions, query],
+  );
+  const historyCount = rows.filter((row) => row.fromHistory).length;
 
   // No padding of its own: the buttons inside carry it, so the whole box is
   // clickable and the focus ring wraps the box (`.search-box` in styles.css).
@@ -209,7 +224,7 @@ export default function PlaceSearch() {
           background: C.surface,
           border: `1px solid ${C.border09}`,
           // The attached list squares the bar's bottom so the two read as one
-          borderRadius: desktop && suggestions.length > 0 ? '22px 22px 0 0' : 22,
+          borderRadius: desktop && rows.length > 0 ? '22px 22px 0 0' : 22,
           boxShadow: '0 14px 40px rgba(0,0,0,.55)',
           pointerEvents: 'auto',
         }}
@@ -260,7 +275,7 @@ export default function PlaceSearch() {
           </button>
         </div>
 
-        {suggestions.length > 0 && (
+        {rows.length > 0 && (
           // A dropdown OVER whatever sits under the bar — the phone's chips
           // and the map's floating controls — never part of the flow: opening
           // it must not push anything. On a window it sits flush under the
@@ -291,11 +306,57 @@ export default function PlaceSearch() {
               WebkitOverflowScrolling: 'touch',
             }}
           >
-            {suggestions.map((r, i) => (
+            {historyCount > 0 && (
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: '.1em',
+                  textTransform: 'uppercase',
+                  color: C.mut,
+                  padding: '10px 16px 2px',
+                }}
+              >
+                {m.search_recents_title()}
+              </div>
+            )}
+            {rows.map(({ place: r, fromHistory }, i) => (
               <div
                 key={`${r.label}-${i}`}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px 4px 16px' }}
+                style={{
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '4px 8px 4px 16px',
+                  // Where the remembered places end and the geocoder's own
+                  // answers start — the two blocks must not read as one list.
+                  ...(i === historyCount && historyCount > 0
+                    ? { borderTop: `1px solid ${C.border}`, marginTop: 4, paddingTop: 8 }
+                    : null),
+                }}
               >
+                {/* Marks a remembered place. It sits in the row's own left
+                    gutter rather than in a column of its own: a marked row and
+                    a geocoder hit keep the same width, and their labels stay
+                    on the same line whether or not anything is remembered. */}
+                {fromHistory && (
+                  <span
+                    role="img"
+                    aria-label={m.search_recent_place_aria()}
+                    style={{
+                      position: 'absolute',
+                      left: 5,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      color: C.mut,
+                      fontSize: 11,
+                      lineHeight: 1,
+                    }}
+                  >
+                    ↺
+                  </span>
+                )}
                 <button
                   onClick={() => pickArea(r)}
                   style={{ flex: 1, minWidth: 0, textAlign: 'left', padding: '8px 0', cursor: 'pointer' }}

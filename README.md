@@ -81,7 +81,9 @@ au Portugal.
 
 1. Ouvrez **[plein.zadkiel.fr](https://plein.zadkiel.fr)** (le déploiement officiel).
 2. Autorisez la géolocalisation — ou continuez sans, et cherchez une ville, en
-   France, en Espagne, en Andorre ou au Portugal.
+   France, en Espagne, en Andorre ou au Portugal. La recherche retient les lieux
+   que vous y avez choisis : elle les propose dès son ouverture et les remonte
+   en tête des suggestions dès que vous tapez.
 3. Choisissez votre carburant en haut de la carte : le meilleur choix (prix ET
    distance, détour compté) apparaît dans le volet du bas, **Y aller** lance le
    guidage.

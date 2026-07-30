@@ -126,6 +126,8 @@
   "search_see_stations_here": "see the stations here",
   "search_route_to_aria": "Directions to {place}",
   "search_route_shortcut": "Directions ›",
+  "search_recents_title": "Recent",
+  "search_recent_place_aria": "Previously searched place",
   "sheet_selected_station": "Selected station",
   "sheet_cheapest_nearby": "The cheapest near you",
   "sheet_cheapest_in_area": "The cheapest in this area",

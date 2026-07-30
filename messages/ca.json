@@ -126,6 +126,8 @@
   "search_see_stations_here": "veure les benzineres aquí",
   "search_route_to_aria": "Ruta fins a {place}",
   "search_route_shortcut": "Ruta ›",
+  "search_recents_title": "Recents",
+  "search_recent_place_aria": "Lloc ja cercat",
   "sheet_selected_station": "Benzinera seleccionada",
   "sheet_cheapest_nearby": "La més barata a prop teu",
   "sheet_cheapest_in_area": "La més barata d'aquesta zona",
