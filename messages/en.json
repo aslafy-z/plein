@@ -122,6 +122,7 @@
   "search_placeholder": "Town, address…",
   "search_in_progress": "Searching…",
   "search_close_aria": "Close the search",
+  "search_close_overlay_aria": "Back to the map",
   "search_see_stations_here": "see the stations here",
   "search_route_to_aria": "Directions to {place}",
   "search_route_shortcut": "Directions ›",
