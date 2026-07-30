@@ -195,9 +195,7 @@ export default function StationDetail() {
       ? updatedTimes.reduce((a, b) => (new Date(a).getTime() >= new Date(b).getTime() ? a : b))
       : undefined;
 
-  const activeSource = isRoute
-    ? (app.routeState.fellBack ? 'demo' : app.sourceId)
-    : app.stations.activeSource;
+  const activeSource = isRoute ? app.sourceId : app.stations.activeSource;
   // The auto source mixes countries — attribute per station (ids are prefixed)
   const stationSource = activeSource === 'auto' ? (stationCountry(s.id) ?? 'fra') : activeSource;
   const ago = agoLabel(mostRecent);
@@ -213,12 +211,9 @@ export default function StationDetail() {
           : stationSource === 'prt'
             ? 'precoscombustiveis.dgeg.gov.pt'
             : null;
-  const footerText =
-    s.confirmations != null
-      ? m.detail_footer_confirmed({ ago, count: s.confirmations })
-      : sourceName
-        ? m.detail_footer_source({ ago, source: sourceName })
-        : m.detail_footer_demo({ ago });
+  const footerText = sourceName
+    ? m.detail_footer_source({ ago, source: sourceName })
+    : m.detail_footer_demo({ ago });
 
   // Address line already shows the city; the third chip adds brand or context
   const thirdChip = s.brand ?? (s.highway ? m.detail_highway() : s.address ? null : s.city);

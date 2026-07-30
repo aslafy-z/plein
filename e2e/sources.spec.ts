@@ -1,23 +1,26 @@
 import { test, expect } from './fixtures'
 
-// When the gouv APIs are unreachable, the app must fall back to demo data with
-// a visible banner. Online, the real source loads without it. Either outcome
-// is a pass; a broken map is the failure.
+// When the gouv APIs are unreachable, the app must own up with its explicit
+// source-down (or offline) state — never demo data. Online, the real source
+// loads. Either outcome is a pass; a broken map is the failure.
 
 // A usable map = the collapsed card crowned a station — with LIVE data the
 // recommended one is often not the sticker-cheapest, so all four header
-// variants count — or the honest empty state.
+// variants count — or one of the honest empty states (filters, source down,
+// offline).
 async function expectUsableMap(page: import('@playwright/test').Page) {
   const usable = page
     .getByText(/^(La moins chère|Le meilleur choix) (près de vous|dans cette zone)$/)
     .or(page.getByText('Aucune station ne correspond'))
+    .or(page.getByText('Impossible de charger les stations pour cette zone.'))
+    .or(page.getByText('Hors ligne — aucune station en mémoire pour cette zone.'))
   await expect(usable.first()).toBeVisible({ timeout: 90_000 })
 }
 
 test.use({ seed: { sourceId: 'fra', onboarded: true } })
 
-test('gouv source yields a usable map (live data, or demo fallback with banner)', async ({ page }) => {
-  // The live attempt can take a while before the demo fallback kicks in
+test('gouv source yields a usable map (live data, or the explicit source-down state)', async ({ page }) => {
+  // The live attempt can take a while before it settles either way
   // (sandboxed runners reach gouv through a slow proxy, if at all).
   test.setTimeout(120_000)
   await page.goto('/')
@@ -26,7 +29,7 @@ test('gouv source yields a usable map (live data, or demo fallback with banner)'
 
 test.describe('Auto source', () => {
   // Seeded at the Le Perthus border crossing: the auto source may draw both
-  // French and Spanish stations there (live, or demo fallback offline).
+  // French and Spanish stations there when it loads.
   test.use({
     seed: {
       sourceId: 'auto',
@@ -35,7 +38,7 @@ test.describe('Auto source', () => {
     },
   })
 
-  test('auto source yields a usable map (live data, or demo fallback with banner)', async ({ page }) => {
+  test('auto source yields a usable map (live data, or the explicit source-down state)', async ({ page }) => {
     test.setTimeout(120_000)
     await page.goto('/')
     await expectUsableMap(page)
@@ -52,7 +55,7 @@ test.describe('Andorran source', () => {
     },
   })
 
-  test('and source yields a usable map (live data, or demo fallback with banner)', async ({ page }) => {
+  test('and source yields a usable map (live data, or the explicit source-down state)', async ({ page }) => {
     test.setTimeout(120_000)
     await page.goto('/')
     await expectUsableMap(page)
@@ -70,7 +73,7 @@ test.describe('Portuguese source', () => {
     },
   })
 
-  test('prt source yields a usable map (live data, or demo fallback with banner)', async ({ page }) => {
+  test('prt source yields a usable map (live data, or the explicit source-down state)', async ({ page }) => {
     test.setTimeout(120_000)
     await page.goto('/')
     await expectUsableMap(page)
@@ -88,7 +91,7 @@ test.describe('Spanish source', () => {
     },
   })
 
-  test('esp source yields a usable map (live data, or demo fallback with banner)', async ({ page }) => {
+  test('esp source yields a usable map (live data, or the explicit source-down state)', async ({ page }) => {
     test.setTimeout(120_000)
     await page.goto('/')
     await expectUsableMap(page)

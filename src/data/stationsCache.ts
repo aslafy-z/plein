@@ -17,6 +17,10 @@ const MAX_AREAS = 4;
 const MATCH_KM = 3;
 /** Older than this → the UI flags the data as outdated */
 export const STALE_MS = 10 * 60_000;
+/** Hard ceiling: entries this old never paint at all. A cold boot that finds
+ *  a week-old area must land on the loading/error path, not present last
+ *  week's prices as today's. */
+export const MAX_CACHE_AGE_MS = 7 * 24 * 3_600_000;
 
 interface CacheEntry {
   source: DataSourceId;
@@ -118,7 +122,9 @@ export function readStationsCache(
   center: GeoPoint,
   radiusKm: number,
 ): StationsCacheHit | null {
-  const entries = load().filter((e) => e.source === source);
+  const entries = load().filter(
+    (e) => e.source === source && Date.now() - e.fetchedAt <= MAX_CACHE_AGE_MS,
+  );
   const covering = entries.find(
     (e) =>
       e.fetchRadiusKm != null &&

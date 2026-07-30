@@ -135,16 +135,22 @@ function mapsSiteUrl(site: MapsSiteId, lat: number, lng: number): string {
   }
 }
 
-interface StationsState {
+/** Why the last stations fetch failed. `offline` only when the browser is
+ *  positive about it (`navigator.onLine === false`) — anything else is blamed
+ *  on the source, because `onLine === true` proves nothing (captive portals). */
+export type StationsErrorKind = 'offline' | 'source';
+
+export interface StationsState {
   status: 'idle' | 'loading' | 'ready' | 'error';
   data: Station[];
-  /** Source that actually served the data (after fallback) */
+  /** Source that served the data currently on screen */
   activeSource: DataSourceId;
-  /** true when the real source failed and demo data was substituted */
-  fellBack: boolean;
+  /** Standing failure: the last fetch attempt failed and no success has
+   *  cleared it yet. The data shown (if any) is kept, only flagged. */
+  lastError?: StationsErrorKind;
   /** When the shown data was fetched from the source (cache or live) */
   fetchedAt?: number;
-  /** true while cached data is shown and a background refresh is running */
+  /** true while shown data stays put and a background attempt is running */
   refreshing: boolean;
 }
 
@@ -152,7 +158,6 @@ interface RouteState {
   status: 'idle' | 'loading' | 'ready' | 'error';
   route: Route | null;
   stations: RouteStation[];
-  fellBack: boolean;
   error?: string;
 }
 
@@ -233,6 +238,74 @@ export function pushTripIn(
     (acc, entry, i) => pushRecentIn(acc, entry, hasTripHistory || i > 0),
     prev,
   );
+}
+
+/** One step of the stations state machine — dispatched by `loadStations` */
+export type StationsEvent =
+  | {
+      kind: 'cache';
+      data: Station[];
+      source: DataSourceId;
+      fetchedAt: number;
+      /** true when a live fetch follows right behind the paint */
+      revalidating: boolean;
+    }
+  | {
+      kind: 'request';
+      /** The browser says offline: with data on screen the doomed attempt
+       *  runs as a background refresh, so nothing visibly resets. */
+      offlineHint: boolean;
+    }
+  | { kind: 'success'; data: Station[]; source: DataSourceId; fetchedAt: number }
+  | { kind: 'failure'; source: DataSourceId; error: StationsErrorKind };
+
+/**
+ * Stations state machine. The invariant every transition protects: real data
+ * on screen STAYS on screen. A failure flags the state (`lastError`) instead
+ * of substituting anything — the demo dataset is a source the user selects,
+ * never a fallback — and `status: 'loading'` is reserved for "nothing worth
+ * painting yet".
+ */
+export function nextStationsState(prev: StationsState, ev: StationsEvent): StationsState {
+  switch (ev.kind) {
+    case 'cache':
+      // Painting from cache says nothing about connectivity: a standing
+      // failure notice survives until a live fetch succeeds again.
+      return {
+        status: 'ready',
+        data: ev.data,
+        activeSource: ev.source,
+        lastError: prev.lastError,
+        fetchedAt: ev.fetchedAt,
+        refreshing: ev.revalidating,
+      };
+    case 'request':
+      if (ev.offlineHint && prev.data.length > 0) return { ...prev, refreshing: true };
+      return { ...prev, status: 'loading', refreshing: false };
+    case 'success':
+      return {
+        status: 'ready',
+        data: ev.data,
+        activeSource: ev.source,
+        fetchedAt: ev.fetchedAt,
+        refreshing: false,
+      };
+    case 'failure': {
+      // Keep what is on screen — unless it belongs to another source: after a
+      // source switch, the previous source's stations must not pass for the
+      // new one's.
+      if (prev.data.length > 0 && prev.activeSource === ev.source) {
+        return { ...prev, status: 'ready', refreshing: false, lastError: ev.error };
+      }
+      return {
+        status: 'error',
+        data: [],
+        activeSource: ev.source,
+        refreshing: false,
+        lastError: ev.error,
+      };
+    }
+  }
 }
 
 /**
@@ -555,14 +628,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     status: 'idle',
     data: [],
     activeSource: sourceId,
-    fellBack: false,
     refreshing: false,
   });
   const [routeState, setRouteState] = useState<RouteState>({
     status: 'idle',
     route: null,
     stations: [],
-    fellBack: false,
   });
 
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -735,104 +806,113 @@ export function AppProvider({ children }: { children: ReactNode }) {
     radiusKm: number;
     fetchedAt: number;
   } | null>(null);
-  const loadStations = useCallback(async () => {
-    const area = loadedArea.current;
-    if (
-      area &&
-      area.source === sourceId &&
-      Date.now() - area.fetchedAt < STALE_MS &&
-      haversineKm(area.center, searchPos) + radius <= area.radiusKm
-    ) {
-      return;
-    }
-    const reqId = ++stationsReq.current;
-    const cached = readStationsCache(sourceId, searchPos, radius);
-    if (cached && cached.covers && Date.now() - cached.fetchedAt < STALE_MS) {
-      if (cached.center && cached.fetchRadiusKm != null) {
-        loadedArea.current = {
-          source: sourceId,
-          center: cached.center,
-          radiusKm: cached.fetchRadiusKm,
-          fetchedAt: cached.fetchedAt,
-        };
-      }
-      setStations({
-        status: 'ready',
-        data: cached.stations,
-        activeSource: sourceId,
-        fellBack: false,
-        fetchedAt: cached.fetchedAt,
-        refreshing: false,
-      });
-      return;
-    }
-    if (cached) {
-      setStations({
-        status: 'ready',
-        data: cached.stations,
-        activeSource: sourceId,
-        fellBack: false,
-        fetchedAt: cached.fetchedAt,
-        refreshing: true,
-      });
-    } else {
-      setStations((s) => ({ ...s, status: 'loading', refreshing: false }));
-    }
-    const bundle = getProviders(sourceId);
-    try {
-      // Refreshing behind painted cache → don't compete with visible work
-      const data = await bundle.stations.getStationsNear(searchPos, MAX_RADIUS_KM, {
-        lowPriority: cached != null,
-      });
-      if (reqId !== stationsReq.current) return;
-      const fetchedAt = Date.now();
-      writeStationsCache(sourceId, searchPos, MAX_RADIUS_KM, data, fetchedAt);
-      loadedArea.current = { source: sourceId, center: searchPos, radiusKm: MAX_RADIUS_KM, fetchedAt };
-      setStations({
-        status: 'ready',
-        data,
-        activeSource: sourceId,
-        fellBack: false,
-        fetchedAt,
-        refreshing: false,
-      });
-    } catch {
-      if (reqId !== stationsReq.current) return;
-      // Failed loads must not shadow future retries behind the fast path
-      loadedArea.current = null;
-      // Refresh failed but the cache is on screen → keep it, flagged as outdated.
-      if (cached) {
-        setStations((s) => ({ ...s, refreshing: false }));
+  // Area whose last fetch failed. Pans inside it must not re-enter `loading`
+  // only to fail the same way — the state already says everything there is to
+  // say, and the loading → failure cycle is exactly what flickered the zone
+  // card. Cleared on success, on retry/revalidate (`force`), never written by
+  // the demo source (its provider cannot reject).
+  const failedArea = useRef<{
+    source: DataSourceId;
+    center: GeoPoint;
+    radiusKm: number;
+  } | null>(null);
+  const dispatchStations = useCallback(
+    (ev: StationsEvent) => setStations((s) => nextStationsState(s, ev)),
+    [],
+  );
+  const loadStations = useCallback(
+    async (opts?: { force?: boolean }) => {
+      // `force` is the retry/revalidate path (banner retry, `online`, stale
+      // reload): skip every "nothing to do" fast path and go to the network.
+      const force = opts?.force === true;
+      if (force) failedArea.current = null;
+      const area = loadedArea.current;
+      if (
+        !force &&
+        area &&
+        area.source === sourceId &&
+        Date.now() - area.fetchedAt < STALE_MS &&
+        haversineKm(area.center, searchPos) + radius <= area.radiusKm
+      ) {
         return;
       }
-      // Real source down with nothing cached → substitute demo data, visibly.
-      if (sourceId !== 'demo') {
-        try {
-          const demo = await getProviders('demo').stations.getStationsNear(searchPos, MAX_RADIUS_KM);
-          if (reqId !== stationsReq.current) return;
-          setStations({
-            status: 'ready',
-            data: demo,
-            activeSource: 'demo',
-            fellBack: true,
-            fetchedAt: Date.now(),
-            refreshing: false,
-          });
-          return;
-        } catch {
-          /* fall through */
+      const reqId = ++stationsReq.current;
+      const cached = readStationsCache(sourceId, searchPos, radius);
+      if (!force && cached && cached.covers && Date.now() - cached.fetchedAt < STALE_MS) {
+        if (cached.center && cached.fetchRadiusKm != null) {
+          loadedArea.current = {
+            source: sourceId,
+            center: cached.center,
+            radiusKm: cached.fetchRadiusKm,
+            fetchedAt: cached.fetchedAt,
+          };
         }
+        dispatchStations({
+          kind: 'cache',
+          data: cached.stations,
+          source: sourceId,
+          fetchedAt: cached.fetchedAt,
+          revalidating: false,
+        });
+        return;
       }
-      if (reqId !== stationsReq.current) return;
-      setStations({
-        status: 'error',
-        data: [],
-        activeSource: sourceId,
-        fellBack: false,
-        refreshing: false,
-      });
-    }
-  }, [sourceId, searchPos, radius]);
+      const failed = failedArea.current;
+      if (
+        !force &&
+        failed &&
+        failed.source === sourceId &&
+        haversineKm(failed.center, searchPos) + radius <= failed.radiusKm
+      ) {
+        // Still inside the area that just failed: paint what the cache holds
+        // for this zone (if anything) and wait for retry / connectivity.
+        if (cached) {
+          dispatchStations({
+            kind: 'cache',
+            data: cached.stations,
+            source: sourceId,
+            fetchedAt: cached.fetchedAt,
+            revalidating: false,
+          });
+        }
+        return;
+      }
+      if (cached) {
+        dispatchStations({
+          kind: 'cache',
+          data: cached.stations,
+          source: sourceId,
+          fetchedAt: cached.fetchedAt,
+          revalidating: true,
+        });
+      } else {
+        dispatchStations({ kind: 'request', offlineHint: navigator.onLine === false });
+      }
+      const bundle = getProviders(sourceId);
+      try {
+        // Refreshing behind painted cache → don't compete with visible work
+        const data = await bundle.stations.getStationsNear(searchPos, MAX_RADIUS_KM, {
+          lowPriority: cached != null,
+        });
+        if (reqId !== stationsReq.current) return;
+        const fetchedAt = Date.now();
+        writeStationsCache(sourceId, searchPos, MAX_RADIUS_KM, data, fetchedAt);
+        loadedArea.current = { source: sourceId, center: searchPos, radiusKm: MAX_RADIUS_KM, fetchedAt };
+        failedArea.current = null;
+        dispatchStations({ kind: 'success', data, source: sourceId, fetchedAt });
+      } catch {
+        if (reqId !== stationsReq.current) return;
+        // Failed loads must not shadow future retries behind the fast path
+        loadedArea.current = null;
+        failedArea.current = { source: sourceId, center: searchPos, radiusKm: MAX_RADIUS_KM };
+        dispatchStations({
+          kind: 'failure',
+          source: sourceId,
+          error: navigator.onLine === false ? 'offline' : 'source',
+        });
+      }
+    },
+    [sourceId, searchPos, radius, dispatchStations],
+  );
 
   useEffect(() => {
     if (geoHold) return;
@@ -911,7 +991,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const tick = () => {
       if (document.hidden || navigator.onLine === false) return;
       const st = stationsRef.current;
-      if (st.status !== 'ready' || st.refreshing) return;
+      if (st.status === 'loading' || st.refreshing) return;
+      // A standing failure revalidates as soon as anything plausibly changed
+      // (connectivity back, tab foregrounded, next interval) — behind the
+      // painted data when there is any, so nothing on screen resets.
+      if (st.lastError != null) {
+        void loadStations({ force: true });
+        return;
+      }
+      if (st.status !== 'ready') return;
       if (!st.fetchedAt || Date.now() - st.fetchedAt < STALE_MS) return;
       void loadStations();
     };
@@ -976,8 +1064,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         : [{ label: toLabel, point: to }];
       const reqId = ++routeReq.current;
       setRouteState((s) => ({ ...s, status: 'loading' }));
-      const run = async (src: DataSourceId) => {
-        const bundle = getProviders(src);
+      const run = async () => {
+        const bundle = getProviders(sourceId);
         const route = await bundle.route.getRoute(from, to, { avoidMotorway, avoidToll, vehicle });
         const raw = await bundle.stations.getStationsAlong(route.polyline, 5);
         const cum = cumulativeKm(route.polyline);
@@ -1009,29 +1097,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return { route, stations: capped };
       };
       try {
-        const res = await run(sourceId);
+        const res = await run();
         if (reqId !== routeReq.current) return;
-        setRouteState({ status: 'ready', ...res, fellBack: false });
+        setRouteState({ status: 'ready', ...res });
         pushRecent(trip, res.route.distanceKm);
       } catch {
         if (reqId !== routeReq.current) return;
-        if (sourceId !== 'demo') {
-          try {
-            const res = await run('demo');
-            if (reqId !== routeReq.current) return;
-            setRouteState({ status: 'ready', ...res, fellBack: true });
-            pushRecent(trip, res.route.distanceKm);
-            return;
-          } catch {
-            /* fall through */
-          }
-        }
-        if (reqId !== routeReq.current) return;
+        // An honest error, never a substitution: the demo provider would
+        // hand back a straight interpolated line and invented stops here.
         setRouteState({
           status: 'error',
           route: null,
           stations: [],
-          fellBack: false,
           error: m.route_error_unavailable(),
         });
       }
@@ -1448,7 +1525,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isFavorite: (id) => favorites.some((f) => f.id === id),
       toggleFavorite,
       stations,
-      reloadStations: () => void loadStations(),
+      reloadStations: () => void loadStations({ force: true }),
       roadReach,
       fromText,
       fromIsCurrentPosition,

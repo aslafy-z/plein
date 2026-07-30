@@ -57,9 +57,15 @@ export default function ZoneCard({ handle }: { handle?: ReactNode }) {
       : m.sheet_best_choice_nearby();
 
   const stateKey = hasCard ? 'card' : loading ? 'loading' : 'empty';
+  const { lastError } = app.stations;
 
   return (
-    <div key={stateKey} className="sheet-swap">
+    <div
+      key={stateKey}
+      className="sheet-swap"
+      data-stations-status={app.stations.status}
+      data-stations-error={lastError}
+    >
       {shown ? (
         // The handle carries the top padding when there is one (the phone
         // sheet); without it the kicker would sit flush against the edge.
@@ -233,6 +239,22 @@ export default function ZoneCard({ handle }: { handle?: ReactNode }) {
               </button>
             ))}
           </div>
+        </div>
+      ) : lastError != null ? (
+        // The network failed — say so. « Ajuster les filtres » would blame
+        // the user's filters for a zone the app could not load.
+        <div style={{ padding: '18px 20px', textAlign: 'center', color: C.mut, fontSize: 13.5 }}>
+          {lastError === 'offline' ? m.sheet_offline_empty() : m.sheet_source_empty()}{' '}
+          <button
+            onClick={() => app.reloadStations()}
+            style={{ color: C.accent, fontWeight: 700, display: 'inline' }}
+          >
+            {m.banner_retry()}
+          </button>
+        </div>
+      ) : app.stations.data.length === 0 ? (
+        <div style={{ padding: '18px 20px', textAlign: 'center', color: C.mut, fontSize: 13.5 }}>
+          {m.sheet_empty_radius()}
         </div>
       ) : (
         <div style={{ padding: '18px 20px', textAlign: 'center', color: C.mut, fontSize: 13.5 }}>

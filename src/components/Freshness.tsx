@@ -16,7 +16,7 @@ export default function Freshness() {
     const iv = setInterval(tick, 30_000);
     return () => clearInterval(iv);
   }, []);
-  const { status, refreshing, fetchedAt } = app.stations;
+  const { status, refreshing, fetchedAt, lastError } = app.stations;
   if (status !== 'ready') return null;
 
   if (refreshing) {
@@ -41,12 +41,14 @@ export default function Freshness() {
   }
 
   const age = fetchedAt ? Date.now() - fetchedAt : 0;
-  if (!fetchedAt || age <= STALE_MS) return null;
+  // A standing failure makes ANY age worth flagging: the next refresh is not
+  // coming on its own schedule, so the chip owns up even under STALE_MS.
+  if (!fetchedAt || (age <= STALE_MS && lastError == null)) return null;
 
   return (
     <button
       onClick={() => app.reloadStations()}
-      title={m.freshness_stale_title()}
+      title={lastError != null ? m.freshness_offline() : m.freshness_stale_title()}
       aria-label={m.freshness_reload_aria()}
       style={{
         display: 'inline-flex',

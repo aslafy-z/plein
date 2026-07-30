@@ -48,6 +48,9 @@ describe('stationsCache', () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
+    // The fixtures below stamp tiny epoch times (42, 1_000…): pin the clock
+    // near them so the hard age ceiling doesn't filter every entry out.
+    vi.setSystemTime(100_000);
     storage = installStorage();
   });
 
@@ -137,6 +140,19 @@ describe('stationsCache', () => {
     expect(readStationsCache('fra', CENTER, 5)?.stations.map((s) => s.id)).toEqual(['v2']);
     expect(readStationsCache('fra', far, 5)?.stations.map((s) => s.id)).toEqual(['paris']);
     expect(JSON.parse(storage.getItem(LS_KEY) as string)).toHaveLength(2);
+  });
+
+  it('never paints an area older than the hard ceiling', async () => {
+    const { writeStationsCache, readStationsCache, MAX_CACHE_AGE_MS } = await freshCache();
+    const far: GeoPoint = { lat: 48.8566, lng: 2.3522 };
+    vi.setSystemTime(MAX_CACHE_AGE_MS + 100_000);
+
+    writeStationsCache('fra', CENTER, 30, [station('ancient')], 50_000);
+    writeStationsCache('fra', far, 30, [station('fresh')], Date.now() - 1_000);
+
+    // Neither the containment hit nor the proximity hit may serve it
+    expect(readStationsCache('fra', CENTER, 5)).toBeNull();
+    expect(readStationsCache('fra', far, 5)?.stations.map((s) => s.id)).toEqual(['fresh']);
   });
 
   it('survives a storage that throws (quota / private mode)', async () => {

@@ -1,22 +1,23 @@
 import { useApp } from '../state/store';
+import { useIsOnline } from '../lib/connectivity';
 import { m } from '../paraglide/messages.js';
 import { C } from '../theme';
 
 /**
- * Visible notice when the real data source failed and demo data was
- * substituted, or when loading errored entirely.
+ * Standing notice when the stations on screen could not be refreshed: the app
+ * keeps showing what it has and owns up to why, with a manual retry (the
+ * store also revalidates on its own when connectivity returns).
  */
 export default function FallbackBanner() {
   const app = useApp();
-  const { stations, routeState, screen } = app;
+  const online = useIsOnline();
+  const { stations, screen } = app;
   if (screen === 'onboarding') return null;
+  if (stations.lastError == null) return null;
 
-  const fellBack =
-    (stations.status === 'ready' && stations.fellBack) ||
-    (routeState.status === 'ready' && routeState.fellBack);
-  const errored = stations.status === 'error';
-  if (!fellBack && !errored) return null;
-
+  // The failure kind was recorded when the fetch failed; the live `offline`
+  // reading covers connectivity lost since then.
+  const offline = !online || stations.lastError === 'offline';
   return (
     <div
       style={{
@@ -33,9 +34,7 @@ export default function FallbackBanner() {
         zIndex: 40,
       }}
     >
-      <span style={{ flex: 1 }}>
-        {errored ? m.banner_load_error() : m.banner_fell_back()}
-      </span>
+      <span style={{ flex: 1 }}>{offline ? m.banner_offline() : m.banner_source_down()}</span>
       <button
         onClick={() => app.reloadStations()}
         style={{ color: C.accent, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}

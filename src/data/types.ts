@@ -89,8 +89,6 @@ export interface Station {
   highway: boolean;
   /** Opening hours when the source provides them (undefined = unknown) */
   hours?: StationHours;
-  /** community confirmations (demo source only) */
-  confirmations?: number;
 }
 
 /** A station enriched with position-relative info */

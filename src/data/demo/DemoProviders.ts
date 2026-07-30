@@ -68,7 +68,6 @@ function synthCorridorStations(polyline: GeoPoint[]): Station[] {
       tags: t.services.map((s) => (s === 'Ouvert 24/24' ? '24/24' : s)) as Station['tags'],
       services: t.services,
       highway: t.highway,
-      confirmations: 4 + i,
     };
   });
 }
