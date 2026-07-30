@@ -163,6 +163,24 @@ test('the itinerary and its map show before a single station is known', async ({
   expect(timing['route:time-to-stations']).toBeGreaterThan(timing['route:time-to-geometry'])
 })
 
+test('a cold computation shows the trip it is waiting for, not a bare sentence', async ({
+  page,
+}) => {
+  await stubSources(page, { routingDelayMs: STAGE_DELAY_MS })
+  await submitRoute(page)
+
+  // No geometry yet — but the endpoints are the user's own input, so the wait
+  // is the timeline it is turning into rather than « Calcul de l'itinéraire… »
+  await expect(page.locator('.skeleton').first()).toBeVisible()
+  await expect(page.getByText('Départ · Ma position')).toBeVisible()
+  await expect(page.getByText('Arrivée · Bordeaux')).toBeVisible()
+  await expect(page.getByText(/243 km ·/)).toBeHidden()
+  // the sentence is still announced, and only there
+  await expect(liveRegion(page)).toHaveText("Calcul de l'itinéraire…")
+
+  await expect(page.getByText(/243 km ·/)).toBeVisible({ timeout: 30_000 })
+})
+
 test('recomputing keeps the previous trip on screen, labelled', async ({ page }) => {
   await stubSources(page)
   await submitRoute(page)

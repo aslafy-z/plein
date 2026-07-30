@@ -159,6 +159,50 @@ const skeletonNode = (i: number, sweep: boolean) => (
   </div>
 );
 
+/** Timeline endpoints — shared by the real ribbon and the one still loading */
+const departureNode = (place: string, sub: string) => (
+  <div style={{ position: 'relative', padding: '0 0 18px' }}>
+    <div
+      style={{
+        position: 'absolute',
+        left: -26,
+        top: 2,
+        width: 18,
+        height: 18,
+        borderRadius: '50%',
+        background: C.accent,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.onAccent }} />
+    </div>
+    <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>
+      {m.ribbon_departure({ place })}
+    </div>
+    <div style={{ fontSize: 12, color: C.mut, marginTop: 1 }}>{sub}</div>
+  </div>
+);
+
+const arrivalNode = (place: string, sub: string) => (
+  <div style={{ position: 'relative' }}>
+    <div
+      style={{
+        position: 'absolute',
+        left: -24,
+        top: 0,
+        width: 14,
+        height: 14,
+        borderRadius: 4,
+        background: C.ink,
+      }}
+    />
+    <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>{m.ribbon_arrival({ place })}</div>
+    <div style={{ fontSize: 12, color: C.mut, marginTop: 1 }}>{sub}</div>
+  </div>
+);
+
 /** Where the tank runs dry on the timeline — between two stops, or after the last one */
 const limitMarker = (limitKm: number) => (
   <div key="limit-marker" style={{ position: 'relative', padding: '0 0 14px' }}>
@@ -193,6 +237,10 @@ export default function RouteRibbon() {
   // for; only a screen with no result yet shows what is being requested.
   const fromLabel = route ? routeState.endpoints.from : routeFromLabel(app);
   const arrivalPlace = route ? routeState.endpoints.to : toText;
+  const tankLabel = m.ribbon_departure_tank({
+    percent: app.startTankPct,
+    km: analysis.autonomyKm,
+  });
 
   // The floating timeline's real width (PANEL_WIDTH is a clamp) + margins,
   // measured so the route map can pad its fits past it — same slot geometry
@@ -425,8 +473,27 @@ export default function RouteRibbon() {
           </div>
         </div>
       ) : (
-        <div style={{ padding: '40px 22px', textAlign: 'center', fontSize: 13.5, color: C.mut }}>
-          {m.ribbon_computing()}
+        // A cold computation has no geometry to draw yet, but it does know the
+        // trip that was asked for. Showing that skeleton beats a bare sentence:
+        // the wait looks like the result it is turning into, and nothing here
+        // is invented — the endpoints are the user's own input and the range
+        // comes from the tank, not from a route. The sentence still goes out
+        // through the live region.
+        <div style={{ position: 'relative', margin: '14px 22px 0', paddingLeft: 26 }}>
+          <div
+            style={{
+              position: 'absolute',
+              left: 7,
+              top: 8,
+              bottom: 8,
+              width: 4,
+              borderRadius: 2,
+              background: C.toggleOff,
+            }}
+          />
+          {departureNode(fromLabel, tankLabel)}
+          {[0, 1, 2].map((i) => skeletonNode(i, !desktop))}
+          {arrivalNode(arrivalPlace, '')}
         </div>
       );
   } else {
@@ -461,30 +528,7 @@ export default function RouteRibbon() {
         />
 
         {/* Departure */}
-        <div style={{ position: 'relative', padding: '0 0 18px' }}>
-          <div
-            style={{
-              position: 'absolute',
-              left: -26,
-              top: 2,
-              width: 18,
-              height: 18,
-              borderRadius: '50%',
-              background: C.accent,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.onAccent }} />
-          </div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>
-            {m.ribbon_departure({ place: fromLabel })}
-          </div>
-          <div style={{ fontSize: 12, color: C.mut, marginTop: 1 }}>
-            {m.ribbon_departure_tank({ percent: app.startTankPct, km: analysis.autonomyKm })}
-          </div>
-        </div>
+        {departureNode(fromLabel, tankLabel)}
 
         {/* Stops — placeholders while the corridor runs, retry when it failed */}
         {routeState.corridor === 'loading' ? (
@@ -536,25 +580,7 @@ export default function RouteRibbon() {
         )}
 
         {/* Arrival */}
-        <div style={{ position: 'relative' }}>
-          <div
-            style={{
-              position: 'absolute',
-              left: -24,
-              top: 0,
-              width: 14,
-              height: 14,
-              borderRadius: 4,
-              background: C.ink,
-            }}
-          />
-          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>
-            {m.ribbon_arrival({ place: arrivalPlace })}
-          </div>
-          <div style={{ fontSize: 12, color: C.mut, marginTop: 1 }}>
-            {arrivalLabel(analysis.arrival)}
-          </div>
-        </div>
+        {arrivalNode(arrivalPlace, arrivalLabel(analysis.arrival))}
       </div>
     );
   }
