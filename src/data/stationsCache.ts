@@ -55,6 +55,33 @@ export const REVALIDATE_MS = 6 * 3_600_000;
  *  week's prices as today's. */
 export const MAX_CACHE_AGE_MS = 7 * 24 * 3_600_000;
 
+/**
+ * What the view should voice about data fetched at `fetchedAt`:
+ * – `fresh`       nothing worth saying
+ * – `stale`       past STALE_MS, so the age is worth naming
+ * – `unrefreshed` a refresh failed; the age alone would read as reassurance
+ *                 (« just now » under a banner announcing the source is down)
+ * – `dated`       past REVALIDATE_MS, where an age stops meaning anything and
+ *                 the day the prices were read is the honest thing to show
+ *
+ * `dated` outranks `unrefreshed`: at that age the failure is implied, and the
+ * date is the stronger warning. Pure, so the boundaries are testable without
+ * a browser — the component turns the answer into a sentence.
+ */
+export type FreshnessLevel = 'fresh' | 'stale' | 'unrefreshed' | 'dated';
+
+export function freshnessLevel(
+  fetchedAt: number | undefined,
+  failing: boolean,
+  now = Date.now(),
+): FreshnessLevel {
+  if (!fetchedAt) return 'fresh';
+  const age = now - fetchedAt;
+  if (age > REVALIDATE_MS) return 'dated';
+  if (failing) return 'unrefreshed';
+  return age > STALE_MS ? 'stale' : 'fresh';
+}
+
 /** What the eagerly-loaded index holds for one fetched area */
 interface AreaMeta {
   key: string;
