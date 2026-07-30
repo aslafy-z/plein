@@ -6,7 +6,8 @@ import {
   selectRecommended,
   selectFocusStation,
   selectZoneDelta,
-  selectZoneFuels,
+  selectZoneLead,
+  selectZoneLoading,
   effectiveFuel,
   effectivePrice,
 } from '../state/store';
@@ -17,6 +18,7 @@ import { openStatus } from '../lib/hours';
 import BrandAvatar from './BrandAvatar';
 import Freshness from './Freshness';
 import Star from './Star';
+import ZoneEmpty from './ZoneEmpty';
 
 /**
  * The station the zone leads with: the best deal around (or the one selected
@@ -25,7 +27,9 @@ import Star from './Star';
  * Shared by the two arrangements of the zone — the bottom sheet's collapsed
  * head on a phone (which passes its drag handle in) and the head of the panel
  * docked beside the map on desktop. Both render the same markup, so the card
- * only has one behaviour to get right.
+ * only has one behaviour to get right. With nothing to lead with — still
+ * loading, or a zone the filters leave empty — ZoneEmpty takes its place and
+ * is then the whole of the zone.
  */
 export default function ZoneCard({ handle }: { handle?: ReactNode }) {
   const app = useApp();
@@ -35,12 +39,7 @@ export default function ZoneCard({ handle }: { handle?: ReactNode }) {
   const reco = selectRecommended(app);
   const recoIsCheapest = reco == null || cheapest == null || reco.id === cheapest.id;
   const focused = selectFocusStation(app);
-  const shown = focused ?? reco;
-  const loading = app.stations.status === 'loading' || app.stations.status === 'idle';
-
-  const hasCard = shown != null;
-  // Zone empty for the SELECTED fuel: which fuels are actually sold around?
-  const soldFuels = !loading && !hasCard ? selectZoneFuels(app).filter((f) => f !== app.fuel) : [];
+  const shown = selectZoneLead(app);
 
   // « vs the zone » chip: null when the card has no zone to compare against
   // (empty circle, or a station selected outside it) — then no chip at all,
@@ -56,7 +55,7 @@ export default function ZoneCard({ handle }: { handle?: ReactNode }) {
       ? m.sheet_best_choice_in_area()
       : m.sheet_best_choice_nearby();
 
-  const stateKey = hasCard ? 'card' : loading ? 'loading' : 'empty';
+  const stateKey = shown ? 'card' : selectZoneLoading(app) ? 'loading' : 'empty';
   const { lastError } = app.stations;
 
   return (
@@ -201,71 +200,9 @@ export default function ZoneCard({ handle }: { handle?: ReactNode }) {
             )}
           </div>
         </div>
-      ) : loading ? (
-        <div style={{ padding: '18px 20px', textAlign: 'center', color: C.mut, fontSize: 13.5 }}>
-          {m.sheet_loading()}
-        </div>
-      ) : soldFuels.length > 0 ? (
-        // Stations around, but none sells the selected fuel (no E10/E85
-        // outside France…) — name the culprit and offer what IS sold
-        <div style={{ padding: '16px 20px 18px', textAlign: 'center', color: C.mut, fontSize: 13.5 }}>
-          {m.sheet_fuel_not_sold({ fuel: fuelLabel(app.fuel) })}
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'center',
-              flexWrap: 'wrap',
-              gap: 8,
-              marginTop: 10,
-            }}
-          >
-            <span style={{ alignSelf: 'center' }}>{m.sheet_sold_here()}</span>
-            {soldFuels.map((f) => (
-              <button
-                key={f}
-                onClick={() => app.setFuel(f)}
-                style={{
-                  fontSize: 12.5,
-                  fontWeight: 700,
-                  color: C.accent,
-                  background: C.surface2,
-                  padding: '6px 12px',
-                  borderRadius: 14,
-                  border: `1px solid ${C.border}`,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {fuelLabel(f)}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : lastError != null ? (
-        // The network failed — say so. « Ajuster les filtres » would blame
-        // the user's filters for a zone the app could not load.
-        <div style={{ padding: '18px 20px', textAlign: 'center', color: C.mut, fontSize: 13.5 }}>
-          {lastError === 'offline' ? m.sheet_offline_empty() : m.sheet_source_empty()}{' '}
-          <button
-            onClick={() => app.reloadStations()}
-            style={{ color: C.accent, fontWeight: 700, display: 'inline' }}
-          >
-            {m.banner_retry()}
-          </button>
-        </div>
-      ) : app.stations.data.length === 0 ? (
-        <div style={{ padding: '18px 20px', textAlign: 'center', color: C.mut, fontSize: 13.5 }}>
-          {m.sheet_empty_radius()}
-        </div>
       ) : (
-        <div style={{ padding: '18px 20px', textAlign: 'center', color: C.mut, fontSize: 13.5 }}>
-          {m.sheet_no_match()}{' '}
-          <button
-            onClick={() => app.setFiltersOpen(true)}
-            style={{ color: C.accent, fontWeight: 700, display: 'inline' }}
-          >
-            {m.sheet_adjust_filters()}
-          </button>
-        </div>
+        // No station to lead with — the zone is the empty state, whole
+        <ZoneEmpty />
       )}
     </div>
   );

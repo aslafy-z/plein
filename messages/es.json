@@ -144,7 +144,8 @@
   "sheet_fuel_not_sold": "Ninguna gasolinera vende {fuel} en esta zona.",
   "sheet_sold_here": "Se vende aquí:",
   "sheet_no_match": "Ninguna gasolinera coincide con tus filtros.",
-  "sheet_adjust_filters": "Ajustar",
+  "sheet_adjust_filters": "Ajustar los filtros",
+  "sheet_active_filters": "Filtros activos:",
   "sheet_zone_count_compact": [
     {
       "declarations": [

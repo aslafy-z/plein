@@ -119,6 +119,35 @@ test('a station fiche stacks under the list, with the rail still up', async ({ p
   await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
 })
 
+test('an empty zone hugs the panel instead of filling it with void', async ({ page }) => {
+  const stage = await page.locator('.leaflet-container').first().boundingBox()
+  if (!stage) throw new Error('layout not measurable')
+
+  // Carrefour's only station in the demo zone is not open 24/7, so the two
+  // filters together leave nothing — no card, and therefore no list
+  await page.getByText(/^Filtres · \d+$/).click()
+  await page.getByRole('button', { name: /^Distributeurs/ }).click()
+  await page.getByRole('button', { name: 'Carrefour 1' }).click()
+  await page.getByRole('button', { name: 'Ouvert 24/24', exact: true }).click()
+  await page.getByText('Voir 0 station', { exact: true }).click()
+
+  // The empty state names the miss, what caused it, and the way out
+  await expect(page.getByText('Aucune station ne correspond à vos filtres.')).toBeVisible()
+  await expect(page.getByText('Filtres actifs :')).toBeVisible()
+  await expect(page.getByText('Carrefour', { exact: true })).toBeVisible()
+  await expect(page.getByText('Ouvert 24/24', { exact: true })).toBeVisible()
+
+  // …and the panel is that block, not a full-height pane of glass around it:
+  // the map keeps most of its left edge
+  const panel = await page.getByTestId('zone-panel').boundingBox()
+  if (!panel) throw new Error('the panel must still be on screen')
+  expect(panel.height).toBeLessThan(stage.height / 2)
+
+  // The button is a real one and leads back to the filters
+  await page.getByRole('button', { name: 'Ajuster les filtres' }).click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+})
+
 test('the map has zoom buttons, which a mouse has no other way to reach', async ({ page }) => {
   const start = await mapZoom(page)
 

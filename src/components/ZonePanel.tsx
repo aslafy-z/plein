@@ -1,4 +1,4 @@
-import { useApp, selectFocusStation, selectRecommended } from '../state/store';
+import { useApp, selectZoneLead } from '../state/store';
 import ZoneCard from './ZoneCard';
 import ZoneList from './ZoneList';
 
@@ -15,8 +15,9 @@ import ZoneList from './ZoneList';
 export default function ZonePanel({ listOnly = false }: { listOnly?: boolean }) {
   const app = useApp();
   // Nothing to lead with (loading, or no station passes the filters) → the
-  // card says so on its own and there is no list to put under it
-  const hasCard = (selectFocusStation(app) ?? selectRecommended(app)) != null;
+  // card says so on its own and there is no list to put under it. MapScreen
+  // reads the same selector to let the slot hug that block.
+  const hasLead = selectZoneLead(app) != null;
 
   return (
     <aside
@@ -25,7 +26,11 @@ export default function ZonePanel({ listOnly = false }: { listOnly?: boolean }) 
         display: 'flex',
         flexDirection: 'column',
         minHeight: 0,
-        overflow: 'hidden',
+        overflowX: 'hidden',
+        // The list owns the scroll when there is one; without it the empty
+        // state is all there is, and a short window must still reach its
+        // button rather than have it clipped by the panel's overflow.
+        overflowY: hasLead ? 'hidden' : 'auto',
       }}
     >
       {!listOnly && (
@@ -33,7 +38,7 @@ export default function ZonePanel({ listOnly = false }: { listOnly?: boolean }) 
           <ZoneCard />
         </div>
       )}
-      {hasCard && <ZoneList />}
+      {hasLead && <ZoneList />}
     </aside>
   );
 }

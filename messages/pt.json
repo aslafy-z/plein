@@ -139,7 +139,8 @@
   "sheet_fuel_not_sold": "Nenhum posto vende {fuel} nesta área.",
   "sheet_sold_here": "Vendidos aqui:",
   "sheet_no_match": "Nenhum posto corresponde aos seus filtros.",
-  "sheet_adjust_filters": "Ajustar",
+  "sheet_adjust_filters": "Ajustar os filtros",
+  "sheet_active_filters": "Filtros ativos:",
   "sheet_zone_count": [
     {
       "declarations": [

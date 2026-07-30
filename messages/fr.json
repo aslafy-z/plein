@@ -144,7 +144,8 @@
   "sheet_fuel_not_sold": "Aucune station ne vend du {fuel} dans cette zone.",
   "sheet_sold_here": "Vendus ici :",
   "sheet_no_match": "Aucune station ne correspond à vos filtres.",
-  "sheet_adjust_filters": "Ajuster",
+  "sheet_adjust_filters": "Ajuster les filtres",
+  "sheet_active_filters": "Filtres actifs :",
   "sheet_zone_count_compact": [
     {
       "declarations": [

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { C } from '../theme';
-import { useApp, selectSorted, selectRecommended, selectFocusStation } from '../state/store';
+import { useApp, selectSorted, selectZoneLead } from '../state/store';
 import { m } from '../paraglide/messages.js';
 import ZoneCard from './ZoneCard';
 import ZoneList from './ZoneList';
@@ -49,7 +49,7 @@ export default function MapSheet({
   const app = useApp();
   // What the card leads with — the sheet only needs to know WHETHER there is
   // one (nothing to expand from an empty zone); ZoneCard draws it.
-  const hasCard = (selectFocusStation(app) ?? selectRecommended(app)) != null;
+  const hasCard = selectZoneLead(app) != null;
   const rowCount = selectSorted(app).length;
 
   const rootRef = useRef<HTMLDivElement>(null);

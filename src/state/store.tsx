@@ -1975,6 +1975,22 @@ export const selectFocusStation = cached((app: AppStore): NearbyStation | null =
   return selectMapStations(app).find((s) => s.id === app.focusStationId) ?? null;
 });
 
+/**
+ * The station the zone leads with: the one selected on the map, else the
+ * recommended one. Null means the zone has NOTHING to show — no card, and
+ * therefore no list under it. Both arrangements key their empty state on it,
+ * and on desktop the panel slot keys its height on it too, so the three can
+ * never disagree about whether the zone is empty.
+ */
+export function selectZoneLead(app: AppStore): NearbyStation | null {
+  return selectFocusStation(app) ?? selectRecommended(app);
+}
+
+/** true while the zone has no answer yet — first load, or a reload in flight */
+export function selectZoneLoading(app: AppStore): boolean {
+  return app.stations.status === 'idle' || app.stations.status === 'loading';
+}
+
 // ── Price tiers: « bons plans » vs stations chères ───────────────────────────
 /**
  * The feeds carry tenths of a cent but the UI displays cents — every price
