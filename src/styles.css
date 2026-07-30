@@ -319,11 +319,22 @@ button {
 }
 
 /* Placeholder bars for a stage that has been started but has not answered.
-   The base colour carries the whole meaning — the sweep is decoration on top,
-   so a frozen bar (reduced motion) still reads as "content is coming" rather
-   than as an empty box. */
+   The base colour carries the whole meaning, so a bar that never sweeps still
+   reads as "content is coming" rather than as an empty box. */
 .skeleton {
   background-color: #272d33;
+}
+
+/* The sweep is decoration, and it is only added where it is free.
+   Measured: a continuously animating element INSIDE the desktop glass panel
+   costs ~20 fps — not because of the property animated (transform and opacity
+   measure the same), but because any frame that dirties the panel makes the
+   browser recompute its `backdrop-filter: blur(16px)` over the full-screen map
+   underneath. Either alone is free; together they are not. So the phone, whose
+   timeline sits below the map rather than over it, animates; the desktop panel
+   shows the same bars, still. RouteRibbon decides, via `useIsDesktop()` —
+   never a media query of its own (see "one app, two arrangements"). */
+.skeleton-sweep {
   background-image: linear-gradient(
     100deg,
     rgba(255, 255, 255, 0) 40%,
@@ -424,7 +435,7 @@ button {
   .anim-fade,
   .anim-dialog,
   .sheet-hint,
-  .skeleton,
+  .skeleton-sweep,
   .spin {
     animation: none;
   }

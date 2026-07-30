@@ -111,8 +111,8 @@ const retryStyle = {
   cursor: 'pointer',
 } as const;
 
-const skeletonBar = (width: number | string, height: number) => (
-  <div className="skeleton" style={{ width, height, borderRadius: 5 }} />
+const skeletonBar = (sweep: boolean, width: number | string, height: number) => (
+  <div className={sweep ? 'skeleton skeleton-sweep' : 'skeleton'} style={{ width, height, borderRadius: 5 }} />
 );
 
 /**
@@ -121,7 +121,7 @@ const skeletonBar = (width: number | string, height: number) => (
  * as « a stop is coming here » instead of as an empty card. Widths vary per
  * row: three identical bars read as a rendering glitch.
  */
-const skeletonNode = (i: number) => (
+const skeletonNode = (i: number, sweep: boolean) => (
   <div key={`skeleton-${i}`} aria-hidden="true" style={{ position: 'relative', padding: '0 0 14px' }}>
     <div
       style={{
@@ -147,11 +147,14 @@ const skeletonNode = (i: number) => (
       }}
     >
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {skeletonBar(['42%', '52%', '46%'][i % 3], 10)}
-        {skeletonBar(['68%', '58%', '75%'][i % 3], 13)}
+        {skeletonBar(sweep, ['42%', '52%', '46%'][i % 3], 10)}
+        {skeletonBar(sweep, ['68%', '58%', '75%'][i % 3], 13)}
       </div>
-      {skeletonBar(52, 16)}
-      <div className="skeleton" style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0 }} />
+      {skeletonBar(sweep, 52, 16)}
+      <div
+        className={sweep ? 'skeleton skeleton-sweep' : 'skeleton'}
+        style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0 }}
+      />
     </div>
   </div>
 );
@@ -485,7 +488,7 @@ export default function RouteRibbon() {
 
         {/* Stops — placeholders while the corridor runs, retry when it failed */}
         {routeState.corridor === 'loading' ? (
-          [0, 1, 2].map(skeletonNode)
+          [0, 1, 2].map((i) => skeletonNode(i, !desktop))
         ) : routeState.corridor === 'error' ? (
           <div style={{ position: 'relative', padding: '0 0 14px' }}>
             <div style={noticeStyle}>
