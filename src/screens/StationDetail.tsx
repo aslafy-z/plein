@@ -10,6 +10,7 @@ import {
   priceCents,
   roadReachOf,
 } from '../state/store';
+import { routeBusy } from '../state/routePipeline';
 import { stationCountry } from '../data/stationIds';
 import { fmtPrice, distLabel, agoLabel, durationLabel } from '../lib/format';
 import { fuelLabel, openStatusLabel, serviceLabel } from '../lib/labels';
@@ -118,7 +119,7 @@ export default function StationDetail() {
   const pending =
     app.stations.status === 'idle' ||
     app.stations.status === 'loading' ||
-    app.routeState.status === 'loading';
+    routeBusy(app.routeState);
 
   useEffect(() => {
     if (!s && !pending) app.back();

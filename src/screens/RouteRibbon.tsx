@@ -14,6 +14,7 @@ import {
   type ArrivalEstimate,
   type RecommendationReason,
   type RouteMode,
+  type RouteState,
 } from '../state/store';
 import RouteMap from '../components/RouteMap';
 
@@ -66,6 +67,69 @@ function arrivalLabel(arrival: ArrivalEstimate | null): string {
   }
 }
 
+/**
+ * One whole sentence for the polite live region — never assembled from
+ * fragments, so a screen reader announces something that stands on its own.
+ */
+function stageSentence(s: RouteState): string {
+  if (s.geometry === 'loading') {
+    return s.provisional ? m.ribbon_stage_provisional() : m.ribbon_computing();
+  }
+  if (s.geometry === 'error') {
+    return s.route ? m.ribbon_stage_geometry_failed() : m.ribbon_error_fallback();
+  }
+  if (s.corridor === 'loading') return m.ribbon_stage_geometry();
+  if (s.corridor === 'error') return m.ribbon_corridor_failed();
+  if (s.corridor === 'ready') {
+    return s.stations.length === 0
+      ? m.ribbon_stage_no_stations()
+      : m.ribbon_stage_stations({ count: s.stations.length });
+  }
+  return '';
+}
+
+/** Amber strip: a stale result kept on screen, or a stage that failed */
+const noticeStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
+  background: 'rgba(224,122,95,.12)',
+  border: '1px solid rgba(224,122,95,.3)',
+  borderRadius: 12,
+  padding: '10px 14px',
+  color: '#e8b3a4',
+  fontSize: 12.5,
+  fontWeight: 700,
+  lineHeight: 1.4,
+} as const;
+
+const retryStyle = {
+  color: C.accent,
+  fontSize: 12.5,
+  fontWeight: 800,
+  whiteSpace: 'nowrap',
+  cursor: 'pointer',
+} as const;
+
+/** A stop the corridor stage has been asked for but has not returned yet */
+const skeletonNode = (i: number) => (
+  <div key={`skeleton-${i}`} aria-hidden="true" style={{ position: 'relative', padding: '0 0 14px' }}>
+    <div
+      style={{
+        position: 'absolute',
+        left: -24,
+        top: 16,
+        width: 14,
+        height: 14,
+        borderRadius: '50%',
+        background: C.bg,
+        border: `3px solid ${C.faint}`,
+      }}
+    />
+    <div className="skeleton" style={{ height: 62, borderRadius: 14, border: `1px solid ${C.border}` }} />
+  </div>
+);
+
 /** Where the tank runs dry on the timeline — between two stops, or after the last one */
 const limitMarker = (limitKm: number) => (
   <div key="limit-marker" style={{ position: 'relative', padding: '0 0 14px' }}>
@@ -90,10 +154,16 @@ export default function RouteRibbon() {
   const app = useApp();
   const desktop = useIsDesktop();
   const { toText, fuel, tank, routeMode, routeState } = app;
-  const fromLabel = routeFromLabel(app);
   const analysis = selectRouteAnalysis(app);
   const route = routeState.route;
-  const hasRoute = routeState.status === 'ready' && route != null;
+  // The map and the header hang off the geometry alone: they appear at the
+  // geometry stage instead of at the final commit, so the layout stops
+  // swapping under the user when the stations land.
+  const hasRoute = route != null;
+  // A displayed result is always labelled with the endpoints it was computed
+  // for; only a screen with no result yet shows what is being requested.
+  const fromLabel = route ? routeState.endpoints.from : routeFromLabel(app);
+  const arrivalPlace = route ? routeState.endpoints.to : toText;
 
   // The floating timeline's real width (PANEL_WIDTH is a clamp) + margins,
   // measured so the route map can pad its fits past it — same slot geometry
@@ -300,28 +370,36 @@ export default function RouteRibbon() {
     );
   };
 
-  // ── Body per status ─────────────────────────────────────────────────────────
+  // ── Body ────────────────────────────────────────────────────────────────────
+  // Everything below hangs off `route`, not off a global status: once the
+  // geometry stage has committed, the timeline is drawn even though the
+  // corridor stage is still running or has failed. Only a cold computation —
+  // nothing ever committed — gets the full-screen spinner or error.
   let body: ReactNode;
-  if (routeState.status === 'error') {
-    body = (
-      <div style={{ padding: '40px 22px', textAlign: 'center' }}>
-        <div style={{ fontSize: 13.5, color: C.mut, lineHeight: 1.5 }}>
-          {routeState.error ?? m.ribbon_error_fallback()}
+  if (!route) {
+    body =
+      routeState.geometry === 'error' ? (
+        <div style={{ padding: '40px 22px', textAlign: 'center' }}>
+          <div style={{ fontSize: 13.5, color: C.mut, lineHeight: 1.5 }}>
+            {routeState.geometryError ?? m.ribbon_error_fallback()}
+          </div>
+          <div style={{ display: 'flex', gap: 18, justifyContent: 'center', marginTop: 14 }}>
+            <button onClick={() => app.retryRoute()} style={{ ...retryStyle, fontSize: 14 }}>
+              {m.ribbon_retry()}
+            </button>
+            <button
+              onClick={() => app.editRoute()}
+              style={{ fontSize: 14, fontWeight: 700, color: C.mut, cursor: 'pointer' }}
+            >
+              {m.ribbon_edit_route()}
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => app.editRoute()}
-          style={{ marginTop: 14, fontSize: 14, fontWeight: 700, color: C.accent, cursor: 'pointer' }}
-        >
-          {m.ribbon_edit_route()}
-        </button>
-      </div>
-    );
-  } else if (routeState.status !== 'ready' || !route) {
-    body = (
-      <div style={{ padding: '40px 22px', textAlign: 'center', fontSize: 13.5, color: C.mut }}>
-        {m.ribbon_computing()}
-      </div>
-    );
+      ) : (
+        <div style={{ padding: '40px 22px', textAlign: 'center', fontSize: 13.5, color: C.mut }}>
+          {m.ribbon_computing()}
+        </div>
+      );
   } else {
     const limitPct = Math.max(8, Math.min(92, (analysis.limitKm / route.distanceKm) * 100));
 
@@ -379,8 +457,21 @@ export default function RouteRibbon() {
           </div>
         </div>
 
-        {/* Stops */}
-        {analysis.stops.length === 0 ? (
+        {/* Stops — placeholders while the corridor runs, retry when it failed */}
+        {routeState.corridor === 'loading' ? (
+          [0, 1, 2].map(skeletonNode)
+        ) : routeState.corridor === 'error' ? (
+          <div style={{ position: 'relative', padding: '0 0 14px' }}>
+            <div style={noticeStyle}>
+              <span style={{ flex: 1 }}>
+                {routeState.corridorError ?? m.ribbon_corridor_failed()}
+              </span>
+              <button onClick={() => app.retryCorridor()} style={retryStyle}>
+                {m.ribbon_retry()}
+              </button>
+            </div>
+          </div>
+        ) : analysis.stops.length === 0 ? (
           <div style={{ position: 'relative', padding: '0 0 14px', fontSize: 12.5, color: C.mut }}>
             {m.ribbon_no_stops()}
           </div>
@@ -429,7 +520,7 @@ export default function RouteRibbon() {
             }}
           />
           <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>
-            {m.ribbon_arrival({ place: toText })}
+            {m.ribbon_arrival({ place: arrivalPlace })}
           </div>
           <div style={{ fontSize: 12, color: C.mut, marginTop: 1 }}>
             {arrivalLabel(analysis.arrival)}
@@ -480,7 +571,7 @@ export default function RouteRibbon() {
           </button>
         </div>
         <div style={{ fontSize: 22, fontWeight: 800, color: C.ink, marginTop: 4 }}>
-          {fromLabel} → {toText}
+          {fromLabel} → {arrivalPlace}
         </div>
         {route && (
           <div
@@ -549,6 +640,26 @@ export default function RouteRibbon() {
           })}
         </div>
       </div>
+
+      {/* One polite region, whole sentences, for every stage transition */}
+      <div className="sr-only" role="status" aria-live="polite">
+        {stageSentence(routeState)}
+      </div>
+
+      {/* A result for older inputs, or a failed recompute, stays on screen —
+          but never silently: it is labelled and, when failed, retryable. */}
+      {route && routeState.geometry === 'error' ? (
+        <div style={{ margin: '12px 22px 0', ...noticeStyle }}>
+          <span style={{ flex: 1 }}>{m.ribbon_geometry_failed_notice()}</span>
+          <button onClick={() => app.retryRoute()} style={retryStyle}>
+            {m.ribbon_retry()}
+          </button>
+        </div>
+      ) : routeState.provisional ? (
+        <div style={{ margin: '12px 22px 0', ...noticeStyle }}>
+          <span style={{ flex: 1 }}>{m.ribbon_provisional_notice()}</span>
+        </div>
+      ) : null}
 
       {body}
     </div>

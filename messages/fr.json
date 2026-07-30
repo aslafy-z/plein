@@ -293,6 +293,30 @@
   "ribbon_error_fallback": "Itinéraire indisponible.",
   "ribbon_edit_route": "Modifier l'itinéraire",
   "ribbon_computing": "Calcul de l'itinéraire…",
+  "ribbon_stage_geometry": "Itinéraire trouvé. Recherche des stations le long du trajet.",
+  "ribbon_stage_provisional": "Nouvel itinéraire en cours de calcul. Le trajet précédent reste affiché.",
+  "ribbon_stage_geometry_failed": "Nouvel itinéraire indisponible. Le trajet précédent reste affiché.",
+  "ribbon_corridor_failed": "Stations du trajet indisponibles. L'itinéraire reste affiché.",
+  "ribbon_provisional_notice": "Trajet précédent — nouvel itinéraire en cours de calcul. Prix et arrêts pas encore à jour.",
+  "ribbon_geometry_failed_notice": "Nouvel itinéraire indisponible — trajet précédent affiché.",
+  "ribbon_retry": "Réessayer",
+  "route_geocoding_in_progress": "Recherche des adresses en cours.",
+  "ribbon_stage_stations": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} station trouvée sur le trajet.",
+        "countPlural=other": "{count} stations trouvées sur le trajet."
+      }
+    }
+  ],
+  "ribbon_stage_no_stations": "Aucune station trouvée le long du trajet.",
   "ribbon_departure": "Départ · {place}",
   "ribbon_departure_tank": "Réservoir {percent} % · autonomie ≈ {km} km",
   "ribbon_no_stops": "Aucune station trouvée le long du trajet — élargissez les filtres.",

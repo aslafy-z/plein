@@ -293,6 +293,30 @@
   "ribbon_error_fallback": "Route unavailable.",
   "ribbon_edit_route": "Edit the route",
   "ribbon_computing": "Working out the route…",
+  "ribbon_stage_geometry": "Route found. Looking for stations along the way.",
+  "ribbon_stage_provisional": "A new route is being calculated. The previous trip is still shown.",
+  "ribbon_stage_geometry_failed": "New route unavailable. The previous trip is still shown.",
+  "ribbon_corridor_failed": "Stations along the route are unavailable. The route itself is still shown.",
+  "ribbon_provisional_notice": "Previous trip — a new route is being calculated. Prices and stops are not up to date yet.",
+  "ribbon_geometry_failed_notice": "New route unavailable — showing the previous trip.",
+  "ribbon_retry": "Try again",
+  "route_geocoding_in_progress": "Looking up the addresses.",
+  "ribbon_stage_stations": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} station found along the route.",
+        "countPlural=other": "{count} stations found along the route."
+      }
+    }
+  ],
+  "ribbon_stage_no_stations": "No station found along the route.",
   "ribbon_departure": "From · {place}",
   "ribbon_departure_tank": "Tank {percent} % · range ≈ {km} km",
   "ribbon_no_stops": "No station found along the route — widen the filters.",

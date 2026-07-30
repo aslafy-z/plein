@@ -287,6 +287,30 @@
   "ribbon_error_fallback": "Rota indisponível.",
   "ribbon_edit_route": "Alterar a rota",
   "ribbon_computing": "A calcular a rota…",
+  "ribbon_stage_geometry": "Rota encontrada. A procurar postos ao longo do trajeto.",
+  "ribbon_stage_provisional": "A calcular uma nova rota. O trajeto anterior continua visível.",
+  "ribbon_stage_geometry_failed": "Nova rota indisponível. O trajeto anterior continua visível.",
+  "ribbon_corridor_failed": "Postos do trajeto indisponíveis. A rota continua visível.",
+  "ribbon_provisional_notice": "Trajeto anterior — a calcular uma nova rota. Os preços e as paragens ainda não estão atualizados.",
+  "ribbon_geometry_failed_notice": "Nova rota indisponível — a mostrar o trajeto anterior.",
+  "ribbon_retry": "Tentar novamente",
+  "route_geocoding_in_progress": "A procurar os endereços.",
+  "ribbon_stage_stations": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} posto encontrado no trajeto.",
+        "countPlural=other": "{count} postos encontrados no trajeto."
+      }
+    }
+  ],
+  "ribbon_stage_no_stations": "Não foi encontrado nenhum posto no trajeto.",
   "ribbon_departure": "Partida · {place}",
   "ribbon_departure_tank": "Depósito {percent} % · autonomia ≈ {km} km",
   "ribbon_no_stops": "Nenhum posto encontrado ao longo da viagem — alargue os filtros.",

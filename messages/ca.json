@@ -293,6 +293,30 @@
   "ribbon_error_fallback": "Ruta no disponible.",
   "ribbon_edit_route": "Modifica la ruta",
   "ribbon_computing": "S'està calculant la ruta…",
+  "ribbon_stage_geometry": "Ruta trobada. S'estan cercant benzineres al llarg del trajecte.",
+  "ribbon_stage_provisional": "S'està calculant una nova ruta. El trajecte anterior encara es mostra.",
+  "ribbon_stage_geometry_failed": "Nova ruta no disponible. El trajecte anterior encara es mostra.",
+  "ribbon_corridor_failed": "Benzineres del trajecte no disponibles. La ruta continua visible.",
+  "ribbon_provisional_notice": "Trajecte anterior — s'està calculant una nova ruta. Els preus i les parades encara no estan actualitzats.",
+  "ribbon_geometry_failed_notice": "Nova ruta no disponible — es mostra el trajecte anterior.",
+  "ribbon_retry": "Torna-ho a provar",
+  "route_geocoding_in_progress": "S'estan cercant les adreces.",
+  "ribbon_stage_stations": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} benzinera trobada al trajecte.",
+        "countPlural=other": "{count} benzineres trobades al trajecte."
+      }
+    }
+  ],
+  "ribbon_stage_no_stations": "No s'ha trobat cap benzinera al trajecte.",
   "ribbon_departure": "Sortida · {place}",
   "ribbon_departure_tank": "Dipòsit {percent} % · autonomia ≈ {km} km",
   "ribbon_no_stops": "No s'ha trobat cap benzinera al llarg de la ruta — amplia els filtres.",

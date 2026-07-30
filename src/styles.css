@@ -305,6 +305,42 @@ button {
   animation: plein-spin 1s linear infinite;
 }
 
+/* Announced to screen readers, invisible on screen */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Placeholder rows for a stage that has been started but has not answered */
+.skeleton {
+  background: linear-gradient(
+    100deg,
+    #1a1d20 0%,
+    #1a1d20 35%,
+    #22282c 50%,
+    #1a1d20 65%,
+    #1a1d20 100%
+  );
+  background-size: 300% 100%;
+  animation: skeleton-sweep 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-sweep {
+  from {
+    background-position: 130% 0;
+  }
+  to {
+    background-position: -30% 0;
+  }
+}
+
 /* Price pin markers (Leaflet divIcon) */
 .pin-bubble {
   font-family: 'Spline Sans Mono', ui-monospace, monospace;
@@ -384,7 +420,9 @@ button {
   .anim-sheet,
   .anim-fade,
   .anim-dialog,
-  .sheet-hint {
+  .sheet-hint,
+  .skeleton,
+  .spin {
     animation: none;
   }
 }

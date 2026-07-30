@@ -454,9 +454,32 @@ export default function RouteSetup() {
           follows the content instead of hugging the bottom edge across a
           region of empty space. */}
       <div style={desktop ? { padding: '18px 32px 26px' } : stickyBarStyle(false)}>
-        <button onClick={() => app.startRoute()} disabled={!canGo} style={ctaStyle(canGo)}>
+        {/* Busy in place: the form, the addresses and the vehicle recap stay
+            on screen while the endpoints resolve, and a second tap cannot
+            open a second pipeline. */}
+        <button
+          onClick={() => app.startRoute()}
+          disabled={!canGo || app.geocoding}
+          aria-busy={app.geocoding}
+          style={{
+            ...ctaStyle(canGo),
+            ...(app.geocoding ? { opacity: 0.75 } : null),
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 10,
+          }}
+        >
+          {app.geocoding && (
+            <span className="spin" aria-hidden="true" style={{ fontSize: 15, lineHeight: 1 }}>
+              ↻
+            </span>
+          )}
           {m.route_compare_cta()}
         </button>
+        <div className="sr-only" role="status" aria-live="polite">
+          {app.geocoding ? m.route_geocoding_in_progress() : ''}
+        </div>
       </div>
     </div>
   );
