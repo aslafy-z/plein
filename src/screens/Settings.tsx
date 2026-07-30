@@ -429,10 +429,13 @@ export default function Settings() {
             overflow: 'hidden',
           }}
         >
-          {/* The demo dataset is a debug/fallback tool — only shown to users
-              who already have it selected, so they can switch back to the
-              real source (it stays the automatic fallback when gouv is down). */}
-          {SOURCES.filter((src) => src !== 'demo' || sourceId === 'demo').map((src) => {
+          {/* The demo dataset is a deliberate choice, never a silent
+              fallback: its row shows for users who already selected it (so
+              they can switch back) and while the real source is failing, as
+              the explicit escape hatch. */}
+          {SOURCES.filter(
+            (src) => src !== 'demo' || sourceId === 'demo' || app.stations.lastError != null,
+          ).map((src) => {
             const selected = sourceId === src;
             return (
               <button
@@ -478,7 +481,7 @@ export default function Settings() {
             );
           })}
 
-          {app.stations.fellBack && (
+          {app.stations.lastError != null && (
             <div
               style={{
                 fontSize: 11.5,
@@ -489,7 +492,7 @@ export default function Settings() {
                 lineHeight: 1.4,
               }}
             >
-              {m.settings_fell_back()}
+              {m.settings_source_down()}
             </div>
           )}
 

@@ -35,7 +35,6 @@ interface StationSpec {
   city: string;
   postalCode: string;
   h: number; // hours since last update
-  conf?: number;
   highway?: boolean;
   services: string[];
   prices: Partial<Record<FuelId, number>>;
@@ -85,7 +84,6 @@ function build(spec: StationSpec): Station {
     services: spec.services,
     highway: spec.highway ?? false,
     hours: hoursFromSpec(spec),
-    confirmations: spec.conf,
   };
 }
 
@@ -95,37 +93,37 @@ export const DEMO_STATIONS: Station[] = [
   build({
     id: 'su', name: 'Station U · Croix-Blanche', init: 'SU', brand: 'Système U',
     lat: 43.6101, lng: 1.4519, address: '12 route de la Croix-Blanche', city: 'Toulouse', postalCode: '31000',
-    h: 2, conf: 12, services: ['open24h', 'carWash', 'shop', 'airPump'],
+    h: 2, services: ['open24h', 'carWash', 'shop', 'airPump'],
     prices: { diesel: 1.67, e10: 1.78, e85: 0.84, unleaded95: 1.82, unleaded98: 1.88 },
   }),
   build({
     id: 'in', name: 'Intermarché · Les Vignes', init: 'IN', brand: 'Intermarché',
     lat: 43.6191, lng: 1.4586, address: '45 avenue des Vignes', city: 'Toulouse', postalCode: '31200',
-    h: 3, conf: 8, services: ['open24h', 'carWash'],
+    h: 3, services: ['open24h', 'carWash'],
     prices: { diesel: 1.69, e10: 1.79, e85: 0.86, unleaded95: 1.83, unleaded98: 1.89 },
   }),
   build({
     id: 'ca', open: '07:00-21:30', name: 'Carrefour Market', init: 'CA', brand: 'Carrefour',
     lat: 43.5891, lng: 1.4236, address: '2 rue du Marché', city: 'Toulouse', postalCode: '31300',
-    h: 26, conf: 5, services: ['shop'],
+    h: 26, services: ['shop'],
     prices: { diesel: 1.74, e10: 1.84, e85: 0.88, unleaded95: 1.88, unleaded98: 1.94 },
   }),
   build({
     id: 'mo', open: '08:00-19:00', sundayOff: true, name: 'Garage Morel', init: 'GM', brand: 'Indépendant',
     lat: 43.5821, lng: 1.4686, address: '8 rue Morel', city: 'Toulouse', postalCode: '31400',
-    h: 28, conf: 3, services: ['airPump'],
+    h: 28, services: ['airPump'],
     prices: { diesel: 1.72, e10: 1.83 },
   }),
   build({
     id: 'te', name: 'TotalEnergies · Centre', init: 'TE', brand: 'TotalEnergies',
     lat: 43.6001, lng: 1.4386, address: '1 allée Jules-Guesde', city: 'Toulouse', postalCode: '31000',
-    h: 1, conf: 15, services: ['open24h', 'carWash', 'shop', 'airPump', 'additives'],
+    h: 1, services: ['open24h', 'carWash', 'shop', 'airPump', 'additives'],
     prices: { diesel: 1.82, e10: 1.89, e85: 0.89, unleaded95: 1.93, unleaded98: 1.99 },
   }),
   build({
     id: 'bp', name: 'BP · Rocade Est', init: 'BP', brand: 'BP',
     lat: 43.6241, lng: 1.4886, address: 'Rocade Est', city: 'Toulouse', postalCode: '31500',
-    h: 5, conf: 6, services: ['open24h', 'shop', 'additives'],
+    h: 5, services: ['open24h', 'shop', 'additives'],
     prices: { diesel: 1.80, e10: 1.88, unleaded95: 1.92, unleaded98: 1.98 },
   }),
   // Eight more, spread 3–19 km out, all six fuels represented across the set
@@ -133,49 +131,49 @@ export const DEMO_STATIONS: Station[] = [
     id: 'es', name: 'Esso Express · L\'Union', init: 'ES', brand: 'Esso',
     lat: 43.6341, lng: 1.5086, address: '210 route d\'Albi', city: 'L\'Union', postalCode: '31240',
     // Free upstream text alongside the ids — the fiche must pass it through
-    h: 4, conf: 7, services: ['open24h', 'shop', 'additives', "Vente d'additifs carburants"],
+    h: 4, services: ['open24h', 'shop', 'additives', "Vente d'additifs carburants"],
     prices: { diesel: 1.79, e10: 1.85, unleaded95: 1.89, unleaded98: 1.95, e85: 0.87, lpg: 1.02 },
   }),
   build({
     id: 'le', open: '06:30-22:00', name: 'E.Leclerc · Labège', init: 'EL', brand: 'Leclerc',
     lat: 43.5611, lng: 1.5136, address: '5 avenue de l\'Occitanie', city: 'Labège', postalCode: '31670',
-    h: 2, conf: 20, services: ['carWash', 'shop', 'airPump'],
+    h: 2, services: ['carWash', 'shop', 'airPump'],
     prices: { diesel: 1.65, e10: 1.75, unleaded95: 1.79, unleaded98: 1.85, e85: 0.83, lpg: 0.99 },
   }),
   build({
     id: 'au', open: '07:00-21:00', name: 'Auchan · Launaguet', init: 'AU', brand: 'Auchan',
     lat: 43.6591, lng: 1.4686, address: '2 rue Pasteur', city: 'Launaguet', postalCode: '31140',
-    h: 6, conf: 11, services: ['carWash', 'shop'],
+    h: 6, services: ['carWash', 'shop'],
     prices: { diesel: 1.66, e10: 1.76, unleaded95: 1.80, unleaded98: 1.86, e85: 0.84 },
   }),
   build({
     id: 'av', name: 'Avia · Quint-Fonsegrives', init: 'AV', brand: 'Avia',
     lat: 43.5991, lng: 1.5386, address: '90 route de Castres', city: 'Quint-Fonsegrives', postalCode: '31130',
-    h: 8, conf: 4, services: ['airPump'],
+    h: 8, services: ['airPump'],
     prices: { diesel: 1.73, e10: 1.83, unleaded98: 1.93 },
   }),
   build({
     id: 'ag', name: 'Agip · Saint-Orens', init: 'AG', brand: 'Agip',
     lat: 43.5601, lng: 1.5726, address: '15 route de Revel', city: 'Saint-Orens-de-Gameville', postalCode: '31650',
-    h: 3, conf: 9, services: ['open24h', 'shop'],
+    h: 3, services: ['open24h', 'shop'],
     prices: { diesel: 1.78, e10: 1.87, unleaded95: 1.91, unleaded98: 1.97, lpg: 1.05 },
   }),
   build({
     id: 'tac', name: 'Total Access · Tournefeuille', init: 'TA', brand: 'Total Access',
     lat: 43.5791, lng: 1.3836, address: '3 grande rue', city: 'Tournefeuille', postalCode: '31170',
-    h: 1, conf: 13, services: ['open24h', 'carWash', 'shop'],
+    h: 1, services: ['open24h', 'carWash', 'shop'],
     prices: { diesel: 1.71, e10: 1.81, unleaded95: 1.85, unleaded98: 1.91, e85: 0.85 },
   }),
   build({
     id: 'ir', name: 'Intermarché · Castelmaurou', init: 'IR', brand: 'Intermarché',
     lat: 43.6941, lng: 1.5486, address: '1 avenue de l\'Europe', city: 'Castelmaurou', postalCode: '31180',
-    h: 5, conf: 14, services: ['open24h', 'carWash', 'shop', 'airPump'],
+    h: 5, services: ['open24h', 'carWash', 'shop', 'airPump'],
     prices: { diesel: 1.68, e10: 1.78, unleaded95: 1.82, unleaded98: 1.88, e85: 0.85, lpg: 1.00 },
   }),
   build({
     id: 'cg', open: '07:30-21:00', name: 'Carrefour · Muret', init: 'CG', brand: 'Carrefour',
     lat: 43.4341, lng: 1.3986, address: 'ZAC Portes de Muret', city: 'Muret', postalCode: '31600',
-    h: 7, conf: 6, services: ['carWash', 'shop'],
+    h: 7, services: ['carWash', 'shop'],
     prices: { diesel: 1.70, e10: 1.80, unleaded95: 1.84, unleaded98: 1.90, e85: 0.86 },
   }),
 ];

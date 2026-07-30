@@ -20,8 +20,8 @@ test('the fiche shows every fuel, its rank in the zone and the savings math', as
   await expect(page.getByText('1,67 €').first()).toBeVisible() // gazole
   await expect(page.getByText('0,84 €')).toBeVisible() // E85
 
-  // Community trust line (demo source exposes confirmations)
-  await expect(page.getByText(/confirmé par 12 conducteurs/)).toBeVisible()
+  // Demo data is labelled as such on the fiche — never fake social proof
+  await expect(page.getByText(/données de démonstration/)).toBeVisible()
 
   // Savings on a full tank vs the priciest of the radius:
   // (1,82 − 1,67) × 50 L = 7,50 €

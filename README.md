@@ -135,9 +135,11 @@ l'app choisit selon la zone affichée (source *Automatique*). Le reste
 | Fonds de carte | [CARTO](https://carto.com/attributions) dark · données © contributeurs [OpenStreetMap](https://www.openstreetmap.org/copyright) | — |
 
 L'app n'a **aucun backend** : le navigateur interroge directement ces services
-publics. Les sources sont pluggables (`src/data/types.ts`) — un jeu de données
-de démonstration hors-ligne prend automatiquement le relais si le flux réel est
-indisponible, avec bannière explicite.
+publics. Les sources sont pluggables (`src/data/types.ts`). Hors connexion ou
+flux indisponible, l'app garde les dernières stations chargées (cache par
+zone) avec une bannière explicite et réessaie dès que la connexion revient ;
+un jeu de données de démonstration hors-ligne reste sélectionnable dans les
+réglages.
 
 ## 🛠️ Développement
 

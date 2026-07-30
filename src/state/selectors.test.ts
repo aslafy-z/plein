@@ -63,14 +63,14 @@ function app(over: Partial<AppStore> = {}): AppStore {
     userPos: BASE,
     searchPos: BASE,
     focusStationId: null,
-    stations: { status: 'ready', data: [], activeSource: 'demo', fellBack: false, refreshing: false },
+    stations: { status: 'ready', data: [], activeSource: 'demo', refreshing: false },
     roadReach: {},
     consumption: 6.5,
     tank: 50,
     startTankPct: 70,
     routeMode: 'balanced',
     plannedStops: {},
-    routeState: { status: 'idle', route: null, stations: [], fellBack: false },
+    routeState: { status: 'idle', route: null, stations: [] },
     ...over,
   } as AppStore
 }
@@ -127,7 +127,7 @@ describe('selectVisible', () => {
   ]
 
   it('applies the radius, the fuel and every selected service tag', () => {
-    const base = app({ stations: { status: 'ready', data: zone, activeSource: 'demo', fellBack: false, refreshing: false } })
+    const base = app({ stations: { status: 'ready', data: zone, activeSource: 'demo', refreshing: false } })
     expect(selectVisible(base).map((s) => s.id)).toEqual(['near', 'mid'])
     // radius widened → the cheap far station joins
     expect(selectVisible(app({ ...base, radius: 25 })).map((s) => s.id)).toContain('far')
@@ -138,7 +138,7 @@ describe('selectVisible', () => {
   })
 
   it('filters brands by group, brandless stations passing as the « independent » group', () => {
-    const base = app({ stations: { status: 'ready', data: zone, activeSource: 'demo', fellBack: false, refreshing: false } })
+    const base = app({ stations: { status: 'ready', data: zone, activeSource: 'demo', refreshing: false } })
     expect(selectVisible(app({ ...base, brandSel: ['Intermarché'] })).map((s) => s.id)).toEqual(['near'])
     expect(
       selectVisible(app({ ...base, brandSel: [INDEPENDENT_BRAND_ID] })).map((s) => s.id),
@@ -158,7 +158,7 @@ describe('selectVisible', () => {
       station({ id: 'x1', ...north(3), prices: diesel(1.75), tags: ['carWash'] }),
     ]
     const base = app({
-      stations: { status: 'ready', data: brands, activeSource: 'demo', fellBack: false, refreshing: false },
+      stations: { status: 'ready', data: brands, activeSource: 'demo', refreshing: false },
     })
     expect([...selectZoneBrandCounts(base).entries()].sort()).toEqual([
       ['Intermarché', 2],
@@ -190,7 +190,7 @@ describe('selectVisible', () => {
 
   it('selectZoneFuels only names fuels the pumps actually serve (no SP95 fallback)', () => {
     const esp = station({ id: 'esp-9', ...north(1), prices: { unleaded95: { value: 1.6 } } })
-    const a = app({ stations: { status: 'ready', data: [esp], activeSource: 'esp', fellBack: false, refreshing: false } })
+    const a = app({ stations: { status: 'ready', data: [esp], activeSource: 'esp', refreshing: false } })
     expect(selectZoneFuels(a)).toEqual(['unleaded95'])
   })
 
@@ -201,7 +201,7 @@ describe('selectVisible', () => {
       // Out of the radius — its GPL must not join the list
       station({ id: 'c', ...north(30), prices: { lpg: { value: 0.99 } } }),
     ]
-    const base = app({ stations: { status: 'ready', data, activeSource: 'demo', fellBack: false, refreshing: false } })
+    const base = app({ stations: { status: 'ready', data, activeSource: 'demo', refreshing: false } })
     expect(selectZoneFuels(base)).toEqual(['diesel', 'unleaded98', 'e85'])
     // …and the brand/service filters narrow it like any other zone selector
     expect(selectZoneFuels(app({ ...base, brandSel: ['Shell'] }))).toEqual(['diesel', 'e85'])
@@ -221,7 +221,6 @@ describe('selector memoization', () => {
         return data
       },
       activeSource: 'demo',
-      fellBack: false,
       refreshing: false,
     } as AppStore['stations']
     return { store: app({ stations }), counter }
@@ -275,7 +274,7 @@ describe('selectByPrice / selectRecommended', () => {
       station({ id: 'far-sub-cent', ...north(3.3), prices: diesel(1.896) }),
       station({ id: 'near', ...north(0.9), prices: diesel(1.904) }),
     ]
-    const a = app({ stations: { status: 'ready', data, activeSource: 'demo', fellBack: false, refreshing: false } })
+    const a = app({ stations: { status: 'ready', data, activeSource: 'demo', refreshing: false } })
     expect(selectByPrice(a).map((s) => s.id)).toEqual(['near', 'far-sub-cent'])
     expect(selectRecommended(a)?.id).toBe('near')
   })
@@ -288,7 +287,7 @@ describe('selectByPrice / selectRecommended', () => {
       station({ id: 'near-deal', ...north(11.8), prices: diesel(1.89) }),
       station({ id: 'filler', ...north(1), prices: diesel(1.99) }),
     ]
-    const a = app({ radius: 25, stations: { status: 'ready', data, activeSource: 'demo', fellBack: false, refreshing: false } })
+    const a = app({ radius: 25, stations: { status: 'ready', data, activeSource: 'demo', refreshing: false } })
     // The sticker ranking still puts the cheapest first…
     expect(selectByPrice(a)[0].id).toBe('far-cheap')
     // …but the recommendation counts the fuel burnt to get there
@@ -303,7 +302,7 @@ describe('selectByPrice / selectRecommended', () => {
       station({ id: 'bridge', ...north(2.2), prices: diesel(1.85) }),
       station({ id: 'direct', ...north(3.3), prices: diesel(1.87) }),
     ]
-    const stations = { status: 'ready', data, activeSource: 'demo', fellBack: false, refreshing: false } as AppStore['stations']
+    const stations = { status: 'ready', data, activeSource: 'demo', refreshing: false } as AppStore['stations']
     // Crow-flies fallback (no matrix): the bridge station looks like the deal
     expect(selectRecommended(app({ stations }))?.id).toBe('bridge')
     const withRoads = app({
@@ -330,7 +329,7 @@ describe('selectByPrice / selectRecommended', () => {
     ]
     const a = app({
       radius: 25,
-      stations: { status: 'ready', data, activeSource: 'demo', fellBack: false, refreshing: false },
+      stations: { status: 'ready', data, activeSource: 'demo', refreshing: false },
       roadReach: { measured: { distanceKm: 3.5, durationMin: 6 } },
     })
     expect(selectRecommended(a)?.id).toBe('measured')
@@ -399,7 +398,6 @@ describe('selectPriceStats / priceTier', () => {
         status: 'ready',
         data: prices.map((p, i) => station({ id: `s${i}`, ...(positions?.[i] ?? north(1)), prices: diesel(p) })),
         activeSource: 'demo',
-        fellBack: false,
         refreshing: false,
       },
     })
@@ -454,7 +452,6 @@ describe('selectZoneDelta', () => {
         status: 'ready',
         data: prices.map((p, i) => station({ id: `s${i}`, ...positions[i], prices: diesel(p) })),
         activeSource: 'demo',
-        fellBack: false,
         refreshing: false,
       },
       ...over,
@@ -553,7 +550,6 @@ const routeApp = (over: Partial<AppStore> = {}) =>
       status: 'ready',
       route: { distanceKm: 260, durationMin: 150, polyline: [] },
       stations: CORRIDOR,
-      fellBack: false,
     },
     ...over,
   })

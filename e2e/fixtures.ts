@@ -26,8 +26,9 @@ export const test = base.extend<Options>({
   page: async ({ page, seed }, use) => {
     // `_leaflet_pos` is Leaflet's zoom-transition vs map.remove() race
     // (leaflet#8410): harmless, fires when a screen change unmounts the map
-    // mid-animation. Network noise is expected offline (demo fallback).
-    const ignored = /net::|Failed to load resource|ERR_|_leaflet_pos/
+    // mid-animation. Network noise (including the dev server's HMR socket)
+    // is expected when a spec cuts the source or goes offline.
+    const ignored = /net::|Failed to load resource|ERR_|_leaflet_pos|WebSocket/
     const errors: string[] = []
     page.on('pageerror', (e) => {
       if (!ignored.test(String(e))) errors.push(String(e))
