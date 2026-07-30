@@ -3,6 +3,7 @@
   "app_title": "Plein. — le plein au juste prix",
   "unit_metres": "{metres} m",
   "unit_kilometres": "{km} km",
+  "unit_size_under_kilobyte": "moins de 1 ko",
   "unit_minutes": "{minutes} min",
   "unit_hours": "{hours} h",
   "unit_hours_minutes": "{hours} h {minutes}",

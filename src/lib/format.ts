@@ -42,6 +42,10 @@ const sizeFormats = new Map<string, Intl.NumberFormat>();
 
 /** Storage footprint: 220_000 -> "215 ko" in French, "215 kB" in English */
 export function sizeLabel(bytes: number): string {
+  // A few hundred bytes rounds to « 0 ko », which reads as a broken readout
+  // rather than as « almost nothing ». The unit is part of the sentence, so
+  // each locale writes its own — French counts in octets.
+  if (bytes < 1024) return m.unit_size_under_kilobyte();
   const mega = bytes >= 1024 * 1024;
   const unit = mega ? 'megabyte' : 'kilobyte';
   const key = `${getLocale()}:${unit}`;

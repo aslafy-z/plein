@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { agoLabel, clockLabel, distLabel, durationLabel, fmtDecimal, fmtPrice, minutesLabel } from './format'
+import {
+  agoLabel,
+  clockLabel,
+  distLabel,
+  durationLabel,
+  fmtDecimal,
+  fmtPrice,
+  minutesLabel,
+  sizeLabel,
+} from './format'
 
 // No locale is set, so every assertion below reads the base locale (French).
 // A second locale would need `setLocale` around the call — these tests exist to
@@ -30,6 +39,24 @@ describe('distLabel', () => {
   it('uses metres under 1 km, tenths of km above', () => {
     expect(distLabel(0.85)).toBe('850 m')
     expect(distLabel(2.34)).toBe('2,3 km')
+  })
+})
+
+describe('sizeLabel', () => {
+  it('says « almost nothing » instead of rounding down to zero', () => {
+    // « 0 ko » next to a cache the app says it is keeping reads as a bug
+    expect(sizeLabel(0)).toBe('moins de 1 ko')
+    expect(sizeLabel(400)).toBe('moins de 1 ko')
+    expect(sizeLabel(1023)).toBe('moins de 1 ko')
+  })
+
+  // `Intl` separates a value from its unit with a narrow no-break space
+  // (U+202F), which is not the space the catalog strings above use
+  it('counts in whole kilo-octets, then in tenths of mega-octets', () => {
+    expect(sizeLabel(1024)).toBe('1\u202fko')
+    expect(sizeLabel(18 * 1024)).toBe('18\u202fko')
+    expect(sizeLabel(1024 * 1024)).toBe('1\u202fMo')
+    expect(sizeLabel(2.4 * 1024 * 1024)).toBe('2,4\u202fMo')
   })
 })
 
