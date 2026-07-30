@@ -50,6 +50,68 @@ export const test = base.extend<Options>({
   },
 })
 
+// ── Pre-seeding the durable station cache ────────────────────────────────────
+// The settings blob goes in through `addInitScript`, but the station cache is
+// IndexedDB (src/data/cacheStore.ts) and a write to it cannot be made to land
+// before the app's own `open()` from a document-start script. So it is written
+// from a page already on the origin, and the caller reloads into it.
+//
+// The record shape below mirrors `AreaMeta` / `areaKey` in
+// src/data/stationsCache.ts — the two have to agree, and a mismatch shows up
+// as a seeded area the app simply never finds.
+export interface SeededArea {
+  source: string
+  center: { lat: number; lng: number }
+  /** Radius the fetch is claimed to have covered, in km */
+  fetchRadiusKm: number
+  /** How old the data should look — what makes an aged area testable at all */
+  ageMs: number
+  stations: Record<string, unknown>[]
+}
+
+export async function seedStationsCache(
+  page: import('@playwright/test').Page,
+  areas: SeededArea[],
+) {
+  // The app boots on this load too; only the origin matters here, so it need
+  // not be waited out.
+  await page.goto('/', { waitUntil: 'domcontentloaded' })
+  await page.evaluate(async (seeded) => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const req = indexedDB.open('plein.cache', 1)
+      req.onupgradeneeded = () => {
+        for (const name of ['areas', 'payloads']) {
+          if (!req.result.objectStoreNames.contains(name)) req.result.createObjectStore(name)
+        }
+      }
+      req.onsuccess = () => resolve(req.result)
+      req.onerror = () => reject(req.error)
+    })
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(['areas', 'payloads'], 'readwrite')
+      tx.oncomplete = () => resolve()
+      tx.onabort = () => reject(tx.error)
+      for (const area of seeded) {
+        const key = `${area.source}|${area.center.lat.toFixed(4)},${area.center.lng.toFixed(4)}`
+        tx.objectStore('payloads').put(area.stations, key)
+        tx.objectStore('areas').put(
+          {
+            key,
+            source: area.source,
+            center: area.center,
+            fetchRadiusKm: area.fetchRadiusKm,
+            fetchedAt: Date.now() - area.ageMs,
+            stationCount: area.stations.length,
+            bytes: area.stations.length * 400,
+          },
+          key,
+        )
+      }
+    })
+    db.close()
+  }, areas)
+}
+
 // The zone card appearing means stations are loaded and the map is live.
 export async function gotoMap(page: import('@playwright/test').Page) {
   await page.goto('/')

@@ -120,9 +120,19 @@ try {
     // on a cold boot, so a /station/<id> deep link paints straight away — and
     // that cache is also where we look for a stand-in.
     const target = await page.evaluate(
-      ({ preferred, center, radiusKm }) => {
-        const entries = JSON.parse(localStorage.getItem('plein.stations.cache.v2') ?? '[]');
-        const stations = entries.flatMap((e) => e.stations ?? []);
+      async ({ preferred, center, radiusKm }) => {
+        // src/data/cacheStore.ts: one record per fetched area under `payloads`
+        const stations = await new Promise((resolve) => {
+          const req = indexedDB.open('plein.cache');
+          req.onerror = () => resolve([]);
+          req.onsuccess = () => {
+            const db = req.result;
+            if (!db.objectStoreNames.contains('payloads')) return resolve([]);
+            const all = db.transaction('payloads').objectStore('payloads').getAll();
+            all.onsuccess = () => resolve(all.result.flat());
+            all.onerror = () => resolve([]);
+          };
+        });
         if (stations.some((s) => s.id === preferred)) return preferred;
         const km = (a, b) => {
           const rad = (d) => (d * Math.PI) / 180;

@@ -69,6 +69,7 @@
   "toast_alerts_soon": "¡Muy pronto! Las alertas aún no están activas.",
   "toast_background_location_soon": "¡Muy pronto! Esta función aún no está activa.",
   "toast_price_report_soon": "¡Gracias! Los avisos llegarán muy pronto.",
+  "toast_cache_cleared": "Datos sin conexión borrados",
   "nav_map": "Mapa",
   "nav_route": "Ruta",
   "nav_favorites": "Favoritas",
@@ -195,6 +196,8 @@
   "freshness_offline": "Precios desactualizados — no se puede recargar por ahora",
   "freshness_reload_aria": "Recargar los precios",
   "freshness_age": "{age} · ↻",
+  "freshness_old": "Precios del {date} · ↻",
+  "freshness_old_title": "Precios leídos el {date} — toca para recargar",
   "banner_offline": "Sin conexión — los precios mostrados pueden estar desactualizados.",
   "banner_source_down": "Fuente en tiempo real no disponible — los precios mostrados pueden estar desactualizados.",
   "banner_retry": "Reintentar",
@@ -404,6 +407,27 @@
   "settings_price_disclaimer_title": "Unas palabras sobre los precios",
   "settings_price_disclaimer_body": " — proceden de las declaraciones oficiales de las gasolineras y son solo orientativos, sin garantía: no podemos comprobarlos uno a uno y un precio puede haber cambiado para cuando llegues al surtidor. Échale un vistazo in situ antes de repostar — el desvío queda a tu criterio. Y si un precio te parece erróneo, dínoslo justo debajo 💚",
   "settings_report_price": "Avisar de un precio erróneo",
+  "settings_cache_title": "Datos sin conexión",
+  "settings_cache_empty": "Aún no hay ninguna zona guardada",
+  "settings_cache_summary": [
+    {
+      "declarations": [
+        "input count",
+        "input size",
+        "input age",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} zona guardada · {size} · la más antigua {age}",
+        "countPlural=other": "{count} zonas guardadas · {size} · la más antigua {age}"
+      }
+    }
+  ],
+  "settings_cache_volatile": "Almacenamiento persistente no disponible — la caché se pierde al recargar",
+  "settings_cache_clear": "Borrar los datos sin conexión",
   "settings_app_section": "Aplicación",
   "settings_install_title": "Instalar la aplicación",
   "settings_install_sub": "en la pantalla de inicio, a pantalla completa",

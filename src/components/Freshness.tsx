@@ -3,8 +3,8 @@
 // – amber clock pictogram when the shown prices are outdated
 import { useEffect, useReducer } from 'react';
 import { C } from '../theme';
-import { STALE_MS } from '../data/stationsCache';
-import { agoLabelFrom } from '../lib/format';
+import { REVALIDATE_MS, STALE_MS } from '../data/stationsCache';
+import { agoLabelFrom, dayMonthLabel } from '../lib/format';
 import { m } from '../paraglide/messages.js';
 import { useApp } from '../state/store';
 
@@ -45,10 +45,22 @@ export default function Freshness() {
   // coming on its own schedule, so the chip owns up even under STALE_MS.
   if (!fetchedAt || (age <= STALE_MS && lastError == null)) return null;
 
+  // « il y a 21 j » reads like a rounding error next to today's prices. Past
+  // the revalidation window the chip names the day the prices were read
+  // instead, so the number on screen can't be mistaken for a current one.
+  const old = age > REVALIDATE_MS;
+  const day = dayMonthLabel(fetchedAt);
+
   return (
     <button
       onClick={() => app.reloadStations()}
-      title={lastError != null ? m.freshness_offline() : m.freshness_stale_title()}
+      title={
+        lastError != null
+          ? m.freshness_offline()
+          : old
+            ? m.freshness_old_title({ date: day })
+            : m.freshness_stale_title()
+      }
       aria-label={m.freshness_reload_aria()}
       style={{
         display: 'inline-flex',
@@ -98,7 +110,7 @@ export default function Freshness() {
           }}
         />
       </span>
-      {m.freshness_age({ age: agoLabelFrom(fetchedAt) })}
+      {old ? m.freshness_old({ date: day }) : m.freshness_age({ age: agoLabelFrom(fetchedAt) })}
     </button>
   );
 }

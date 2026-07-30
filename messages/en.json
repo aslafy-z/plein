@@ -69,6 +69,7 @@
   "toast_alerts_soon": "Coming soon! Alerts are not live yet.",
   "toast_background_location_soon": "Coming soon! This feature is not live yet.",
   "toast_price_report_soon": "Thanks! Reporting is coming soon.",
+  "toast_cache_cleared": "Offline data cleared",
   "nav_map": "Map",
   "nav_route": "Route",
   "nav_favorites": "Favorites",
@@ -195,6 +196,8 @@
   "freshness_offline": "Prices are out of date — reloading is unavailable right now",
   "freshness_reload_aria": "Reload the prices",
   "freshness_age": "{age} · ↻",
+  "freshness_old": "Prices from {date} · ↻",
+  "freshness_old_title": "Prices read on {date} — tap to reload",
   "banner_offline": "Offline — the prices shown may be out of date.",
   "banner_source_down": "Live source unavailable — the prices shown may be out of date.",
   "banner_retry": "Retry",
@@ -404,6 +407,27 @@
   "settings_price_disclaimer_title": "A word about the prices",
   "settings_price_disclaimer_body": " — they come from the stations' own official filings and are indicative only, with no guarantee: we cannot check them one by one, and a price may well have changed by the time you reach the pump. Have a look on site before filling up — the detour is your call. And if a price looks wrong, tell us right below 💚",
   "settings_report_price": "Report a wrong price",
+  "settings_cache_title": "Offline data",
+  "settings_cache_empty": "No area stored yet",
+  "settings_cache_summary": [
+    {
+      "declarations": [
+        "input count",
+        "input size",
+        "input age",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} area stored · {size} · oldest {age}",
+        "countPlural=other": "{count} areas stored · {size} · oldest {age}"
+      }
+    }
+  ],
+  "settings_cache_volatile": "Persistent storage unavailable — the cache is lost on reload",
+  "settings_cache_clear": "Clear offline data",
   "settings_app_section": "App",
   "settings_install_title": "Install the app",
   "settings_install_sub": "on your home screen, full screen",

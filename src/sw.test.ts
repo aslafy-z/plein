@@ -213,6 +213,72 @@ describe('service worker — assets', () => {
   })
 })
 
+describe('service worker — the offline brand identity', () => {
+  it('serves the cached brand index at once and replaces it behind the page', async () => {
+    let calls = 0
+    const sw = loadSw(async () => {
+      calls += 1
+      return new Response(`index ${calls}`, { status: 200 })
+    })
+
+    // Cold: nothing cached, so the network copy is what the page gets
+    const { res: cold } = await sw.fetchEvent(request('/brands-fra.json'))
+    expect(await cold?.text()).toBe('index 1')
+
+    // Warm: the cached copy answers, and the refresh lands behind it
+    const { res: warm, waitCount } = await sw.fetchEvent(request('/brands-fra.json'))
+    expect(await warm?.text()).toBe('index 1')
+    expect(waitCount).toBe(1)
+    expect(calls).toBe(2)
+
+    const { res: next } = await sw.fetchEvent(request('/brands-fra.json'))
+    expect(await next?.text()).toBe('index 2')
+  })
+
+  it('keeps serving the brand index when the network is gone', async () => {
+    let online = true
+    const sw = loadSw(async () => {
+      if (!online) throw new TypeError('Failed to fetch')
+      return new Response('index', { status: 200 })
+    })
+
+    await sw.fetchEvent(request('/brands-fra.json'))
+    online = false
+    const { res } = await sw.fetchEvent(request('/brands-fra.json'))
+
+    // Without this an offline reload loses every enseigne name
+    expect(await res?.text()).toBe('index')
+  })
+
+  it('does not cache a failed brand index over a good one', async () => {
+    let status = 200
+    const sw = loadSw(async () => new Response(`index ${status}`, { status }))
+
+    await sw.fetchEvent(request('/brands-fra.json'))
+    status = 500
+    await sw.fetchEvent(request('/brands-fra.json'))
+    await sw.fetchEvent(request('/brands-fra.json'))
+
+    const cached = sw.caches.stores.get('plein-data-v1')
+    expect(await cached?.entries.get(`${ORIGIN}/brands-fra.json`)?.text()).toBe('index 200')
+  })
+
+  it('caches the brand logos cache-first, next to the app assets', async () => {
+    let calls = 0
+    const sw = loadSw(async (req) => {
+      calls += 1
+      return new Response(req.url, { status: 200 })
+    })
+
+    await sw.fetchEvent(request('/brand-icons/total.png'))
+    const { res } = await sw.fetchEvent(request('/brand-icons/total.png'))
+
+    expect(await res?.text()).toBe(`${ORIGIN}/brand-icons/total.png`)
+    expect(calls).toBe(1)
+    expect(assetCache(sw)?.entries.has(`${ORIGIN}/brand-icons/total.png`)).toBe(true)
+  })
+})
+
 describe('service worker — tiles and activation', () => {
   it('still bounds the tile cache', async () => {
     const sw = loadSw(async (req) => new Response(req.url, { status: 200 }))
@@ -232,6 +298,7 @@ describe('service worker — tiles and activation', () => {
     await sw.caches.open('plein-assets-v1')
     await sw.caches.open('plein-shell-v1')
     await sw.caches.open('plein-tiles-v1')
+    await sw.caches.open('plein-data-v1')
     await sw.caches.open('plein-assets-v0')
 
     await sw.activate()
@@ -240,6 +307,7 @@ describe('service worker — tiles and activation', () => {
       'plein-assets-v1',
       'plein-shell-v1',
       'plein-tiles-v1',
+      'plein-data-v1',
     ])
   })
 })

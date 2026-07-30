@@ -18,3 +18,8 @@
 # refreshed rarely, so a day of caching keeps repeat loads free.
 /brands-fra.json
   Cache-Control: public, max-age=86400
+
+# Brand logos (npm run build:icons): not content-hashed, but a regenerated set
+# only lands with a deploy, and the service worker serves them cache-first.
+/brand-icons/*
+  Cache-Control: public, max-age=604800

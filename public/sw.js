@@ -3,9 +3,17 @@
 // navigations are network-first with the cached shell as offline fallback;
 // basemap tiles are cached lazily (cache-first, capped) so panning around
 // an already-seen area doesn't refetch every tile.
+//
+// Prices are deliberately NOT cached here: the app keeps its own `fetchedAt`
+// per fetched area and that has to stay the single source of truth about how
+// old the numbers on screen are. An HTTP cache in front of the price APIs
+// would make them older without anything knowing.
 const ASSET_CACHE = 'plein-assets-v1';
 const SHELL_CACHE = 'plein-shell-v1';
 const TILE_CACHE = 'plein-tiles-v1';
+// Build-time data the app enriches its stations with. Separate from the assets
+// because it is not content-hashed: it is revalidated, not immutable.
+const DATA_CACHE = 'plein-data-v1';
 
 // Tile hosts used by src/lib/tiles.ts (CARTO primary, OSM fallback)
 const TILE_HOSTS = ['basemaps.cartocdn.com', 'tile.openstreetmap.org'];
@@ -15,8 +23,10 @@ const TILE_MAX_ENTRIES = 600;
 // never overwrite the previous one, so without a cap the asset cache would
 // keep every build ever visited. Entries go in in deploy order, so evicting
 // the head drops the oldest deploy first; a current asset that gets evicted
-// is simply refetched once.
-const ASSET_MAX_ENTRIES = 100;
+// is simply refetched once. The ~40 brand logos share this budget — stable
+// URLs, so they survive deploys, but they have to fit next to a few builds'
+// worth of chunks for an offline list to keep its avatars.
+const ASSET_MAX_ENTRIES = 160;
 
 const isTileRequest = (url) =>
   TILE_HOSTS.some((h) => url.hostname === h || url.hostname.endsWith('.' + h));
@@ -42,12 +52,30 @@ async function tileFromCacheFirst(event, req) {
   return res;
 }
 
+// The brand index is a ~110 kB build-time snapshot that changes between
+// deploys but never between two loads: serve the cached copy at once and
+// refresh it behind the page. Without it an offline reload loses every
+// enseigne name, and the list falls back to bare initials.
+async function brandIndexFromCache(event, req) {
+  const cache = await caches.open(DATA_CACHE);
+  const hit = await cache.match(req);
+  const fromNetwork = fetch(req).then(async (res) => {
+    if (res.ok) await cache.put(req, res.clone());
+    return res;
+  });
+  if (!hit) return fromNetwork;
+  // The page already has its answer; the refresh must still be tracked, or the
+  // worker can be killed before the new copy lands.
+  event.waitUntil(fromNetwork.catch(() => {}));
+  return hit;
+}
+
 self.addEventListener('install', () => self.skipWaiting());
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
-      const keep = [ASSET_CACHE, SHELL_CACHE, TILE_CACHE];
+      const keep = [ASSET_CACHE, SHELL_CACHE, TILE_CACHE, DATA_CACHE];
       for (const key of await caches.keys()) {
         if (!keep.includes(key)) await caches.delete(key);
       }
@@ -70,10 +98,18 @@ self.addEventListener('fetch', (event) => {
 
   if (url.origin !== self.location.origin) return; // other APIs: straight to network
 
-  // Immutable build output + icons + self-hosted fonts: cache-first
+  if (url.pathname === '/brands-fra.json') {
+    event.respondWith(brandIndexFromCache(event, req));
+    return;
+  }
+
+  // Immutable build output + icons + self-hosted fonts: cache-first. Brand
+  // logos join them: they are as static as the app icons, and without them a
+  // station list read offline shows initials where it showed a logo.
   if (
     url.pathname.startsWith('/assets/') ||
     url.pathname.startsWith('/icons/') ||
+    url.pathname.startsWith('/brand-icons/') ||
     url.pathname.startsWith('/fonts/')
   ) {
     event.respondWith(

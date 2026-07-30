@@ -1,4 +1,4 @@
-import { test, expect, gotoMap } from './fixtures'
+import { test, expect, gotoMap, openZoneList, seedStationsCache } from './fixtures'
 
 // Slight pans must not refetch stations: every fetch covers MAX_RADIUS_KM
 // (25 km) around its center, so while the displayed zone stays inside a
@@ -66,4 +66,90 @@ test('a slight pan re-uses the fetched area instead of refetching', async ({ pag
 
   await page.waitForTimeout(1200) // any would-be refetch fires in this window
   expect(gouvCalls, 'zone inside the fresh 25 km area → no refetch').toBe(initialCalls)
+})
+
+// Reloading must not depend on the source being reachable: the fetched area
+// lives in IndexedDB, so a cold boot paints it before anything is requested.
+// The unit suite covers the cache's own rules against a substitute store; what
+// only a browser can prove is that the records really survive a reload.
+test('a reload paints the fetched area even with the source cut', async ({ page }) => {
+  let sourceUp = true
+  await page.route('**/proxy/fra/**', async (route) => {
+    if (!sourceUp) return route.abort()
+    await route.fulfill({
+      json: {
+        total_count: 1,
+        results: [
+          {
+            id: 'e2e-cached',
+            ville: 'Cacheville',
+            adresse: '1 rue Persistante',
+            geom: { lat: 43.6047, lon: 1.4442 },
+            gazole_prix: '1.499',
+          },
+        ],
+      },
+    })
+  })
+  await page.route('**/brands-fra.json', (route) =>
+    route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
+  )
+
+  await gotoMap(page)
+  await openZoneList(page)
+  await expect(page.getByText('Cacheville').first()).toBeVisible()
+  // The cache is written on idle — leave the flush a window before reloading
+  await page.waitForTimeout(1500)
+
+  sourceUp = false
+  await page.reload()
+
+  // The zone card is what says the stations are on screen — the sheet handle
+  // only exists once they are, so waiting on it first is what keeps
+  // `openZoneList` from deciding against a page that has not painted yet.
+  await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
+  await openZoneList(page)
+  await expect(page.getByText('Cacheville').first()).toBeVisible()
+})
+
+// Past the revalidation window the chip must stop saying « il y a N j » and
+// name the day the prices were read — an age nothing but a seeded area can
+// produce, since the app can only ever write `Date.now()`.
+test('an area older than the revalidation window is dated, not merely aged', async ({ page }) => {
+  await page.route('**/proxy/fra/**', (route) => route.abort())
+  await page.route('**/brands-fra.json', (route) =>
+    route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
+  )
+
+  const twoDaysAgo = 2 * 24 * 3_600_000
+  await seedStationsCache(page, [
+    {
+      source: 'fra',
+      center: { lat: 43.6047, lng: 1.4442 },
+      fetchRadiusKm: 25,
+      ageMs: twoDaysAgo,
+      stations: [
+        {
+          id: 'fra-seeded',
+          name: 'Station · Vieilleville',
+          init: 'SV',
+          lat: 43.6047,
+          lng: 1.4442,
+          address: '2 rue Ancienne',
+          city: 'Vieilleville',
+          prices: { diesel: { value: 1.599 } },
+          tags: [],
+          services: [],
+          highway: false,
+        },
+      ],
+    },
+  ])
+  await page.reload()
+
+  await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
+  // « Prix du 28 juil. », not « il y a 2 j »
+  await expect(page.getByRole('button', { name: 'Recharger les prix' })).toContainText(/Prix du/)
+  await openZoneList(page)
+  await expect(page.getByText('Vieilleville').first()).toBeVisible()
 })

@@ -887,7 +887,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
       const reqId = ++stationsReq.current;
-      const cached = readStationsCache(sourceId, searchPos, radius);
+      // The durable tier is async (IndexedDB); the `loadedArea` fast path above
+      // stays synchronous, so a live circle drag never waits on this.
+      const cached = await readStationsCache(sourceId, searchPos, radius);
+      if (reqId !== stationsReq.current) return;
       if (!force && cached && cached.covers && Date.now() - cached.fetchedAt < STALE_MS) {
         if (cached.center && cached.fetchRadiusKm != null) {
           loadedArea.current = {
