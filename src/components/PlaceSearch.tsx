@@ -208,7 +208,8 @@ export default function PlaceSearch() {
           position: 'relative',
           background: C.surface,
           border: `1px solid ${C.border09}`,
-          borderRadius: 22,
+          // The attached list squares the bar's bottom so the two read as one
+          borderRadius: desktop && suggestions.length > 0 ? '22px 22px 0 0' : 22,
           boxShadow: '0 14px 40px rgba(0,0,0,.55)',
           pointerEvents: 'auto',
         }}
@@ -262,23 +263,27 @@ export default function PlaceSearch() {
         {suggestions.length > 0 && (
           // A dropdown OVER whatever sits under the bar — the phone's chips
           // and the map's floating controls — never part of the flow: opening
-          // it must not push anything. On the phone it goes full-bleed: -17
-          // undoes the overlay's 16px side insets (MapScreen) plus the bar's
-          // own 1px border, since offsets count from the padding box.
-          // Scrollable and capped to part of the viewport rather than
-          // covering it; `overscroll-behavior: contain` keeps a flick at the
-          // end of the list from reaching the map underneath.
+          // it must not push anything. On a window it sits flush under the
+          // bar so the two read as ONE box with a divider; on the phone it
+          // goes full-bleed instead: -17 undoes the overlay's 16px side
+          // insets (MapScreen) plus the bar's own 1px border, since offsets
+          // count from the padding box. Scrollable and capped to part of the
+          // viewport rather than covering it; `overscroll-behavior: contain`
+          // keeps a flick at the end of the list from reaching the map
+          // underneath.
           <div
             data-testid="search-suggestions"
             style={{
               position: 'absolute',
-              top: 'calc(100% + 8px)',
+              top: desktop ? '100%' : 'calc(100% + 8px)',
               left: desktop ? -1 : -17,
               right: desktop ? -1 : -17,
               zIndex: 1,
               background: C.surface,
               border: `1px solid ${C.border09}`,
-              borderRadius: desktop ? 18 : '0 0 18px 18px',
+              ...(desktop
+                ? { borderTop: `1px solid ${C.border}`, borderRadius: '0 0 22px 22px' }
+                : { borderRadius: '0 0 18px 18px' }),
               boxShadow: '0 14px 40px rgba(0,0,0,.55)',
               maxHeight: 'min(46vh, 320px)',
               overflowY: 'auto',
