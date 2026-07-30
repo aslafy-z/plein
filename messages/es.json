@@ -126,6 +126,8 @@
   "search_see_stations_here": "ver las gasolineras aquí",
   "search_route_to_aria": "Ruta hasta {place}",
   "search_route_shortcut": "Ruta ›",
+  "search_recents_title": "Recientes",
+  "search_recent_place_aria": "Lugar ya buscado",
   "sheet_selected_station": "Gasolinera seleccionada",
   "sheet_cheapest_nearby": "La más barata cerca de ti",
   "sheet_cheapest_in_area": "La más barata de esta zona",

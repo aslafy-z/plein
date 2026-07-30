@@ -50,7 +50,9 @@ import {
   type MapsSiteId,
   type PersistedSettings,
   type RecentPlace,
+  type SearchedPlace,
 } from './persist';
+import { pushSearchIn } from './searchHistory';
 import { mapUrlQuery, parseMapUrl } from '../lib/mapUrl';
 import { mapViewShareData, stationShareData, type ShareData } from '../lib/share';
 import { readStationsCache, writeStationsCache, STALE_MS } from '../data/stationsCache';
@@ -105,7 +107,7 @@ export type Screen =
 export type RouteMode = 'balanced' | 'price' | 'detour';
 export type SortMode = 'price' | 'distance';
 
-export type { MapsSiteId, FavoriteStation, RecentPlace };
+export type { MapsSiteId, FavoriteStation, RecentPlace, SearchedPlace };
 /** Web maps sites offered by « Y aller » on desktop, in display order */
 export const MAPS_SITE_IDS: MapsSiteId[] = ['google', 'waze', 'apple', 'osm'];
 
@@ -386,6 +388,9 @@ export interface AppStore {
   useCurrentPositionAsStart(): void;
   setTo(text: string, point?: GeoPoint | null): void;
   searchPlaces(q: string, opts?: GeocodeSearchOptions): Promise<GeocodeResult[]>;
+  /** Places picked in the map's place search, offered back on the next one */
+  searchHistory: SearchedPlace[];
+  rememberSearchedPlace(place: GeocodeResult): void;
   recents: RecentPlace[];
   /** false while `recents` still shows the default suggestions */
   hasTripHistory: boolean;
@@ -622,6 +627,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [recents, setRecents] = useState<RecentPlace[]>(persisted.recents ?? DEFAULT_RECENTS);
   const [hasTripHistory, setHasTripHistory] = useState(persisted.recents != null);
   usePersisted('recents', recents);
+  // The place search's own history — kept apart from the trip « Récents »,
+  // which mean « a route you actually ran », not « a place you looked at ».
+  const [searchHistory, setSearchHistory] = useState<SearchedPlace[]>(
+    persisted.searchHistory ?? [],
+  );
+  usePersisted('searchHistory', searchHistory);
+  const rememberSearchedPlace = useCallback((place: GeocodeResult) => {
+    const at = Date.now();
+    setSearchHistory((prev) => pushSearchIn(prev, place, at));
+  }, []);
   const [canInstall, setCanInstall] = useState(installReady());
   const [installDismissed, setInstallDismissed] = useState(persisted.installDismissed ?? false);
   const [stations, setStations] = useState<StationsState>({
@@ -1536,6 +1551,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       useCurrentPositionAsStart,
       setTo,
       searchPlaces,
+      searchHistory,
+      rememberSearchedPlace,
       recents,
       hasTripHistory,
       routeReady,
@@ -1594,7 +1611,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       focusStationId, mapZoom, setMapZoom,
       favorites, toggleFavorite, stations, roadReach, loadStations, fromText, fromIsCurrentPosition,
       toText, fromPoint, toPoint,
-      setFrom, useCurrentPositionAsStart, setTo, searchPlaces, recents, hasTripHistory, routeReady,
+      setFrom, useCurrentPositionAsStart, setTo, searchPlaces, searchHistory,
+      rememberSearchedPlace, recents, hasTripHistory, routeReady,
       startRoute, editRoute, openRouteSearch, focusDestination, consumeFocusDestination,
       routeMode, routeState, plannedStops, togglePlannedStop, vehicle, setVehicle, tank, setTank,
       consumption, setConsumption,

@@ -126,6 +126,8 @@
   "search_see_stations_here": "voir les stations ici",
   "search_route_to_aria": "Itinéraire vers {place}",
   "search_route_shortcut": "Itinéraire ›",
+  "search_recents_title": "Récents",
+  "search_recent_place_aria": "Lieu déjà recherché",
   "sheet_selected_station": "Station sélectionnée",
   "sheet_cheapest_nearby": "La moins chère près de vous",
   "sheet_cheapest_in_area": "La moins chère dans cette zone",
