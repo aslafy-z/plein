@@ -85,6 +85,16 @@ test('the filters are a popover: Escape and a click outside both close it', asyn
   await page.getByText(/^Filtres · \d+$/).click()
   await expect(dialog).toBeVisible()
   await expect(dialog.getByText('Rayon de recherche')).toBeVisible()
+  // The service chips are the same in both arrangements, AdBlue included —
+  // the popover is a frame around the shared body, never a second copy of it
+  const adBlue = dialog.getByRole('button', { name: 'AdBlue', exact: true })
+  await expect(adBlue).toHaveAttribute('aria-pressed', 'false')
+  await adBlue.click()
+  await expect(adBlue).toHaveAttribute('aria-pressed', 'true')
+  await expect(
+    dialog.getByText(/Les stations françaises et portugaises restent affichées/),
+  ).toBeVisible()
+  await adBlue.click()
 
   await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)

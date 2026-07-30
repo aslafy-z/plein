@@ -44,6 +44,10 @@ export function serviceTagLabel(id: ServiceTag): string {
       return m.service_air_pump();
     case 'additives':
       return m.service_additives();
+    case 'adBlue':
+      // A trademark, spelled the same in all five locales — the catalog
+      // already carries it for the product chip, so there is one entry, not two
+      return m.product_adblue();
   }
 }
 

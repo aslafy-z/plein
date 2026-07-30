@@ -537,8 +537,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   ]);
   usePersisted('brandSel', brandSel);
   const [serviceTags, setServiceTags] = useState<Partial<Record<ServiceTag, boolean>>>(() =>
-    Object.fromEntries((initialMap.services ?? []).map((t) => [t, true])),
+    Object.fromEntries((initialMap.services ?? persisted.serviceTags ?? []).map((t) => [t, true])),
   );
+  // The selection as the URL and the settings blob spell it: the active tags
+  // in the canonical order, so a shared link and a reload both come back to
+  // the same filters (`brandSel` has worked that way since it existed).
+  const activeServiceTags = useMemo(
+    () => SERVICE_TAGS.filter((t) => serviceTags[t]),
+    [serviceTags],
+  );
+  usePersisted('serviceTags', activeServiceTags);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [routeMode, setRouteMode] = useState<RouteMode>('balanced');
   const [plannedStops, setPlannedStops] = useState<Record<string, boolean>>({});
@@ -753,9 +761,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         fuel,
         radius,
         brands: brandSel,
-        services: SERVICE_TAGS.filter((t) => serviceTags[t]),
+        services: activeServiceTags,
       }),
-    [searchPos, mapZoom, fuel, radius, brandSel, serviceTags],
+    [searchPos, mapZoom, fuel, radius, brandSel, activeServiceTags],
   );
   // Browsers cap history writes (Safari: ~100 per 30 s) — a live pan would
   // blow through it, so map-params updates are throttled. Real navigations
@@ -1478,13 +1486,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
           fuel,
           radius,
           brands: brandSel,
-          services: SERVICE_TAGS.filter((t) => serviceTags[t]),
+          services: activeServiceTags,
         },
         window.location.origin,
         { fuelLabel: fuelLabel(fuel), place: searchLabel },
       ),
     );
-  }, [brandSel, fuel, mapZoom, radius, searchLabel, searchPos, serviceTags, share]);
+  }, [brandSel, fuel, mapZoom, radius, searchLabel, searchPos, activeServiceTags, share]);
 
   const finishOnboarding = useCallback(
     (withGeoloc: boolean) => {
@@ -1804,12 +1812,52 @@ const selectEnriched = cached((app: AppStore): NearbyStation[] =>
   app.stations.data.map((s) => enrichDistance(app, s)),
 );
 
+/**
+ * Sources that say whether a station dispenses AdBlue. Spain (`Precio Adblue`)
+ * and Andorra (`idProducte` 9) declare the products on sale, so their silence
+ * means the pump isn't there. The French flux (a closed 27-value service
+ * vocabulary) and the Portuguese one (14 products) never mention AdBlue at
+ * all, so theirs means nothing. Demo ids sit outside the country scheme and
+ * the fixture speaks the app's own service ids, so the offline dataset answers
+ * like a declaring source.
+ */
+const ADBLUE_COUNTRIES: ReadonlyArray<StationCountry | null> = ['esp', 'and', null];
+
+/** Can this station's source answer « does it sell AdBlue »? */
+export function answersAdBlue(s: Station): boolean {
+  return ADBLUE_COUNTRIES.includes(stationCountry(s.id));
+}
+
+/**
+ * Does the loaded population contain anything the AdBlue filter could bite on?
+ * Gates the chip in the filters, exactly as `capabilities.brands` gates the
+ * « Distributeurs » list: offering a filter no loaded station can answer would
+ * be a promise the data cannot keep.
+ */
+export const selectAdBlueAnswerable = cached((app: AppStore): boolean =>
+  app.stations.data.some(answersAdBlue),
+);
+
+/**
+ * Does `s` satisfy the tag `t`?
+ *
+ * Plain `tags.includes` for every tag but AdBlue: there, a station whose
+ * source never publishes the information passes rather than disappearing. The
+ * alternative would turn « AdBlue » into « hide France », the app's largest
+ * market. The list stays honest because a row and a fiche only show the AdBlue
+ * chip where the source actually declared it.
+ */
+function passesTag(s: Station, t: ServiceTag): boolean {
+  if (t === 'adBlue' && !answersAdBlue(s)) return true;
+  return s.tags.includes(t);
+}
+
 /** Enriched stations passing the service-tag filter (no radius, brand or fuel) */
 const selectTagged = cached((app: AppStore): NearbyStation[] => {
   const { serviceTags } = app;
   const wantedTags = (Object.keys(serviceTags) as ServiceTag[]).filter((t) => serviceTags[t]);
   if (!wantedTags.length) return selectEnriched(app);
-  return selectEnriched(app).filter((s) => wantedTags.every((t) => s.tags.includes(t)));
+  return selectEnriched(app).filter((s) => wantedTags.every((t) => passesTag(s, t)));
 });
 
 /** Brandless stations pass as the « independent » group via brandGroup */

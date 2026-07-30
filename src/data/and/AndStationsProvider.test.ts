@@ -47,7 +47,7 @@ describe('groupStations', () => {
     expect(st.prices.unleaded95?.value).toBe(1.62)
     expect(st.city).toBe('La Massana')
     expect(st.postalCode).toBe('4')
-    expect(st.tags).toEqual(['additives'])
+    expect(st.tags).toEqual(['additives', 'adBlue'])
     expect(st.lat).toBeCloseTo(42.501, 3)
     expect(st.lng).toBeCloseTo(1.501, 3)
   })
@@ -102,6 +102,35 @@ describe('groupStations', () => {
       row(21, 6, 42, { geometry: { rings: RINGS } }),
     ])
     expect(stations).toEqual([])
+  })
+
+  it('tags and prices AdBlue from product 9 alone', () => {
+    const [st] = groupStations([
+      row(12, 6, 1.5, { geometry: { rings: RINGS } }),
+      row(12, 9, 0.8, { geometry: { rings: RINGS } }),
+    ])
+    expect(st.tags).toContain('adBlue')
+    expect(st.extraPrices?.adBlue?.value).toBe(0.8)
+  })
+
+  it('keeps « additives » on a Gasoil-millorat-only station, without claiming AdBlue', () => {
+    const [st] = groupStations([
+      row(12, 6, 1.5, { geometry: { rings: RINGS } }),
+      row(12, 8, 1.62, { geometry: { rings: RINGS } }),
+    ])
+    expect(st.tags).toEqual(['additives'])
+    expect(st.extraPrices?.dieselPremium?.value).toBe(1.62)
+  })
+
+  it('never tags AdBlue on a product-9 row priced at zero', () => {
+    // `PREU > 0` is what tells a real listing from an unpriced placeholder
+    const [st] = groupStations([
+      row(12, 6, 1.5, { geometry: { rings: RINGS } }),
+      row(12, 9, 0, { geometry: { rings: RINGS } }),
+    ])
+    expect(st.tags).toEqual([])
+    expect(st.services).toEqual([])
+    expect(st.extraPrices?.adBlue).toBe(undefined)
   })
 
   it('ignores rows without an id or a name, and non-object features', () => {

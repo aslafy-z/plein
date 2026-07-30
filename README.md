@@ -49,7 +49,11 @@ au Portugal.
 - ⭐ **Favoris** — épinglez vos stations, retrouvez leur prix du jour d'un coup d'œil.
 - ⛽ **Tous les carburants** — Gazole, SP95/98, E10, E85, GPLc ; filtres par
   rayon, enseignes, type de distributeur et services (24/24, lavage, boutique,
-  gonflage, additifs type AdBlue…). L'E10 n'existant quasi pas hors de France,
+  gonflage, additifs). Le filtre **AdBlue** n'apparaît que là où la source
+  publie l'information : les flux espagnol et andorran déclarent les produits
+  en vente (et leur prix, affiché sur la fiche), les flux français et portugais
+  n'en disent rien, donc leurs stations restent listées plutôt que masquées à
+  tort. L'E10 n'existant quasi pas hors de France,
   les stations espagnoles, andorranes et portugaises affichent leur SP95
   (compatible E10) sur la carte E10 — libellé « SP95 / L » à l'appui.
 - 🕐 **Horaires réels** — « Ouvert 24/24 », « Fermé · ouvre à 6 h 30 »… calculés

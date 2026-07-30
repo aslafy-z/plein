@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { GeoPoint } from '../lib/geo';
 import type { Station } from './types';
 
-const LS_KEY = 'plein.stations.cache.v2';
+const LS_KEY = 'plein.stations.cache.v3';
 const CENTER: GeoPoint = { lat: 43.6045, lng: 1.4442 };
 
 function station(id: string): Station {

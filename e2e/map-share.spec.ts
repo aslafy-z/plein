@@ -46,3 +46,15 @@ test('a shared link carries the filters it was shared with', async ({ page }) =>
 
   await expect(page.getByText('Filtres · 4')).toBeVisible({ timeout: 15_000 })
 })
+
+test('a shared link carries the AdBlue filter, and an unknown tag never applies', async ({
+  page,
+}) => {
+  // 2 of those 6 dispense AdBlue
+  await page.goto('/?ll=43.6047,1.4442&z=13&f=diesel&r=5&s=adBlue')
+  await expect(page.getByText('Filtres · 2')).toBeVisible({ timeout: 15_000 })
+
+  // A tag no build ever had is dropped rather than emptying the map
+  await page.goto('/?ll=43.6047,1.4442&z=13&f=diesel&r=5&s=hydrogenPump')
+  await expect(page.getByText('Filtres · 6')).toBeVisible({ timeout: 15_000 })
+})

@@ -5,7 +5,8 @@
 // storage key of its own, and « what the app thinks the locale is » can never
 // drift from « what Paraglide thinks it is ».
 import type { GeoPoint } from '../lib/geo';
-import type { DataSourceId, FuelId, GeocodeResult, VehicleId } from '../data/types';
+import type { DataSourceId, FuelId, GeocodeResult, ServiceTag, VehicleId } from '../data/types';
+import { SERVICE_TAGS } from '../data/types';
 
 const LS_KEY = 'plein.settings.v1';
 
@@ -74,6 +75,8 @@ export interface PersistedSettings {
   favorites: FavoriteStation[];
   /** Selected brand groups in the filters (empty/absent = every brand) */
   brandSel: string[];
+  /** Active service filters (empty/absent = no service required) */
+  serviceTags: ServiceTag[];
   /** Armed by onboarding, spent the first time the map sheet can bounce to
       show it pulls up — absent for anyone who onboarded before the hint
       existed, so it only ever plays for newcomers */
@@ -108,6 +111,17 @@ function migrateVehicleId(raw: unknown): VehicleId | null {
   return mapped === 'car' || mapped === 'motorcycle' ? (mapped as VehicleId) : null;
 }
 
+/**
+ * Service filters coming from storage. The vocabulary grows (AdBlue joined it)
+ * and a blob may have been written by another build or hand-edited, so an id
+ * this build doesn't know is dropped: an unknown tag no station carries would
+ * silently empty the map.
+ */
+function migrateServiceTags(raw: unknown): ServiceTag[] | null {
+  if (!Array.isArray(raw)) return null;
+  return raw.filter((t): t is ServiceTag => SERVICE_TAGS.includes(t as ServiceTag));
+}
+
 /** Blob shape written by builds that predate the English-identifier rename */
 interface LegacySettings {
   conso?: number;
@@ -123,6 +137,9 @@ function migrate(raw: Partial<PersistedSettings> & LegacySettings): Partial<Pers
   const vehicle = migrateVehicleId(out.vehicle);
   if (vehicle) out.vehicle = vehicle;
   else delete out.vehicle;
+  const serviceTags = migrateServiceTags(out.serviceTags);
+  if (serviceTags) out.serviceTags = serviceTags;
+  else delete out.serviceTags;
   if (out.consumption == null && typeof out.conso === 'number') out.consumption = out.conso;
   if (out.backgroundLocation == null && typeof out.bgloc === 'boolean') {
     out.backgroundLocation = out.bgloc;

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fluxDateToIso, parseOpeningHours } from './EspStationsProvider'
+import { fluxDateToIso, parseOpeningHours, parseRecord } from './EspStationsProvider'
 import type { GeoPoint } from '../../lib/geo'
 
 // Browser-typed project, Node-run tests — see src/lib/time.test.ts
@@ -107,6 +107,52 @@ describe('parseOpeningHours', () => {
     expect(parseOpeningHours('   ')).toBe(undefined)
     expect(parseOpeningHours(24)).toBe(undefined)
     expect(parseOpeningHours('Consultar en la estación')).toBe(undefined)
+  })
+})
+
+// ── Extra products ───────────────────────────────────────────────────────────
+// The flux prices every product on sale, AdBlue included. A price means the
+// station dispenses it; an empty column means it does not.
+describe('parseRecord — AdBlue', () => {
+  const STAMP = '2026-07-19T03:40:23.000Z'
+  const record = (over: Record<string, unknown> = {}) => ({
+    IDEESS: '1',
+    Latitud: '40,4165',
+    'Longitud (WGS84)': '-3,7026',
+    'Precio Gasoleo A': '1,499',
+    Municipio: 'MADRID',
+    ...over,
+  })
+
+  it('tags and prices a station whose AdBlue column parses', () => {
+    const st = parseRecord(record({ 'Precio Adblue': '0,799' }), STAMP)
+    expect(st?.tags).toContain('adBlue')
+    expect(st?.services).toContain('adBlue')
+    expect(st?.extraPrices?.adBlue).toEqual({ value: 0.799, updatedAt: STAMP })
+  })
+
+  it('leaves the tag off when the column is empty or unreadable', () => {
+    for (const value of ['', '   ', undefined, 'N/A']) {
+      const st = parseRecord(record({ 'Precio Adblue': value }), STAMP)
+      expect(st?.tags).not.toContain('adBlue')
+      expect(st?.services).not.toContain('adBlue')
+      expect(st?.extraPrices?.adBlue).toBe(undefined)
+    }
+  })
+
+  it('keeps « additives » on a premium-diesel-only station, without claiming AdBlue', () => {
+    const st = parseRecord(record({ 'Precio Gasoleo Premium': '1,699' }), STAMP)
+    expect(st?.tags).toContain('additives')
+    expect(st?.tags).not.toContain('adBlue')
+    expect(st?.extraPrices?.dieselPremium?.value).toBe(1.699)
+  })
+
+  it('sets both tags when the station sells AdBlue and premium diesel', () => {
+    const st = parseRecord(
+      record({ 'Precio Adblue': '0,799', 'Precio Gasoleo Premium': '1,699' }),
+      STAMP,
+    )
+    expect(st?.tags).toEqual(expect.arrayContaining(['additives', 'adBlue']))
   })
 })
 

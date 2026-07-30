@@ -5,7 +5,14 @@
 import type { GeoPoint } from '../../lib/geo';
 import { lerpPoint } from '../../lib/geo';
 import type { DayHours, StationHours } from '../../lib/hours';
-import { SERVICE_TAGS, type FuelId, type FuelPrice, type ServiceTag, type Station } from '../types';
+import {
+  SERVICE_TAGS,
+  type ExtraProductId,
+  type FuelId,
+  type FuelPrice,
+  type ServiceTag,
+  type Station,
+} from '../types';
 
 // ── Shared helpers ───────────────────────────────────────────────────────────
 const NOW = Date.now();
@@ -38,6 +45,8 @@ interface StationSpec {
   highway?: boolean;
   services: string[];
   prices: Partial<Record<FuelId, number>>;
+  /** Extra products the source prices, like the Spanish and Andorran fluxes do */
+  extraPrices?: Partial<Record<ExtraProductId, number>>;
   /** Staffed opening range "HH:MM-HH:MM" (24/24 derived from services); Sunday closed when `sundayOff` */
   open?: string;
   sundayOff?: boolean;
@@ -69,6 +78,11 @@ function build(spec: StationSpec): Station {
     const value = spec.prices[f];
     if (value != null) prices[f] = { value, updatedAt };
   });
+  const extraPrices: Partial<Record<ExtraProductId, FuelPrice>> = {};
+  (Object.keys(spec.extraPrices ?? {}) as ExtraProductId[]).forEach((p) => {
+    const value = spec.extraPrices?.[p];
+    if (value != null) extraPrices[p] = { value, updatedAt };
+  });
   return {
     id: spec.id,
     name: spec.name,
@@ -82,6 +96,7 @@ function build(spec: StationSpec): Station {
     prices,
     tags: tagsFromServices(spec.services),
     services: spec.services,
+    extraPrices,
     highway: spec.highway ?? false,
     hours: hoursFromSpec(spec),
   };
@@ -117,14 +132,17 @@ export const DEMO_STATIONS: Station[] = [
   build({
     id: 'te', name: 'TotalEnergies · Centre', init: 'TE', brand: 'TotalEnergies',
     lat: 43.6001, lng: 1.4386, address: '1 allée Jules-Guesde', city: 'Toulouse', postalCode: '31000',
-    h: 1, services: ['open24h', 'carWash', 'shop', 'airPump', 'additives'],
+    h: 1, services: ['open24h', 'carWash', 'shop', 'airPump', 'additives', 'adBlue'],
     prices: { diesel: 1.82, e10: 1.89, e85: 0.89, unleaded95: 1.93, unleaded98: 1.99 },
   }),
   build({
     id: 'bp', name: 'BP · Rocade Est', init: 'BP', brand: 'BP',
     lat: 43.6241, lng: 1.4886, address: 'Rocade Est', city: 'Toulouse', postalCode: '31500',
-    h: 5, services: ['open24h', 'shop', 'additives'],
+    // The only demo station to price its AdBlue — the Spanish and Andorran
+    // fluxes do, the French and Portuguese ones never do
+    h: 5, services: ['open24h', 'shop', 'additives', 'adBlue'],
     prices: { diesel: 1.80, e10: 1.88, unleaded95: 1.92, unleaded98: 1.98 },
+    extraPrices: { adBlue: 0.89 },
   }),
   // Eight more, spread 3–19 km out, all six fuels represented across the set
   build({
