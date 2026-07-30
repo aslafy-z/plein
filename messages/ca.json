@@ -3,6 +3,7 @@
   "app_title": "Plein. — el ple al preu just",
   "unit_metres": "{metres} m",
   "unit_kilometres": "{km} km",
+  "unit_size_under_kilobyte": "menys d'1 kB",
   "unit_minutes": "{minutes} min",
   "unit_hours": "{hours} h",
   "unit_hours_minutes": "{hours} h {minutes}",
