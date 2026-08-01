@@ -3,13 +3,18 @@ import type { Route, RouteStation } from '../data/types'
 import {
   beginCorridor,
   beginGeometry,
+  beginMatrix,
   commitCorridor,
   commitGeometry,
+  commitMatrix,
   failCorridor,
   failGeometry,
+  failMatrix,
   initialRouteState,
+  matrixBlocked,
   routeBusy,
   routeKey,
+  travelMatrixKey,
   type RouteInputs,
   type RouteState,
 } from './routePipeline'
@@ -51,6 +56,7 @@ const station = (id: string, kmAlong: number): RouteStation => ({
   highway: false,
   kmAlong,
   detourMin: 0,
+  offRouteKm: 0,
 })
 
 /** A finished computation for KEY_A: geometry and stations both committed. */
@@ -209,5 +215,78 @@ describe('routeBusy', () => {
     ).toBe(true)
     expect(routeBusy(ready())).toBe(false)
     expect(routeBusy(failCorridor(ready(), KEY_A, 'boom'))).toBe(false)
+  })
+
+  it('never counts the matrix stage — the plan answers without it', () => {
+    expect(routeBusy(beginMatrix(ready(), 'mk'))).toBe(false)
+  })
+})
+
+// ── Matrix stage ─────────────────────────────────────────────────────────────
+describe('matrix stage', () => {
+  const MK = travelMatrixKey('fra', LYON, BORDEAUX, ['a', 'b'], {
+    avoidMotorway: false,
+    avoidToll: false,
+    vehicle: 'car',
+  })
+  const cells = [[null]]
+
+  it('keys on the candidate set and the routing options', () => {
+    const opts = { avoidMotorway: false, avoidToll: false, vehicle: 'car' }
+    expect(travelMatrixKey('fra', LYON, BORDEAUX, ['a', 'b'], opts)).toBe(MK)
+    expect(travelMatrixKey('fra', LYON, BORDEAUX, ['a', 'c'], opts)).not.toBe(MK)
+    expect(
+      travelMatrixKey('fra', LYON, BORDEAUX, ['a', 'b'], { ...opts, avoidToll: true }),
+    ).not.toBe(MK)
+  })
+
+  it('commits only for the key it was begun with', () => {
+    let s = beginMatrix(ready(), MK)
+    expect(s.matrix).toBe('loading')
+    // A stale answer for another candidate set changes nothing
+    expect(commitMatrix(s, 'old-key', cells)).toBe(s)
+    s = commitMatrix(s, MK, cells)
+    expect(s.matrix).toBe('ready')
+    expect(s.matrixCells).toBe(cells)
+  })
+
+  it('fails only for the key in flight, and keeps the route standing', () => {
+    const s = beginMatrix(ready(), MK)
+    expect(failMatrix(s, 'old-key')).toBe(s)
+    const failed = failMatrix(s, MK)
+    expect(failed.matrix).toBe('error')
+    expect(failed.matrixCells).toBeNull()
+    expect(failed.route).not.toBeNull()
+    expect(failed.stations.length).toBe(2)
+  })
+
+  it('re-keying clears the previous cells — they answer another set', () => {
+    const first = commitMatrix(beginMatrix(ready(), MK), MK, cells)
+    const rekeyed = beginMatrix(first, 'other')
+    expect(rekeyed.matrixCells).toBeNull()
+    expect(rekeyed.matrixKey).toBe('other')
+  })
+
+  it('matrixBlocked is an identity when already blocked the same way', () => {
+    const idle = matrixBlocked(ready(), 'idle')
+    expect(matrixBlocked(idle, 'idle')).toBe(idle)
+    const unsupported = matrixBlocked(idle, 'unsupported')
+    expect(unsupported.matrix).toBe('unsupported')
+    expect(matrixBlocked(unsupported, 'unsupported')).toBe(unsupported)
+  })
+
+  it('a NEW trip resets the matrix; the same trip keeps it', () => {
+    const withMatrix = commitMatrix(beginMatrix(ready(), MK), MK, cells)
+    // Same trip recomputed (a retry): the cells still answer the same set
+    let same = beginGeometry(withMatrix, KEY_A)
+    same = commitGeometry(same, KEY_A, route(543), ENDS_A)
+    expect(same.matrix).toBe('ready')
+    expect(same.matrixCells).toBe(cells)
+    // Different trip: stations drop, and the matrix with them
+    let other = beginGeometry(withMatrix, KEY_B)
+    other = commitGeometry(other, KEY_B, route(465), ENDS_B)
+    expect(other.matrix).toBe('idle')
+    expect(other.matrixKey).toBeNull()
+    expect(other.matrixCells).toBeNull()
   })
 })

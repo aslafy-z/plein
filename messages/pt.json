@@ -305,16 +305,21 @@
   "ribbon_km_marker": "KM {km}",
   "ribbon_autonomy_limit": "≈ KM {km} — limite de autonomia sem parar",
   "ribbon_recommended_stop": "Paragem aconselhada",
+  "ribbon_plan_stop_index": "Paragem {index}/{count}",
+  "ribbon_plan_buy": "≈ {litres} L a abastecer · {cost} €",
+  "ribbon_no_stop_needed": "Nenhuma paragem para abastecer é necessária",
+  "ribbon_fuel_at_destination": "≈ {litres} L restantes à chegada",
+  "ribbon_alternatives_title": "Outros postos na viagem",
+  "ribbon_estimated_notice": "Desvios estimados — o cálculo preciso do itinerário está indisponível.",
+  "ribbon_infeasible_title": "Autonomia insuficiente para esta viagem",
+  "ribbon_infeasible_no_station": "Nenhum posto está acessível antes do limite de autonomia (≈ KM {km}). Parta com mais combustível.",
+  "ribbon_infeasible_gap": "Não é possível encadear os postos encontrados para lá do KM {km} sem tocar na reserva.",
+  "ribbon_manual_stops_invalid": "Algumas paragens selecionadas não podem ser planeadas (combustível indisponível ou fora do caminho).",
   "ribbon_station_aria": "Ficha de {station}",
   "ribbon_go_there": "Ir",
   "ribbon_add_stop_title": "Adicionar ao percurso",
   "ribbon_add_stop_aria": "Adicionar ao percurso",
   "ribbon_remove_stop_aria": "Remover do percurso",
-  "ribbon_reco_lowest_price": "Preço mais baixo da viagem: −{saving} €",
-  "ribbon_reco_no_detour": "No seu caminho · sem desvio",
-  "ribbon_reco_min_detour": "Desvio mínimo · +{minutes} min",
-  "ribbon_reco_balanced": "Abastecer aqui: −{saving} € face ao mais caro da viagem",
-  "ribbon_reco_only_station": "Único posto encontrado na viagem",
   "route_error_unavailable": "Rota indisponível. Verifique a sua ligação.",
   "ribbon_error_fallback": "Rota indisponível.",
   "ribbon_edit_route": "Alterar a rota",
@@ -343,6 +348,23 @@
     }
   ],
   "ribbon_stage_no_stations": "Não foi encontrado nenhum posto no trajeto.",
+  "ribbon_stage_plan_direct": "Plano calculado: nenhuma paragem para abastecer é necessária.",
+  "ribbon_stage_plan_stops": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Plano calculado: {count} paragem para abastecer.",
+        "countPlural=other": "Plano calculado: {count} paragens para abastecer."
+      }
+    }
+  ],
+  "ribbon_stage_plan_infeasible": "Autonomia insuficiente: nenhum plano de abastecimento é possível.",
   "ribbon_departure": "Partida · {place}",
   "ribbon_departure_tank": "Depósito {percent} % · autonomia ≈ {km} km",
   "ribbon_no_stops": "Nenhum posto encontrado ao longo da viagem — alargue os filtros.",
@@ -387,7 +409,7 @@
   "ribbon_share_aria": "Partilhar o trajeto",
   "ribbon_distance_duration": "{km} km · {duration}",
   "ribbon_fuel_tank": "{fuel} · depósito {tank} L",
-  "ribbon_trip_fuel": "≈ {litres} L · {cost} € de combustível",
+  "ribbon_trip_purchase": "≈ {litres} L a abastecer · {cost} € no total",
   "detail_map_aria": "Mapa do posto",
   "detail_loading": "A carregar o posto…",
   "detail_place_chip_route": "KM {km} · {detour}",

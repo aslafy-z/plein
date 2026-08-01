@@ -311,16 +311,21 @@
   "ribbon_km_marker": "KM {km}",
   "ribbon_autonomy_limit": "≈ KM {km} — range limit without stopping",
   "ribbon_recommended_stop": "Recommended stop",
+  "ribbon_plan_stop_index": "Stop {index}/{count}",
+  "ribbon_plan_buy": "≈ {litres} L to buy · {cost} €",
+  "ribbon_no_stop_needed": "No fuel stop needed",
+  "ribbon_fuel_at_destination": "≈ {litres} L left on arrival",
+  "ribbon_alternatives_title": "Other stations on the route",
+  "ribbon_estimated_notice": "Estimated detours — precise route calculation is unavailable.",
+  "ribbon_infeasible_title": "Not enough range for this trip",
+  "ribbon_infeasible_no_station": "No station is reachable before the range limit (≈ KM {km}). Leave with more fuel.",
+  "ribbon_infeasible_gap": "The stations found cannot be chained beyond KM {km} without eating into the reserve.",
+  "ribbon_manual_stops_invalid": "Some selected stops cannot be planned (fuel not sold there, or off the route).",
   "ribbon_station_aria": "Details for {station}",
   "ribbon_go_there": "Go there",
   "ribbon_add_stop_title": "Add to the run",
   "ribbon_add_stop_aria": "Add to the run",
   "ribbon_remove_stop_aria": "Remove from the run",
-  "ribbon_reco_lowest_price": "Lowest price on the route: −{saving} €",
-  "ribbon_reco_no_detour": "Right on your route · no detour",
-  "ribbon_reco_min_detour": "Least detour · +{minutes} min",
-  "ribbon_reco_balanced": "Filling up here: −{saving} € vs the priciest on the route",
-  "ribbon_reco_only_station": "The only station found on the route",
   "route_error_unavailable": "Route unavailable. Check your connection.",
   "ribbon_error_fallback": "Route unavailable.",
   "ribbon_edit_route": "Edit the route",
@@ -349,6 +354,23 @@
     }
   ],
   "ribbon_stage_no_stations": "No station found along the route.",
+  "ribbon_stage_plan_direct": "Plan computed: no fuel stop needed.",
+  "ribbon_stage_plan_stops": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Plan computed: {count} fuel stop.",
+        "countPlural=other": "Plan computed: {count} fuel stops."
+      }
+    }
+  ],
+  "ribbon_stage_plan_infeasible": "Not enough range: no refuelling plan is possible.",
   "ribbon_departure": "From · {place}",
   "ribbon_departure_tank": "Tank {percent} % · range ≈ {km} km",
   "ribbon_no_stops": "No station found along the route — widen the filters.",
@@ -393,7 +415,7 @@
   "ribbon_share_aria": "Share the trip",
   "ribbon_distance_duration": "{km} km · {duration}",
   "ribbon_fuel_tank": "{fuel} · {tank} L tank",
-  "ribbon_trip_fuel": "≈ {litres} L · {cost} € of fuel",
+  "ribbon_trip_purchase": "≈ {litres} L to buy · {cost} € in total",
   "detail_map_aria": "Map of the station",
   "detail_loading": "Loading the station…",
   "detail_place_chip_route": "KM {km} · {detour}",

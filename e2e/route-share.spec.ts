@@ -27,7 +27,9 @@ test('the ribbon writes the trip into the URL, keeps up with the strategy, and s
   await gotoMap(page)
   await page.getByText('Trajet', { exact: true }).click()
   await pickRoutePlace(page, 'to', 'Bordeaux', 'Bordeaux centre')
-  await expect(page.getByText('Arrêt conseillé').first()).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText('Aucun arrêt carburant nécessaire').first()).toBeVisible({
+    timeout: 30_000,
+  })
 
   // The computed ribbon owns its own path, and the query describes the trip
   await expect.poll(() => new URL(page.url()).pathname).toBe('/route/results')
@@ -47,7 +49,9 @@ test('the ribbon writes the trip into the URL, keeps up with the strategy, and s
 
   // F5 on the ribbon returns to the ribbon — same trip, same strategy
   await page.reload()
-  await expect(page.getByText('Arrêt conseillé').first()).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText('Aucun arrêt carburant nécessaire').first()).toBeVisible({
+    timeout: 30_000,
+  })
   expect(new URL(page.url()).pathname).toBe('/route/results')
   await expect.poll(() => params(page).get('m')).toBe('price')
 })
@@ -60,7 +64,9 @@ test('a shared trip link reopens the same trip, without touching the reader prof
       '&f=diesel&m=price&v=car&t=60&c=7&tp=50',
   )
 
-  await expect(page.getByText('Arrêt conseillé').first()).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText('Aucun arrêt carburant nécessaire').first()).toBeVisible({
+    timeout: 30_000,
+  })
   await openRouteSheet(page)
   // The endpoints the link named, and ITS tank — not the reader's 50 L default
   await expect(page.getByText('Capitole → Bordeaux centre')).toBeVisible()
@@ -76,7 +82,9 @@ test('a shared trip link reopens the same trip, without touching the reader prof
 test('a link carrying labels but no coordinates geocodes on open', async ({ page }) => {
   await page.goto('/route/results?dl=Bordeaux%20centre&f=diesel')
 
-  await expect(page.getByText('Arrêt conseillé').first()).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText('Aucun arrêt carburant nécessaire').first()).toBeVisible({
+    timeout: 30_000,
+  })
   // Once resolved, the address bar carries the coordinates a re-share needs
   await expect.poll(() => params(page).get('d')).toBe('44.8378,-0.5792')
 })

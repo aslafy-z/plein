@@ -1,11 +1,12 @@
 import { test, expect, openRouteSheet, closeRouteSheet, pickRoutePlace } from './fixtures'
 import type { Page, Route as PwRoute } from '@playwright/test'
 
-// The route is computed in two stages and committed twice: the itinerary as
-// soon as the routing engine answers, the corridor stations after. These specs
-// pin the consequences — the trip is readable before any station is known, a
-// recompute never blanks what is on screen, and a stage that fails is reported
-// where it failed instead of being papered over.
+// The route is computed in three stages: the itinerary as soon as the routing
+// engine answers, the corridor stations after, then the road matrix the
+// fuel-stop plan runs on. These specs pin the consequences — the trip is
+// readable before any station is known, a recompute never blanks what is on
+// screen, and a stage that fails is reported where it failed instead of being
+// papered over.
 //
 // Every endpoint is stubbed, and the window between the two stages is held
 // open by the test itself (a promise the stub awaits), so what the screen
@@ -73,9 +74,31 @@ function corridorStations(route: PwRoute) {
   }
 }
 
-/** Brand enrichment, the geocoder, and an instantly-empty boot zone — the
-    zone must answer so the fallback banner (and its own « Réessayer ») stays
-    out of these specs' way. */
+/** Rough km between two coordinates — enough for a synthetic matrix cell */
+function crowKm(a: [number, number], b: [number, number]) {
+  const dLat = (a[1] - b[1]) * 111
+  const dLng = (a[0] - b[0]) * 111 * Math.cos((a[1] * Math.PI) / 180)
+  return Math.sqrt(dLat * dLat + dLng * dLng)
+}
+
+/** Answer the plan's square-matrix call with distances derived from the
+    requested coordinates — deterministic, and shaped like the real thing. */
+async function stubTravelMatrix(page: Page) {
+  await page.route('**/proxy/osrm/table/**', (r) => {
+    const path = new URL(r.request().url()).pathname
+    const coords = path
+      .slice(path.lastIndexOf('/') + 1)
+      .split(';')
+      .map((c) => c.split(',').map(parseFloat) as [number, number])
+    const distances = coords.map((a) => coords.map((b) => crowKm(a, b) * 1.25 * 1000))
+    const durations = distances.map((row) => row.map((m) => (m / 1000 / 80) * 3600))
+    return r.fulfill({ json: { code: 'Ok', distances, durations } })
+  })
+}
+
+/** Brand enrichment, the geocoder, the plan matrix and an instantly-empty
+    boot zone — the zone must answer so the fallback banner (and its own
+    « Réessayer ») stays out of these specs' way. */
 async function stubStatics(page: Page) {
   await page.route('**/brands-fra.json', (r) =>
     r.fulfill({ json: { v: 1, labels: [], pois: [] } }),
@@ -83,6 +106,7 @@ async function stubStatics(page: Page) {
   await page.route('**/proxy/ban/**', (r) =>
     r.fulfill({ json: banResponse(new URL(r.request().url()).searchParams.get('q') ?? '') }),
   )
+  await stubTravelMatrix(page)
   await page.route('**/proxy/fra/**', (r) => r.fulfill({ json: { total_count: 0, results: [] } }))
 }
 
@@ -91,14 +115,16 @@ interface StageStub {
   release(): void
 }
 
-/** Both engines the real provider can reach, so « down » really means down */
+/** Both engines the real provider can reach, so « down » really means down.
+    Route endpoints only: the plan's matrix call (table / sources_to_targets)
+    is its own stage with its own stub. */
 async function stubRouting(
   page: Page,
   { mode = 'ok', distanceM = 243_000 }: { mode?: 'ok' | 'down' | 'hold'; distanceM?: number } = {},
 ): Promise<StageStub> {
   let release!: () => void
   const held = new Promise<void>((res) => (release = res))
-  for (const engine of ['**/proxy/osrm/**', '**/proxy/valhalla/**']) {
+  for (const engine of ['**/proxy/osrm/route/**', '**/proxy/valhalla/route**']) {
     await page.route(engine, async (r) => {
       if (mode === 'down') return r.abort()
       if (mode === 'hold') await held
@@ -150,17 +176,28 @@ test('the itinerary and its map show before a single station is known', async ({
   await expect(page.locator('[aria-label="Carte du trajet"]')).toBeVisible()
   await openRouteSheet(page)
   await expect(page.locator('.skeleton').first()).toBeVisible()
-  await expect(page.getByText('Arrêt conseillé').first()).toBeHidden()
+  await expect(page.getByText('Aucun arrêt carburant nécessaire')).toHaveCount(0)
   await expect(liveRegion(page)).toHaveText(/Itinéraire trouvé/)
 
-  // Corridor stage: the placeholders give way to real stops, and the header
+  // Corridor stage: the placeholders give way to the plan (the stubbed tank
+  // covers the stubbed trip, so it is the zero-stop card), and the header
   // that was already there does not move.
   corridor.release()
-  await expect(page.getByText('Arrêt conseillé').first()).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText('Aucun arrêt carburant nécessaire').first()).toBeVisible({
+    timeout: 30_000,
+  })
   await expect(page.locator('.skeleton')).toHaveCount(0)
   await expect(page.getByText(/243 km ·/).first()).toBeVisible()
 
-  // Measured rather than eyeballed: the two commits are ordered and distinct.
+  // Matrix stage: the plan's legs upgrade from the geometric estimate to the
+  // (stubbed) road matrix — measurable, like the other two commits.
+  await page.waitForFunction(
+    () => performance.getEntriesByType('measure').some((e) => e.name === 'route:time-to-plan'),
+    undefined,
+    { timeout: 30_000 },
+  )
+
+  // Measured rather than eyeballed: the three commits are ordered and distinct.
   const timing = await page.evaluate(() =>
     Object.fromEntries(
       performance
@@ -171,6 +208,7 @@ test('the itinerary and its map show before a single station is known', async ({
   )
   expect(timing['route:time-to-geometry']).toBeGreaterThan(0)
   expect(timing['route:time-to-stations']).toBeGreaterThan(timing['route:time-to-geometry'])
+  expect(timing['route:time-to-plan']).toBeGreaterThan(timing['route:time-to-stations'])
 })
 
 test('a cold computation shows the trip it is waiting for, not a bare sentence', async ({
@@ -203,7 +241,9 @@ test('recomputing keeps the previous trip on screen, labelled', async ({ page })
   await gotoRoute(page)
   await stubCorridor(page)
   await submitTrip(page, 'Bordeaux')
-  await expect(page.getByText('Arrêt conseillé').first()).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText('Aucun arrêt carburant nécessaire').first()).toBeVisible({
+    timeout: 30_000,
+  })
 
   // Recompute another trip entirely, holding the new geometry open: the
   // previous one must stay drawn and say so, instead of the panel blanking
@@ -237,7 +277,9 @@ test('a corridor failure keeps the real itinerary and retries that stage alone',
   await stubRouting(page)
   let engineRequests = 0
   page.on('request', (req) => {
-    if (/\/proxy\/(osrm|valhalla)\//.test(req.url())) engineRequests++
+    // Route computations only — the plan's matrix calls are their own stage
+    // and legitimately fire once the corridor finally lands
+    if (/\/proxy\/(osrm\/route|valhalla\/route)/.test(req.url())) engineRequests++
   })
   await gotoRoute(page)
   await stubCorridor(page, { mode: 'down' })
@@ -248,14 +290,16 @@ test('a corridor failure keeps the real itinerary and retries that stage alone',
   await expect(page.locator('[aria-label="Carte du trajet"]')).toBeVisible()
   await openRouteSheet(page)
   await expect(page.getByText(/Stations du trajet indisponibles/).last()).toBeVisible()
-  // Never invented stops next to a real road
-  await expect(page.getByText('Arrêt conseillé').first()).toBeHidden()
+  // Never invented stops (or a plan over them) next to a real road
+  await expect(page.getByText('Aucun arrêt carburant nécessaire')).toHaveCount(0)
 
   // Retrying the stations does not recompute the itinerary underneath them
   const enginesBefore = engineRequests
   await stubCorridor(page)
   await page.getByRole('button', { name: 'Réessayer' }).click()
-  await expect(page.getByText('Arrêt conseillé').first()).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText('Aucun arrêt carburant nécessaire').first()).toBeVisible({
+    timeout: 30_000,
+  })
   await expect(page.getByText(/243 km ·/).first()).toBeVisible()
   expect(engineRequests).toBe(enginesBefore)
 })
@@ -270,7 +314,7 @@ test('a routing failure is reported, never replaced by a fabricated line', async
   await expect(
     page.getByText('Itinéraire indisponible. Vérifiez votre connexion.').first(),
   ).toBeVisible({ timeout: 30_000 })
-  await expect(page.getByText('Arrêt conseillé').first()).toBeHidden()
+  await expect(page.getByText('Aucun arrêt carburant nécessaire')).toHaveCount(0)
   await expect(page.getByText(/243 km ·/).first()).toBeHidden()
 
   // The retry re-runs the whole pipeline once the engine answers again
@@ -278,5 +322,7 @@ test('a routing failure is reported, never replaced by a fabricated line', async
   await openRouteSheet(page)
   await page.getByRole('button', { name: 'Réessayer' }).click()
   await expect(page.getByText(/243 km ·/).first()).toBeVisible({ timeout: 30_000 })
-  await expect(page.getByText('Arrêt conseillé').first()).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText('Aucun arrêt carburant nécessaire').first()).toBeVisible({
+    timeout: 30_000,
+  })
 })

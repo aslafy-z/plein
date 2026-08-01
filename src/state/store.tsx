@@ -23,7 +23,7 @@ import {
 import { IS_ANDROID, IS_IOS } from '../lib/env';
 import type { GeoPoint } from '../lib/geo';
 import { m } from '../paraglide/messages.js';
-import { cumulativeKm, haversineKm, nearestOnPolyline } from '../lib/geo';
+import { haversineKm } from '../lib/geo';
 import {
   ALL_FUELS,
   SERVICE_TAGS,
@@ -54,14 +54,39 @@ import {
 import { pushSearchIn } from './searchHistory';
 import { beginRouteTiming, markRoute } from '../lib/perf';
 import {
+  CROW_ROAD_FACTOR,
+  VALUE_OF_TIME_CENTS_PER_MIN,
+  effectiveLiterPrice,
+  usableRangeKm,
+} from '../lib/fuelEconomics';
+import {
+  estimatePlanLegs,
+  matrixPlanLegs,
+  projectCorridor,
+  selectRouteCandidates,
+  type PlanLegs,
+  type RouteCandidate,
+} from '../lib/routeCandidates';
+import {
+  planRoute,
+  type PlanQuality,
+  type PlannedFuelStop,
+  type RoutePlan,
+} from '../lib/routeOptimizer';
+import {
   beginCorridor,
   beginGeometry,
+  beginMatrix,
   commitCorridor,
   commitGeometry,
+  commitMatrix,
   failCorridor,
   failGeometry,
+  failMatrix,
   initialRouteState,
+  matrixBlocked,
   routeKey,
+  travelMatrixKey,
   type RouteEndpoints,
   type RouteState,
 } from './routePipeline';
@@ -115,10 +140,28 @@ export const VEHICLE_PRESETS: Record<
 const DEFAULT_CONSUMPTION = VEHICLE_PRESETS.car.consumption;
 /** Default departure tank level (%) — adjustable on the route setup */
 const DEFAULT_START_TANK_PCT = 70;
-/** € value of one minute of detour, for the « balanced » strategy */
-const EUR_PER_DETOUR_MIN = 0.35;
-/** Minutes spent actually refuelling at a stop */
-const REFUEL_MIN = 4;
+/**
+ * Points of one fuel-plan matrix call: origin + candidate stations +
+ * destination. This is OUR budget, not a backend limit — 32 keeps the request
+ * small while covering ~30 stations, plenty for one corridor, and it is what
+ * binds today since every provider declares a higher `travelMatrixMaxPoints`.
+ * The min against that value is the guard for a provider that declares less.
+ */
+const MATRIX_MAX_POINTS = 32;
+/**
+ * Quiet period before the matrix call goes out. Long enough that dragging the
+ * departure-tank slider — which re-thins the candidate set at every step —
+ * issues one request when it settles instead of one per step.
+ */
+const MATRIX_DEBOUNCE_MS = 350;
+/** Extra tries after a failed matrix call (429s from public servers are transient) */
+const MATRIX_RETRIES = 2;
+/** First retry gap; each further one doubles it */
+const MATRIX_RETRY_BASE_MS = 1200;
+// Shared fuel-economics constants live in lib/fuelEconomics — re-exported so
+// existing imports (tests, screens) keep one canonical source. travelMatrixKey
+// is the pipeline's (re-exported for the selector tests).
+export { CROW_ROAD_FACTOR, effectiveLiterPrice, travelMatrixKey };
 /**
  * Stations covered by one road-distance matrix call, nearest first. Public
  * OSRM caps table sizes, so a dense zone always holds more stations than one
@@ -205,6 +248,27 @@ export interface StationsState {
 }
 
 export type { RouteState };
+
+/** Candidate stations of the current route plan — pure, shared by the matrix
+    effect and the selectors so both always describe the same set. A plan
+    stands as long as a corridor stands: `stations` may be the previous key's
+    while a recompute runs, and the plan keeps describing them. */
+function planCandidatesFor(
+  routeState: RouteState,
+  fuel: FuelId,
+  vehicle: { tank: number; consumption: number; startTankPct: number },
+  plannedStops: Record<string, boolean>,
+  matrixMaxPoints: number | undefined,
+): RouteCandidate[] {
+  const route = routeState.route;
+  if (!route || routeState.stations.length === 0) return [];
+  const cap = Math.min(MATRIX_MAX_POINTS, matrixMaxPoints ?? MATRIX_MAX_POINTS) - 2;
+  return selectRouteCandidates(route, routeState.stations, (s) => effectivePrice(s, fuel), {
+    maxCandidates: cap,
+    firstWindowKm: usableRangeKm((vehicle.tank * vehicle.startTankPct) / 100, vehicle.consumption),
+    requiredIds: Object.keys(plannedStops).filter((id) => plannedStops[id]),
+  });
+}
 
 // ── Persistence ──────────────────────────────────────────────────────────────
 /**
@@ -1305,36 +1369,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // user has since edited away.
   const routeReq = useRef(0);
 
-  /** Place each corridor station along the route and bound the set. */
-  const placeAlongRoute = useCallback(
-    (raw: Station[], route: Route): RouteStation[] => {
-      const cum = cumulativeKm(route.polyline);
-      const enriched: RouteStation[] = raw
-        .map((st) => {
-          const near = nearestOnPolyline({ lat: st.lat, lng: st.lng }, route.polyline, cum);
-          return {
-            ...st,
-            kmAlong: Math.round(near.alongKm),
-            // ~60 km/h there and back on local roads; on-route stations count as 0
-            detourMin: near.distKm < 0.4 ? 0 : Math.max(1, Math.round(near.distKm * 2)),
-          };
-        })
-        .filter((st) => st.kmAlong > 5 && st.kmAlong < route.distanceKm - 5)
-        .sort((a, b) => a.kmAlong - b.kmAlong);
-      // Keep the full corridor (bounded for perf) — WHICH stops are shown is
-      // decided per strategy in selectRouteAnalysis, so the chips act on the
-      // whole ribbon, not just the recommendation. Capped once, here, on the
-      // whole merged set: a per-batch cap would rank against a partial field.
-      if (enriched.length <= 30) return enriched;
-      return [...enriched]
-        .sort(
-          (a, b) => (effectivePrice(a, fuel)?.value ?? 9) - (effectivePrice(b, fuel)?.value ?? 9),
-        )
-        .slice(0, 30)
-        .sort((a, b) => a.kmAlong - b.kmAlong);
-    },
-    [fuel],
-  );
+  /** Place each corridor station along the route. The whole corridor is kept:
+      the optimizer picks its own bounded, geographically distributed candidate
+      set (lib/routeCandidates) — capping here on price destroyed coverage at
+      the start of long routes. This is also the ONE place the corridor gets
+      projected (see projectCorridor): measuring is O(stations × polyline
+      vertices), far too expensive for a selector that reruns on every store
+      update. */
+  const placeAlongRoute = useCallback((raw: Station[], route: Route): RouteStation[] => {
+    return projectCorridor(route, raw)
+      .filter((st) => st.kmAlong > 1 && st.kmAlong < route.distanceKm - 1)
+      .sort((a, b) => a.kmAlong - b.kmAlong);
+  }, []);
 
   const runCorridor = useCallback(
     async (key: string, route: Route, reqId: number) => {
@@ -1384,6 +1430,105 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     [avoidMotorway, avoidToll, runCorridor, sourceId, vehicle],
   );
+
+  // ── Route travel matrix (the pipeline's third stage) ───────────────────────
+  // Road legs for the fuel-stop plan: origin → stations → destination in ONE
+  // matrix request — never one routing call per station. While it loads or
+  // when it fails, the plan selectors run on the geometric estimate instead
+  // (flagged `estimated`), so the timeline always has an answer. This effect
+  // drives the stage's transitions; the pipeline owns their guards.
+  const matrixKeyRef = useRef<string | null>(null);
+  const matrixTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // Only an unmount clears the pending call: the effect reruns on state the key
+  // does not depend on, and a per-run cleanup would cancel a scheduled request
+  // that the next run then skips as « same key », leaving it never sent.
+  useEffect(() => () => clearTimeout(matrixTimer.current), []);
+  useEffect(() => {
+    const route = routeState.route;
+    if (!route || routeState.stations.length === 0 || !fromPoint || !toPoint) {
+      matrixKeyRef.current = null;
+      clearTimeout(matrixTimer.current);
+      setRouteState((s) => matrixBlocked(s, 'idle'));
+      return;
+    }
+    const provider = getProviders(sourceId).route;
+    const candidates = planCandidatesFor(
+      routeState,
+      fuel,
+      { tank, consumption, startTankPct },
+      plannedStops,
+      provider.travelMatrixMaxPoints,
+    );
+    const getTravelMatrix = provider.getTravelMatrix?.bind(provider);
+    if (!getTravelMatrix || !candidates.length) {
+      // Nothing to measure and nothing to retry — a source without a matrix
+      // backend is not a failure, and neither is a corridor with no candidate.
+      // Either way the estimated legs ARE the final answer for this corridor.
+      matrixKeyRef.current = null;
+      clearTimeout(matrixTimer.current);
+      setRouteState((s) => matrixBlocked(s, getTravelMatrix ? 'idle' : 'unsupported'));
+      if (routeState.corridor === 'ready') markRoute('route:plan');
+      return;
+    }
+    const key = travelMatrixKey(
+      sourceId,
+      fromPoint,
+      toPoint,
+      candidates.map((c) => c.station.id),
+      { avoidMotorway, avoidToll, vehicle },
+    );
+    if (matrixKeyRef.current === key) return;
+    matrixKeyRef.current = key;
+    setRouteState((s) => beginMatrix(s, key));
+    const points: GeoPoint[] = [
+      fromPoint,
+      ...candidates.map((c) => ({ lat: c.station.lat, lng: c.station.lng })),
+      toPoint,
+    ];
+    // Public routing servers rate-limit, and a 429 is transient — but the key
+    // stays put on failure, so nothing would ever ask again for this candidate
+    // set: one flaky response would pin the plan to estimated legs until the
+    // user happened to change something. Retry a bounded number of times with
+    // a widening gap, then settle on `error`.
+    const attempt = (n: number) => {
+      if (matrixKeyRef.current !== key) return;
+      getTravelMatrix(points, { avoidMotorway, avoidToll, vehicle })
+        .then((cells) => {
+          if (matrixKeyRef.current !== key) return;
+          setRouteState((s) => commitMatrix(s, key, cells));
+          markRoute('route:plan');
+        })
+        .catch(() => {
+          if (matrixKeyRef.current !== key) return;
+          if (n < MATRIX_RETRIES) {
+            matrixTimer.current = setTimeout(() => attempt(n + 1), MATRIX_RETRY_BASE_MS * 2 ** n);
+            return;
+          }
+          setRouteState((s) => failMatrix(s, key));
+          markRoute('route:plan');
+        });
+    };
+    // Settle before calling. The departure tank is a SLIDER: every step re-thins
+    // the corridor, and each set it lands on would otherwise be a matrix request
+    // against a public, rate-limited server — a drag would issue a dozen and
+    // keep only the last. The plan runs on the geometric estimate until the call
+    // returns, exactly as it does while loading.
+    clearTimeout(matrixTimer.current);
+    matrixTimer.current = setTimeout(() => attempt(0), MATRIX_DEBOUNCE_MS);
+  }, [
+    routeState,
+    fromPoint,
+    toPoint,
+    sourceId,
+    fuel,
+    tank,
+    consumption,
+    startTankPct,
+    plannedStops,
+    avoidMotorway,
+    avoidToll,
+    vehicle,
+  ]);
 
   // ── Actions ────────────────────────────────────────────────────────────────
   const go = useCallback((s: Screen) => {
@@ -2105,14 +2250,10 @@ export function selectReachCandidates(stations: Station[], userPos: GeoPoint): S
     .map((c) => c.s);
 }
 
-/**
- * Crow-flies → road distance. A real drive runs 20–40 % longer than the
- * straight line (rivers, ring roads, one-ways). Only the ROAD_REACH_MAX
- * nearest stations get measured road numbers; without this factor the others
- * would be ranked — and shown — on a shorter scale than the measured ones and
- * would steal a recommendation they don't deserve.
- */
-export const CROW_ROAD_FACTOR = 1.3;
+// CROW_ROAD_FACTOR (imported above, re-exported): only the ROAD_REACH_MAX
+// nearest stations get measured road numbers; without that factor the others
+// would be ranked — and shown — on a shorter scale than the measured ones and
+// would steal a recommendation they don't deserve.
 /** ~40 km/h door-to-pump, for stations the reach matrix did not cover */
 const FALLBACK_MIN_PER_KM = 1.5;
 
@@ -2319,25 +2460,9 @@ export function selectCheapest(app: AppStore): NearbyStation | null {
   return selectByPrice(app)[0] ?? null;
 }
 
-/**
- * Per-litre price with the trip to the pump folded in: you pay for a full
- * tank but the round trip (consumption & tank size from Réglages) burns part
- * of it, so the litres you actually keep cost `price × tank / (tank − burnt)`
- * — what a full tank ACTUALLY costs per litre. A round trip the tank cannot
- * cover has no effective price at all (Infinity): no amount of sticker
- * discount makes a station worth more fuel than it sells you. Shared by the
- * map recommendation and the « Recommandé » sorts of the zone list and the
- * Favoris.
- */
-export function effectiveLiterPrice(
-  app: Pick<AppStore, 'consumption' | 'tank'>,
-  price: number,
-  distKm: number,
-): number {
-  const burntLiters = (distKm * 2 * app.consumption) / 100;
-  if (burntLiters >= app.tank) return Infinity;
-  return (price * app.tank) / (app.tank - burntLiters);
-}
+// effectiveLiterPrice (imported above, re-exported): the per-litre price with
+// the trip to the pump folded in — shared with the route optimizer's economics
+// module so the map view and the route plan value a detour the same way.
 
 // ── Favoris sorting ──────────────────────────────────────────────────────────
 export type FavSort = 'recommended' | 'price' | 'distance';
@@ -2593,28 +2718,12 @@ export function selectZoneDelta(app: AppStore, station: NearbyStation | null): Z
 
 /** Autonomy narrative for the route ribbon (depends on tank setting) */
 export function selectAutonomy(app: AppStore): { autonomyKm: number; limitKm: number } {
-  const autonomyKm = Math.round(((app.tank * (app.startTankPct / 100)) / app.consumption) * 100);
-  // Keep a ~20 % reserve before the "you must stop" line
-  const limitKm = Math.round((autonomyKm * 0.8) / 10) * 10;
+  const startFuel = (app.tank * app.startTankPct) / 100;
+  const autonomyKm = Math.round((startFuel / app.consumption) * 100);
+  // The explicit reserve function draws the "you must stop" line
+  const limitKm = Math.round(usableRangeKm(startFuel, app.consumption) / 10) * 10;
   return { autonomyKm, limitKm };
 }
-
-/**
- * Why the recommended stop won, as data. The ribbon turns it into a sentence:
- * assembling the copy here would bake one language into a unit-tested pure
- * function, and a fragment like « le + bas du trajet » cannot be translated
- * outside the sentence it belongs to.
- */
-export type RecommendationReason =
-  /** « Prix » strategy — `saving` € off a full tank vs the priciest stop */
-  | { kind: 'lowestPrice'; saving: number }
-  /** « Détour min. » strategy, and the stop is right on the route */
-  | { kind: 'noDetour' }
-  | { kind: 'minDetour'; detourMin: number }
-  /** « Meilleur compromis » — `saving` € off a full tank vs the priciest stop */
-  | { kind: 'balanced'; saving: number }
-  /** Nothing to compare it against */
-  | { kind: 'onlyStation' };
 
 /** Arrival narrative of the ribbon's last row, as data */
 export type ArrivalEstimate =
@@ -2624,123 +2733,251 @@ export type ArrivalEstimate =
   | { kind: 'autonomyShort'; limitKm: number }
   | { kind: 'direct'; at: number };
 
+/**
+ * Candidate stations of the current route plan — the bounded, geographically
+ * distributed subset one matrix call can measure (lib/routeCandidates).
+ */
+export const selectPlanCandidates = cached((app: AppStore): RouteCandidate[] =>
+  planCandidatesFor(
+    app.routeState,
+    app.fuel,
+    { tank: app.tank, consumption: app.consumption, startTankPct: app.startTankPct },
+    app.plannedStops,
+    getProviders(app.sourceId).route.travelMatrixMaxPoints,
+  ),
+);
+
+/**
+ * Road legs the plan runs on: the committed matrix when it answers for the
+ * current candidate set, the geometric estimate otherwise (loading, failure,
+ * provider without a matrix backend). The quality flag rides along.
+ */
+const selectPlanLegs = cached((app: AppStore): PlanLegs | null => {
+  const { routeState } = app;
+  const route = routeState.route;
+  if (!route) return null;
+  const candidates = selectPlanCandidates(app);
+  if (routeState.matrix === 'ready' && routeState.matrixCells && app.fromPoint && app.toPoint) {
+    const key = travelMatrixKey(
+      app.sourceId,
+      app.fromPoint,
+      app.toPoint,
+      candidates.map((c) => c.station.id),
+      { avoidMotorway: app.avoidMotorway, avoidToll: app.avoidToll, vehicle: app.vehicle },
+    );
+    if (key === routeState.matrixKey) {
+      const legs = matrixPlanLegs(routeState.matrixCells, candidates.length, route);
+      if (legs) return legs;
+    }
+  }
+  return estimatePlanLegs(route, candidates);
+});
+
+/**
+ * THE fuel-stop plan — pure solve over the candidate graph (lib/routeOptimizer):
+ * the store only assembles immutable inputs, the algorithm lives outside it.
+ * Null until the corridor has ever answered for a standing route — a plan over
+ * stations that were never fetched would be an invention, not a computation.
+ * User-picked stops (plannedStops) are constrained INTO the plan; the ones the
+ * optimizer cannot place (no price for the fuel, off the corridor) surface in
+ * `selectRouteAnalysis().invalidPlannedStopIds` instead of being ignored.
+ */
+export const selectRoutePlan = cached((app: AppStore): RoutePlan | null => {
+  const { routeState } = app;
+  const route = routeState.route;
+  if (!route) return null;
+  if (routeState.stations.length === 0 && routeState.corridor !== 'ready') return null;
+  const legs = selectPlanLegs(app);
+  if (!legs) return null;
+  const candidates = selectPlanCandidates(app);
+  const candidateIds = new Set(candidates.map((c) => c.station.id));
+  const required = Object.keys(app.plannedStops).filter(
+    (id) => app.plannedStops[id] && candidateIds.has(id),
+  );
+  return planRoute({
+    stations: candidates.map((c) => ({
+      id: c.station.id,
+      positionKm: c.projectionKm,
+      priceMilli: c.priceMilli,
+      priceUpdatedAt: c.priceUpdatedAt,
+    })),
+    direct: legs.direct,
+    originLegs: legs.origin,
+    destinationLegs: legs.destination,
+    stationLegs: legs.between,
+    tankLitres: app.tank,
+    consumptionLitresPer100Km: app.consumption,
+    startFuelLitres: (app.tank * app.startTankPct) / 100,
+    strategy: app.routeMode,
+    requiredStationIds: required,
+    quality: legs.quality,
+  });
+});
+
+/** One plan stop resolved to its display station */
+export interface PlanStopView {
+  station: RouteStation;
+  stop: PlannedFuelStop;
+}
+
 export interface RouteAnalysis {
-  stops: RouteStation[];
-  recoId: string | null;
-  recoReason: RecommendationReason | null;
+  /** The computed plan (null while no corridor ever answered) */
+  plan: RoutePlan | null;
+  /** Plan stops in driving order, resolved to their stations */
+  planStops: PlanStopView[];
+  /** Best candidates OUTSIDE the plan, km order — browsing, never « the » plan */
+  alternatives: RouteStation[];
   limitKm: number;
   autonomyKm: number;
   needsStop: boolean;
   arrival: ArrivalEstimate | null;
+  /** Stops the user picked by hand (feed the multi-stop Maps run) */
   plannedStops: RouteStation[];
-  /** Fuel needed for the whole trip at the configured consumption */
-  tripLitres: number | null;
-  /** Trip fuel cost at the recommended stop's price (fallback: cheapest on route) */
-  tripCost: number | null;
+  /** User picks the optimizer could not place (no usable price / off corridor) */
+  invalidPlannedStopIds: string[];
+  /**
+   * Minutes a lone stop at this candidate adds to the trip, on the plan's OWN
+   * legs — routed whenever the matrix answered. This is what the cards must
+   * display: `detourMin` is the load-time crow-flies estimate, and showing it
+   * next to a plan optimized on real road legs makes the solver look wrong
+   * (a motorway aire measures 0 m off the polyline yet can cost +13 min of
+   * access; the plan rightly avoids it, the stale label says « sans détour »).
+   */
+  detourMinById: Record<string, number>;
+  /** Σ litres to buy across the plan */
+  purchaseLitres: number | null;
+  /** Σ purchases, integer cents — the only cash figure of the trip */
+  purchaseCostCents: number | null;
+  destinationFuelLitres: number | null;
+  /** routed = matrix legs; estimated = geometric fallback (say so in the UI) */
+  quality: PlanQuality | null;
 }
 
-/** Everything the route ribbon needs, computed from real data */
+/** Number of alternative stations offered around the plan */
+const MAX_ALTERNATIVES = 4;
+
+/**
+ * What a lone stop at candidate `i` would add to the trip — DRIVING km and
+ * minutes over the direct leg (the refuelling halt itself is the same at every
+ * station, so scoring and display both leave it out: it cannot change a
+ * ranking and it would muddy the label). Measured on the plan's own legs, so
+ * it is a routed figure whenever the matrix answered. `null` when the
+ * candidate is not connected in both directions.
+ */
+function alternativeDetour(legs: PlanLegs, i: number): { km: number; min: number } | null {
+  const there = legs.origin[i];
+  const back = legs.destination[i];
+  if (!there || !back) return null;
+  return {
+    km: Math.max(0, there.distanceKm + back.distanceKm - legs.direct.distanceKm),
+    min: Math.max(0, there.durationMin + back.durationMin - legs.direct.durationMin),
+  };
+}
+
+/**
+ * Alternatives ranked the way the SELECTED STRATEGY ranks the plan — the chips
+ * have to act on the whole ribbon, not only on the stops the solver kept. Price
+ * folds the fuel burnt reaching the pump into the per-litre price (the same
+ * effectiveLiterPrice the map recommendation uses), « détour min. » ranks on the
+ * minutes the halt adds, « compromis » values those minutes in money. Ranking a
+ * « détour min. » list by raw price offered the cheapest bargains 20 km off the
+ * road under a chip that promises the opposite.
+ */
+function alternativeScore(
+  app: Pick<AppStore, 'consumption' | 'tank' | 'routeMode'>,
+  priceMilli: number,
+  detour: { km: number; min: number },
+): number {
+  // Half the round trip: effectiveLiterPrice charges the drive there AND back
+  const effective = effectiveLiterPrice(app, priceMilli / 1000, detour.km / 2);
+  if (app.routeMode === 'price') return effective;
+  if (app.routeMode === 'detour') return detour.min;
+  return effective * app.tank + (VALUE_OF_TIME_CENTS_PER_MIN / 100) * detour.min;
+}
+
+/** Everything the route timeline needs, computed from real data */
 export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
-  const { routeState, routeMode, fuel, tank } = app;
+  const { routeState } = app;
   const { limitKm, autonomyKm } = selectAutonomy(app);
   const route = routeState.route;
-  const needsStop = !!route && route.distanceKm > limitKm;
+  const plan = selectRoutePlan(app);
+  const candidates = selectPlanCandidates(app);
+  const byId = new Map(routeState.stations.map((s) => [s.id, s] as const));
 
-  const priceOf = (s: RouteStation) => effectivePrice(s, fuel)?.value ?? Infinity;
-  // Strategy score — the SAME ranking picks the shown stops and the reco,
-  // so the strategy chips act on the whole ribbon.
-  const scoreOf = (s: RouteStation): number => {
-    if (routeMode === 'price') return priceOf(s);
-    if (routeMode === 'detour') return s.detourMin * 1000 + priceOf(s);
-    return priceOf(s) * tank + s.detourMin * EUR_PER_DETOUR_MIN;
-  };
-
-  const all = routeState.stations.filter((s) => effectivePrice(s, fuel) != null);
-  const byScore = [...all].sort((a, b) => scoreOf(a) - scoreOf(b));
-  const reachableByScore = byScore.filter((s) => s.kmAlong <= limitKm);
-
-  // Show the 6 best stops for the strategy — but when a stop is mandatory,
-  // guarantee the best reachable ones are among them (a list of stations past
-  // the autonomy limit would be useless).
-  const MAX_SHOWN = 6;
-  const chosen = new Set<RouteStation>(byScore.slice(0, MAX_SHOWN));
-  if (needsStop) {
-    for (const s of reachableByScore.slice(0, 2)) {
-      if (chosen.has(s)) continue;
-      const worstDroppable = [...chosen]
-        .filter((c) => c.kmAlong > limitKm)
-        .sort((a, b) => scoreOf(b) - scoreOf(a))[0];
-      if (worstDroppable) chosen.delete(worstDroppable);
-      chosen.add(s);
+  const planStops: PlanStopView[] = [];
+  if (plan) {
+    for (const stop of plan.stops) {
+      const station = byId.get(stop.stationId);
+      if (station) planStops.push({ station, stop });
     }
   }
-  const stops = [...chosen].sort((a, b) => a.kmAlong - b.kmAlong);
+  const planIds = new Set(plan?.stops.map((s) => s.stationId) ?? []);
+  const legs = plan ? selectPlanLegs(app) : null;
+  const alternatives = !legs
+    ? []
+    : candidates
+        .map((c, i) => ({ c, detour: alternativeDetour(legs, i) }))
+        .filter((e) => !planIds.has(e.c.station.id) && e.detour != null)
+        .map((e) => ({
+          station: e.c.station,
+          score: alternativeScore(app, e.c.priceMilli, e.detour!),
+        }))
+        // The strategy score is the ONLY ranking. Sorting the departure tank's
+        // reach ahead of it looks prudent and is not: on a 20 % tank it fills
+        // the list with whatever sits in the first 120 km — two pumps 20 min
+        // off the road beat an on-corridor bargain further on — and an
+        // alternative is something to swap INTO the plan, reached after the
+        // stops that precede it. The timeline's « limite d'autonomie » marker
+        // is what says where the dry point falls.
+        .sort((a, b) => a.score - b.score || (a.station.id < b.station.id ? -1 : 1))
+        .slice(0, MAX_ALTERNATIVES)
+        .map((e) => e.station)
+        .sort((a, b) => a.kmAlong - b.kmAlong);
 
-  const withPrice = all;
-  const reco: RouteStation | null = reachableByScore[0] ?? byScore[0] ?? null;
+  const picked = routeState.stations.filter((s) => app.plannedStops[s.id]);
+  const candidateIds = new Set(candidates.map((c) => c.station.id));
+  const invalidPlannedStopIds = picked.map((s) => s.id).filter((id) => !candidateIds.has(id));
 
-  let recoReason: RecommendationReason | null = null;
-  if (reco && withPrice.length > 1) {
-    const maxP = Math.max(...withPrice.map(priceOf));
-    const saving = (maxP - priceOf(reco)) * tank;
-    if (routeMode === 'price') {
-      recoReason = { kind: 'lowestPrice', saving };
-    } else if (routeMode === 'detour') {
-      recoReason =
-        reco.detourMin === 0
-          ? { kind: 'noDetour' }
-          : { kind: 'minDetour', detourMin: reco.detourMin };
-    } else {
-      recoReason = { kind: 'balanced', saving };
-    }
-  } else if (reco) {
-    recoReason = { kind: 'onlyStation' };
+  const detourMinById: Record<string, number> = {};
+  if (legs) {
+    candidates.forEach((c, i) => {
+      const d = alternativeDetour(legs, i);
+      if (d) detourMinById[c.station.id] = Math.round(d.min);
+    });
   }
 
-  // Picked stops survive strategy switches even if they leave the top-6
-  const picked = all.filter((s) => app.plannedStops[s.id]);
-
-  // Trip fuel volume + cost, from the configured average consumption
-  let tripLitres: number | null = null;
-  let tripCost: number | null = null;
-  if (route) {
-    tripLitres = (route.distanceKm * app.consumption) / 100;
-    const refPrice = reco
-      ? priceOf(reco)
-      : withPrice.length
-        ? Math.min(...withPrice.map(priceOf))
-        : Infinity;
-    if (isFinite(refPrice)) tripCost = tripLitres * refPrice;
-  }
+  const needsStop = plan ? plan.status !== 'direct' : !!route && route.distanceKm > limitKm;
 
   let arrival: ArrivalEstimate | null = null;
-  if (route) {
-    const base = route.durationMin;
-    if (picked.length) {
-      const extraMin = picked.reduce((a, s) => a + s.detourMin + REFUEL_MIN, 0);
+  if (route && plan) {
+    if (plan.status === 'planned') {
       arrival = {
         kind: 'withStops',
-        stops: picked.length,
-        at: Date.now() + (base + extraMin) * 60000,
-        extraMin,
+        stops: plan.stops.length,
+        at: Date.now() + (route.durationMin + plan.extraDurationMin) * 60000,
+        extraMin: Math.round(plan.extraDurationMin),
       };
-    } else if (needsStop) {
+    } else if (plan.status === 'infeasible') {
       arrival = { kind: 'autonomyShort', limitKm };
     } else {
-      arrival = { kind: 'direct', at: Date.now() + base * 60000 };
+      arrival = { kind: 'direct', at: Date.now() + route.durationMin * 60000 };
     }
   }
 
   return {
-    stops,
-    recoId: reco?.id ?? null,
-    recoReason,
+    plan,
+    planStops,
+    alternatives,
     limitKm,
     autonomyKm,
     needsStop,
     arrival,
     plannedStops: picked,
-    tripLitres,
-    tripCost,
+    invalidPlannedStopIds,
+    detourMinById,
+    purchaseLitres: plan ? plan.stops.reduce((a, s) => a + s.purchasedLitres, 0) : null,
+    purchaseCostCents: plan ? plan.totalPurchaseCostCents : null,
+    destinationFuelLitres: plan ? plan.destinationFuelLitres : null,
+    quality: plan?.quality ?? null,
   };
 }

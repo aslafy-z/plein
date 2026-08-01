@@ -14,11 +14,16 @@ const MARKS = [
   'route:geocoded',
   'route:geometry',
   'route:stations',
+  'route:plan',
 ] as const;
 
 export type RouteMark = (typeof MARKS)[number];
 
-const MEASURES = ['route:time-to-geometry', 'route:time-to-stations'] as const;
+const MEASURES = [
+  'route:time-to-geometry',
+  'route:time-to-stations',
+  'route:time-to-plan',
+] as const;
 
 /** Start a timing cycle. Marks left by the previous one would skew the measures. */
 export function beginRouteTiming(): void {
@@ -30,9 +35,14 @@ export function beginRouteTiming(): void {
 
 export function markRoute(name: RouteMark): void {
   if (!IS_DEV) return;
+  // First landing wins: the plan stage settles again whenever its inputs move
+  // (a strategy chip, a pinned stop), and re-marking would shift the measure
+  // away from the initial load it describes.
+  if (performance.getEntriesByName(name, 'mark').length > 0) return;
   performance.mark(name);
   if (name === 'route:geometry') measureFromSubmit('route:time-to-geometry', name);
   if (name === 'route:stations') measureFromSubmit('route:time-to-stations', name);
+  if (name === 'route:plan') measureFromSubmit('route:time-to-plan', name);
 }
 
 function measureFromSubmit(name: string, end: RouteMark): void {
