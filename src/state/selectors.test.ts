@@ -346,7 +346,7 @@ describe('selectByPrice / selectRecommended', () => {
 
   it('crowns the best deal, not the best sticker price, once the détour is paid', () => {
     // 1,86 € at ~15.9 km vs 1,89 € at ~11.8 km (6,5 L/100 km, 50 L):
-    // effective 1,937 vs 1,948 €/L → within the 1-ct tie margin → NEAREST wins
+    // effective 1,940 vs 1,950 €/L → within the 1-ct tie margin → NEAREST wins
     const data = [
       station({ id: 'far-cheap', ...north(15.9), prices: diesel(1.86) }),
       station({ id: 'near-deal', ...north(11.8), prices: diesel(1.89) }),
@@ -362,7 +362,7 @@ describe('selectByPrice / selectRecommended', () => {
   it('ranks on road distances when the reach matrix knows the stations', () => {
     // « bridge » looks closest as the crow flies (2,2 km) and is sticker-
     // cheapest, but the river makes it 12 km by road; « direct » is 3,5 km.
-    // Effective: 1,85 × (1 + 24×0,0013) ≈ 1,908 vs 1,87 × (1 + 7×0,0013) ≈ 1,887
+    // Effective: 1,85 × 50/(50 − 1,56) ≈ 1,910 vs 1,87 × 50/(50 − 0,455) ≈ 1,887
     const data = [
       station({ id: 'bridge', ...north(2.2), prices: diesel(1.85) }),
       station({ id: 'direct', ...north(3.3), prices: diesel(1.87) }),
@@ -385,9 +385,9 @@ describe('selectByPrice / selectRecommended', () => {
   it('never ranks a matrix-covered station against a raw crow-flies one', () => {
     // The matrix only covers the nearest stations: « measured » is 3 km out
     // as the crow flies and known to be 3,5 km by road, « missed » sits 24 km
-    // out with no matrix row. On raw crow-flies « missed » wins the reco
-    // (1,75 × (1 + 24×0,0026) ≈ 1,859 vs 1,877 €/L) — but 24 km of straight
-    // line is ~31 road km, and at that scale it loses (≈ 1,892 €/L).
+    // out with no matrix row. On raw crow-flies « missed » reads ≈ 1,866 €/L,
+    // within a cent of the measured station's 1,877 — but 24 km of straight
+    // line is ~31 road km, and at that scale it loses (≈ 1,904 €/L).
     const data = [
       station({ id: 'measured', ...north(3), prices: diesel(1.86) }),
       station({ id: 'missed', ...north(24), prices: diesel(1.75) }),
@@ -406,6 +406,26 @@ describe('selectByPrice / selectRecommended', () => {
     // search area even though the road estimate reads ~31 km
     expect(missed.searchKm).toBeLessThan(25)
     expect(missed.distKm).toBeGreaterThan(25)
+  })
+
+  it('still crowns the nearest station when no round trip fits the tank', () => {
+    // A tiny tank on a wide zone: every effective price is Infinity — the
+    // card must fall back to the nearest station, not read as an empty zone
+    const data = [
+      station({ id: 'far', ...north(24), prices: diesel(1.55) }),
+      station({ id: 'nearest', ...north(21), prices: diesel(1.95) }),
+    ]
+    const a = app({
+      radius: 25,
+      tank: 4,
+      consumption: 10,
+      stations: { status: 'ready', data, activeSource: 'demo', refreshing: false },
+      roadReach: {
+        far: { distanceKm: 24, durationMin: 20 },
+        nearest: { distanceKm: 21, durationMin: 18 },
+      },
+    })
+    expect(selectRecommended(a)?.id).toBe('nearest')
   })
 })
 
@@ -581,6 +601,32 @@ describe('sortFavoriteRows', () => {
       'near',
       'unloaded',
       'far-cheap',
+    ])
+  })
+
+  it('never sends the user past what the tank round trip can cover', () => {
+    // The linear detour model used to crown 1,53 € at 157 km over 2,20 € at
+    // 3,7 km, and to rank stations hundreds of km out on a finite « effective
+    // price » as if the tank could make the trip. Burning part of the tank
+    // you came to buy is what the price must carry: 1,53 × 50/(50 − 20,4)
+    // ≈ 2,58 €/L loses to 2,20 €/L next door, and a round trip past the
+    // tank's range has no effective price at all — those rows sink together,
+    // closest first.
+    const stranded = [
+      { id: 'far-cheap', price: 1.53, distKm: 156.8 },
+      { id: 'next-door', price: 2.2, distKm: 3.7 },
+      { id: 'in-town', price: 2.3, distKm: 9.3 },
+      { id: 'out-of-range', price: 1.6, distKm: 670.5 },
+      { id: 'other-region', price: 2.27, distKm: 445.8 },
+      { id: 'abroad', price: 2.09, distKm: 1216.7 },
+    ]
+    expect(sortFavoriteRows(stranded, 'recommended', cfg).map((r) => r.id)).toEqual([
+      'next-door',
+      'in-town',
+      'far-cheap',
+      'other-region',
+      'out-of-range',
+      'abroad',
     ])
   })
 
