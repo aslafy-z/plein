@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { C } from '../theme';
 import { m } from '../paraglide/messages.js';
+import { fmtPrice } from '../lib/format';
 import { haversineKm, radiusBounds, type GeoPoint } from '../lib/geo';
 import { useIsDesktop } from '../lib/layout';
-import { addDarkBasemap } from '../lib/tiles';
-import { installSmoothKeyboard } from '../lib/mapKeyboard';
+import { useLeafletMap, type LeafletShell } from '../lib/leafletMap';
+import { pricePinDotHtml, pricePinHtml } from '../lib/pricePin';
 import ShareIcon from './ShareIcon';
 import {
   useApp,
@@ -111,29 +112,13 @@ export default function MapCanvas({
 }) {
   const app = useApp();
   const desktop = useIsDesktop();
-  // Auto-fit reads the insets at run time (padding above the sheet /
-  // right of the panel)
-  const insetRef = useRef(bottomInset);
-  insetRef.current = bottomInset;
+  // The pan-to-station math reads the panel inset at run time
   const leftInsetRef = useRef(leftInset);
   leftInsetRef.current = leftInset;
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  /** Center of the VISIBLE map — the stage minus the floating panel. On a
-      phone it is the plain container center; on desktop everything that
-      means « the middle of what the user sees » (the gliding circle, the
-      pan-to-station) must aim here, not at the stage center half-hidden
-      under the panel. */
-  const visibleCenterPoint = (map: L.Map) => {
-    const size = map.getSize();
-    return L.point((size.x + leftInsetRef.current) / 2, size.y / 2);
-  };
   const layerRef = useRef<L.LayerGroup | null>(null);
-  const userInteractedRef = useRef(false);
   /** true right after the saved view was restored — skip the mount-run pan-to-station */
   const restoredViewRef = useRef(false);
-  const programmaticUntil = useRef(0);
   /** Skip the next auto-fit: the search area moved because the USER moved the map */
   const keepViewRef = useRef(false);
   const moveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -155,17 +140,12 @@ export default function MapCanvas({
   const circleOffsetRef = useRef({ x: 0, y: 0 });
   const userDotRef = useRef<L.Marker | null>(null);
   const markersRef = useRef(new Map<string, { marker: L.Marker; sig: string }>());
+  /** Set by setup — the keyboard gesture start needs it through the shell */
+  const measureCircleOffsetRef = useRef<(() => void) | null>(null);
 
-  // ── Create the map once (StrictMode-safe: only if no map yet) ───────────────
-  useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
-
-    const map = L.map(containerRef.current, {
-      zoomControl: false,
-      attributionControl: true,
-      // Leaflet's stepped arrows/±  give way to the smooth loop installed below
-      keyboard: false,
-    });
+  // ── The shared shell creates the map; setup below adds this map's own
+  // layers, view restore and gesture handlers (StrictMode-safe in the shell)
+  const setup = (map: L.Map, sh: LeafletShell) => {
     const saved =
       savedView &&
       savedView.searchPos.lat === app.searchPos.lat &&
@@ -176,68 +156,36 @@ export default function MapCanvas({
       // Back from the detail (or another tab): put the user's view back
       // exactly where they left it, auto-fit stays off if they had panned
       map.setView(saved.center, saved.zoom, { animate: false });
-      userInteractedRef.current = saved.userInteracted;
+      sh.userInteractedRef.current = saved.userInteracted;
       restoredViewRef.current = true;
     } else if (savedView == null && app.mapZoom != null) {
       // First mount of the session with a zoom already known = the app was
       // opened on a shared link. Its framing is the point of the link, so
       // auto-fit must not re-frame the zone over it.
       map.setView([app.searchPos.lat, app.searchPos.lng], app.mapZoom, { animate: false });
-      userInteractedRef.current = true;
+      sh.userInteractedRef.current = true;
     } else {
       map.setView([app.searchPos.lat, app.searchPos.lng], 13);
     }
 
-    addDarkBasemap(map);
-
     layerRef.current = L.layerGroup().addTo(map);
-    mapRef.current = map;
-
-    const markInteract = () => {
-      if (Date.now() > programmaticUntil.current) userInteractedRef.current = true;
-    };
-    map.on('dragstart', markInteract);
-    map.on('zoomstart', markInteract);
-
-    // zoomstart alone can't tell a user zoom from a fitBounds one, and the
-    // programmatic time-window re-arms on every auto-fit (sheet inset,
-    // stations landing…) — a wheel/pinch/double-tap zoom landing inside it
-    // was swallowed, so the next auto-fit yanked the view back. These DOM
-    // events only ever come from the user: mark the takeover directly.
-    const el = map.getContainer();
-    const domInteract = () => {
-      userInteractedRef.current = true;
-    };
-    const onTouchStart = (e: TouchEvent) => {
-      if (e.touches.length >= 2) domInteract(); // pinch, not a tap
-    };
-    el.addEventListener('wheel', domInteract, { passive: true });
-    el.addEventListener('dblclick', domInteract);
-    el.addEventListener('touchstart', onTouchStart, { passive: true });
 
     // The glide below keeps the circle on the viewport center, but when a
     // pan BEGINS the circle usually isn't there: the load auto-fit centers
     // the view on the zone bounds, not on searchPos (same after a
     // pan-to-station). Snapping it onto the center at the first move event
     // was a visible jump — measure the gap here and absorb it gradually.
+    // The keyboard loop begins its gestures the same way (shell option).
     const measureCircleOffset = () => {
       if (!circleRef.current) return;
       const p = map.latLngToContainerPoint(circleRef.current.getLatLng());
-      const mid = visibleCenterPoint(map);
+      const mid = sh.visibleCenterPoint(map);
       circleOffsetRef.current = { x: p.x - mid.x, y: p.y - mid.y };
     };
+    measureCircleOffsetRef.current = measureCircleOffset;
     map.on('dragstart', measureCircleOffset);
 
-    // Arrows and +/- move the map on their own animation-frame loop (see
-    // mapKeyboard): it drives the same `move`/`moveend` path as a drag, so
-    // the circle glides and the results follow the keyboard like the finger.
-    const stopKeyboard = installSmoothKeyboard(map, {
-      onGestureStart: () => {
-        domInteract();
-        measureCircleOffset();
-      },
-    });
-
+    const el = map.getContainer();
     // The zoom the map has LANDED on, mirrored onto the container. Nothing in
     // the DOM says it otherwise: Leaflet keeps the outgoing level's tiles for
     // the length of a zoom animation, and when zooming out that stale level is
@@ -271,9 +219,9 @@ export default function MapCanvas({
     });
     map.on('zoomend', () => {
       zooming = false;
-      if (userInteractedRef.current) {
+      if (sh.userInteractedRef.current) {
         circleOffsetRef.current = { x: 0, y: 0 };
-        circleRef.current?.setLatLng(map.containerPointToLatLng(visibleCenterPoint(map)));
+        circleRef.current?.setLatLng(map.containerPointToLatLng(sh.visibleCenterPoint(map)));
       }
     });
     // Results follow the circle LIVE while the finger drags (throttled):
@@ -287,8 +235,8 @@ export default function MapCanvas({
       // the map and drags its edges — and the cut they make in a circle wider
       // than the screen — into view.
       if (circleRef.current) reclipRenderer(map, circleRef.current);
-      if (!userInteractedRef.current || zooming) return;
-      if (Date.now() < programmaticUntil.current) return; // pan-to-station, fits…
+      if (!sh.userInteractedRef.current || zooming) return;
+      if (Date.now() < sh.programmaticUntilRef.current) return; // pan-to-station, fits…
       // Absorb the gap left at dragstart over the first frames of the pan
       // instead of snapping the circle onto the exact center (visible jerk).
       const off = circleOffsetRef.current;
@@ -298,7 +246,7 @@ export default function MapCanvas({
         off.x = 0;
         off.y = 0;
       }
-      const mid = visibleCenterPoint(map);
+      const mid = sh.visibleCenterPoint(map);
       const c = map.containerPointToLatLng(L.point(mid.x + off.x, mid.y + off.y));
       circleRef.current?.setLatLng(c);
       const now = Date.now();
@@ -315,8 +263,8 @@ export default function MapCanvas({
     // Moving the map away loads the stations of the new area automatically
     // (debounced; only for user-initiated moves, never programmatic fits)
     map.on('moveend', () => {
-      if (!userInteractedRef.current) return;
-      if (Date.now() < programmaticUntil.current) return;
+      if (!sh.userInteractedRef.current) return;
+      if (Date.now() < sh.programmaticUntilRef.current) return;
       // Sync on the DRAWN circle — it may still carry a start-of-pan offset
       const c = circleRef.current?.getLatLng() ?? map.getCenter();
       const cur = appRef.current;
@@ -331,26 +279,19 @@ export default function MapCanvas({
       }, 350);
     });
 
-    // The container only resizes with the window/stage itself (never with
-    // the bottom sheet), where Leaflet's default center-keeping is right.
-    const ro = new ResizeObserver(() => map.invalidateSize());
-    ro.observe(containerRef.current);
+    // No refitBounds handed to the shell: the container only resizes with
+    // the window/stage itself (never with the bottom sheet), and Leaflet's
+    // default center-keeping is right there — the zone re-frames from its
+    // own auto-fit effect below.
 
     return () => {
       clearTimeout(moveTimer.current);
-      ro.disconnect();
-      stopKeyboard();
-      el.removeEventListener('wheel', domInteract);
-      el.removeEventListener('dblclick', domInteract);
-      el.removeEventListener('touchstart', onTouchStart);
       savedView = {
         center: map.getCenter(),
         zoom: map.getZoom(),
-        userInteracted: userInteractedRef.current,
+        userInteracted: sh.userInteractedRef.current,
         searchPos: appRef.current.searchPos,
       };
-      map.remove();
-      mapRef.current = null;
       layerRef.current = null;
       // refs survive StrictMode remounts — drop everything tied to the dead map
       markersRef.current.clear();
@@ -358,8 +299,15 @@ export default function MapCanvas({
       circleOffsetRef.current = { x: 0, y: 0 };
       userDotRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  };
+
+  const shell = useLeafletMap({
+    bottomInset,
+    leftInset,
+    setup,
+    onKeyboardGesture: () => measureCircleOffsetRef.current?.(),
+  });
+  const { containerRef, mapRef, userInteractedRef, programmaticUntilRef } = shell;
 
   // ── Desktop: the arrows drive the map from wherever focus sits ─────────────
   // Clicking a row or a chip moves the focus there, and the map's keyboard
@@ -482,37 +430,15 @@ export default function MapCanvas({
       const existing = markers.get(s.id);
       if (existing && existing.sig === sig) continue;
 
-      const bg = deal ? '#3ddc84' : '#22282c';
-      const fg = deal ? '#08120c' : tier === 'high' ? '#e07a5f' : '#cfd6da';
-      const big = best || focused;
-      const font = big
-        ? "700 15px 'Spline Sans Mono',monospace"
-        : "600 13px 'Spline Sans Mono',monospace";
-      const pad = big ? '7px 11px' : '5px 9px';
-      // The selected pin gets an accent halo so it stands out from the list
-      const border = focused
-        ? `2px solid ${deal ? '#eafff3' : '#3ddc84'}`
-        : deal
-          ? '1px solid #3ddc84'
-          : tier === 'high'
-            ? '1px solid rgba(224,122,95,.35)'
-            : '1px solid rgba(255,255,255,.08)';
-      const shadow = focused
-        ? 'drop-shadow(0 6px 16px rgba(61,220,132,.55))'
-        : best
-          ? 'drop-shadow(0 4px 12px rgba(61,220,132,.35))'
-          : 'none';
-      const label = price.toFixed(2).replace('.', ',');
-      const tierClass = deal ? '--deal' : tier === 'high' ? '--high' : '';
-      const dotClass = `pin-dot${tierClass && ` pin-dot${tierClass}`}`;
-      const bubbleClass = `pin-bubble${tierClass && ` pin-bubble${tierClass}`}`;
+      // One pin markup for both maps — lib/pricePin. The dot tier folds the
+      // deal flag in so the recommended pin stays green whatever its tier.
       const html = dot
-        ? `<div style="transform:translate(-50%,-50%)"><div class="${dotClass}"></div></div>`
-        : `<div style="transform:translate(-50%,-100%);display:flex;flex-direction:column;` +
-          `align-items:center;cursor:pointer;filter:${shadow}">` +
-          `<div class="${bubbleClass}" style="background:${bg};color:${fg};font:${font};` +
-          `padding:${pad};border:${border}">${label}</div>` +
-          `<div class="pin-tip" style="border-top:7px solid ${bg}"></div></div>`;
+        ? pricePinDotHtml(deal ? 'deal' : tier)
+        : pricePinHtml(fmtPrice(price), {
+            tier: deal ? 'deal' : tier,
+            recommended: best,
+            focused,
+          });
       const icon = L.divIcon({ className: '', html, iconSize: [0, 0], iconAnchor: [0, 0] });
       // Deals float above their tier-mates (green dots above gray dots, green
       // bubbles above the rest) without ever crossing the dot/bubble divide
@@ -566,16 +492,13 @@ export default function MapCanvas({
   // search area, so the station data landing (or the filters moving) no
   // longer re-frames anything either.
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
+    if (!mapRef.current) return;
     if (userInteractedRef.current || app.focusStationId) return;
-    programmaticUntil.current = Date.now() + 700;
     const box = radiusBounds(app.searchPos, app.radius);
     // The sheet overlays the map bottom, the desktop panel its left edge —
-    // pad the fit so the zone lands in the VISIBLE part
-    map.fitBounds(L.latLngBounds([box.south, box.west], [box.north, box.east]), {
-      paddingTopLeft: [40 + leftInsetRef.current, 40],
-      paddingBottomRight: [40, 40 + insetRef.current],
+    // the shell's fit pads past both so the zone lands in the VISIBLE part
+    shell.fitBounds(L.latLngBounds([box.south, box.west], [box.north, box.east]), {
+      pad: 40,
       maxZoom: 15,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -591,7 +514,7 @@ export default function MapCanvas({
     if (!map || !app.focusStationId || wasRestore) return;
     const s = selectMapStations(app).find((x) => x.id === app.focusStationId);
     if (!s) return;
-    programmaticUntil.current = Date.now() + 1200; // no auto-search, no circle glide
+    programmaticUntilRef.current = Date.now() + 1200; // no auto-search, no circle glide
     // Land the station on the VISIBLE center — panTo would center it on the
     // stage, half a panel to the left of where the user is looking
     const z = map.getZoom();

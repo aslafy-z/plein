@@ -1,16 +1,21 @@
-// The map place search remembers where it has been sent. Fuel searches repeat
+// The place search remembers where it has been sent. Fuel searches repeat
 // — home, work, the same trip corridor week after week — so a place picked
 // once is offered back instead of being retyped and re-geocoded: the whole
 // history on an empty query, the entries matching what is being typed above
 // the geocoder's own answers.
+//
+// ONE history for the whole app: the map's search and the route's departure
+// and arrival fields all read and feed it — a place the user looked up is a
+// place the user looked up, whatever they did with it.
 //
 // Pure functions returning data: the panel turns rows into markup, and nothing
 // here reaches the network or the clock.
 import type { GeocodeResult } from '../data/types';
 import type { SearchedPlace } from './persist';
 
-/** Places remembered — about what the capped panel shows without scrolling */
-export const MAX_SEARCH_HISTORY = 6;
+/** Places remembered — serves three fields now, still about what a capped
+    panel shows without much scrolling */
+export const MAX_SEARCH_HISTORY = 8;
 
 /**
  * Comparison key of a place label. Accents and case must not split one town in

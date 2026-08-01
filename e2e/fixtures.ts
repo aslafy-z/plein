@@ -174,6 +174,57 @@ export async function closeZoneList(page: import('@playwright/test').Page) {
 }
 
 /**
+ * Fill a route endpoint field and pick a suggestion. The fields share the
+ * map's search: on a window they are live inputs over the map (dropdown
+ * attached under the box); on a phone each is a trigger opening the shared
+ * full-screen search first.
+ */
+export async function pickRoutePlace(
+  page: import('@playwright/test').Page,
+  field: 'from' | 'to',
+  text: string,
+  pickLabel: string | RegExp,
+) {
+  const placeholder = field === 'from' ? 'Départ' : 'Destination'
+  const input = page.getByPlaceholder(placeholder)
+  if ((await input.count()) === 0) {
+    await page.getByRole('button', { name: placeholder, exact: true }).click()
+    await expect(input).toBeVisible()
+  }
+  await input.fill(text)
+  await page
+    .getByTestId('search-suggestions')
+    .getByText(pickLabel)
+    .first()
+    .click({ timeout: 15_000 })
+}
+
+/**
+ * Reveal the route sheet's expanded content (the form, or the timeline). On
+ * a phone the collapsed sheet only shows its lead and the CTA; on a window
+ * the floating panel already shows everything. The two aria labels share the
+ * « détail de l'itinéraire » phrase, so one locator survives the toggle.
+ */
+export async function openRouteSheet(page: import('@playwright/test').Page) {
+  const handle = page.getByRole('button', { name: /détail de l'itinéraire/ })
+  if ((await handle.count()) === 0) return
+  await handle.click()
+  await expect(handle).toHaveAttribute('aria-expanded', 'true')
+  await page.waitForTimeout(400) // the height transition (.3s)
+}
+
+/** Collapse the route sheet on a phone (the expanded sheet covers the
+    endpoint fields); nothing to do on a window. */
+export async function closeRouteSheet(page: import('@playwright/test').Page) {
+  const handle = page.getByRole('button', { name: /détail de l'itinéraire/ })
+  if ((await handle.count()) === 0) return
+  if ((await handle.getAttribute('aria-expanded')) !== 'true') return
+  await handle.click()
+  await expect(handle).toHaveAttribute('aria-expanded', 'false')
+  await page.waitForTimeout(400)
+}
+
+/**
  * Zoom the map has landed on, read from the `data-zoom` the map publishes on
  * its container (MapCanvas). The attribute is absent while a zoom animation
  * runs, so this waits for the map to settle rather than reporting a level it

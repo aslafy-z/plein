@@ -7,7 +7,7 @@ import { test, expect, gotoMap } from './fixtures'
 
 const TABS = [
   { path: '/favorites', marker: 'Vos stations habituelles, au prix du jour.' },
-  { path: '/route', marker: 'Comparez les prix le long de votre trajet' },
+  { path: '/route', marker: 'Comparer les stations sur le trajet' },
   { path: '/settings', marker: 'Carburant par défaut' },
 ]
 
@@ -55,7 +55,7 @@ test('a tab reached by tapping the nav bar owns its URL', async ({ page }) => {
   expect(new URL(page.url()).pathname).toBe('/favorites')
 
   await page.getByText('Trajet', { exact: true }).click()
-  await expect(page.getByText('Comparez les prix le long de votre trajet')).toBeVisible()
+  await expect(page.getByText('Comparer les stations sur le trajet')).toBeVisible()
   expect(new URL(page.url()).pathname).toBe('/route')
 
   await page.getByText('Réglages', { exact: true }).click()

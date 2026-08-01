@@ -49,7 +49,6 @@ import {
   type FavoriteStation,
   type MapsSiteId,
   type PersistedSettings,
-  type RecentPlace,
   type SearchedPlace,
 } from './persist';
 import { pushSearchIn } from './searchHistory';
@@ -79,8 +78,6 @@ import {
 // ── Constants ────────────────────────────────────────────────────────────────
 /** Toulouse Capitole — default position when geolocation is unavailable */
 export const DEFAULT_POS: GeoPoint = { lat: 43.6047, lng: 1.4442 };
-/** Recent-trip history kept in Réglages persistence */
-const MAX_RECENTS = 4;
 export const MAX_RADIUS_KM = 25;
 /** Vehicle profile presets (tank L, consumption L/100 km, default fuel) — adjustable in Réglages */
 export const VEHICLE_PRESETS: Record<
@@ -119,7 +116,15 @@ export type Screen =
 export type RouteMode = 'balanced' | 'price' | 'detour';
 export type SortMode = 'price' | 'distance';
 
-export type { MapsSiteId, FavoriteStation, RecentPlace, SearchedPlace };
+/**
+ * Which search field is open. Being open is nav state (the phone search is a
+ * screen, the system Back closes it), and with three fields in the app the
+ * entry has to say WHICH one — the map's area search, or one of the route's
+ * two endpoint fields.
+ */
+export type SearchTarget = 'area' | 'routeFrom' | 'routeTo';
+
+export type { MapsSiteId, FavoriteStation, SearchedPlace };
 /** Web maps sites offered by « Y aller » on desktop, in display order */
 export const MAPS_SITE_IDS: MapsSiteId[] = ['google', 'waze', 'apple', 'osm'];
 
@@ -221,39 +226,6 @@ export function toggleBrandIn(sel: string[], label: string): string[] {
   return sel.includes(label) ? sel.filter((b) => b !== label) : [...sel, label];
 }
 
-/**
- * Prepend a trip to the « Récents » history. Without real history yet, the
- * default suggestions are dropped rather than pushed down.
- */
-export function pushRecentIn(
-  prev: RecentPlace[],
-  entry: RecentPlace,
-  hasTripHistory: boolean,
-): RecentPlace[] {
-  const base = hasTripHistory ? prev : [];
-  return [entry, ...base.filter((r) => r.label !== entry.label)].slice(0, MAX_RECENTS);
-}
-
-/**
- * Record a whole trip: a departure typed or picked by hand is a place the user
- * looked up, so it earns its « Récents » row just like the destination — only
- * « Ma position » doesn't, which is why the caller passes the endpoints it has.
- * `entries` are applied in order, so the LAST one ends up on top: pass the
- * departure first and the destination second.
- */
-export function pushTripIn(
-  prev: RecentPlace[],
-  entries: RecentPlace[],
-  hasTripHistory: boolean,
-): RecentPlace[] {
-  // Only the first push may drop the default suggestions — after it, the
-  // history is real and the rest of the trip must not wipe it again.
-  return entries.reduce(
-    (acc, entry, i) => pushRecentIn(acc, entry, hasTripHistory || i > 0),
-    prev,
-  );
-}
-
 /** One step of the stations state machine — dispatched by `loadStations` */
 export type StationsEvent =
   | {
@@ -322,14 +294,6 @@ export function nextStationsState(prev: StationsState, ev: StationsEvent): Stati
   }
 }
 
-/**
- * Destination suggestions shown until the user has real trip history. The sub
- * label is a département name — a proper noun, not copy to translate.
- */
-export const DEFAULT_RECENTS: RecentPlace[] = [
-  { label: 'Toulouse', sublabel: 'Haute-Garonne', point: { lat: 43.6047, lng: 1.4442 } },
-];
-
 // ── Store shape ──────────────────────────────────────────────────────────────
 export interface AppStore {
   // navigation
@@ -371,11 +335,12 @@ export interface AppStore {
   searchLabel: string | null;
   setSearchArea(p: GeoPoint, label?: string): void;
   resetSearchToUser(): void;
-  /** true while the place search is open. A nav state like the filters sheet:
-      opening it stacks a history entry, so the system Back closes it — on a
-      phone it takes the whole screen, and Back is how a screen is left. */
-  searchOpen: boolean;
-  setSearchOpen(open: boolean): void;
+  /** Which search field is open, null when none. A nav state like the
+      filters sheet: opening one stacks a history entry, so the system Back
+      closes it — on a phone the search takes the whole screen, and Back is
+      how a screen is left. */
+  searchOpen: SearchTarget | null;
+  setSearchOpen(target: SearchTarget | null): void;
   /** Station highlighted on the map & shown in the map bottom-sheet card */
   focusStationId: string | null;
   setFocusStation(id: string | null): void;
@@ -409,20 +374,13 @@ export interface AppStore {
   useCurrentPositionAsStart(): void;
   setTo(text: string, point?: GeoPoint | null): void;
   searchPlaces(q: string, opts?: GeocodeSearchOptions): Promise<GeocodeResult[]>;
-  /** Places picked in the map's place search, offered back on the next one */
+  /** Places looked up and picked — in the map's search or a route field —
+      offered back by every search field */
   searchHistory: SearchedPlace[];
   rememberSearchedPlace(place: GeocodeResult): void;
-  recents: RecentPlace[];
-  /** false while `recents` still shows the default suggestions */
-  hasTripHistory: boolean;
   routeReady: boolean;
   startRoute(): void;
   editRoute(): void;
-  /** « Où allez-vous ? » → route setup with the destination field focused */
-  openRouteSearch(): void;
-  /** true while the destination field should grab focus (open the keyboard) */
-  focusDestination: boolean;
-  consumeFocusDestination(): void;
   routeMode: RouteMode;
   setRouteMode(m: RouteMode): void;
   avoidMotorway: boolean;
@@ -522,10 +480,19 @@ export type NavHistoryState = {
   screen?: Screen;
   detailId?: string | null;
   filtersOpen?: boolean;
-  searchOpen?: boolean;
+  /** Which search field the entry holds open — entries written before the
+      route shared the search carried a boolean, hence the union */
+  searchOpen?: SearchTarget | boolean | null;
   /** 0 = the entry the app was opened on (nothing of ours to pop below it) */
   idx?: number;
 };
+
+/** Search target of a stored entry — legacy booleans mean the map's field */
+export function navSearchTarget(st: NavHistoryState | null): SearchTarget | null {
+  if (!st) return null;
+  if (typeof st.searchOpen === 'string') return st.searchOpen;
+  return st.searchOpen === true ? 'area' : null;
+}
 
 /**
  * Whether moving to `next` swaps one fiche for another. On screen this reads
@@ -592,7 +559,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
   usePersisted('serviceTags', activeServiceTags);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState<SearchTarget | null>(null);
   const [routeMode, setRouteMode] = useState<RouteMode>('balanced');
   const [plannedStops, setPlannedStops] = useState<Record<string, boolean>>({});
   const [detailId, setDetailId] = useState<string | null>(
@@ -690,11 +657,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     savePersisted({ sheetHint: false });
   }, []);
 
-  const [recents, setRecents] = useState<RecentPlace[]>(persisted.recents ?? DEFAULT_RECENTS);
-  const [hasTripHistory, setHasTripHistory] = useState(persisted.recents != null);
-  usePersisted('recents', recents);
-  // The place search's own history — kept apart from the trip « Récents »,
-  // which mean « a route you actually ran », not « a place you looked at ».
+  // The one place history of the app — the map's search and the two route
+  // fields all feed and read it (persist.ts folds the retired trip
+  // « Récents » into it on the way in).
   const [searchHistory, setSearchHistory] = useState<SearchedPlace[]>(
     persisted.searchHistory ?? [],
   );
@@ -795,13 +760,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setScreen(st.screen);
         setDetailId(st.detailId ?? null);
         setFiltersOpen(!!st.filtersOpen);
-        setSearchOpen(!!st.searchOpen);
+        setSearchOpen(navSearchTarget(st));
       } else {
         const nav = navFromPath(window.location.pathname);
         setScreen(nav.screen);
         setDetailId(nav.detailId);
         setFiltersOpen(false);
-        setSearchOpen(false);
+        setSearchOpen(null);
       }
     };
     window.addEventListener('popstate', onPop);
@@ -852,15 +817,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
       cur.screen === screen &&
       (cur.detailId ?? null) === detailId &&
       !!cur.filtersOpen === filtersOpen &&
-      !!cur.searchOpen === searchOpen;
+      navSearchTarget(cur) === searchOpen;
     const url = pathFor(screen, detailId) + (screen === 'map' ? mapQuery : '');
     if (sameNav && url === window.location.pathname + window.location.search) return;
+    // Swapping one open search field for another (departure ↔ arrival) reads
+    // as a swap on screen, so it swaps the entry too — Back must close the
+    // search, not walk every field it filled.
+    const searchSwap =
+      !!cur?.plein &&
+      cur.screen === screen &&
+      navSearchTarget(cur) != null &&
+      searchOpen != null &&
+      navSearchTarget(cur) !== searchOpen;
     // First entry — and leaving onboarding must not be back-navigable
     const replace =
       !cur?.plein ||
       cameFrom === 'onboarding' ||
       replaceAsked ||
       sameNav ||
+      searchSwap ||
       isFicheSwap(cur, { screen, detailId, filtersOpen });
     // How deep the app is in ITS OWN history: entry 0 is the one the app was
     // opened on, and popping it would leave the app entirely.
@@ -1198,34 +1173,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ── Route computation ──────────────────────────────────────────────────────
-  /**
-   * Record a real trip in the « Récents » history (replaces the default
-   * suggestions): its destination, and its departure when the user named one.
-   * The distance and the date are stored as numbers, not as a ready-made
-   * sentence: the row is written in whatever language the app is in when it is
-   * READ, not when the trip was made.
-   */
-  const pushRecent = useCallback(
-    (places: { label: string; point: GeoPoint }[], distanceKm: number) => {
-      const at = Date.now();
-      const entries = places.map((p) => ({ ...p, distanceKm, at }));
-      setRecents((prev) => pushTripIn(prev, entries, hasTripHistory));
-      setHasTripHistory(true);
-    },
-    [hasTripHistory],
-  );
-
   const routeReq = useRef(0);
   const computeRoute = useCallback(
-    // `fromLabel` is null when the trip departs from the user's position:
-    // « Ma position » is copy, not a place worth remembering.
-    async (from: GeoPoint, to: GeoPoint, toLabel: string, fromLabel: string | null) => {
-      const trip = fromLabel
-        ? [
-            { label: fromLabel, point: from },
-            { label: toLabel, point: to },
-          ]
-        : [{ label: toLabel, point: to }];
+    async (from: GeoPoint, to: GeoPoint) => {
       const reqId = ++routeReq.current;
       setRouteState((s) => ({ ...s, status: 'loading' }));
       const run = async () => {
@@ -1267,7 +1217,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const res = await run();
         if (reqId !== routeReq.current) return;
         setRouteState({ status: 'ready', ...res });
-        pushRecent(trip, res.route.distanceKm);
       } catch {
         if (reqId !== routeReq.current) return;
         // An honest error, never a substitution: the demo provider would
@@ -1280,15 +1229,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
       }
     },
-    [sourceId, fuel, pushRecent, avoidMotorway, avoidToll, vehicle],
+    [sourceId, fuel, avoidMotorway, avoidToll, vehicle],
   );
 
   // ── Actions ────────────────────────────────────────────────────────────────
   const go = useCallback((s: Screen) => {
-    // Leaving the map leaves its search behind — plainly, without popping its
+    // Leaving a screen leaves its search behind — plainly, without popping its
     // entry: the screen being pushed goes ON TOP of it, so Back walks from the
     // new screen right back into the search the user came from.
-    setSearchOpen(false);
+    setSearchOpen(null);
     setScreen((cur) => {
       // Swapping one fiche for another keeps the screen the first one was
       // opened from: that is still where closing the panel has to land, and
@@ -1332,10 +1281,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Same for the place search: closing it from the UI (✕, Escape, a picked
   // place) pops the entry its opening pushed, instead of stacking a second
   // one that Back would then have to walk.
-  const setSearchOpenNav = useCallback((open: boolean) => {
+  const setSearchOpenNav = useCallback((target: SearchTarget | null) => {
     const cur = window.history.state as NavHistoryState | null;
-    if (!open && cur?.plein && cur.searchOpen) window.history.back();
-    else setSearchOpen(open);
+    if (target == null && cur?.plein && navSearchTarget(cur) != null) window.history.back();
+    else setSearchOpen(target);
   }, []);
 
   const cycleFuel = useCallback(() => {
@@ -1464,22 +1413,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!toText.trim()) return;
     let from = fromPoint;
     let to = toPoint;
-    let toLabel = toText.trim();
-    // A departure the user named is remembered like the destination; « Ma
-    // position » is not a place, hence null.
-    let fromLabel = fromIsCurrentPosition ? null : fromText.trim() || null;
     const geocode = getProviders(sourceId).geocode;
     try {
+      // An endpoint typed but never picked geocodes here — and a place the
+      // user looked up joins the search history like a picked one would.
+      // « Ma position » is not a place, so a current-position departure
+      // remembers nothing.
       if (!from) {
         if (fromIsCurrentPosition || !fromText.trim()) {
           from = userPos;
-          fromLabel = null;
         } else {
           const r = await geocode.search(fromText);
           from = r[0]?.point ?? null;
           if (r[0]) {
             setFromText(r[0].label);
-            fromLabel = r[0].label;
+            rememberSearchedPlace(r[0]);
           }
         }
       }
@@ -1488,7 +1436,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         to = r[0]?.point ?? null;
         if (r[0]) {
           setToText(r[0].label);
-          toLabel = r[0].label;
+          rememberSearchedPlace(r[0]);
         }
       }
     } catch {
@@ -1503,12 +1451,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setPlannedStops({});
     setRouteReady(true);
     setScreen('route');
-    void computeRoute(from, to, toLabel, fromLabel);
+    void computeRoute(from, to);
   }, [
     computeRoute,
     fromIsCurrentPosition,
     fromPoint,
     fromText,
+    rememberSearchedPlace,
     showToast,
     sourceId,
     toPoint,
@@ -1517,13 +1466,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   ]);
 
   const editRoute = useCallback(() => setScreen('routeSetup'), []);
-
-  const [focusDestination, setFocusDestination] = useState(false);
-  const openRouteSearch = useCallback(() => {
-    setFocusDestination(true);
-    setScreen('routeSetup');
-  }, []);
-  const consumeFocusDestination = useCallback(() => setFocusDestination(false), []);
 
   const togglePlannedStop = useCallback((id: string) => {
     setPlannedStops((t) => ({ ...t, [id]: !t[id] }));
@@ -1724,14 +1666,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       searchPlaces,
       searchHistory,
       rememberSearchedPlace,
-      recents,
-      hasTripHistory,
       routeReady,
       startRoute: () => void startRoute(),
       editRoute,
-      openRouteSearch,
-      focusDestination,
-      consumeFocusDestination,
       routeMode,
       setRouteMode,
       avoidMotorway,
@@ -1785,8 +1722,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       fromText, fromIsCurrentPosition,
       toText, fromPoint, toPoint,
       setFrom, useCurrentPositionAsStart, setTo, searchPlaces, searchHistory,
-      rememberSearchedPlace, recents, hasTripHistory, routeReady,
-      startRoute, editRoute, openRouteSearch, focusDestination, consumeFocusDestination,
+      rememberSearchedPlace, routeReady,
+      startRoute, editRoute,
       routeMode, routeState, plannedStops, togglePlannedStop, vehicle, setVehicle, tank, setTank,
       consumption, setConsumption,
       avoidMotorway, avoidToll, setAvoidMotorway, setAvoidToll, startTankPct, setStartTankPct,

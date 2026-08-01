@@ -3,8 +3,7 @@ import { useIsDesktop } from './lib/layout';
 import Onboarding from './screens/Onboarding';
 import MapScreen from './screens/MapScreen';
 import FavoritesScreen from './screens/FavoritesScreen';
-import RouteSetup from './screens/RouteSetup';
-import RouteRibbon from './screens/RouteRibbon';
+import RouteScreen from './screens/RouteScreen';
 import Settings from './screens/Settings';
 import StationDetail from './screens/StationDetail';
 import FiltersSheet from './screens/FiltersSheet';
@@ -45,8 +44,10 @@ export default function App() {
               MapScreen decides what the slot shows */}
           {(screen === 'map' || (desktop && screen === 'detail')) && <MapScreen />}
           {screen === 'favs' && <FavoritesScreen />}
-          {screen === 'routeSetup' && <RouteSetup />}
-          {screen === 'route' && <RouteRibbon />}
+          {/* One shell for the whole route flow — same component for both
+              screens, so handing setup over to the results (and back through
+              « Modifier ») never remounts the map */}
+          {(screen === 'routeSetup' || screen === 'route') && <RouteScreen />}
           {screen === 'settings' && <Settings />}
           {showTabBar && <NavBar />}
           {/* Last so the phone's full-screen fiche covers the tab bar above */}

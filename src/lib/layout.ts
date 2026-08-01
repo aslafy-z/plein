@@ -9,7 +9,14 @@
 // is open, so a touch laptop or an iPad in landscape would be stuck with the
 // phone arrangement on a 1300px canvas. Width also keeps the CSS and the TS
 // on one number: `DESKTOP_QUERY` below is what styles.css matches on.
-import { useCallback, useSyncExternalStore } from 'react';
+import {
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type RefObject,
+} from 'react';
 
 /** Below this the phone arrangement applies, above it the desktop one */
 export const DESKTOP_MIN_WIDTH = 960;
@@ -33,6 +40,39 @@ export const PANEL_WIDTH = 'clamp(350px, 30vw, 440px)';
 
 /** Gap between a floating panel and the edges of the map stage it rides */
 export const PANEL_GAP = 12;
+
+/**
+ * How much of the map's left edge the floating panel covers — the panel's
+ * REAL width (PANEL_WIDTH is a clamp) plus its margins, measured with a
+ * ResizeObserver. The map screen and the route screen both feed this to
+ * their map as `leftInset` so auto-fits land in the VISIBLE part of the map.
+ *
+ * `active` is « the panel is on screen » (desktop, with something to show);
+ * while false the inset is 0 and nothing observes. `remeasureKey` re-arms
+ * the observer when the panel node itself is swapped by a remount (the map
+ * screen keys its slot on the fiche).
+ */
+export function usePanelInset(
+  active: boolean,
+  remeasureKey?: unknown,
+): { panelRef: RefObject<HTMLDivElement>; panelInset: number } {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [panelInset, setPanelInset] = useState(0);
+  useLayoutEffect(() => {
+    if (!active) {
+      setPanelInset(0);
+      return;
+    }
+    const el = panelRef.current;
+    if (!el) return;
+    const measure = () => setPanelInset(el.offsetWidth + PANEL_GAP * 2);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [active, remeasureKey]);
+  return { panelRef, panelInset };
+}
 
 // One MediaQueryList per query: `getSnapshot` runs on every render, and
 // re-creating the object there would allocate a listener target per frame.

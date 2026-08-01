@@ -2,7 +2,7 @@ import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { C, floatingPanelStyle } from '../theme';
 import { SERVICE_TAGS } from '../data/types';
 import { fuelLabel } from '../lib/labels';
-import { PANEL_GAP, useIsDesktop } from '../lib/layout';
+import { PANEL_GAP, useIsDesktop, usePanelInset } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
 import { useApp, selectVisible, selectZoneLead } from '../state/store';
 import MapCanvas from '../components/MapCanvas';
@@ -65,25 +65,11 @@ export default function MapScreen() {
     return () => ro.disconnect();
   }, []);
 
-  // The floating panel's real width (PANEL_WIDTH is a clamp) + its margins,
-  // measured so the map knows how much of its left edge is covered
-  const panelRef = useRef<HTMLDivElement>(null);
-  const [panelInset, setPanelInset] = useState(0);
-  useLayoutEffect(() => {
-    if (!desktop) {
-      setPanelInset(0);
-      return;
-    }
-    const el = panelRef.current;
-    if (!el) return;
-    const measure = () => setPanelInset(el.offsetWidth + PANEL_GAP * 2);
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-    // The slot remounts when the fiche replaces the zone (keyed below) — the
-    // observer must follow the new node
-  }, [desktop, fiche]);
+  // The floating panel's real width, measured so the map knows how much of
+  // its left edge is covered (lib/layout, shared with the route screen). The
+  // slot remounts when the fiche replaces the zone (keyed below) — the
+  // remeasure key makes the observer follow the new node.
+  const { panelRef, panelInset } = usePanelInset(desktop, fiche);
 
   const onCollapsedHeight = useCallback((h: number) => setSheetInset(h), []);
 

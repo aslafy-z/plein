@@ -1,8 +1,15 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { C, floatingPanelStyle, mono } from '../theme';
+// The computed route as a timeline: header (trip, distance, strategy chips),
+// then the departure, the corridor stops (recommended one crowned), the
+// autonomy limit and the arrival. Presentation of the READY state only — the
+// route shell (RouteScreen) owns the stage, the sheet/panel this scrolls in,
+// and the computing/error states.
+//
+// The stop cards keep their own presentation on purpose: they are a timeline
+// with a « add to my run » toggle, not the scannable rows ZoneList draws.
+import { type ReactNode } from 'react';
+import { C, mono } from '../theme';
 import { clockLabel, fmtPrice, durationLabel } from '../lib/format';
 import { fuelLabel } from '../lib/labels';
-import { CONTENT_MAX_WIDTH, PANEL_GAP, useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
 import { type RouteStation } from '../data/types';
 import {
@@ -15,7 +22,6 @@ import {
   type RecommendationReason,
   type RouteMode,
 } from '../state/store';
-import RouteMap from '../components/RouteMap';
 
 const STRATEGIES: RouteMode[] = ['balanced', 'price', 'detour'];
 
@@ -33,8 +39,8 @@ function strategyLabel(mode: RouteMode): string {
 const detourLabel = (detourMin: number) =>
   detourMin === 0 ? m.ribbon_no_detour() : m.ribbon_detour({ minutes: detourMin });
 
-/** Why the ribbon crowns this stop — the analysis hands over data, not copy */
-function recommendationLabel(reason: RecommendationReason | null): string {
+/** Why the timeline crowns this stop — the analysis hands over data, not copy */
+export function recommendationLabel(reason: RecommendationReason | null): string {
   if (!reason) return '';
   switch (reason.kind) {
     case 'lowestPrice':
@@ -86,33 +92,12 @@ const limitMarker = (limitKm: number) => (
   </div>
 );
 
-export default function RouteRibbon() {
+export default function RouteTimeline() {
   const app = useApp();
-  const desktop = useIsDesktop();
   const { toText, fuel, tank, routeMode, routeState } = app;
   const fromLabel = routeFromLabel(app);
   const analysis = selectRouteAnalysis(app);
   const route = routeState.route;
-  const hasRoute = routeState.status === 'ready' && route != null;
-
-  // The floating timeline's real width (PANEL_WIDTH is a clamp) + margins,
-  // measured so the route map can pad its fits past it — same slot geometry
-  // as the map screen's panel
-  const panelRef = useRef<HTMLDivElement>(null);
-  const [panelInset, setPanelInset] = useState(0);
-  useLayoutEffect(() => {
-    if (!desktop || !hasRoute) {
-      setPanelInset(0);
-      return;
-    }
-    const el = panelRef.current;
-    if (!el) return;
-    const measure = () => setPanelInset(el.offsetWidth + PANEL_GAP * 2);
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [desktop, hasRoute]);
 
   const toggleStyle = (id: string, size: number) => {
     const inRun = !!app.plannedStops[id];
@@ -300,46 +285,120 @@ export default function RouteRibbon() {
     );
   };
 
-  // ── Body per status ─────────────────────────────────────────────────────────
-  let body: ReactNode;
-  if (routeState.status === 'error') {
-    body = (
-      <div style={{ padding: '40px 22px', textAlign: 'center' }}>
-        <div style={{ fontSize: 13.5, color: C.mut, lineHeight: 1.5 }}>
-          {routeState.error ?? m.ribbon_error_fallback()}
-        </div>
-        <button
-          onClick={() => app.editRoute()}
-          style={{ marginTop: 14, fontSize: 14, fontWeight: 700, color: C.accent, cursor: 'pointer' }}
-        >
-          {m.ribbon_edit_route()}
-        </button>
-      </div>
-    );
-  } else if (routeState.status !== 'ready' || !route) {
-    body = (
-      <div style={{ padding: '40px 22px', textAlign: 'center', fontSize: 13.5, color: C.mut }}>
-        {m.ribbon_computing()}
-      </div>
-    );
-  } else {
-    const limitPct = Math.max(8, Math.min(92, (analysis.limitKm / route.distanceKm) * 100));
+  if (!route) return null;
 
-    const stopNodes: ReactNode[] = [];
-    let markerDone = false;
-    for (const st of analysis.stops) {
-      if (analysis.needsStop && !markerDone && st.kmAlong > analysis.limitKm) {
-        markerDone = true;
-        stopNodes.push(limitMarker(analysis.limitKm));
-      }
-      stopNodes.push(st.id === analysis.recoId ? recoNode(st) : plainNode(st));
+  const limitPct = Math.max(8, Math.min(92, (analysis.limitKm / route.distanceKm) * 100));
+
+  const stopNodes: ReactNode[] = [];
+  let markerDone = false;
+  for (const st of analysis.stops) {
+    if (analysis.needsStop && !markerDone && st.kmAlong > analysis.limitKm) {
+      markerDone = true;
+      stopNodes.push(limitMarker(analysis.limitKm));
     }
-    // Autonomy runs out after the last found stop → marker still belongs on the line
-    if (analysis.needsStop && !markerDone) stopNodes.push(limitMarker(analysis.limitKm));
+    stopNodes.push(st.id === analysis.recoId ? recoNode(st) : plainNode(st));
+  }
+  // Autonomy runs out after the last found stop → marker still belongs on the line
+  if (analysis.needsStop && !markerDone) stopNodes.push(limitMarker(analysis.limitKm));
 
-    const nStops = analysis.plannedStops.length;
+  const nStops = analysis.plannedStops.length;
 
-    body = (
+  return (
+    <div style={{ padding: '16px 0 20px' }}>
+      {/* Header */}
+      <div style={{ padding: '0 22px' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: '.14em',
+              textTransform: 'uppercase',
+              color: C.mut,
+              flex: 1,
+            }}
+          >
+            {m.ribbon_header()}
+          </span>
+          {/* The endpoints are editable in place above the map — this is the
+              way back to the preferences and the tank */}
+          <button
+            onClick={() => app.editRoute()}
+            style={{ fontSize: 12.5, fontWeight: 700, color: C.accent, cursor: 'pointer' }}
+          >
+            {m.ribbon_edit()}
+          </button>
+        </div>
+        <div style={{ fontSize: 22, fontWeight: 800, color: C.ink, marginTop: 4 }}>
+          {fromLabel} → {toText}
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            gap: 14,
+            marginTop: 6,
+            fontSize: 13,
+            color: C.mut,
+            flexWrap: 'wrap',
+          }}
+        >
+          <span>
+            {m.ribbon_distance_duration({
+              km: Math.round(route.distanceKm),
+              duration: durationLabel(route.durationMin),
+            })}
+          </span>
+          <span>·</span>
+          <span>{m.ribbon_fuel_tank({ fuel: fuelLabel(fuel), tank })}</span>
+          {analysis.tripCost != null && analysis.tripLitres != null && (
+            <>
+              <span>·</span>
+              <span>
+                {m.ribbon_trip_fuel({
+                  litres: Math.round(analysis.tripLitres),
+                  cost: fmtPrice(analysis.tripCost),
+                })}
+              </span>
+            </>
+          )}
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            gap: 6,
+            marginTop: 14,
+            marginBottom: 6,
+            flexWrap: 'wrap',
+          }}
+        >
+          {/* Tight enough that the three of them hold one line at the
+              panel's usual widths — wrapping stays the floor's fallback */}
+          {STRATEGIES.map((k) => {
+            const active = routeMode === k;
+            return (
+              <button
+                key={k}
+                onClick={() => app.setRouteMode(k)}
+                style={{
+                  background: active ? C.accent : 'transparent',
+                  color: active ? C.onAccent : C.body,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  padding: '7px 11px',
+                  borderRadius: 16,
+                  border: active ? `1px solid ${C.accent}` : '1px solid rgba(255,255,255,.15)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {strategyLabel(k)}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Timeline body */}
       <div style={{ position: 'relative', margin: '14px 22px 0', paddingLeft: 26 }}>
         <div
           style={{
@@ -435,155 +494,6 @@ export default function RouteRibbon() {
             {arrivalLabel(analysis.arrival)}
           </div>
         </div>
-      </div>
-    );
-  }
-
-  // The timeline: header, strategy chips, then the stops. Above the corridor
-  // map on a phone, docked beside it on a window.
-  const timeline = (
-    <div
-      style={{
-        flex: 1,
-        minHeight: 0,
-        overflow: 'auto',
-        padding: '16px 0 20px',
-        boxSizing: 'border-box',
-        // While the route is still computing there is no map to sit next to,
-        // so the timeline gets the whole region — as a reading column, not
-        // a header stretched across it
-        ...(desktop && !hasRoute
-          ? { maxWidth: CONTENT_MAX_WIDTH, width: '100%', margin: '0 auto' }
-          : null),
-      }}
-    >
-      {/* Header */}
-      <div style={{ padding: '0 22px' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-          <span
-            style={{
-              fontSize: 12,
-              fontWeight: 700,
-              letterSpacing: '.14em',
-              textTransform: 'uppercase',
-              color: C.mut,
-              flex: 1,
-            }}
-          >
-            {m.ribbon_header()}
-          </span>
-          <button
-            onClick={() => app.editRoute()}
-            style={{ fontSize: 12.5, fontWeight: 700, color: C.accent, cursor: 'pointer' }}
-          >
-            {m.ribbon_edit()}
-          </button>
-        </div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: C.ink, marginTop: 4 }}>
-          {fromLabel} → {toText}
-        </div>
-        {route && (
-          <div
-            style={{
-              display: 'flex',
-              gap: 14,
-              marginTop: 6,
-              fontSize: 13,
-              color: C.mut,
-              flexWrap: 'wrap',
-            }}
-          >
-            <span>
-              {m.ribbon_distance_duration({
-                km: Math.round(route.distanceKm),
-                duration: durationLabel(route.durationMin),
-              })}
-            </span>
-            <span>·</span>
-            <span>{m.ribbon_fuel_tank({ fuel: fuelLabel(fuel), tank })}</span>
-            {analysis.tripCost != null && analysis.tripLitres != null && (
-              <>
-                <span>·</span>
-                <span>
-                  {m.ribbon_trip_fuel({
-                    litres: Math.round(analysis.tripLitres),
-                    cost: fmtPrice(analysis.tripCost),
-                  })}
-                </span>
-              </>
-            )}
-          </div>
-        )}
-        <div
-          style={{
-            display: 'flex',
-            gap: 6,
-            marginTop: 14,
-            marginBottom: 6,
-            flexWrap: 'wrap',
-          }}
-        >
-          {/* Tight enough that the three of them hold one line at the
-              panel's usual widths — wrapping stays the floor's fallback */}
-          {STRATEGIES.map((k) => {
-            const active = routeMode === k;
-            return (
-              <button
-                key={k}
-                onClick={() => app.setRouteMode(k)}
-                style={{
-                  background: active ? C.accent : 'transparent',
-                  color: active ? C.onAccent : C.body,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  padding: '7px 11px',
-                  borderRadius: 16,
-                  border: active ? `1px solid ${C.accent}` : '1px solid rgba(255,255,255,.15)',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {strategyLabel(k)}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {body}
-    </div>
-  );
-
-  if (!desktop) {
-    return (
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        {hasRoute && <RouteMap />}
-        {timeline}
-      </div>
-    );
-  }
-
-  // With a route: the corridor map takes the whole stage and the timeline
-  // floats over it — the same slot the map screen gives its zone panel.
-  // Without one (computing, error), there is no map to ride: the timeline
-  // reads as a centered column instead.
-  if (!hasRoute) {
-    return <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>{timeline}</div>;
-  }
-
-  return (
-    <div
-      style={{
-        flex: 1,
-        minHeight: 0,
-        position: 'relative',
-        overflow: 'hidden',
-        background: C.mapBg,
-      }}
-    >
-      <RouteMap fill leftInset={panelInset} />
-      <div ref={panelRef} style={floatingPanelStyle}>
-        {timeline}
       </div>
     </div>
   );
