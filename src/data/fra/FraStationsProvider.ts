@@ -324,6 +324,18 @@ function parseRecord(rec: Raw): Station | null {
   };
 }
 
+/**
+ * Raw dataset id of a `fra-` station id, when it is the flux's own numeric
+ * id. The flux types `id` as an int, so only these can go in an ODSQL
+ * `id in (…)` list — the coordinate-fallback ids parseRecord mints for
+ * records without one (`fra-43.60000,1.44000`) name no dataset row at all.
+ * @internal exported for unit tests
+ */
+export function fraDatasetId(id: string): number | null {
+  const m = /^fra-(\d+)$/.exec(id);
+  return m ? Number(m[1]) : null;
+}
+
 // ── HTTP ─────────────────────────────────────────────────────────────────────
 function buildUrl(center: GeoPoint, radiusKm: number, limit: number, offset: number): string {
   // ODSQL POINT is lon lat order.
@@ -372,6 +384,39 @@ export class FraStationsProvider implements StationsProvider {
       if (results.length < PAGE) break;
     }
     return enrichWithBrands(stations.slice(0, NEAR_CAP), await poisPromise);
+  }
+
+  /**
+   * Exact and single-request (per PAGE ids): the flux answers `id in (…)`
+   * server-side, so favorites spread over the whole country cost one small
+   * page — no geo circle at all. Brands are NOT enriched here: the OSM POI
+   * index is loaded by proximity and these ids share none; the callers (the
+   * favorite-price refresh) consume prices alone, and the Favoris row renders
+   * its own pinned snapshot.
+   */
+  async getStationsByIds(
+    ids: readonly string[],
+    opts?: StationsFetchOptions,
+  ): Promise<Station[]> {
+    const numeric = ids
+      .map(fraDatasetId)
+      .filter((n): n is number => n != null);
+    const stations: Station[] = [];
+    for (let i = 0; i < numeric.length; i += PAGE) {
+      const chunk = numeric.slice(i, i + PAGE);
+      const params = new URLSearchParams({
+        where: `id in (${chunk.join(',')})`,
+        limit: String(chunk.length),
+      });
+      const results = await fetchPage(`${ENDPOINT}?${params.toString()}`, opts?.lowPriority);
+      for (const r of results) {
+        if (r && typeof r === 'object') {
+          const st = parseRecord(r as Raw);
+          if (st) stations.push(st);
+        }
+      }
+    }
+    return stations;
   }
 
   async getStationsAlong(polyline: GeoPoint[], corridorKm: number): Promise<Station[]> {
