@@ -7,6 +7,7 @@ import {
   clearStationsCache,
   type StationsCacheStats,
 } from '../data/stationsCache';
+import { clearFavoritePrices } from '../data/favoritePrices';
 import { agoLabelFrom, fmtDecimal, sizeLabel } from '../lib/format';
 import { fuelLabel, sourceSublabel, sourceTitle, vehicleLabel } from '../lib/labels';
 import { CONTENT_MAX_WIDTH, useIsDesktop } from '../lib/layout';
@@ -85,7 +86,8 @@ function CachedData({ onCleared }: { onCleared: () => void }) {
 
   const clear = async () => {
     setBusy(true);
-    await clearStationsCache();
+    // Favorite prices are cache-class data too — « Effacer » drops both
+    await Promise.all([clearStationsCache(), clearFavoritePrices()]);
     setBusy(false);
     setRound((n) => n + 1);
     onCleared();

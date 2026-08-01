@@ -77,10 +77,12 @@ export async function seedStationsCache(
   // not be waited out.
   await page.goto('/', { waitUntil: 'domcontentloaded' })
   await page.evaluate(async (seeded) => {
+    // Same version and store names as src/data/cacheStore.ts — a lower version
+    // here would fail to open once the app has upgraded the database.
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const req = indexedDB.open('plein.cache', 1)
+      const req = indexedDB.open('plein.cache', 2)
       req.onupgradeneeded = () => {
-        for (const name of ['areas', 'payloads']) {
+        for (const name of ['areas', 'payloads', 'favoritePrices']) {
           if (!req.result.objectStoreNames.contains(name)) req.result.createObjectStore(name)
         }
       }

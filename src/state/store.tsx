@@ -55,7 +55,19 @@ import {
 import { pushSearchIn } from './searchHistory';
 import { mapUrlQuery, parseMapUrl } from '../lib/mapUrl';
 import { mapViewShareData, stationShareData, type ShareData } from '../lib/share';
-import { readStationsCache, writeStationsCache, STALE_MS } from '../data/stationsCache';
+import {
+  collectCachedStations,
+  readStationsCache,
+  writeStationsCache,
+  STALE_MS,
+} from '../data/stationsCache';
+import {
+  planFavoriteRefresh,
+  pruneFavoritePrices,
+  readFavoritePrices,
+  recordFavoritePrices,
+  type FavoritePriceEntry,
+} from '../data/favoritePrices';
 import { normalizeStationId, stationCountry, type StationCountry } from '../data/stationIds';
 import {
   installReady,
@@ -380,6 +392,10 @@ export interface AppStore {
   favorites: FavoriteStation[];
   isFavorite(id: string): boolean;
   toggleFavorite(s: FavoriteStation): void;
+  /** Last known prices per favorite id, from the compact favorite-price
+      store — what the Favoris rows fall back to when the live area doesn't
+      cover them. Refreshed when the tab opens. */
+  favoritePrices: Record<string, FavoritePriceEntry>;
 
   // route
   fromText: string;
@@ -653,6 +669,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const toggleFavorite = useCallback((s: FavoriteStation) => {
     setFavorites((prev) => toggleFavoriteIn(prev, s));
   }, []);
+  // The id set the opportunistic price capture reads — a ref, so a fetch
+  // landing mid-render records against the current list without retriggering
+  // loadStations. The compact store follows the list: unstarring prunes.
+  const favoriteIds = useRef<Set<string>>(new Set(favorites.map((f) => f.id)));
+  useEffect(() => {
+    favoriteIds.current = new Set(favorites.map((f) => f.id));
+    pruneFavoritePrices(favoriteIds.current);
+  }, [favorites]);
+  const [favoritePrices, setFavoritePrices] = useState<Record<string, FavoritePriceEntry>>({});
+  const favPricesReq = useRef(0);
+  /** When each favorite was last refreshed by the Favoris tab this session —
+      a station absent from its own zone must not be re-fetched in a loop */
+  const favRefreshAttempted = useRef(new Map<string, number>());
   // Pull-up hint on the map sheet: armed when onboarding ends, spent as soon
   // as it plays (persisted, so quitting before the stations land keeps it)
   const [sheetHint, setSheetHint] = useState<boolean>(persisted.sheetHint ?? false);
@@ -964,6 +993,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (reqId !== stationsReq.current) return;
         const fetchedAt = Date.now();
         writeStationsCache(sourceId, searchPos, MAX_RADIUS_KM, data, fetchedAt);
+        // A favorite seen in any fetch keeps its price for the Favoris tab
+        recordFavoritePrices(favoriteIds.current, data, fetchedAt);
         loadedArea.current = { source: sourceId, center: searchPos, radiusKm: MAX_RADIUS_KM, fetchedAt };
         failedArea.current = null;
         dispatchStations({ kind: 'success', data, source: sourceId, fetchedAt });
@@ -1084,6 +1115,62 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [loadStations]);
 
+  // ── Favorite prices (Favoris tab) ──────────────────────────────────────────
+  // Three tiers, cheapest first, run when the tab opens (never on boot, never
+  // behind the map):
+  //   1. the compact store — prices captured from past fetches, durable;
+  //   2. a by-id sweep over the cached areas — zero network, adopts whatever
+  //      IndexedDB already holds for these ids;
+  //   3. a bounded, low-priority refresh of what is still stale, one group
+  //      per country + place, resolved through the favorite's OWN country
+  //      provider (whose partition memos make same-partition favorites cost
+  //      one download). The results go through the same compact store, so the
+  //      map's area cache is never written — a favorite refresh can never
+  //      evict or thin an area the map is using.
+  const refreshFavoritePrices = useCallback(async () => {
+    const reqId = ++favPricesReq.current;
+    const ids = favorites.map((f) => f.id);
+    if (!ids.length) {
+      setFavoritePrices({});
+      return;
+    }
+    const held = await collectCachedStations(new Set(ids));
+    for (const { station, fetchedAt } of held.values()) {
+      recordFavoritePrices(favoriteIds.current, [station], fetchedAt);
+    }
+    const entries = await readFavoritePrices(ids);
+    if (reqId !== favPricesReq.current) return;
+    setFavoritePrices(Object.fromEntries(entries));
+    if (navigator.onLine === false) return;
+    const groups = planFavoriteRefresh(favorites, entries, {
+      attemptedAt: favRefreshAttempted.current,
+    });
+    if (!groups.length) return;
+    await Promise.all(
+      groups.map(async (group) => {
+        for (const id of group.ids) favRefreshAttempted.current.set(id, Date.now());
+        try {
+          const stations = await getProviders(group.country).stations.getStationsNear(
+            group.center,
+            group.radiusKm,
+            { lowPriority: true },
+          );
+          recordFavoritePrices(favoriteIds.current, stations, Date.now());
+        } catch {
+          /* the cached price stays on screen, with its honest age */
+        }
+      }),
+    );
+    const refreshed = await readFavoritePrices(ids);
+    if (reqId !== favPricesReq.current) return;
+    setFavoritePrices(Object.fromEntries(refreshed));
+  }, [favorites]);
+
+  useEffect(() => {
+    if (screen !== 'favs') return;
+    void refreshFavoritePrices();
+  }, [screen, refreshFavoritePrices]);
+
   // ── PWA install ────────────────────────────────────────────────────────────
   useEffect(() => subscribeInstall(() => setCanInstall(installReady())), []);
 
@@ -1136,6 +1223,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const bundle = getProviders(sourceId);
         const route = await bundle.route.getRoute(from, to, { avoidMotorway, avoidToll, vehicle });
         const raw = await bundle.stations.getStationsAlong(route.polyline, 5);
+        // The route corridor is the same shape of problem as the map area: a
+        // favorite it crosses keeps its price for the Favoris tab
+        recordFavoritePrices(favoriteIds.current, raw, Date.now());
         const cum = cumulativeKm(route.polyline);
         const enriched: RouteStation[] = raw
           .map((st) => {
@@ -1610,6 +1700,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       favorites,
       isFavorite: (id) => favorites.some((f) => f.id === id),
       toggleFavorite,
+      favoritePrices,
       stations,
       reloadStations: () => void loadStations({ force: true }),
       roadReach,
@@ -1681,7 +1772,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       requestGeolocation, searchPos, searchLabel, setSearchArea, resetSearchToUser,
       searchOpen, setSearchOpenNav,
       focusStationId, mapZoom, setMapZoom,
-      favorites, toggleFavorite, stations, roadReach, loadStations, fromText, fromIsCurrentPosition,
+      favorites, toggleFavorite, favoritePrices, stations, roadReach, loadStations,
+      fromText, fromIsCurrentPosition,
       toText, fromPoint, toPoint,
       setFrom, useCurrentPositionAsStart, setTo, searchPlaces, searchHistory,
       rememberSearchedPlace, recents, hasTripHistory, routeReady,
@@ -1774,7 +1866,7 @@ function cached<A extends (string | number)[], T>(
  */
 const SP95_FOR_E10: ReadonlyArray<StationCountry> = ['esp', 'and', 'prt'];
 
-export function effectiveFuel(s: Station, fuel: FuelId): FuelId | null {
+export function effectiveFuel(s: Pick<Station, 'id' | 'prices'>, fuel: FuelId): FuelId | null {
   if (s.prices[fuel] != null) return fuel;
   const country = stationCountry(s.id);
   if (fuel === 'e10' && s.prices.unleaded95 != null && country && SP95_FOR_E10.includes(country)) {
@@ -1783,8 +1875,12 @@ export function effectiveFuel(s: Station, fuel: FuelId): FuelId | null {
   return null;
 }
 
-/** Price of the effective fuel (undefined when the station sells neither) */
-export function effectivePrice(s: Station, fuel: FuelId): FuelPrice | undefined {
+/** Price of the effective fuel (undefined when the station sells neither).
+ *  Takes id + prices only, so a compact favorite-price entry qualifies. */
+export function effectivePrice(
+  s: Pick<Station, 'id' | 'prices'>,
+  fuel: FuelId,
+): FuelPrice | undefined {
   const f = effectiveFuel(s, fuel);
   return f ? s.prices[f] : undefined;
 }
@@ -2042,8 +2138,8 @@ export type FavSort = 'recommended' | 'price' | 'distance';
 /**
  * Order the Favoris rows. « Recommandé » ranks on the effective per-litre
  * price (fuel burnt to get there included — same notion as the map card);
- * « Prix » keeps the raw sticker order; rows without a live price (area not
- * loaded) always sink to the bottom, sorted by distance.
+ * « Prix » keeps the raw sticker order; rows without any known price (never
+ * seen in an area or route fetch yet) sink to the bottom, sorted by distance.
  */
 export function sortFavoriteRows<T extends { price: number | null; distKm: number }>(
   rows: T[],

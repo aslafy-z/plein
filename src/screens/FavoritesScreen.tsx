@@ -8,7 +8,7 @@ import {
   type FavoriteStation,
   type FavSort,
 } from '../state/store';
-import { fmtPrice, distLabel, agoLabel } from '../lib/format';
+import { fmtPrice, distLabel, agoLabel, agoLabelFrom } from '../lib/format';
 import { fuelLabel, openStatusShort } from '../lib/labels';
 import { useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
@@ -31,8 +31,11 @@ const FAV_MAX_WIDTH = 1000;
 /**
  * Favoris — the user's pinned stations (★ on a station detail or on the map
  * card). Favorites are stored as snapshots so they render even when their
- * area isn't loaded; live price/status appear when it is, and tapping a row
- * jumps to the map with the station selected (which loads its area).
+ * area isn't loaded. The price cell reads the live area when it covers the
+ * favorite and the compact favorite-price store otherwise — favorites in two
+ * different cities, or two different countries, show their prices side by
+ * side, each with an honest age. Tapping a row jumps to the map with the
+ * station selected (which loads its area).
  */
 export default function FavoritesScreen() {
   const app = useApp();
@@ -46,9 +49,11 @@ export default function FavoritesScreen() {
 
   const rows = app.favorites.map((f) => {
     const live = app.stations.data.find((s) => s.id === f.id);
-    const price = (live && effectivePrice(live, app.fuel)?.value) ?? null;
+    const held = live ? undefined : app.favoritePrices[f.id];
+    const priced = live ?? (held ? { id: f.id, prices: held.prices } : null);
+    const priceInfo = priced ? effectivePrice(priced, app.fuel) : undefined;
     const { distKm } = roadReachOf(haversineKm(app.userPos, f), app.roadReach[f.id]);
-    return { f, live, price, distKm };
+    return { f, live, held, priceInfo, price: priceInfo?.value ?? null, distKm };
   });
 
   // « Recommandé » ranks on the effective per-litre price: the fuel burnt on
@@ -153,10 +158,16 @@ export default function FavoritesScreen() {
               marginTop: 14,
             }}
           >
-            {favs.map(({ f, live, price, distKm }) => {
-              const updated = live && effectivePrice(live, app.fuel)?.updatedAt;
+            {favs.map(({ f, live, held, priceInfo, price, distKm }) => {
               const liveStatus = live ? openStatus(live.hours) : null;
               const status = liveStatus ? openStatusShort(liveStatus) : undefined;
+              // The source's own update stamp stays the thing shown; a source
+              // that doesn't stamp its prices falls back to when we read them
+              const ago = priceInfo?.updatedAt
+                ? agoLabel(priceInfo.updatedAt)
+                : price != null && held
+                  ? agoLabelFrom(held.fetchedAt)
+                  : null;
               return (
                 <div
                   key={f.id}
@@ -193,8 +204,8 @@ export default function FavoritesScreen() {
                         {[
                           distLabel(distKm),
                           status,
-                          updated
-                            ? m.sheet_updated_ago({ ago: agoLabel(updated) })
+                          ago
+                            ? m.sheet_updated_ago({ ago })
                             : price == null
                               ? m.favorites_tap_to_load()
                               : undefined,

@@ -174,6 +174,31 @@ describe('stationsCache', () => {
     expect(store.payloadReads).toBe(1);
   });
 
+  it('finds stations by id across every cached area, newest area first', async () => {
+    const { writeStationsCache, collectCachedStations } = await freshCache(spyStore());
+
+    // Two areas, two sources — and one id present in both, at different ages
+    writeStationsCache('fra', CENTER, 30, [station('fra-a'), station('both')], 1_000);
+    writeStationsCache('esp', PARIS, 30, [station('esp-b'), station('both')], 2_000);
+
+    const hits = await collectCachedStations(new Set(['fra-a', 'esp-b', 'both', 'absent']));
+    expect(hits.get('fra-a')?.fetchedAt).toBe(1_000);
+    expect(hits.get('esp-b')?.fetchedAt).toBe(2_000);
+    // The newer area answers for the shared id
+    expect(hits.get('both')?.fetchedAt).toBe(2_000);
+    expect(hits.has('absent')).toBe(false);
+  });
+
+  it('ignores areas past the hard ceiling in the by-id lookup', async () => {
+    const { writeStationsCache, collectCachedStations, MAX_CACHE_AGE_MS } =
+      await freshCache(spyStore());
+    vi.setSystemTime(MAX_CACHE_AGE_MS + 100_000);
+
+    writeStationsCache('fra', CENTER, 30, [station('ancient')], 50_000);
+
+    expect((await collectCachedStations(new Set(['ancient']))).size).toBe(0);
+  });
+
   it('reports a near-but-not-covering area as a hit that still needs a fetch', async () => {
     const { writeStationsCache, readStationsCache } = await freshCache(spyStore());
 
