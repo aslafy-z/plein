@@ -22,6 +22,12 @@ export default function App() {
   const { screen } = app;
   const desktop = useIsDesktop();
 
+  // A fiche opened from the route belongs to the route: on desktop it stacks
+  // inside the route panel, over the corridor map — never a jump to the map
+  // tab the reader wasn't on.
+  const detailFromRoute =
+    app.prevScreen === 'route' || app.prevScreen === 'routeSetup';
+
   // A fiche takes the whole phone screen, tab bar included — there is nothing
   // else to look at on 400px. A window keeps the side navigation up: the fiche
   // is one page of the app, not a mode the user has to back out of blind.
@@ -42,12 +48,17 @@ export default function App() {
           {/* On desktop the fiche floats over the LIVE map, in the same slot
               as the zone panel — so /station/:id keeps MapScreen mounted and
               MapScreen decides what the slot shows */}
-          {(screen === 'map' || (desktop && screen === 'detail')) && <MapScreen />}
+          {(screen === 'map' || (desktop && screen === 'detail' && !detailFromRoute)) && (
+            <MapScreen />
+          )}
           {screen === 'favs' && <FavoritesScreen />}
           {/* One shell for the whole route flow — same component for both
-              screens, so handing setup over to the results (and back through
-              « Modifier ») never remounts the map */}
-          {(screen === 'routeSetup' || screen === 'route') && <RouteScreen />}
+              screens (and for a fiche read in route context), so handing
+              setup over to the results, opening a stop's fiche and coming
+              back never remounts the map */}
+          {(screen === 'routeSetup' ||
+            screen === 'route' ||
+            (desktop && screen === 'detail' && detailFromRoute)) && <RouteScreen />}
           {screen === 'settings' && <Settings />}
           {showTabBar && <NavBar />}
           {/* Last so the phone's full-screen fiche covers the tab bar above */}

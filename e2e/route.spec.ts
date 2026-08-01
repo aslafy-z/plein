@@ -34,6 +34,11 @@ test('route comparison: map-first shell, tour, station detail and history', asyn
   // fiche has no mini-map
   await expect(page.getByText('Services')).toBeVisible()
   await expect(page.getByText(/MàJ il y a/).first()).toBeVisible()
+  // Desktop: the fiche stacks INSIDE the route panel — the reader stays in
+  // the route view, corridor map up (a phone shows the fiche full screen)
+  if ((await page.getByTestId('route-panel').count()) > 0) {
+    await expect(page.locator('[aria-label="Carte du trajet"]')).toBeVisible()
+  }
   await page.goBack()
 
   // ── One place history: the destination picked in the route search is
