@@ -15,9 +15,9 @@
 // is a share of the disk rather than the ~5 MB budget the settings blob
 // already lives in.
 
-export type StoreName = 'areas' | 'payloads';
+export type StoreName = 'areas' | 'payloads' | 'favoritePrices';
 
-const STORE_NAMES: readonly StoreName[] = ['areas', 'payloads'];
+const STORE_NAMES: readonly StoreName[] = ['areas', 'payloads', 'favoritePrices'];
 
 export interface CacheStore {
   /** false when nothing written here survives a reload */
@@ -32,7 +32,10 @@ export interface CacheStore {
 }
 
 const DB_NAME = 'plein.cache';
-const DB_VERSION = 1;
+// v2 added `favoritePrices` — the compact per-station price store favorites
+// read from when their area isn't the loaded one (kept apart from `areas` /
+// `payloads` so a favorite refresh can never evict or thin a map area).
+const DB_VERSION = 2;
 /**
  * An `open()` can be held indefinitely by another tab still on an older
  * version (`onblocked`), and a hostile storage policy can leave it pending.

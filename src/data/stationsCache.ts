@@ -484,6 +484,38 @@ export async function readStationsCache(
     : { stations, fetchedAt: match.fetchedAt, covers: false };
 }
 
+/**
+ * By-id lookup across EVERY cached area, not just the one covering searchPos —
+ * a favorite whose area was fetched ten minutes ago has its price sitting in
+ * IndexedDB right now, and looking it up costs zero network. Newest areas are
+ * searched first, so an id present in two areas reports the newer price, and
+ * each hit carries its area's `fetchedAt` so the caller can voice an honest
+ * age. Payloads load lazily and stay memoized; the sweep stops as soon as
+ * every id is found.
+ */
+export async function collectCachedStations(
+  ids: ReadonlySet<string>,
+): Promise<Map<string, { station: Station; fetchedAt: number }>> {
+  const out = new Map<string, { station: Station; fetchedAt: number }>();
+  if (!ids.size) return out;
+  await ready();
+  const now = Date.now();
+  const metas = [...index.values()]
+    .filter((meta) => now - meta.fetchedAt <= MAX_CACHE_AGE_MS)
+    .sort((a, b) => b.fetchedAt - a.fetchedAt);
+  for (const meta of metas) {
+    if (out.size === ids.size) break;
+    const stations = await loadPayload(meta.key);
+    if (!stations) continue;
+    for (const station of stations) {
+      if (ids.has(station.id) && !out.has(station.id)) {
+        out.set(station.id, { station, fetchedAt: meta.fetchedAt });
+      }
+    }
+  }
+  return out;
+}
+
 /** Newest areas first, within both the count cap and the byte budget */
 function evict(): void {
   const byAge = [...index.values()].sort((a, b) => b.fetchedAt - a.fetchedAt);
