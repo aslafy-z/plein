@@ -106,6 +106,23 @@
       }
     }
   ],
+  "map_pin_cap_hint": [
+    {
+      "declarations": [
+        "input cap",
+        "input dots",
+        "local dotsPlural = dots: plural"
+      ],
+      "selectors": [
+        "dotsPlural"
+      ],
+      "match": {
+        "dotsPlural=one": "Zona: les {cap} més barates · {dots} en punt",
+        "dotsPlural=other": "Zona: les {cap} més barates · {dots} en punts"
+      }
+    }
+  ],
+  "map_loading_stations": "S'estan cercant benzineres…",
   "map_geo_last_known": "Última posició coneguda — reactiva la ubicació",
   "map_geo_default_pos": "Posició per defecte: Toulouse — activa la ubicació",
   "install_pitch": "Instal·la Plein. per obrir-lo amb un gest, fins i tot sense connexió.",

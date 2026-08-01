@@ -106,6 +106,23 @@
       }
     }
   ],
+  "map_pin_cap_hint": [
+    {
+      "declarations": [
+        "input cap",
+        "input dots",
+        "local dotsPlural = dots: plural"
+      ],
+      "selectors": [
+        "dotsPlural"
+      ],
+      "match": {
+        "dotsPlural=one": "Zone : les {cap} moins chères · {dots} en point",
+        "dotsPlural=other": "Zone : les {cap} moins chères · {dots} en points"
+      }
+    }
+  ],
+  "map_loading_stations": "Recherche des stations…",
   "map_geo_last_known": "Dernière position connue — réactiver la localisation",
   "map_geo_default_pos": "Position par défaut : Toulouse — activer la localisation",
   "install_pitch": "Installez Plein. pour l'ouvrir d'un geste, même hors-ligne.",

@@ -605,7 +605,7 @@ export default function MapCanvas({
               textAlign: 'center',
             }}
           >
-            Zone : les {PIN_CAP} moins chères · {zoneDots} en point{zoneDots > 1 ? 's' : ''}
+            {m.map_pin_cap_hint({ cap: PIN_CAP, dots: zoneDots })}
           </span>
         </div>
       )}
@@ -635,7 +635,7 @@ export default function MapCanvas({
               boxShadow: '0 8px 24px rgba(0,0,0,.5)',
             }}
           >
-            Recherche des stations…
+            {m.map_loading_stations()}
           </span>
         </div>
       )}

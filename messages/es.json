@@ -106,6 +106,23 @@
       }
     }
   ],
+  "map_pin_cap_hint": [
+    {
+      "declarations": [
+        "input cap",
+        "input dots",
+        "local dotsPlural = dots: plural"
+      ],
+      "selectors": [
+        "dotsPlural"
+      ],
+      "match": {
+        "dotsPlural=one": "Zona: las {cap} más baratas · {dots} en punto",
+        "dotsPlural=other": "Zona: las {cap} más baratas · {dots} en puntos"
+      }
+    }
+  ],
+  "map_loading_stations": "Buscando gasolineras…",
   "map_geo_last_known": "Última posición conocida — reactivar la ubicación",
   "map_geo_default_pos": "Posición por defecto: Toulouse — activar la ubicación",
   "install_pitch": "Instala Plein. para abrirlo con un gesto, incluso sin conexión.",
