@@ -699,7 +699,12 @@ const routeStation = (
   price: number,
   kmAlong: number,
   detourMin: number,
-): RouteStation => ({ ...station({ id, prices: diesel(price) }), kmAlong, detourMin })
+): RouteStation => ({
+  ...station({ id, prices: diesel(price) }),
+  kmAlong,
+  detourMin,
+  offRouteKm: detourMin / 4,
+})
 
 const CORRIDOR: RouteStation[] = [
   routeStation('cheapest-far-detour', 1.63, 119, 7),

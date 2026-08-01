@@ -152,6 +152,14 @@ export class DemoRouteProvider implements RouteProvider {
     return { distanceKm, durationMin, polyline };
   }
 
+  // No getTravelMatrix on purpose: the demo world is made of straight lines,
+  // where a chord through an off-route station is barely longer than the
+  // route itself — a « routed » matrix would price every detour at ~zero and
+  // the fuel-stop plan would stop discriminating. The route plan therefore
+  // uses the geometric fallback (projection + perpendicular access), which
+  // preserves the dataset's detour fiction, is fully deterministic for the
+  // e2e suite, and honestly reports its `estimated` quality.
+
   // Same fictional road factor as getRoute, at ~40 km/h city driving — the
   // demo exercises the road-distance pipeline offline and deterministically.
   async getReachMatrix(from: GeoPoint, targets: GeoPoint[]): Promise<Array<ReachInfo | null>> {

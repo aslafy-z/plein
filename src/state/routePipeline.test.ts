@@ -51,6 +51,7 @@ const station = (id: string, kmAlong: number): RouteStation => ({
   highway: false,
   kmAlong,
   detourMin: 0,
+  offRouteKm: 0,
 })
 
 /** A finished computation for KEY_A: geometry and stations both committed. */

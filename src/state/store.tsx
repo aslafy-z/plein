@@ -23,7 +23,7 @@ import {
 import { IS_ANDROID, IS_IOS } from '../lib/env';
 import type { GeoPoint } from '../lib/geo';
 import { m } from '../paraglide/messages.js';
-import { cumulativeKm, haversineKm, nearestOnPolyline } from '../lib/geo';
+import { haversineKm } from '../lib/geo';
 import {
   ALL_FUELS,
   SERVICE_TAGS,
@@ -54,6 +54,7 @@ import {
 import { pushSearchIn } from './searchHistory';
 import { beginRouteTiming, markRoute } from '../lib/perf';
 import { CROW_ROAD_FACTOR, effectiveLiterPrice, usableRangeKm } from '../lib/fuelEconomics';
+import { projectCorridor } from '../lib/routeCandidates';
 import {
   beginCorridor,
   beginGeometry,
@@ -1309,36 +1310,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // user has since edited away.
   const routeReq = useRef(0);
 
-  /** Place each corridor station along the route and bound the set. */
-  const placeAlongRoute = useCallback(
-    (raw: Station[], route: Route): RouteStation[] => {
-      const cum = cumulativeKm(route.polyline);
-      const enriched: RouteStation[] = raw
-        .map((st) => {
-          const near = nearestOnPolyline({ lat: st.lat, lng: st.lng }, route.polyline, cum);
-          return {
-            ...st,
-            kmAlong: Math.round(near.alongKm),
-            // ~60 km/h there and back on local roads; on-route stations count as 0
-            detourMin: near.distKm < 0.4 ? 0 : Math.max(1, Math.round(near.distKm * 2)),
-          };
-        })
-        .filter((st) => st.kmAlong > 5 && st.kmAlong < route.distanceKm - 5)
-        .sort((a, b) => a.kmAlong - b.kmAlong);
-      // Keep the full corridor (bounded for perf) — WHICH stops are shown is
-      // decided per strategy in selectRouteAnalysis, so the chips act on the
-      // whole ribbon, not just the recommendation. Capped once, here, on the
-      // whole merged set: a per-batch cap would rank against a partial field.
-      if (enriched.length <= 30) return enriched;
-      return [...enriched]
-        .sort(
-          (a, b) => (effectivePrice(a, fuel)?.value ?? 9) - (effectivePrice(b, fuel)?.value ?? 9),
-        )
-        .slice(0, 30)
-        .sort((a, b) => a.kmAlong - b.kmAlong);
-    },
-    [fuel],
-  );
+  /** Place each corridor station along the route. The whole corridor is kept:
+      the optimizer picks its own bounded, geographically distributed candidate
+      set (lib/routeCandidates) — capping here on price destroyed coverage at
+      the start of long routes. This is also the ONE place the corridor gets
+      projected (see projectCorridor): measuring is O(stations × polyline
+      vertices), far too expensive for a selector that reruns on every store
+      update. */
+  const placeAlongRoute = useCallback((raw: Station[], route: Route): RouteStation[] => {
+    return projectCorridor(route, raw)
+      .filter((st) => st.kmAlong > 1 && st.kmAlong < route.distanceKm - 1)
+      .sort((a, b) => a.kmAlong - b.kmAlong);
+  }, []);
 
   const runCorridor = useCallback(
     async (key: string, route: Route, reqId: number) => {
