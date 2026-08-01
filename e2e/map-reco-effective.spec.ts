@@ -57,8 +57,10 @@ test('a closer station wins when the détour eats the savings', async ({ page })
   await expect(page.getByText('Station · Proche').first()).toBeVisible()
   await expect(page.getByText('1,89 €').first()).toBeVisible()
 
-  // The list keeps the sticker-price order and its labels: the cheapest
-  // first with « meilleur prix », the recommended one flagged as such
+  // The list defaults to the « Recommandé » sort — a plain effective-price
+  // order without the card's tie margin, so Lointaine (1,937 €/L effective)
+  // still leads Proche (1,948) while the crown sits on the second row,
+  // flagged as such
   await openZoneList(page)
   const rows = page.getByTestId('zone-row')
   await expect(rows.first()).toContainText('Lointaine')

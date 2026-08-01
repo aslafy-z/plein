@@ -183,6 +183,7 @@
       }
     }
   ],
+  "sheet_sort_recommended": "Recomanat",
   "sheet_sort_price": "Preu",
   "sheet_sort_distance": "Distància",
   "sheet_locate_aria": "Veure {station} al mapa",

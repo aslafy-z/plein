@@ -20,7 +20,8 @@ import { openStatus } from '../lib/hours';
 import BrandAvatar from './BrandAvatar';
 
 /**
- * Every station of the zone, sorted by price or distance, deals highlighted.
+ * Every station of the zone, sorted by effective price (« Recommandé », the
+ * default), sticker price or distance, deals highlighted.
  * A row selects its station on the map (highlighted pin, map pans onto it) —
  * the map ↔ list link.
  *
@@ -136,6 +137,7 @@ export default function ZoneList({
         <span style={{ flex: 1 }} />
         {(
           [
+            ['recommended', m.sheet_sort_recommended()],
             ['price', m.sheet_sort_price()],
             ['distance', m.sheet_sort_distance()],
           ] as const
