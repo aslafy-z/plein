@@ -63,6 +63,14 @@ export default function RouteMap({
   const app = useApp();
   const analysis = selectRouteAnalysis(app);
   const route = app.routeState.route;
+  // Stable pin signature: the draw effect must rerun when the PLAN changes,
+  // not when unrelated store state produces a fresh analysis object.
+  const planKey = [
+    analysis.plan?.status ?? '',
+    ...analysis.planStops.map((p) => p.station.id),
+    '|',
+    ...analysis.alternatives.map((s) => s.id),
+  ].join(',');
 
   const layerRef = useRef<L.LayerGroup | null>(null);
   const fittedRouteRef = useRef<unknown>(null);
@@ -192,15 +200,17 @@ export default function RouteMap({
       }
     }
 
-    // Corridor stops as price pins — the same markup the zone map draws
-    // (lib/pricePin): the recommended one crowned, and the stop whose fiche
-    // is being read wearing the selection halo, exactly like the map's pins.
-    // The fiche releases the halo with the screen when it closes.
+    // Plan stops + alternatives as price pins — the same markup the zone map
+    // draws (lib/pricePin): the plan's own stops crowned, and the stop whose
+    // fiche is being read wearing the selection halo, exactly like the map's
+    // pins. The fiche releases the halo with the screen when it closes.
     const selectedId = app.screen === 'detail' ? app.detailId : null;
-    for (const st of analysis.stops) {
+    const planIds = new Set(analysis.planStops.map((p) => p.station.id));
+    const shown = [...analysis.planStops.map((p) => p.station), ...analysis.alternatives];
+    for (const st of shown) {
       const price = effectivePrice(st, app.fuel)?.value;
       if (price == null) continue;
-      const recommended = st.id === analysis.recoId;
+      const recommended = planIds.has(st.id);
       const focused = st.id === selectedId;
       const html = pricePinHtml(fmtPrice(price), { recommended, focused });
       const marker = L.marker([st.lat, st.lng], {
@@ -222,7 +232,7 @@ export default function RouteMap({
       shell.fitBounds(box, { pad: 26 });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [route, app.routeState.stations, app.fuel, app.routeMode, analysis.recoId, app.screen, app.detailId]);
+  }, [route, app.routeState.stations, app.fuel, app.routeMode, planKey, analysis.limitKm, app.screen, app.detailId]);
 
   return (
     <div aria-label={m.map_route_aria()} style={{ position: 'absolute', inset: 0, background: C.mapBg }}>

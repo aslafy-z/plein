@@ -1,18 +1,20 @@
 // The computed route as a timeline: header (trip, distance, strategy chips),
-// then the departure, the corridor stops (recommended one crowned), the
-// autonomy limit and the arrival. Presentation of the READY state only — the
-// route shell (RouteScreen) owns the stage, the sheet/panel this scrolls in,
-// and the computing/error states.
+// then the departure, the fuel-stop PLAN (zero, one or several stops with the
+// litres to buy at each), the autonomy limit, the arrival and the browsable
+// alternatives. Presentation of the READY state only — the route shell
+// (RouteScreen) owns the stage, the sheet/panel this scrolls in, and the
+// computing/error states.
 //
 // The stop cards keep their own presentation on purpose: they are a timeline
 // with a « add to my run » toggle, not the scannable rows ZoneList draws.
 import { type ReactNode } from 'react';
 import { C, mono } from '../theme';
-import { clockLabel, fmtPrice, durationLabel } from '../lib/format';
+import { clockLabel, fmtDecimal, fmtPrice, durationLabel } from '../lib/format';
 import { fuelLabel } from '../lib/labels';
 import { useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
 import { type RouteStation } from '../data/types';
+import type { InfeasibleDiagnostics, RoutePlan } from '../lib/routeOptimizer';
 import ShareIcon from '../components/ShareIcon';
 import {
   useApp,
@@ -21,7 +23,7 @@ import {
   effectiveFuel,
   effectivePrice,
   type ArrivalEstimate,
-  type RecommendationReason,
+  type PlanStopView,
   type RouteMode,
   type RouteState,
 } from '../state/store';
@@ -42,21 +44,14 @@ function strategyLabel(mode: RouteMode): string {
 const detourLabel = (detourMin: number) =>
   detourMin === 0 ? m.ribbon_no_detour() : m.ribbon_detour({ minutes: detourMin });
 
-/** Why the timeline crowns this stop — the analysis hands over data, not copy */
-export function recommendationLabel(reason: RecommendationReason | null): string {
-  if (!reason) return '';
-  switch (reason.kind) {
-    case 'lowestPrice':
-      return m.ribbon_reco_lowest_price({ saving: fmtPrice(reason.saving) });
-    case 'noDetour':
-      return m.ribbon_reco_no_detour();
-    case 'minDetour':
-      return m.ribbon_reco_min_detour({ minutes: reason.detourMin });
-    case 'balanced':
-      return m.ribbon_reco_balanced({ saving: fmtPrice(reason.saving) });
-    case 'onlyStation':
-      return m.ribbon_reco_only_station();
-  }
+/** Litres with locale decimals — one digit under 10 L, whole litres above */
+export const litresLabel = (litres: number) => fmtDecimal(litres, litres < 10 ? 1 : 0);
+
+/** Why no plan exists — structured diagnostics become one clear sentence */
+function infeasibleLabel(diag: InfeasibleDiagnostics | undefined, limitKm: number): string {
+  const km = Math.round(diag?.furthestReachableKm ?? limitKm);
+  if (!diag || diag.noStationInRange) return m.ribbon_infeasible_no_station({ km });
+  return m.ribbon_infeasible_gap({ km });
 }
 
 function arrivalLabel(arrival: ArrivalEstimate | null): string {
@@ -78,8 +73,10 @@ function arrivalLabel(arrival: ArrivalEstimate | null): string {
 /**
  * One whole sentence for the polite live region — never assembled from
  * fragments, so a screen reader announces something that stands on its own.
+ * The plan lands last: once the corridor stands and the matrix stage has
+ * settled, the announcement is the plan itself, not the station count.
  */
-export function stageSentence(s: RouteState): string {
+export function stageSentence(s: RouteState, plan?: RoutePlan | null): string {
   if (s.geometry === 'loading') {
     return s.provisional ? m.ribbon_stage_provisional() : m.ribbon_computing();
   }
@@ -89,9 +86,13 @@ export function stageSentence(s: RouteState): string {
   if (s.corridor === 'loading') return m.ribbon_stage_geometry();
   if (s.corridor === 'error') return m.ribbon_corridor_failed();
   if (s.corridor === 'ready') {
-    return s.stations.length === 0
-      ? m.ribbon_stage_no_stations()
-      : m.ribbon_stage_stations({ count: s.stations.length });
+    if (s.stations.length === 0) return m.ribbon_stage_no_stations();
+    if (s.matrix !== 'loading' && plan) {
+      if (plan.status === 'direct') return m.ribbon_stage_plan_direct();
+      if (plan.status === 'planned') return m.ribbon_stage_plan_stops({ count: plan.stops.length });
+      return m.ribbon_stage_plan_infeasible();
+    }
+    return m.ribbon_stage_stations({ count: s.stations.length });
   }
   return '';
 }
@@ -301,8 +302,9 @@ export default function RouteTimeline() {
     };
   };
 
-  // ── Reco stop card ──────────────────────────────────────────────────────────
-  const recoNode = (st: RouteStation) => {
+  // ── Plan stop card ──────────────────────────────────────────────────────────
+  const planStopNode = (view: PlanStopView, index: number, count: number) => {
+    const st = view.station;
     const inRun = !!app.plannedStops[st.id];
     return (
       <div key={st.id} style={{ position: 'relative', padding: '0 0 14px' }}>
@@ -323,7 +325,7 @@ export default function RouteTimeline() {
             fontWeight: 800,
           }}
         >
-          ★
+          {count > 1 ? index + 1 : '★'}
         </div>
         <div
           style={{
@@ -346,10 +348,12 @@ export default function RouteTimeline() {
                 flex: 1,
               }}
             >
-              {m.ribbon_recommended_stop()}
+              {count > 1
+                ? m.ribbon_plan_stop_index({ index: index + 1, count })
+                : m.ribbon_recommended_stop()}
             </span>
             <span style={{ fontSize: 11, color: C.mut, whiteSpace: 'nowrap' }}>
-              {m.ribbon_km_marker({ km: st.kmAlong })} · {detourLabel(st.detourMin)}
+              {m.ribbon_km_marker({ km: Math.round(st.kmAlong) })} · {detourLabel(st.detourMin)}
             </span>
           </div>
           <button
@@ -368,7 +372,10 @@ export default function RouteTimeline() {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 16, fontWeight: 700, color: C.ink }}>{st.name}</div>
               <div style={{ fontSize: 12, color: C.mut, marginTop: 2 }}>
-                {recommendationLabel(analysis.recoReason)}
+                {m.ribbon_plan_buy({
+                  litres: litresLabel(view.stop.purchasedLitres),
+                  cost: fmtPrice(view.stop.purchaseCostCents / 100),
+                })}
               </div>
             </div>
             <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -412,7 +419,7 @@ export default function RouteTimeline() {
     );
   };
 
-  // ── Plain stop ──────────────────────────────────────────────────────────────
+  // ── Plain stop (alternatives) ───────────────────────────────────────────────
   const plainNode = (st: RouteStation) => {
     const inRun = !!app.plannedStops[st.id];
     return (
@@ -445,7 +452,7 @@ export default function RouteTimeline() {
             style={{ flex: 1, minWidth: 0, cursor: 'pointer', textAlign: 'left' }}
           >
             <div style={{ fontSize: 12, color: C.mut, fontWeight: 700 }}>
-              {m.ribbon_km_marker({ km: st.kmAlong })} · {detourLabel(st.detourMin)}
+              {m.ribbon_km_marker({ km: Math.round(st.kmAlong) })} · {detourLabel(st.detourMin)}
             </div>
             <div style={{ fontSize: 14.5, fontWeight: 700, color: C.ink, marginTop: 2 }}>
               {st.name}
@@ -469,18 +476,21 @@ export default function RouteTimeline() {
 
   if (!route) return null;
 
+  const plan = analysis.plan;
   const limitPct = Math.max(8, Math.min(92, (analysis.limitKm / route.distanceKm) * 100));
 
+  // The optimal sequence, with the autonomy marker threaded between stops
   const stopNodes: ReactNode[] = [];
   let markerDone = false;
-  for (const st of analysis.stops) {
-    if (analysis.needsStop && !markerDone && st.kmAlong > analysis.limitKm) {
+  const count = analysis.planStops.length;
+  analysis.planStops.forEach((view, i) => {
+    if (analysis.needsStop && !markerDone && view.station.kmAlong > analysis.limitKm) {
       markerDone = true;
       stopNodes.push(limitMarker(analysis.limitKm));
     }
-    stopNodes.push(st.id === analysis.recoId ? recoNode(st) : plainNode(st));
-  }
-  // Autonomy runs out after the last found stop → marker still belongs on the line
+    stopNodes.push(planStopNode(view, i, count));
+  });
+  // Autonomy runs out after the last stop → the marker still belongs on the line
   if (analysis.needsStop && !markerDone) stopNodes.push(limitMarker(analysis.limitKm));
 
   const nStops = analysis.plannedStops.length;
@@ -547,17 +557,19 @@ export default function RouteTimeline() {
           </span>
           <span>·</span>
           <span>{m.ribbon_fuel_tank({ fuel: fuelLabel(fuel), tank })}</span>
-          {analysis.tripCost != null && analysis.tripLitres != null && (
-            <>
-              <span>·</span>
-              <span>
-                {m.ribbon_trip_fuel({
-                  litres: Math.round(analysis.tripLitres),
-                  cost: fmtPrice(analysis.tripCost),
-                })}
-              </span>
-            </>
-          )}
+          {plan?.status === 'planned' &&
+            analysis.purchaseLitres != null &&
+            analysis.purchaseCostCents != null && (
+              <>
+                <span>·</span>
+                <span>
+                  {m.ribbon_trip_purchase({
+                    litres: litresLabel(analysis.purchaseLitres),
+                    cost: fmtPrice(analysis.purchaseCostCents / 100),
+                  })}
+                </span>
+              </>
+            )}
         </div>
         <div
           style={{
@@ -593,6 +605,14 @@ export default function RouteTimeline() {
             );
           })}
         </div>
+        {/* Routed matrix settled without cells → the plan runs on geometric
+            estimates. Quiet while the matrix is still loading: flashing the
+            notice before the answer had a chance to land would cry wolf. */}
+        {analysis.quality === 'estimated' && routeState.matrix !== 'loading' && (
+          <div style={{ fontSize: 11.5, color: C.mut, marginTop: 2 }} data-testid="plan-estimated">
+            {m.ribbon_estimated_notice()}
+          </div>
+        )}
       </div>
 
       {/* A result for older inputs, or a failed recompute, stays on screen —
@@ -630,8 +650,9 @@ export default function RouteTimeline() {
           m.ribbon_departure_tank({ percent: app.startTankPct, km: analysis.autonomyKm }),
         )}
 
-        {/* Stops — placeholders while the corridor runs, retry when it failed */}
-        {routeState.corridor === 'loading' ? (
+        {/* The plan — placeholders while the corridor runs, retry when it
+            failed, then the direct / stops / infeasible states */}
+        {routeState.corridor === 'loading' && !plan ? (
           [0, 1, 2].map((i) => skeletonNode(i, !desktop))
         ) : routeState.corridor === 'error' ? (
           <div style={{ position: 'relative', padding: '0 0 14px' }}>
@@ -644,12 +665,68 @@ export default function RouteTimeline() {
               </button>
             </div>
           </div>
-        ) : analysis.stops.length === 0 ? (
-          <div style={{ position: 'relative', padding: '0 0 14px', fontSize: 12.5, color: C.mut }}>
-            {m.ribbon_no_stops()}
-          </div>
         ) : (
-          stopNodes
+          <>
+            {plan?.status === 'direct' && (
+              <div style={{ position: 'relative', padding: '0 0 14px' }} data-testid="plan-direct">
+                <div
+                  style={{
+                    background: C.accentSoft10,
+                    border: '1px solid rgba(61,220,132,.3)',
+                    borderRadius: 14,
+                    padding: '12px 16px',
+                  }}
+                >
+                  <div style={{ fontSize: 13.5, fontWeight: 800, color: C.accent }}>
+                    {m.ribbon_no_stop_needed()}
+                  </div>
+                  {analysis.destinationFuelLitres != null && (
+                    <div style={{ fontSize: 12, color: C.mut, marginTop: 3 }}>
+                      {m.ribbon_fuel_at_destination({
+                        litres: litresLabel(analysis.destinationFuelLitres),
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            {plan?.status === 'infeasible' && (
+              <div
+                style={{ position: 'relative', padding: '0 0 14px' }}
+                data-testid="plan-infeasible"
+              >
+                <div
+                  style={{
+                    background: C.surface2,
+                    border: `1px solid ${C.warn}`,
+                    borderRadius: 14,
+                    padding: '12px 16px',
+                  }}
+                >
+                  <div style={{ fontSize: 13.5, fontWeight: 800, color: C.warn }}>
+                    {m.ribbon_infeasible_title()}
+                  </div>
+                  <div style={{ fontSize: 12, color: C.mut, marginTop: 3, lineHeight: 1.45 }}>
+                    {infeasibleLabel(plan.diagnostics, analysis.limitKm)}
+                  </div>
+                </div>
+              </div>
+            )}
+            {plan?.status === 'planned' && stopNodes}
+            {plan?.status !== 'planned' && analysis.needsStop && limitMarker(analysis.limitKm)}
+            {routeState.corridor === 'ready' && routeState.stations.length === 0 && (
+              <div
+                style={{ position: 'relative', padding: '0 0 14px', fontSize: 12.5, color: C.mut }}
+              >
+                {m.ribbon_no_stops()}
+              </div>
+            )}
+            {analysis.invalidPlannedStopIds.length > 0 && (
+              <div style={{ position: 'relative', padding: '0 0 14px', fontSize: 12, color: C.warn }}>
+                {m.ribbon_manual_stops_invalid()}
+              </div>
+            )}
+          </>
         )}
 
         {/* Tour bar */}
@@ -681,6 +758,25 @@ export default function RouteTimeline() {
 
         {/* Arrival */}
         {arrivalNode(arrivalPlace, arrivalLabel(analysis.arrival))}
+
+        {/* Alternatives — candidates worth a look, never « the » plan */}
+        {analysis.alternatives.length > 0 && (
+          <div style={{ paddingTop: 22 }} data-testid="plan-alternatives">
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '.12em',
+                textTransform: 'uppercase',
+                color: C.mut,
+                paddingBottom: 10,
+              }}
+            >
+              {m.ribbon_alternatives_title()}
+            </div>
+            {analysis.alternatives.map(plainNode)}
+          </div>
+        )}
       </div>
     </div>
   );

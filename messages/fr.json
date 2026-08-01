@@ -294,16 +294,21 @@
   "ribbon_km_marker": "KM {km}",
   "ribbon_autonomy_limit": "≈ KM {km} — limite d'autonomie sans arrêt",
   "ribbon_recommended_stop": "Arrêt conseillé",
+  "ribbon_plan_stop_index": "Arrêt {index}/{count}",
+  "ribbon_plan_buy": "≈ {litres} L à acheter · {cost} €",
+  "ribbon_no_stop_needed": "Aucun arrêt carburant nécessaire",
+  "ribbon_fuel_at_destination": "≈ {litres} L restants à l'arrivée",
+  "ribbon_alternatives_title": "Autres stations sur le trajet",
+  "ribbon_estimated_notice": "Détours estimés — le calcul d'itinéraire précis est indisponible.",
+  "ribbon_infeasible_title": "Autonomie insuffisante pour ce trajet",
+  "ribbon_infeasible_no_station": "Aucune station accessible avant la limite d'autonomie (≈ KM {km}). Partez avec plus de carburant.",
+  "ribbon_infeasible_gap": "Impossible d'enchaîner les stations trouvées au-delà du KM {km} sans entamer la réserve.",
+  "ribbon_manual_stops_invalid": "Certains arrêts sélectionnés ne peuvent pas être planifiés (carburant non vendu ou hors du trajet).",
   "ribbon_station_aria": "Fiche de {station}",
   "ribbon_go_there": "Y aller",
   "ribbon_add_stop_title": "Ajouter à la tournée",
   "ribbon_add_stop_aria": "Ajouter à la tournée",
   "ribbon_remove_stop_aria": "Retirer de la tournée",
-  "ribbon_reco_lowest_price": "Prix le plus bas du trajet : −{saving} €",
-  "ribbon_reco_no_detour": "Sur votre route · sans détour",
-  "ribbon_reco_min_detour": "Détour minimal · +{minutes} min",
-  "ribbon_reco_balanced": "Le plein ici : −{saving} € vs le + cher du trajet",
-  "ribbon_reco_only_station": "Seule station trouvée sur le trajet",
   "route_error_unavailable": "Itinéraire indisponible. Vérifiez votre connexion.",
   "ribbon_error_fallback": "Itinéraire indisponible.",
   "ribbon_edit_route": "Modifier l'itinéraire",
@@ -332,6 +337,23 @@
     }
   ],
   "ribbon_stage_no_stations": "Aucune station trouvée le long du trajet.",
+  "ribbon_stage_plan_direct": "Plan calculé : aucun arrêt carburant nécessaire.",
+  "ribbon_stage_plan_stops": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Plan calculé : {count} arrêt carburant.",
+        "countPlural=other": "Plan calculé : {count} arrêts carburant."
+      }
+    }
+  ],
+  "ribbon_stage_plan_infeasible": "Autonomie insuffisante : aucun plan de ravitaillement possible.",
   "ribbon_departure": "Départ · {place}",
   "ribbon_departure_tank": "Réservoir {percent} % · autonomie ≈ {km} km",
   "ribbon_no_stops": "Aucune station trouvée le long du trajet — élargissez les filtres.",
@@ -376,7 +398,7 @@
   "ribbon_share_aria": "Partager le trajet",
   "ribbon_distance_duration": "{km} km · {duration}",
   "ribbon_fuel_tank": "{fuel} · réservoir {tank} L",
-  "ribbon_trip_fuel": "≈ {litres} L · {cost} € de carburant",
+  "ribbon_trip_purchase": "≈ {litres} L à acheter · {cost} € au total",
   "detail_map_aria": "Carte de la station",
   "detail_loading": "Chargement de la station…",
   "detail_place_chip_route": "KM {km} · {detour}",

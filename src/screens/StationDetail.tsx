@@ -162,7 +162,7 @@ export default function StationDetail() {
   );
   const placeChip = isRoute
     ? m.detail_place_chip_route({
-        km: routeSt!.kmAlong,
+        km: Math.round(routeSt!.kmAlong),
         detour:
           routeSt!.detourMin === 0
             ? m.ribbon_no_detour()

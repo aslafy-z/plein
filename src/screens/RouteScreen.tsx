@@ -28,7 +28,7 @@ import PlaceField from '../components/PlaceField';
 import SheetShell from '../components/SheetShell';
 import RouteTimeline, {
   RouteAwaited,
-  recommendationLabel,
+  litresLabel,
   retryStyle,
   stageSentence,
 } from './RouteTimeline';
@@ -270,16 +270,20 @@ function RouteLead({ phase }: { phase: Phase }) {
 
   if (phase === 'ready') {
     const route = app.routeState.route;
-    // « Arrêt conseillé » only once a stop is actually known: between the
+    const plan = app.routeState.corridor === 'ready' ? analysis.plan : null;
+    // The plan's headline only once a plan is actually known: between the
     // geometry and corridor commits the trip branch below covers the window.
-    const reco =
-      app.routeState.corridor === 'ready'
-        ? (analysis.stops.find((s) => s.id === analysis.recoId) ?? null)
-        : null;
-    if (reco) {
+    const first = plan?.status === 'planned' ? (analysis.planStops[0] ?? null) : null;
+    if (first) {
+      const count = analysis.planStops.length;
       return (
         <div>
-          {kicker(m.ribbon_recommended_stop(), true)}
+          {kicker(
+            count > 1
+              ? m.ribbon_plan_stop_index({ index: 1, count })
+              : m.ribbon_recommended_stop(),
+            true,
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div
@@ -292,15 +296,39 @@ function RouteLead({ phase }: { phase: Phase }) {
                   whiteSpace: 'nowrap',
                 }}
               >
-                {reco.name}
+                {first.station.name}
               </div>
               <div style={{ fontSize: 12, color: C.mut, marginTop: 2 }}>
-                {recommendationLabel(analysis.recoReason)}
+                {m.ribbon_plan_buy({
+                  litres: litresLabel(first.stop.purchasedLitres),
+                  cost: fmtPrice(first.stop.purchaseCostCents / 100),
+                })}
               </div>
             </div>
             <div style={{ font: mono(700, 22), color: C.accent, whiteSpace: 'nowrap' }}>
-              {fmtPrice(effectivePrice(reco, app.fuel)?.value)} €
+              {fmtPrice(effectivePrice(first.station, app.fuel)?.value)} €
             </div>
+          </div>
+        </div>
+      );
+    }
+    if (plan?.status === 'direct' || plan?.status === 'infeasible') {
+      const infeasible = plan.status === 'infeasible';
+      return (
+        <div>
+          {kicker(m.ribbon_header())}
+          <div style={{ fontSize: 17, fontWeight: 700, color: C.ink }}>
+            {app.routeState.endpoints.from} → {app.routeState.endpoints.to}
+          </div>
+          <div
+            style={{
+              fontSize: 12,
+              color: infeasible ? C.warn : C.accent,
+              fontWeight: 700,
+              marginTop: 2,
+            }}
+          >
+            {infeasible ? m.ribbon_infeasible_title() : m.ribbon_no_stop_needed()}
           </div>
         </div>
       );
@@ -444,7 +472,7 @@ export default function RouteScreen() {
           ? m.route_geocoding_in_progress()
           : phase === 'form'
             ? ''
-            : stageSentence(routeState)}
+            : stageSentence(routeState, selectRouteAnalysis(app).plan)}
       </div>
       <div
         ref={stageRef}
