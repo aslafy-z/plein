@@ -580,6 +580,9 @@ export default function RouteScreen() {
             // The timeline runs longer than a screen — the route sheet opens
             // to the full stage (minus the shell's map peek strip)
             expandRatio={1}
+            // The collapsed header changes with every pipeline commit; each
+            // change landing instantly keeps the flap grabbable during a load
+            instantContentResize
             hasBody
             expandAria={m.route_sheet_expand_aria()}
             collapseAria={m.route_sheet_collapse_aria()}

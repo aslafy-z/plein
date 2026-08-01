@@ -65,6 +65,7 @@ export default function SheetShell({
   hint = false,
   onHintConsumed,
   expandRatio = EXPAND_RATIO,
+  instantContentResize = false,
 }: {
   /** Height of the map stage the sheet lives in (drives the expanded size) */
   stageH: number;
@@ -95,6 +96,13 @@ export default function SheetShell({
       always stays). The zone sheet keeps the default; the route sheet opens
       full — its timeline is longer than a screen. */
   expandRatio?: number;
+  /** Content-driven height changes apply without the glide. The route sheet
+      needs it: its collapsed header changes several times in a row while the
+      pipeline loads, and gliding each change turns the flap into a moving
+      target right when the user reaches for it. The zone sheet keeps the
+      glide — its card resizes rarely, and an instant snap under a landing
+      finger costs more than the glide there. */
+  instantContentResize?: boolean;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -406,14 +414,11 @@ export default function SheetShell({
 
   const height = expanded && hasBody ? expandedH : (collapsedH ?? undefined);
 
-  // Content-driven height changes apply INSTANTLY. While the route pipeline
-  // loads, the collapsed header changes several times in a row (the CTA
-  // footer leaves at submit, the lead swaps branches as each stage commits);
-  // gliding each one for 300 ms turns the flap into a moving target exactly
-  // when the user reaches for it — the grab lands on the map behind and
-  // reads as « the sheet is stuck ». Only the expand/collapse toggle glides.
+  // `instantContentResize`: a content-driven height change lands without the
+  // glide (see the prop's doc) — only the expand/collapse toggle animates.
   const lastExpandedRef = useRef(expanded);
   useLayoutEffect(() => {
+    if (!instantContentResize) return;
     const el = rootRef.current;
     const toggled = lastExpandedRef.current !== expanded;
     lastExpandedRef.current = expanded;
@@ -423,7 +428,7 @@ export default function SheetShell({
       if (rootRef.current && !g.current.active) rootRef.current.style.transition = TRANSITION;
     });
     return () => cancelAnimationFrame(raf);
-  }, [height, expanded]);
+  }, [height, expanded, instantContentResize]);
 
   const bodyGestures: SheetBodyGestures = {
     onPointerDown: listPointerDown,
