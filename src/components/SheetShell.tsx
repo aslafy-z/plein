@@ -406,6 +406,25 @@ export default function SheetShell({
 
   const height = expanded && hasBody ? expandedH : (collapsedH ?? undefined);
 
+  // Content-driven height changes apply INSTANTLY. While the route pipeline
+  // loads, the collapsed header changes several times in a row (the CTA
+  // footer leaves at submit, the lead swaps branches as each stage commits);
+  // gliding each one for 300 ms turns the flap into a moving target exactly
+  // when the user reaches for it — the grab lands on the map behind and
+  // reads as « the sheet is stuck ». Only the expand/collapse toggle glides.
+  const lastExpandedRef = useRef(expanded);
+  useLayoutEffect(() => {
+    const el = rootRef.current;
+    const toggled = lastExpandedRef.current !== expanded;
+    lastExpandedRef.current = expanded;
+    if (!el || toggled || g.current.active) return;
+    el.style.transition = 'none';
+    const raf = requestAnimationFrame(() => {
+      if (rootRef.current && !g.current.active) rootRef.current.style.transition = TRANSITION;
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [height, expanded]);
+
   const bodyGestures: SheetBodyGestures = {
     onPointerDown: listPointerDown,
     onPointerMove: listPointerMove,
