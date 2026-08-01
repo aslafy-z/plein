@@ -104,6 +104,23 @@
       }
     }
   ],
+  "map_pin_cap_hint": [
+    {
+      "declarations": [
+        "input cap",
+        "input dots",
+        "local dotsPlural = dots: plural"
+      ],
+      "selectors": [
+        "dotsPlural"
+      ],
+      "match": {
+        "dotsPlural=one": "Zona: os {cap} mais baratos · {dots} em ponto",
+        "dotsPlural=other": "Zona: os {cap} mais baratos · {dots} em pontos"
+      }
+    }
+  ],
+  "map_loading_stations": "À procura de postos…",
   "map_geo_last_known": "Última posição conhecida — reativar a localização",
   "map_geo_default_pos": "Posição predefinida: Toulouse — ativar a localização",
   "map_install_app": "⤓ Instalar a app",
