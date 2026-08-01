@@ -1,7 +1,8 @@
 // Sharing — the payloads handed to the Web Share API (or, when it is missing,
-// to the clipboard): a station fiche, and the map view itself.
+// to the clipboard): a station fiche, the map view itself, and a planned trip.
 import { fmtPrice } from './format';
 import { mapUrlQuery, type MapUrlView } from './mapUrl';
+import { routeUrlQuery, type RouteUrlView } from './routeUrl';
 
 export type ShareData = {
   title: string;
@@ -53,6 +54,26 @@ export function mapViewShareData(
   return {
     title: `Plein. — ${ctx.fuelLabel} ${where}`,
     text: `Les prix du ${ctx.fuelLabel} ${where} sur Plein.`,
+    url,
+  };
+}
+
+/**
+ * Deep link + wording for a planned trip: the query string carries the
+ * endpoints, the fuel and vehicle assumptions and the strategy, and the
+ * `/route/results` path says the link opens on the computed ribbon — so
+ * following it recomputes and shows the very same trip. `ctx` names the
+ * endpoints as displayed (« Ma position » included), for the wording only.
+ */
+export function routeShareData(
+  view: RouteUrlView,
+  origin: string,
+  ctx: { from: string; to: string },
+): ShareData {
+  const url = `${base(origin)}/route/results${routeUrlQuery(view)}`;
+  return {
+    title: `Plein. — ${ctx.from} → ${ctx.to}`,
+    text: `Le trajet ${ctx.from} → ${ctx.to}, avec où faire le plein au meilleur prix, sur Plein.`,
     url,
   };
 }

@@ -372,6 +372,7 @@
   "ribbon_arrival_direct": "estimated arrival {time} · range OK",
   "ribbon_header": "Your trip",
   "ribbon_edit": "Edit",
+  "ribbon_share_aria": "Share the trip",
   "ribbon_distance_duration": "{km} km · {duration}",
   "ribbon_fuel_tank": "{fuel} · {tank} L tank",
   "ribbon_trip_fuel": "≈ {litres} L · {cost} € of fuel",

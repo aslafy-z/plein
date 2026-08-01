@@ -13,6 +13,7 @@ import { fuelLabel } from '../lib/labels';
 import { useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
 import { type RouteStation } from '../data/types';
+import ShareIcon from '../components/ShareIcon';
 import {
   useApp,
   routeFromLabel,
@@ -501,6 +502,21 @@ export default function RouteTimeline() {
           >
             {m.ribbon_header()}
           </span>
+          {/* The URL already carries the trip, but an installed PWA has no
+              address bar to copy it from — same share path as the map view */}
+          <button
+            onClick={() => app.shareRoute()}
+            aria-label={m.ribbon_share_aria()}
+            title={m.ribbon_share_aria()}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              color: C.accent,
+              cursor: 'pointer',
+            }}
+          >
+            <ShareIcon color={C.accent} size={15} />
+          </button>
           {/* The endpoints are editable in place above the map — this is the
               way back to the preferences and the tank */}
           <button
