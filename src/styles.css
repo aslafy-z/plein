@@ -305,6 +305,67 @@ button {
   animation: plein-spin 1s linear infinite;
 }
 
+/* Announced to screen readers, invisible on screen */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Placeholder bars for a stage that has been started but has not answered.
+   The base colour carries the whole meaning, so a bar that never sweeps still
+   reads as "content is coming" rather than as an empty box. */
+.skeleton {
+  background-color: #272d33;
+}
+
+/* The sweep is decoration, and it is only added where it is free.
+   Measured: a continuously animating element INSIDE the desktop glass panel
+   costs ~20 fps — not because of the property animated (transform and opacity
+   measure the same), but because any frame that dirties the panel makes the
+   browser recompute its `backdrop-filter: blur(16px)` over the full-screen map
+   underneath. Either alone is free; together they are not. So the phone, whose
+   timeline sits below the map rather than over it, animates; the desktop panel
+   shows the same bars, still. RouteTimeline decides, via `useIsDesktop()` —
+   never a media query of its own (see "one app, two arrangements").
+
+   ONE light crosses the whole row, so it must ride the row and not the bars:
+   a per-bar `background-position` sweep travels a distance proportional to
+   each bar's own width, which turns one row into four flickers at four
+   speeds. The overlay is fully off-screen at both ends of the travel, so the
+   loop has no visible reset, and `linear` keeps the light at constant speed.
+   Frozen (reduced motion) it stays off-screen and the bars simply sit still. */
+.skeleton-row {
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-row::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0) 35%,
+    rgba(255, 255, 255, 0.07) 50%,
+    rgba(255, 255, 255, 0) 65%
+  );
+  transform: translateX(-100%);
+  animation: skeleton-sweep 1.5s linear infinite;
+}
+
+@keyframes skeleton-sweep {
+  to {
+    transform: translateX(100%);
+  }
+}
+
 /* Price pin markers (Leaflet divIcon) */
 .pin-bubble {
   font-family: 'Spline Sans Mono', ui-monospace, monospace;
@@ -384,7 +445,9 @@ button {
   .anim-sheet,
   .anim-fade,
   .anim-dialog,
-  .sheet-hint {
+  .sheet-hint,
+  .skeleton-row::after,
+  .spin {
     animation: none;
   }
 }

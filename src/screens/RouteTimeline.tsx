@@ -10,6 +10,7 @@ import { type ReactNode } from 'react';
 import { C, mono } from '../theme';
 import { clockLabel, fmtPrice, durationLabel } from '../lib/format';
 import { fuelLabel } from '../lib/labels';
+import { useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
 import { type RouteStation } from '../data/types';
 import {
@@ -21,6 +22,7 @@ import {
   type ArrivalEstimate,
   type RecommendationReason,
   type RouteMode,
+  type RouteState,
 } from '../state/store';
 
 const STRATEGIES: RouteMode[] = ['balanced', 'price', 'detour'];
@@ -72,6 +74,181 @@ function arrivalLabel(arrival: ArrivalEstimate | null): string {
   }
 }
 
+/**
+ * One whole sentence for the polite live region — never assembled from
+ * fragments, so a screen reader announces something that stands on its own.
+ */
+export function stageSentence(s: RouteState): string {
+  if (s.geometry === 'loading') {
+    return s.provisional ? m.ribbon_stage_provisional() : m.ribbon_computing();
+  }
+  if (s.geometry === 'error') {
+    return s.route ? m.ribbon_stage_geometry_failed() : m.ribbon_error_fallback();
+  }
+  if (s.corridor === 'loading') return m.ribbon_stage_geometry();
+  if (s.corridor === 'error') return m.ribbon_corridor_failed();
+  if (s.corridor === 'ready') {
+    return s.stations.length === 0
+      ? m.ribbon_stage_no_stations()
+      : m.ribbon_stage_stations({ count: s.stations.length });
+  }
+  return '';
+}
+
+/** Amber strip: a stale result kept on screen, or a stage that failed */
+export const noticeStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
+  background: 'rgba(224,122,95,.12)',
+  border: '1px solid rgba(224,122,95,.3)',
+  borderRadius: 12,
+  padding: '10px 14px',
+  color: '#e8b3a4',
+  fontSize: 12.5,
+  fontWeight: 700,
+  lineHeight: 1.4,
+} as const;
+
+export const retryStyle = {
+  color: C.accent,
+  fontSize: 12.5,
+  fontWeight: 800,
+  whiteSpace: 'nowrap',
+  cursor: 'pointer',
+} as const;
+
+const skeletonBar = (width: number | string, height: number) => (
+  <div className="skeleton" style={{ width, height, borderRadius: 5 }} />
+);
+
+/**
+ * A stop the corridor stage has been asked for but has not returned yet. It
+ * mirrors the real row — km line, name, price, add button — so the wait reads
+ * as « a stop is coming here » instead of as an empty card. Widths vary per
+ * row: three identical bars read as a rendering glitch.
+ */
+const skeletonNode = (i: number, sweep: boolean) => (
+  <div
+    key={`skeleton-${i}`}
+    aria-hidden="true"
+    style={{ position: 'relative', padding: '0 0 14px' }}
+  >
+    <div
+      style={{
+        position: 'absolute',
+        left: -24,
+        top: 16,
+        width: 14,
+        height: 14,
+        borderRadius: '50%',
+        background: C.bg,
+        border: `3px solid ${C.faint}`,
+      }}
+    />
+    <div
+      className={sweep ? 'skeleton-row' : undefined}
+      style={{
+        background: C.surface,
+        border: `1px solid ${C.border}`,
+        borderRadius: 14,
+        padding: '12px 14px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {skeletonBar(['42%', '52%', '46%'][i % 3], 10)}
+        {skeletonBar(['68%', '58%', '75%'][i % 3], 13)}
+      </div>
+      {skeletonBar(52, 16)}
+      <div
+        className="skeleton"
+        style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0 }}
+      />
+    </div>
+  </div>
+);
+
+/** Timeline endpoints — shared by the real timeline and the one still loading */
+const departureNode = (place: string, sub: string) => (
+  <div style={{ position: 'relative', padding: '0 0 18px' }}>
+    <div
+      style={{
+        position: 'absolute',
+        left: -26,
+        top: 2,
+        width: 18,
+        height: 18,
+        borderRadius: '50%',
+        background: C.accent,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.onAccent }} />
+    </div>
+    <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>
+      {m.ribbon_departure({ place })}
+    </div>
+    <div style={{ fontSize: 12, color: C.mut, marginTop: 1 }}>{sub}</div>
+  </div>
+);
+
+const arrivalNode = (place: string, sub: string) => (
+  <div style={{ position: 'relative' }}>
+    <div
+      style={{
+        position: 'absolute',
+        left: -24,
+        top: 0,
+        width: 14,
+        height: 14,
+        borderRadius: 4,
+        background: C.ink,
+      }}
+    />
+    <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>{m.ribbon_arrival({ place })}</div>
+    <div style={{ fontSize: 12, color: C.mut, marginTop: 1 }}>{sub}</div>
+  </div>
+);
+
+/**
+ * A cold computation has no geometry to draw yet, but it does know the trip
+ * that was asked for. Showing that skeleton beats a bare sentence: the wait
+ * looks like the result it is turning into, and nothing here is invented —
+ * the endpoints are the user's own input and the range comes from the tank,
+ * not from a route. The sentence still goes out through the live region.
+ */
+export function RouteAwaited() {
+  const app = useApp();
+  const desktop = useIsDesktop();
+  const analysis = selectRouteAnalysis(app);
+  return (
+    <div style={{ position: 'relative', margin: '14px 22px 20px', paddingLeft: 26 }}>
+      <div
+        style={{
+          position: 'absolute',
+          left: 7,
+          top: 8,
+          bottom: 8,
+          width: 4,
+          borderRadius: 2,
+          background: C.toggleOff,
+        }}
+      />
+      {departureNode(
+        routeFromLabel(app),
+        m.ribbon_departure_tank({ percent: app.startTankPct, km: analysis.autonomyKm }),
+      )}
+      {[0, 1, 2].map((i) => skeletonNode(i, !desktop))}
+      {arrivalNode(app.toText, '')}
+    </div>
+  );
+}
+
 /** Where the tank runs dry on the timeline — between two stops, or after the last one */
 const limitMarker = (limitKm: number) => (
   <div key="limit-marker" style={{ position: 'relative', padding: '0 0 14px' }}>
@@ -94,10 +271,14 @@ const limitMarker = (limitKm: number) => (
 
 export default function RouteTimeline() {
   const app = useApp();
+  const desktop = useIsDesktop();
   const { toText, fuel, tank, routeMode, routeState } = app;
-  const fromLabel = routeFromLabel(app);
   const analysis = selectRouteAnalysis(app);
   const route = routeState.route;
+  // A displayed result is always labelled with the endpoints it was computed
+  // for; only a screen with no result yet shows what is being requested.
+  const fromLabel = route ? routeState.endpoints.from : routeFromLabel(app);
+  const arrivalPlace = route ? routeState.endpoints.to : toText;
 
   const toggleStyle = (id: string, size: number) => {
     const inRun = !!app.plannedStops[id];
@@ -330,7 +511,7 @@ export default function RouteTimeline() {
           </button>
         </div>
         <div style={{ fontSize: 22, fontWeight: 800, color: C.ink, marginTop: 4 }}>
-          {fromLabel} → {toText}
+          {fromLabel} → {arrivalPlace}
         </div>
         <div
           style={{
@@ -398,6 +579,21 @@ export default function RouteTimeline() {
         </div>
       </div>
 
+      {/* A result for older inputs, or a failed recompute, stays on screen —
+          but never silently: it is labelled and, when failed, retryable. */}
+      {routeState.geometry === 'error' ? (
+        <div style={{ margin: '12px 22px 0', ...noticeStyle }}>
+          <span style={{ flex: 1 }}>{m.ribbon_geometry_failed_notice()}</span>
+          <button onClick={() => app.retryRoute()} style={retryStyle}>
+            {m.ribbon_retry()}
+          </button>
+        </div>
+      ) : routeState.provisional ? (
+        <div style={{ margin: '12px 22px 0', ...noticeStyle }}>
+          <span style={{ flex: 1 }}>{m.ribbon_provisional_notice()}</span>
+        </div>
+      ) : null}
+
       {/* Timeline body */}
       <div style={{ position: 'relative', margin: '14px 22px 0', paddingLeft: 26 }}>
         <div
@@ -413,33 +609,26 @@ export default function RouteTimeline() {
         />
 
         {/* Departure */}
-        <div style={{ position: 'relative', padding: '0 0 18px' }}>
-          <div
-            style={{
-              position: 'absolute',
-              left: -26,
-              top: 2,
-              width: 18,
-              height: 18,
-              borderRadius: '50%',
-              background: C.accent,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.onAccent }} />
-          </div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>
-            {m.ribbon_departure({ place: fromLabel })}
-          </div>
-          <div style={{ fontSize: 12, color: C.mut, marginTop: 1 }}>
-            {m.ribbon_departure_tank({ percent: app.startTankPct, km: analysis.autonomyKm })}
-          </div>
-        </div>
+        {departureNode(
+          fromLabel,
+          m.ribbon_departure_tank({ percent: app.startTankPct, km: analysis.autonomyKm }),
+        )}
 
-        {/* Stops */}
-        {analysis.stops.length === 0 ? (
+        {/* Stops — placeholders while the corridor runs, retry when it failed */}
+        {routeState.corridor === 'loading' ? (
+          [0, 1, 2].map((i) => skeletonNode(i, !desktop))
+        ) : routeState.corridor === 'error' ? (
+          <div style={{ position: 'relative', padding: '0 0 14px' }}>
+            <div style={noticeStyle}>
+              <span style={{ flex: 1 }}>
+                {routeState.corridorError ?? m.ribbon_corridor_failed()}
+              </span>
+              <button onClick={() => app.retryCorridor()} style={retryStyle}>
+                {m.ribbon_retry()}
+              </button>
+            </div>
+          </div>
+        ) : analysis.stops.length === 0 ? (
           <div style={{ position: 'relative', padding: '0 0 14px', fontSize: 12.5, color: C.mut }}>
             {m.ribbon_no_stops()}
           </div>
@@ -475,25 +664,7 @@ export default function RouteTimeline() {
         )}
 
         {/* Arrival */}
-        <div style={{ position: 'relative' }}>
-          <div
-            style={{
-              position: 'absolute',
-              left: -24,
-              top: 0,
-              width: 14,
-              height: 14,
-              borderRadius: 4,
-              background: C.ink,
-            }}
-          />
-          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>
-            {m.ribbon_arrival({ place: toText })}
-          </div>
-          <div style={{ fontSize: 12, color: C.mut, marginTop: 1 }}>
-            {arrivalLabel(analysis.arrival)}
-          </div>
-        </div>
+        {arrivalNode(arrivalPlace, arrivalLabel(analysis.arrival))}
       </div>
     </div>
   );
