@@ -940,6 +940,15 @@ describe('selectRouteAnalysis', () => {
       routeApp({ routeState: commitMatrix(beginMatrix(readyState(), key), key, cells) }),
     )
     expect(routed.quality).toBe('routed')
+    // The displayed detour is measured on the SAME legs the plan runs on —
+    // here every matrix cell is 40 min, so a lone stop anywhere adds
+    // 40 + 40 − 40 = 40 min, whatever the load-time crow-flies estimate said
+    for (const id of Object.keys(routed.detourMinById)) {
+      expect(routed.detourMinById[id]).toBe(40)
+    }
+    // On estimated legs the same figure is ≈ the geometric estimate: an
+    // on-route candidate adds nothing
+    expect(selectRouteAnalysis(base).detourMinById['on-route-pricey']).toBe(0)
     // A stale matrix (candidate set moved on) must NOT be trusted
     const stale = selectRouteAnalysis(
       routeApp({ routeState: commitMatrix(beginMatrix(readyState(), 'other'), 'other', cells) }),

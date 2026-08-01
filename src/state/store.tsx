@@ -55,7 +55,6 @@ import { pushSearchIn } from './searchHistory';
 import { beginRouteTiming, markRoute } from '../lib/perf';
 import {
   CROW_ROAD_FACTOR,
-  REFUEL_STOP_MIN,
   VALUE_OF_TIME_CENTS_PER_MIN,
   effectiveLiterPrice,
   usableRangeKm,
@@ -2836,6 +2835,15 @@ export interface RouteAnalysis {
   plannedStops: RouteStation[];
   /** User picks the optimizer could not place (no usable price / off corridor) */
   invalidPlannedStopIds: string[];
+  /**
+   * Minutes a lone stop at this candidate adds to the trip, on the plan's OWN
+   * legs — routed whenever the matrix answered. This is what the cards must
+   * display: `detourMin` is the load-time crow-flies estimate, and showing it
+   * next to a plan optimized on real road legs makes the solver look wrong
+   * (a motorway aire measures 0 m off the polyline yet can cost +13 min of
+   * access; the plan rightly avoids it, the stale label says « sans détour »).
+   */
+  detourMinById: Record<string, number>;
   /** Σ litres to buy across the plan */
   purchaseLitres: number | null;
   /** Σ purchases, integer cents — the only cash figure of the trip */
@@ -2849,10 +2857,12 @@ export interface RouteAnalysis {
 const MAX_ALTERNATIVES = 4;
 
 /**
- * What a lone stop at candidate `i` would add to the trip — km and minutes over
- * the direct leg, refuelling time included. Measured on the plan's own legs, so
- * it is a routed figure whenever the matrix answered. `null` when the candidate
- * is not connected in both directions.
+ * What a lone stop at candidate `i` would add to the trip — DRIVING km and
+ * minutes over the direct leg (the refuelling halt itself is the same at every
+ * station, so scoring and display both leave it out: it cannot change a
+ * ranking and it would muddy the label). Measured on the plan's own legs, so
+ * it is a routed figure whenever the matrix answered. `null` when the
+ * candidate is not connected in both directions.
  */
 function alternativeDetour(legs: PlanLegs, i: number): { km: number; min: number } | null {
   const there = legs.origin[i];
@@ -2860,8 +2870,7 @@ function alternativeDetour(legs: PlanLegs, i: number): { km: number; min: number
   if (!there || !back) return null;
   return {
     km: Math.max(0, there.distanceKm + back.distanceKm - legs.direct.distanceKm),
-    min:
-      Math.max(0, there.durationMin + back.durationMin - legs.direct.durationMin) + REFUEL_STOP_MIN,
+    min: Math.max(0, there.durationMin + back.durationMin - legs.direct.durationMin),
   };
 }
 
@@ -2929,6 +2938,14 @@ export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
   const candidateIds = new Set(candidates.map((c) => c.station.id));
   const invalidPlannedStopIds = picked.map((s) => s.id).filter((id) => !candidateIds.has(id));
 
+  const detourMinById: Record<string, number> = {};
+  if (legs) {
+    candidates.forEach((c, i) => {
+      const d = alternativeDetour(legs, i);
+      if (d) detourMinById[c.station.id] = Math.round(d.min);
+    });
+  }
+
   const needsStop = plan ? plan.status !== 'direct' : !!route && route.distanceKm > limitKm;
 
   let arrival: ArrivalEstimate | null = null;
@@ -2957,6 +2974,7 @@ export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
     arrival,
     plannedStops: picked,
     invalidPlannedStopIds,
+    detourMinById,
     purchaseLitres: plan ? plan.stops.reduce((a, s) => a + s.purchasedLitres, 0) : null,
     purchaseCostCents: plan ? plan.totalPurchaseCostCents : null,
     destinationFuelLitres: plan ? plan.destinationFuelLitres : null,

@@ -10,6 +10,7 @@ import {
 } from '../data/types';
 import {
   useApp,
+  selectRouteAnalysis,
   selectVisibleForFuel,
   effectivePrice,
   fuelRange,
@@ -160,13 +161,18 @@ export default function StationDetail() {
     haversineKm(app.userPos, { lat: s.lat, lng: s.lng }),
     app.roadReach[s.id],
   );
+  // Same figure the timeline card shows: the minutes on the plan's own legs
+  // (routed when the matrix answered), the load-time estimate as fallback
+  const routeDetourMin = isRoute
+    ? (selectRouteAnalysis(app).detourMinById[routeSt!.id] ?? routeSt!.detourMin)
+    : 0;
   const placeChip = isRoute
     ? m.detail_place_chip_route({
         km: Math.round(routeSt!.kmAlong),
         detour:
-          routeSt!.detourMin === 0
+          routeDetourMin === 0
             ? m.ribbon_no_detour()
-            : m.ribbon_detour({ minutes: routeSt!.detourMin }),
+            : m.ribbon_detour({ minutes: routeDetourMin }),
       })
     : m.detail_place_chip_nearby({
         distance: distLabel(distKm),

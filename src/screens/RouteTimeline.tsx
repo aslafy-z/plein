@@ -302,6 +302,11 @@ export default function RouteTimeline() {
     };
   };
 
+  // The minutes a stop adds, on the plan's own legs — routed when the matrix
+  // answered. The load-time `detourMin` estimate only stands in for a station
+  // the candidate set does not cover.
+  const detourOf = (st: RouteStation) => analysis.detourMinById[st.id] ?? st.detourMin;
+
   // ── Plan stop card ──────────────────────────────────────────────────────────
   const planStopNode = (view: PlanStopView, index: number, count: number) => {
     const st = view.station;
@@ -353,7 +358,7 @@ export default function RouteTimeline() {
                 : m.ribbon_recommended_stop()}
             </span>
             <span style={{ fontSize: 11, color: C.mut, whiteSpace: 'nowrap' }}>
-              {m.ribbon_km_marker({ km: Math.round(st.kmAlong) })} · {detourLabel(st.detourMin)}
+              {m.ribbon_km_marker({ km: Math.round(st.kmAlong) })} · {detourLabel(detourOf(st))}
             </span>
           </div>
           <button
@@ -452,7 +457,7 @@ export default function RouteTimeline() {
             style={{ flex: 1, minWidth: 0, cursor: 'pointer', textAlign: 'left' }}
           >
             <div style={{ fontSize: 12, color: C.mut, fontWeight: 700 }}>
-              {m.ribbon_km_marker({ km: Math.round(st.kmAlong) })} · {detourLabel(st.detourMin)}
+              {m.ribbon_km_marker({ km: Math.round(st.kmAlong) })} · {detourLabel(detourOf(st))}
             </div>
             <div style={{ fontSize: 14.5, fontWeight: 700, color: C.ink, marginTop: 2 }}>
               {st.name}
@@ -568,6 +573,20 @@ export default function RouteTimeline() {
                     cost: fmtPrice(analysis.purchaseCostCents / 100),
                   })}
                 </span>
+                {/* The reserve rule makes plans arrive with different amounts
+                    left in the tank — without this figure, a plan that buys
+                    litres it delivers at the destination reads as « more
+                    expensive » than one arriving near empty */}
+                {analysis.destinationFuelLitres != null && (
+                  <>
+                    <span>·</span>
+                    <span>
+                      {m.ribbon_fuel_at_destination({
+                        litres: litresLabel(analysis.destinationFuelLitres),
+                      })}
+                    </span>
+                  </>
+                )}
               </>
             )}
         </div>
