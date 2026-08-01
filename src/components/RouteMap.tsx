@@ -158,16 +158,22 @@ export default function RouteMap({
       }
     }
 
-    // Corridor stops as price pins (recommended one highlighted) — the same
-    // markup the zone map draws (lib/pricePin)
+    // Corridor stops as price pins — the same markup the zone map draws
+    // (lib/pricePin): the recommended one crowned, and the stop whose fiche
+    // is being read wearing the selection halo, exactly like the map's pins.
+    // The fiche releases the halo with the screen when it closes.
+    const selectedId = app.screen === 'detail' ? app.detailId : null;
     for (const st of analysis.stops) {
       const price = effectivePrice(st, app.fuel)?.value;
       if (price == null) continue;
-      const html = pricePinHtml(fmtPrice(price), {
-        recommended: st.id === analysis.recoId,
-      });
+      const recommended = st.id === analysis.recoId;
+      const focused = st.id === selectedId;
+      const html = pricePinHtml(fmtPrice(price), { recommended, focused });
       const marker = L.marker([st.lat, st.lng], {
         icon: L.divIcon({ className: '', html, iconSize: [0, 0], iconAnchor: [0, 0] }),
+        // The selected pin rises above the recommendation, which rises above
+        // the rest — same order the zone map keeps
+        zIndexOffset: focused ? 2000 : recommended ? 1000 : 0,
       });
       marker.on('click', () => app.openStation(st.id));
       marker.addTo(layer);
@@ -182,7 +188,7 @@ export default function RouteMap({
       shell.fitBounds(box, { pad: 26 });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [route, app.routeState.stations, app.fuel, app.routeMode, analysis.recoId]);
+  }, [route, app.routeState.stations, app.fuel, app.routeMode, analysis.recoId, app.screen, app.detailId]);
 
   return (
     <div aria-label={m.map_route_aria()} style={{ position: 'absolute', inset: 0, background: C.mapBg }}>
