@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import type { FuelId, RouteStation, Station } from '../data/types'
+import type { FuelId, Route, RouteStation, Station } from '../data/types'
+import {
+  beginGeometry,
+  commitCorridor,
+  commitGeometry,
+  initialRouteState,
+} from './routePipeline'
 import { INDEPENDENT_BRAND_ID } from '../lib/brandIcons'
 import {
   answersAdBlue,
@@ -72,7 +78,7 @@ function app(over: Partial<AppStore> = {}): AppStore {
     startTankPct: 70,
     routeMode: 'balanced',
     plannedStops: {},
-    routeState: { status: 'idle', route: null, stations: [] },
+    routeState: initialRouteState,
     ...over,
   } as AppStore
 }
@@ -655,13 +661,19 @@ const CORRIDOR: RouteStation[] = [
   routeStation('max', 1.9, 150, 3),
 ]
 
+const ROUTE: Route = { distanceKm: 260, durationMin: 150, polyline: [] }
+const ENDS = { from: 'Lyon', to: 'Nantes' }
+
+/** A finished computation: geometry committed, then the corridor stops. */
+const readyRouteState = commitCorridor(
+  commitGeometry(beginGeometry(initialRouteState, 'k'), 'k', ROUTE, ENDS),
+  'k',
+  CORRIDOR,
+)
+
 const routeApp = (over: Partial<AppStore> = {}) =>
   app({
-    routeState: {
-      status: 'ready',
-      route: { distanceKm: 260, durationMin: 150, polyline: [] },
-      stations: CORRIDOR,
-    },
+    routeState: readyRouteState,
     ...over,
   })
 
@@ -669,6 +681,30 @@ describe('selectAutonomy', () => {
   it('derives autonomy from tank × level ÷ consumption, with a ~20 % reserve', () => {
     expect(selectAutonomy(app())).toEqual({ autonomyKm: 538, limitKm: 430 })
     expect(selectAutonomy(app({ startTankPct: 10 }))).toEqual({ autonomyKm: 77, limitKm: 60 })
+  })
+})
+
+describe('selectRouteAnalysis at the geometry stage', () => {
+  // The corridor stage has not answered yet: the timeline still has to render
+  // the trip, so the analysis must describe it without a single station.
+  const geometryOnly = commitGeometry(beginGeometry(initialRouteState, 'k'), 'k', ROUTE, ENDS)
+
+  it('describes the trip before any station is known', () => {
+    const a = selectRouteAnalysis(app({ routeState: geometryOnly }))
+    expect(a.stops).toEqual([])
+    expect(a.recoId).toBeNull()
+    expect(a.recoReason).toBeNull()
+    expect(a.arrival).not.toBeNull()
+    expect(a.tripLitres).toBeCloseTo(16.9, 10)
+    expect(a.limitKm).toBe(430)
+  })
+
+  it('is unchanged by the provisional flag', () => {
+    const stale = selectRouteAnalysis(
+      app({ routeState: { ...readyRouteState, provisional: true } }),
+    )
+    const fresh = selectRouteAnalysis(routeApp())
+    expect({ ...stale, arrival: null }).toEqual({ ...fresh, arrival: null })
   })
 })
 

@@ -52,6 +52,19 @@ import {
   type SearchedPlace,
 } from './persist';
 import { pushSearchIn } from './searchHistory';
+import { beginRouteTiming, markRoute } from '../lib/perf';
+import {
+  beginCorridor,
+  beginGeometry,
+  commitCorridor,
+  commitGeometry,
+  failCorridor,
+  failGeometry,
+  initialRouteState,
+  routeKey,
+  type RouteEndpoints,
+  type RouteState,
+} from './routePipeline';
 import { mapUrlQuery, parseMapUrl } from '../lib/mapUrl';
 import { mapViewShareData, stationShareData, type ShareData } from '../lib/share';
 import {
@@ -173,12 +186,7 @@ export interface StationsState {
   refreshing: boolean;
 }
 
-interface RouteState {
-  status: 'idle' | 'loading' | 'ready' | 'error';
-  route: Route | null;
-  stations: RouteStation[];
-  error?: string;
-}
+export type { RouteState };
 
 // ── Persistence ──────────────────────────────────────────────────────────────
 /**
@@ -379,7 +387,11 @@ export interface AppStore {
   searchHistory: SearchedPlace[];
   rememberSearchedPlace(place: GeocodeResult): void;
   routeReady: boolean;
-  startRoute(): void;
+  /** Submit the trip. `toPick` carries a destination picked this same tick
+      (auto-start on pick), before React has committed it to `toText`. */
+  startRoute(toPick?: GeocodeResult): void;
+  /** true while the submitted addresses are being geocoded, before navigating */
+  geocoding: boolean;
   editRoute(): void;
   routeMode: RouteMode;
   setRouteMode(m: RouteMode): void;
@@ -391,6 +403,10 @@ export interface AppStore {
   startTankPct: number;
   setStartTankPct(v: number): void;
   routeState: RouteState;
+  /** Re-run both stages for the current endpoints */
+  retryRoute(): void;
+  /** Re-run only the corridor stage, against the already-committed geometry */
+  retryCorridor(): void;
   /** Stops the user picked for a multi-stop run, by station id */
   plannedStops: Record<string, boolean>;
   togglePlannedStop(id: string): void;
@@ -676,11 +692,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     activeSource: sourceId,
     refreshing: false,
   });
-  const [routeState, setRouteState] = useState<RouteState>({
-    status: 'idle',
-    route: null,
-    stations: [],
-  });
+  const [routeState, setRouteState] = useState<RouteState>(initialRouteState);
+  const [geocoding, setGeocoding] = useState(false);
+  const startingRef = useRef(false);
 
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const showToast = useCallback((msg: string) => {
@@ -1173,63 +1187,91 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ── Route computation ──────────────────────────────────────────────────────
+  // Two stages, committed separately: the itinerary and its map show as soon as
+  // the routing engine answers, the corridor stations land after. `routeReq`
+  // orders the runs (two retries in a row share an input key, so the key alone
+  // cannot tell them apart) and the key rejects an answer for endpoints the
+  // user has since edited away.
   const routeReq = useRef(0);
-  const computeRoute = useCallback(
-    async (from: GeoPoint, to: GeoPoint) => {
-      const reqId = ++routeReq.current;
-      setRouteState((s) => ({ ...s, status: 'loading' }));
-      const run = async () => {
-        const bundle = getProviders(sourceId);
-        const route = await bundle.route.getRoute(from, to, { avoidMotorway, avoidToll, vehicle });
-        const raw = await bundle.stations.getStationsAlong(route.polyline, 5);
+
+  /** Place each corridor station along the route and bound the set. */
+  const placeAlongRoute = useCallback(
+    (raw: Station[], route: Route): RouteStation[] => {
+      const cum = cumulativeKm(route.polyline);
+      const enriched: RouteStation[] = raw
+        .map((st) => {
+          const near = nearestOnPolyline({ lat: st.lat, lng: st.lng }, route.polyline, cum);
+          return {
+            ...st,
+            kmAlong: Math.round(near.alongKm),
+            // ~60 km/h there and back on local roads; on-route stations count as 0
+            detourMin: near.distKm < 0.4 ? 0 : Math.max(1, Math.round(near.distKm * 2)),
+          };
+        })
+        .filter((st) => st.kmAlong > 5 && st.kmAlong < route.distanceKm - 5)
+        .sort((a, b) => a.kmAlong - b.kmAlong);
+      // Keep the full corridor (bounded for perf) — WHICH stops are shown is
+      // decided per strategy in selectRouteAnalysis, so the chips act on the
+      // whole ribbon, not just the recommendation. Capped once, here, on the
+      // whole merged set: a per-batch cap would rank against a partial field.
+      if (enriched.length <= 30) return enriched;
+      return [...enriched]
+        .sort(
+          (a, b) => (effectivePrice(a, fuel)?.value ?? 9) - (effectivePrice(b, fuel)?.value ?? 9),
+        )
+        .slice(0, 30)
+        .sort((a, b) => a.kmAlong - b.kmAlong);
+    },
+    [fuel],
+  );
+
+  const runCorridor = useCallback(
+    async (key: string, route: Route, reqId: number) => {
+      try {
+        const raw = await getProviders(sourceId).stations.getStationsAlong(route.polyline, 5);
+        if (reqId !== routeReq.current) return;
         // The route corridor is the same shape of problem as the map area: a
         // favorite it crosses keeps its price for the Favoris tab
         recordFavoritePrices(favoriteIds.current, raw, Date.now());
-        const cum = cumulativeKm(route.polyline);
-        const enriched: RouteStation[] = raw
-          .map((st) => {
-            const near = nearestOnPolyline({ lat: st.lat, lng: st.lng }, route.polyline, cum);
-            return {
-              ...st,
-              kmAlong: Math.round(near.alongKm),
-              // ~60 km/h there and back on local roads; on-route stations count as 0
-              detourMin: near.distKm < 0.4 ? 0 : Math.max(1, Math.round(near.distKm * 2)),
-            };
-          })
-          .filter((st) => st.kmAlong > 5 && st.kmAlong < route.distanceKm - 5)
-          .sort((a, b) => a.kmAlong - b.kmAlong);
-        // Keep the full corridor (bounded for perf) — WHICH stops are shown is
-        // decided per strategy in selectRouteAnalysis, so the chips act on the
-        // whole ribbon, not just the recommendation.
-        const capped =
-          enriched.length <= 30
-            ? enriched
-            : [...enriched]
-                .sort(
-                  (a, b) =>
-                    (effectivePrice(a, fuel)?.value ?? 9) - (effectivePrice(b, fuel)?.value ?? 9),
-                )
-                .slice(0, 30)
-                .sort((a, b) => a.kmAlong - b.kmAlong);
-        return { route, stations: capped };
-      };
-      try {
-        const res = await run();
+        markRoute('route:stations');
+        setRouteState((s) => commitCorridor(s, key, placeAlongRoute(raw, route)));
+      } catch {
         if (reqId !== routeReq.current) return;
-        setRouteState({ status: 'ready', ...res });
+        // The geometry is real and stays on screen; only this stage failed, and
+        // only this stage is retried. Inventing stops here would be a lie.
+        setRouteState((s) => failCorridor(s, key, m.ribbon_corridor_failed()));
+      }
+    },
+    [placeAlongRoute, sourceId],
+  );
+
+  const computeRoute = useCallback(
+    async (from: GeoPoint, to: GeoPoint, endpoints: RouteEndpoints) => {
+      const key = routeKey(from, to, { source: sourceId, avoidMotorway, avoidToll, vehicle });
+      const reqId = ++routeReq.current;
+      setRouteState((s) => beginGeometry(s, key));
+
+      let route: Route;
+      try {
+        route = await getProviders(sourceId).route.getRoute(from, to, {
+          avoidMotorway,
+          avoidToll,
+          vehicle,
+        });
       } catch {
         if (reqId !== routeReq.current) return;
         // An honest error, never a substitution: the demo provider would
         // hand back a straight interpolated line and invented stops here.
-        setRouteState({
-          status: 'error',
-          route: null,
-          stations: [],
-          error: m.route_error_unavailable(),
-        });
+        setRouteState((s) => failGeometry(s, key, m.route_error_unavailable()));
+        return;
       }
+      if (reqId !== routeReq.current) return;
+      markRoute('route:geometry');
+      setRouteState((s) => commitGeometry(s, key, route, endpoints));
+
+      await runCorridor(key, route, reqId);
     },
-    [sourceId, fuel, avoidMotorway, avoidToll, vehicle],
+    [avoidMotorway, avoidToll, runCorridor, sourceId, vehicle],
   );
 
   // ── Actions ────────────────────────────────────────────────────────────────
@@ -1409,54 +1451,82 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setRouteReady(false);
   }, []);
 
-  const startRoute = useCallback(async () => {
-    if (!toText.trim()) return;
-    let from = fromPoint;
-    let to = toPoint;
-    const geocode = getProviders(sourceId).geocode;
+  const startRoute = useCallback(async (toPick?: GeocodeResult) => {
+    // A second tap must not open a second pipeline. The ref settles
+    // synchronously, unlike the `geocoding` state the button renders.
+    if (startingRef.current || !(toPick ?? toText.trim())) return;
+    startingRef.current = true;
+    setGeocoding(true);
+    beginRouteTiming();
     try {
+      let from = fromPoint;
+      let to = toPick?.point ?? toPoint;
+      let fromLabel = fromIsCurrentPosition ? '' : fromText.trim();
+      let toLabel = toPick?.label ?? toText.trim();
+      const geocode = getProviders(sourceId).geocode;
+      if (!from && (fromIsCurrentPosition || !fromText.trim())) {
+        from = userPos;
+        fromLabel = '';
+      }
       // An endpoint typed but never picked geocodes here — and a place the
       // user looked up joins the search history like a picked one would.
       // « Ma position » is not a place, so a current-position departure
-      // remembers nothing.
-      if (!from) {
-        if (fromIsCurrentPosition || !fromText.trim()) {
-          from = userPos;
-        } else {
-          const r = await geocode.search(fromText);
-          from = r[0]?.point ?? null;
-          if (r[0]) {
-            setFromText(r[0].label);
-            rememberSearchedPlace(r[0]);
-          }
-        }
+      // remembers nothing. Both endpoints resolve together: one round trip
+      // instead of two, and the form stays on screen, busy, for the whole
+      // of it.
+      const [fromHit, toHit] = await Promise.all([
+        from
+          ? null
+          : geocode
+              .search(fromText)
+              .then((r) => r[0] ?? null)
+              .catch(() => null),
+        to
+          ? null
+          : geocode
+              .search(toText)
+              .then((r) => r[0] ?? null)
+              .catch(() => null),
+      ]);
+      if (fromHit) {
+        from = fromHit.point;
+        fromLabel = fromHit.label;
+        setFromText(fromHit.label);
+        rememberSearchedPlace(fromHit);
       }
-      if (!to) {
-        const r = await geocode.search(toText);
-        to = r[0]?.point ?? null;
-        if (r[0]) {
-          setToText(r[0].label);
-          rememberSearchedPlace(r[0]);
-        }
+      if (toHit) {
+        to = toHit.point;
+        toLabel = toHit.label;
+        setToText(toHit.label);
+        rememberSearchedPlace(toHit);
       }
-    } catch {
-      /* geocode failure handled below */
+      if (!from || !to) {
+        showToast(m.toast_address_not_found());
+        return;
+      }
+      markRoute('route:geocoded');
+      setFromPoint(from);
+      setToPoint(to);
+      setPlannedStops({});
+      setRouteReady(true);
+      // go(), not setScreen: a destination picked inside the phone's
+      // full-screen search navigates FROM the open search, and go() stacks
+      // the route screen on top of its entry instead of racing a pop.
+      go('route');
+      void computeRoute(from, to, {
+        from: fromLabel || m.route_from_current_position(),
+        to: toLabel,
+      });
+    } finally {
+      startingRef.current = false;
+      setGeocoding(false);
     }
-    if (!from || !to) {
-      showToast(m.toast_address_not_found());
-      return;
-    }
-    setFromPoint(from);
-    setToPoint(to);
-    setPlannedStops({});
-    setRouteReady(true);
-    setScreen('route');
-    void computeRoute(from, to);
   }, [
     computeRoute,
     fromIsCurrentPosition,
     fromPoint,
     fromText,
+    go,
     rememberSearchedPlace,
     showToast,
     sourceId,
@@ -1464,6 +1534,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     toText,
     userPos,
   ]);
+
+  /** Re-run both stages for the endpoints already resolved. */
+  const retryRoute = useCallback(() => {
+    if (!fromPoint || !toPoint) return;
+    beginRouteTiming();
+    void computeRoute(fromPoint, toPoint, {
+      from: fromIsCurrentPosition
+        ? m.route_from_current_position()
+        : fromText.trim() || m.route_from_current_position(),
+      to: toText.trim(),
+    });
+  }, [computeRoute, fromIsCurrentPosition, fromPoint, fromText, toPoint, toText]);
+
+  const retryCorridor = useCallback(() => {
+    const { route, key } = routeState;
+    if (!route || !key) return;
+    const reqId = ++routeReq.current;
+    beginRouteTiming();
+    setRouteState((s) => beginCorridor(s, key));
+    void runCorridor(key, route, reqId);
+  }, [routeState, runCorridor]);
 
   const editRoute = useCallback(() => setScreen('routeSetup'), []);
 
@@ -1667,7 +1758,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       searchHistory,
       rememberSearchedPlace,
       routeReady,
-      startRoute: () => void startRoute(),
+      startRoute: (toPick?: GeocodeResult) => void startRoute(toPick),
+      geocoding,
       editRoute,
       routeMode,
       setRouteMode,
@@ -1678,6 +1770,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       startTankPct,
       setStartTankPct,
       routeState,
+      retryRoute,
+      retryCorridor,
       plannedStops,
       togglePlannedStop,
       vehicle,
@@ -1723,8 +1817,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toText, fromPoint, toPoint,
       setFrom, useCurrentPositionAsStart, setTo, searchPlaces, searchHistory,
       rememberSearchedPlace, routeReady,
-      startRoute, editRoute,
-      routeMode, routeState, plannedStops, togglePlannedStop, vehicle, setVehicle, tank, setTank,
+      startRoute, geocoding, editRoute,
+      routeMode, routeState, retryRoute, retryCorridor,
+      plannedStops, togglePlannedStop, vehicle, setVehicle, tank, setTank,
       consumption, setConsumption,
       avoidMotorway, avoidToll, setAvoidMotorway, setAvoidToll, startTankPct, setStartTankPct,
       setFiltersOpenNav, alerts, setAlerts,

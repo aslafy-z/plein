@@ -22,8 +22,10 @@ import {
 } from 'react';
 import { C } from '../theme';
 
-/** Share of the map stage the expanded sheet covers */
+/** Share of the map stage the expanded sheet covers by default */
 const EXPAND_RATIO = 0.75;
+/** Whatever the ratio, this strip of map always stays visible on top */
+const MIN_MAP_PEEK_PX = 64;
 /** Pointer must travel this far before a tap becomes a drag */
 const DRAG_SLOP_PX = 6;
 /** Release speed (px/ms) above which the sheet snaps in the fling direction */
@@ -62,6 +64,8 @@ export default function SheetShell({
   collapseAria,
   hint = false,
   onHintConsumed,
+  expandRatio = EXPAND_RATIO,
+  instantContentResize = false,
 }: {
   /** Height of the map stage the sheet lives in (drives the expanded size) */
   stageH: number;
@@ -88,6 +92,17 @@ export default function SheetShell({
   /** Arm the one-time « you can pull me up » bounce */
   hint?: boolean;
   onHintConsumed?: () => void;
+  /** Share of the stage the expanded sheet may cover (a 64px strip of map
+      always stays). The zone sheet keeps the default; the route sheet opens
+      full — its timeline is longer than a screen. */
+  expandRatio?: number;
+  /** Content-driven height changes apply without the glide. The route sheet
+      needs it: its collapsed header changes several times in a row while the
+      pipeline loads, and gliding each change turns the flap into a moving
+      target right when the user reaches for it. The zone sheet keeps the
+      glide — its card resizes rarely, and an instant snap under a landing
+      finger costs more than the glide there. */
+  instantContentResize?: boolean;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -119,7 +134,7 @@ export default function SheetShell({
 
   const expandedH = Math.max(
     collapsedH ?? 0,
-    Math.min(Math.round(stageH * EXPAND_RATIO), stageH - 64),
+    Math.min(Math.round(stageH * expandRatio), stageH - MIN_MAP_PEEK_PX),
   );
 
   // ── First-run pull-up hint ────────────────────────────────────────────────
@@ -398,6 +413,22 @@ export default function SheetShell({
   }, [listAttached, dragBegin, dragMove, dragEnd]);
 
   const height = expanded && hasBody ? expandedH : (collapsedH ?? undefined);
+
+  // `instantContentResize`: a content-driven height change lands without the
+  // glide (see the prop's doc) — only the expand/collapse toggle animates.
+  const lastExpandedRef = useRef(expanded);
+  useLayoutEffect(() => {
+    if (!instantContentResize) return;
+    const el = rootRef.current;
+    const toggled = lastExpandedRef.current !== expanded;
+    lastExpandedRef.current = expanded;
+    if (!el || toggled || g.current.active) return;
+    el.style.transition = 'none';
+    const raf = requestAnimationFrame(() => {
+      if (rootRef.current && !g.current.active) rootRef.current.style.transition = TRANSITION;
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [height, expanded, instantContentResize]);
 
   const bodyGestures: SheetBodyGestures = {
     onPointerDown: listPointerDown,

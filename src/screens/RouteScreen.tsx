@@ -26,7 +26,12 @@ import {
 import RouteMap from '../components/RouteMap';
 import PlaceField from '../components/PlaceField';
 import SheetShell from '../components/SheetShell';
-import RouteTimeline, { recommendationLabel } from './RouteTimeline';
+import RouteTimeline, {
+  RouteAwaited,
+  recommendationLabel,
+  retryStyle,
+  stageSentence,
+} from './RouteTimeline';
 import StationDetail from './StationDetail';
 
 /** Same cap as the map screen's overlay: fields dragged across a window are
@@ -85,7 +90,15 @@ function RouteFields() {
         title={m.route_to_field_title()}
         icon={toIcon}
         onChangeText={(text) => app.setTo(text)}
-        onPick={(r: GeocodeResult) => app.setTo(r.label, r.point)}
+        // Picking a destination IS the intent: the comparison starts right
+        // away (the departure is already resolved or geocodes in the same
+        // breath) — no second tap on the CTA. The staged pipeline keeps every
+        // control live while it runs.
+        pickNavigates
+        onPick={(r: GeocodeResult) => {
+          app.setTo(r.label, r.point);
+          app.startRoute(r);
+        }}
         onClear={app.toText.trim() ? () => app.setTo('') : undefined}
         clearAria={m.route_to_clear_aria()}
         emptyHint={m.route_search_hint()}
@@ -209,27 +222,26 @@ function RouteForm({ withTitle }: { withTitle: boolean }) {
   );
 }
 
-/** Computing / error blocks — same shell, only this content swaps */
-function RouteStatus({ phase }: { phase: 'computing' | 'error' }) {
+/** Cold geometry failure — nothing standable was ever committed. A failure
+    OVER a standing route renders as a strip above the kept timeline instead. */
+function RouteError() {
   const app = useApp();
-  if (phase === 'computing') {
-    return (
-      <div style={{ padding: '40px 22px', textAlign: 'center', fontSize: 13.5, color: C.mut }}>
-        {m.ribbon_computing()}
-      </div>
-    );
-  }
   return (
     <div style={{ padding: '40px 22px', textAlign: 'center' }}>
       <div style={{ fontSize: 13.5, color: C.mut, lineHeight: 1.5 }}>
-        {app.routeState.error ?? m.ribbon_error_fallback()}
+        {app.routeState.geometryError ?? m.ribbon_error_fallback()}
       </div>
-      <button
-        onClick={() => app.editRoute()}
-        style={{ marginTop: 14, fontSize: 14, fontWeight: 700, color: C.accent, cursor: 'pointer' }}
-      >
-        {m.ribbon_edit_route()}
-      </button>
+      <div style={{ display: 'flex', gap: 18, justifyContent: 'center', marginTop: 14 }}>
+        <button onClick={() => app.retryRoute()} style={{ ...retryStyle, fontSize: 14 }}>
+          {m.ribbon_retry()}
+        </button>
+        <button
+          onClick={() => app.editRoute()}
+          style={{ fontSize: 14, fontWeight: 700, color: C.mut, cursor: 'pointer' }}
+        >
+          {m.ribbon_edit_route()}
+        </button>
+      </div>
     </div>
   );
 }
@@ -258,7 +270,12 @@ function RouteLead({ phase }: { phase: Phase }) {
 
   if (phase === 'ready') {
     const route = app.routeState.route;
-    const reco = analysis.stops.find((s) => s.id === analysis.recoId) ?? null;
+    // « Arrêt conseillé » only once a stop is actually known: between the
+    // geometry and corridor commits the trip branch below covers the window.
+    const reco =
+      app.routeState.corridor === 'ready'
+        ? (analysis.stops.find((s) => s.id === analysis.recoId) ?? null)
+        : null;
     if (reco) {
       return (
         <div>
@@ -288,11 +305,15 @@ function RouteLead({ phase }: { phase: Phase }) {
         </div>
       );
     }
+    // The trip + distance branch — also the whole window between the geometry
+    // and corridor commits, labelled with the endpoints the geometry was
+    // computed for (a recompute keeps the previous trip under its own labels).
     return (
       <div>
         {kicker(m.ribbon_header())}
         <div style={{ fontSize: 17, fontWeight: 700, color: C.ink }}>
-          {routeFromLabel(app)} → {app.toText}
+          {route ? app.routeState.endpoints.from : routeFromLabel(app)} →{' '}
+          {route ? app.routeState.endpoints.to : app.toText}
         </div>
         {route && (
           <div style={{ fontSize: 12, color: C.mut, marginTop: 2 }}>
@@ -306,15 +327,30 @@ function RouteLead({ phase }: { phase: Phase }) {
     );
   }
 
+  if (phase === 'computing') {
+    // A cold compute: the trip being awaited — the endpoints are the user's
+    // own input and the range comes from the tank. Nothing invented: no
+    // distance, no duration, no station.
+    return (
+      <div>
+        {kicker(m.route_setup_title())}
+        <div style={{ fontSize: 17, fontWeight: 700, color: C.ink }}>
+          {routeFromLabel(app)} → {app.toText}
+        </div>
+        <div style={{ fontSize: 12, color: C.mut, marginTop: 2 }}>
+          {m.ribbon_departure_tank({ percent: app.startTankPct, km: analysis.autonomyKm })}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       {kicker(m.route_setup_title())}
       <div style={{ fontSize: 13.5, color: phase === 'error' ? C.warn : C.mut }}>
-        {phase === 'computing'
-          ? m.ribbon_computing()
-          : phase === 'error'
-            ? (app.routeState.error ?? m.ribbon_error_fallback())
-            : m.route_sheet_recap({ fuel: fuelLabel(app.fuel), percent: app.startTankPct })}
+        {phase === 'error'
+          ? (app.routeState.geometryError ?? m.ribbon_error_fallback())
+          : m.route_sheet_recap({ fuel: fuelLabel(app.fuel), percent: app.startTankPct })}
       </div>
     </div>
   );
@@ -333,12 +369,17 @@ export default function RouteScreen() {
 
   // Status decides the content, never the layout. `routeReady` drops when an
   // endpoint changes, so editing a computed route swaps back to the form.
+  // `ready` as soon as a route STANDS — the current key's or the previous
+  // one's — so the timeline and the corridor stay up through a recompute; the
+  // computing and error blocks only when nothing standable exists (a cold
+  // trip). Stage detail (skeleton stops, provisional notice, per-stage retry)
+  // is the timeline's own business.
   const showForm = app.screen === 'routeSetup' || !app.routeReady;
   const phase: Phase = showForm
     ? 'form'
-    : routeState.status === 'ready' && routeState.route
+    : routeState.route
       ? 'ready'
-      : routeState.status === 'error'
+      : routeState.geometry === 'error'
         ? 'error'
         : 'computing';
 
@@ -362,10 +403,24 @@ export default function RouteScreen() {
   const { panelRef, panelInset } = usePanelInset(desktop, fiche);
   const onCollapsedHeight = useCallback((h: number) => setSheetInset(h), []);
 
-  const canGo = app.toText.trim().length > 0;
+  // The submit acknowledges in place: the CTA goes busy while the addresses
+  // geocode (the same spinner idiom as PlaceField), and `startRoute` guards
+  // re-entry synchronously so a second tap cannot start a second pipeline.
+  const canGo = app.toText.trim().length > 0 && !app.geocoding;
   const cta = (
     <button onClick={() => app.startRoute()} disabled={!canGo} style={ctaStyle(canGo)}>
-      {m.route_compare_cta()}
+      {app.geocoding ? (
+        <span
+          className="spin"
+          role="status"
+          aria-label={m.route_geocoding_in_progress()}
+          style={{ display: 'inline-block', lineHeight: 1 }}
+        >
+          ↻
+        </span>
+      ) : (
+        m.route_compare_cta()
+      )}
     </button>
   );
 
@@ -374,12 +429,23 @@ export default function RouteScreen() {
       <RouteForm withTitle={desktop} />
     ) : phase === 'ready' ? (
       <RouteTimeline />
+    ) : phase === 'computing' ? (
+      <RouteAwaited />
     ) : (
-      <RouteStatus phase={phase} />
+      <RouteError />
     );
 
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      {/* One polite region for the whole pipeline, whole catalog sentences,
+          announced once per stage transition. Focus never moves. */}
+      <div className="sr-only" role="status" aria-live="polite">
+        {app.geocoding
+          ? m.route_geocoding_in_progress()
+          : phase === 'form'
+            ? ''
+            : stageSentence(routeState)}
+      </div>
       <div
         ref={stageRef}
         style={{
@@ -511,13 +577,23 @@ export default function RouteScreen() {
             onCollapsedHeight={onCollapsedHeight}
             expanded={sheetOpen}
             onExpandedChange={setSheetOpen}
+            // The timeline runs longer than a screen — the route sheet opens
+            // to the full stage (minus the shell's map peek strip)
+            expandRatio={1}
+            // The collapsed header changes with every pipeline commit; each
+            // change landing instantly keeps the flap grabbable during a load
+            instantContentResize
             hasBody
             expandAria={m.route_sheet_expand_aria()}
             collapseAria={m.route_sheet_collapse_aria()}
             header={(handle) => (
               <div style={{ padding: '0 20px 12px' }}>
                 {handle}
-                <RouteLead phase={phase} />
+                {/* Expanded past the form, the body opens on the timeline's
+                    own trip header — repeating the lead right above it reads
+                    as a doubled screen, not as a summary. The form keeps it:
+                    its title and recap live here on a phone. */}
+                {(!sheetOpen || phase === 'form') && <RouteLead phase={phase} />}
               </div>
             )}
             body={(scrollerRef, gestures) => (

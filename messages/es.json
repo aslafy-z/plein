@@ -307,6 +307,30 @@
   "ribbon_error_fallback": "Ruta no disponible.",
   "ribbon_edit_route": "Modificar la ruta",
   "ribbon_computing": "Calculando la ruta…",
+  "ribbon_stage_geometry": "Ruta encontrada. Buscando gasolineras a lo largo del trayecto.",
+  "ribbon_stage_provisional": "Calculando una nueva ruta. Se sigue mostrando el trayecto anterior.",
+  "ribbon_stage_geometry_failed": "Nueva ruta no disponible. Se sigue mostrando el trayecto anterior.",
+  "ribbon_corridor_failed": "Gasolineras del trayecto no disponibles. La ruta sigue visible.",
+  "ribbon_provisional_notice": "Trayecto anterior — calculando una nueva ruta. Los precios y las paradas aún no están actualizados.",
+  "ribbon_geometry_failed_notice": "Nueva ruta no disponible — se muestra el trayecto anterior.",
+  "ribbon_retry": "Reintentar",
+  "route_geocoding_in_progress": "Buscando las direcciones.",
+  "ribbon_stage_stations": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} gasolinera encontrada en el trayecto.",
+        "countPlural=other": "{count} gasolineras encontradas en el trayecto."
+      }
+    }
+  ],
+  "ribbon_stage_no_stations": "No se ha encontrado ninguna gasolinera en el trayecto.",
   "ribbon_departure": "Salida · {place}",
   "ribbon_departure_tank": "Depósito {percent} % · autonomía ≈ {km} km",
   "ribbon_no_stops": "No se ha encontrado ninguna gasolinera en la ruta — amplía los filtros.",

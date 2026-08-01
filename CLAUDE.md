@@ -140,6 +140,36 @@ width, never pointer type: a window gets resized and the layout has to follow.
   the geolocation notice and the app version — permanent chrome, so it never
   covers the map it is offering to install.
 
+## Route: two stages, two commits
+
+A route is not one async call. `src/state/routePipeline.ts` is a pure state
+machine — geometry, then corridor stations — and the store commits each stage
+as it lands, so the itinerary, its distance and `RouteMap` appear before any
+station is known (the stop list shows placeholders meanwhile).
+
+- **Nothing on screen is ever blanked to compute a replacement.** A recompute
+  keeps the previous `route`/`stations` and flips `provisional`; a failed
+  stage keeps them too. Only a cold computation shows the awaited-trip
+  skeleton or the error block — `RouteScreen`'s phase is `ready` as soon as
+  any route STANDS, current key's or the previous one's.
+- **A displayed result carries its own `endpoints`.** They are committed with
+  the geometry, never read live from `toText` — a stale distance under the
+  destination being typed would describe neither trip.
+- **Staleness is checked twice**: `routeReq` (a generation counter, which is
+  what tells two retries of the same trip apart) and `routeKey()` (endpoints
+  rounded to ~11 m + source + `avoidMotorway`/`avoidToll`/`vehicle`).
+- **A stage that fails is reported where it failed** and retried alone
+  (`retryRoute()` / `retryCorridor()`). Demo geometry or demo stops never
+  stand in for a real result.
+- The corridor commit reuses the route object the geometry committed —
+  `RouteMap` fits once per route identity, and a second fit would land on a
+  user pan.
+- Stage transitions are announced through one `role="status"` region carrying
+  whole catalog sentences (`ribbon_stage_*`), and `src/lib/perf.ts` marks the
+  stages so the split is measurable (`route:time-to-geometry` /
+  `route:time-to-stations`, dev only, asserted in
+  `e2e/route-progressive.spec.ts`).
+
 ## Storage: four classes, one home each
 
 Every piece of data the app holds belongs to exactly one of these, and the

@@ -10,9 +10,8 @@ test('route comparison: map-first shell, tour, station detail and history', asyn
   await expect(cta).toBeVisible()
 
   // ── Compute a route: the default position IS Toulouse, so pick a real
-  // destination through the shared search field ──
+  // destination through the shared search field — picking submits ──
   await pickRoutePlace(page, 'to', 'Bordeaux', 'Bordeaux centre')
-  await cta.click()
 
   // ── Results in the same shell: recommended stop, corridor map still up ──
   await expect(page.getByText('Arrêt conseillé').first()).toBeVisible({ timeout: 30_000 })
