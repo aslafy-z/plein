@@ -140,12 +140,13 @@ width, never pointer type: a window gets resized and the layout has to follow.
   the geolocation notice and the app version — permanent chrome, so it never
   covers the map it is offering to install.
 
-## Route: two stages, two commits
+## Route: three stages, committed as they land
 
 A route is not one async call. `src/state/routePipeline.ts` is a pure state
-machine — geometry, then corridor stations — and the store commits each stage
-as it lands, so the itinerary, its distance and `RouteMap` appear before any
-station is known (the stop list shows placeholders meanwhile).
+machine — geometry, then corridor stations, then the road matrix the fuel-stop
+plan runs on — and the store commits each stage as it lands, so the itinerary,
+its distance and `RouteMap` appear before any station is known (the stop list
+shows placeholders meanwhile).
 
 - **Nothing on screen is ever blanked to compute a replacement.** A recompute
   keeps the previous `route`/`stations` and flips `provisional`; a failed
@@ -164,10 +165,21 @@ station is known (the stop list shows placeholders meanwhile).
 - The corridor commit reuses the route object the geometry committed —
   `RouteMap` fits once per route identity, and a second fit would land on a
   user pan.
+- **The matrix stage never blocks the plan.** The fuel-stop plan (the DP in
+  `src/lib/routeOptimizer.ts` over the candidate set `src/lib/routeCandidates.ts`
+  thins) always answers on geometric-estimate legs, flagged `estimated` in the
+  UI; the one square matrix call per candidate set (`travelMatrixKey`) only
+  upgrades the legs to `routed`. `unsupported` (the demo source has no matrix
+  backend, by design) is a distinct status from `error` — collapsing them
+  would make a real outage invisible. Plan-only inputs (strategy, departure
+  tank, pinned stops) re-key at most this stage, never geometry or corridor.
+- The corridor is projected ONCE, at its commit (`projectCorridor` —
+  `kmAlong`/`offRouteKm` on `RouteStation`): the projection is
+  O(stations × polyline vertices), far too expensive for a selector.
 - Stage transitions are announced through one `role="status"` region carrying
   whole catalog sentences (`ribbon_stage_*`), and `src/lib/perf.ts` marks the
   stages so the split is measurable (`route:time-to-geometry` /
-  `route:time-to-stations`, dev only, asserted in
+  `route:time-to-stations` / `route:time-to-plan`, dev only, asserted in
   `e2e/route-progressive.spec.ts`).
 
 ## Storage: four classes, one home each
