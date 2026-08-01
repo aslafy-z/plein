@@ -27,6 +27,7 @@ import RouteMap from '../components/RouteMap';
 import PlaceField from '../components/PlaceField';
 import SheetShell from '../components/SheetShell';
 import RouteTimeline, { recommendationLabel } from './RouteTimeline';
+import StationDetail from './StationDetail';
 
 /** Same cap as the map screen's overlay: fields dragged across a window are
     unreadable, and the width belongs to the map */
@@ -324,6 +325,12 @@ export default function RouteScreen() {
   const desktop = useIsDesktop();
   const { routeState } = app;
 
+  // Desktop keeps the corridor map mounted under a stop's fiche: it renders
+  // in the same panel, stacked under the timeline, the way the map screen
+  // stacks a fiche under its zone list. A phone shows the fiche full screen
+  // (App.tsx) — this screen is then not mounted at all.
+  const fiche = desktop && app.screen === 'detail';
+
   // Status decides the content, never the layout. `routeReady` drops when an
   // endpoint changes, so editing a computed route swaps back to the form.
   const showForm = app.screen === 'routeSetup' || !app.routeReady;
@@ -352,7 +359,7 @@ export default function RouteScreen() {
     return () => ro.disconnect();
   }, []);
 
-  const { panelRef, panelInset } = usePanelInset(desktop);
+  const { panelRef, panelInset } = usePanelInset(desktop, fiche);
   const onCollapsedHeight = useCallback((h: number) => setSheetInset(h), []);
 
   const canGo = app.toText.trim().length > 0;
@@ -436,11 +443,36 @@ export default function RouteScreen() {
           )}
         </div>
 
-        {/* Desktop: the same floating glass panel slot the map screen uses */}
+        {/* Desktop: the same floating glass panel slot the map screen uses.
+            A stop's fiche stacks UNDER the timeline, so the next stop stays
+            one click away while its details are read. */}
         {desktop && (
           <div ref={panelRef} data-testid="route-panel" style={floatingPanelStyle}>
-            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>{content}</div>
-            {phase === 'form' && (
+            <div
+              style={{
+                flex: fiche ? '0 1 38%' : 1,
+                minHeight: 0,
+                overflowY: 'auto',
+              }}
+            >
+              {content}
+            </div>
+            {fiche && (
+              <div
+                key={app.detailId ?? 'fiche'}
+                className="sheet-swap"
+                style={{
+                  flex: '1 1 62%',
+                  minHeight: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  borderTop: `1px solid ${C.border12}`,
+                }}
+              >
+                <StationDetail />
+              </div>
+            )}
+            {phase === 'form' && !fiche && (
               // The CTA sticks to the panel's bottom edge, whatever the form
               // scrolls above it
               <div
