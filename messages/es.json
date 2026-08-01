@@ -183,6 +183,7 @@
       }
     }
   ],
+  "sheet_sort_recommended": "Recomendado",
   "sheet_sort_price": "Precio",
   "sheet_sort_distance": "Distancia",
   "sheet_locate_aria": "Ver {station} en el mapa",

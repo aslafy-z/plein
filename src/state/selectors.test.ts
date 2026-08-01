@@ -435,6 +435,53 @@ describe('selectByPrice / selectRecommended', () => {
   })
 })
 
+// ── Zone list order ──────────────────────────────────────────────────────────
+describe('selectSorted', () => {
+  const data = [
+    station({ id: 'far-cheap', ...north(12), prices: diesel(1.85) }),
+    station({ id: 'near-deal', ...north(3.5), prices: diesel(1.87) }),
+    station({ id: 'filler', ...north(1), prices: diesel(1.99) }),
+  ]
+  const stations = { status: 'ready', data, activeSource: 'demo', refreshing: false } as AppStore['stations']
+
+  it('« Recommandé » ranks on the effective price, not the sticker', () => {
+    // 1,85 € at ~15.6 road km vs 1,87 € at ~4.6 road km (6,5 L/100 km, 50 L):
+    // effective ≈ 1,928 vs 1,892 €/L — the sticker order flips
+    const a = app({ radius: 25, sort: 'recommended', stations })
+    expect(selectSorted(a).map((s) => s.id)).toEqual(['near-deal', 'far-cheap', 'filler'])
+    // « Prix » and « Distance » keep their own orders
+    expect(selectSorted(app({ ...a, sort: 'price' })).map((s) => s.id)).toEqual([
+      'far-cheap',
+      'near-deal',
+      'filler',
+    ])
+    expect(selectSorted(app({ ...a, sort: 'distance' })).map((s) => s.id)).toEqual([
+      'filler',
+      'near-deal',
+      'far-cheap',
+    ])
+  })
+
+  it('sinks stations beyond a full tank round trip, nearest of them first', () => {
+    // Tank 4 L at 10 L/100 km: unreachable beyond 20 road km. Both stranded
+    // stations have no effective price — they trail the reachable one in
+    // distance order, whatever their stickers say
+    const stranded = [
+      station({ id: 'ok', ...north(2), prices: diesel(1.9) }),
+      station({ id: 'stranded-far', ...north(30), prices: diesel(1.4) }),
+      station({ id: 'stranded-near', ...north(25), prices: diesel(1.5) }),
+    ]
+    const a = app({
+      radius: 45,
+      tank: 4,
+      consumption: 10,
+      sort: 'recommended',
+      stations: { status: 'ready', data: stranded, activeSource: 'demo', refreshing: false },
+    })
+    expect(selectSorted(a).map((s) => s.id)).toEqual(['ok', 'stranded-near', 'stranded-far'])
+  })
+})
+
 // ── Road-distance scale ──────────────────────────────────────────────────────
 describe('roadReachOf', () => {
   it('measures when the matrix covered the station, estimates otherwise', () => {

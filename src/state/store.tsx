@@ -139,7 +139,13 @@ export type Screen =
   | 'detail';
 
 export type RouteMode = 'balanced' | 'price' | 'detour';
-export type SortMode = 'price' | 'distance';
+
+/**
+ * Zone list order. « Recommandé » (the default, like the Favoris) ranks on
+ * the effective per-litre price — see `effectiveLiterPrice`; « Prix » on the
+ * sticker; « Distance » on the road distance.
+ */
+export type SortMode = 'recommended' | 'price' | 'distance';
 
 /**
  * Which search field is open. Being open is nav state (the phone search is a
@@ -588,7 +594,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [prevScreen, setPrevScreen] = useState<Screen>('map');
   const [fuel, setFuel] = useState<FuelId>(initialMap.fuel ?? persisted.fuel ?? 'diesel');
   usePersisted('fuel', fuel);
-  const [sort, setSort] = useState<SortMode>('price');
+  const [sort, setSort] = useState<SortMode>('recommended');
   const [radius, setRadiusState] = useState<number>(
     initialMap.radius != null
       ? Math.min(initialMap.radius, MAX_RADIUS_KM)
@@ -2283,11 +2289,30 @@ export const selectByPrice = cached((app: AppStore): NearbyStation[] => {
   return [...selectVisible(app)].sort((a, b) => cents(a) - cents(b) || a.distKm - b.distKm);
 });
 
-export const selectSorted = cached((app: AppStore): NearbyStation[] =>
-  app.sort === 'price'
-    ? selectByPrice(app)
-    : [...selectVisible(app)].sort((a, b) => a.distKm - b.distKm),
-);
+/**
+ * Zone stations in the order the active sort chip asks for. « Recommandé »
+ * (the default) ranks on the effective per-litre price — the comparator the
+ * Favoris « Recommandé » sort uses (`sortFavoriteRows`), with the same
+ * rules: equal effective prices fall back to distance, and a station whose
+ * round trip exceeds the tank (effective price Infinity) sinks to the
+ * bottom. It is a plain ordering of `effectiveLiterPrice`, without
+ * `selectRecommended`'s tie margin — inside that margin the crowned row may
+ * sit second, still wearing its « recommandée » flag.
+ */
+export const selectSorted = cached((app: AppStore): NearbyStation[] => {
+  if (app.sort === 'price') return selectByPrice(app);
+  if (app.sort === 'distance')
+    return [...selectVisible(app)].sort((a, b) => a.distKm - b.distKm);
+  const f = app.fuel;
+  const eff = (s: NearbyStation) =>
+    effectiveLiterPrice(app, effectivePrice(s, f)!.value, s.distKm);
+  return [...selectVisible(app)].sort((a, b) => {
+    const ea = eff(a);
+    const eb = eff(b);
+    if (ea === eb) return a.distKm - b.distKm;
+    return ea - eb;
+  });
+});
 
 /** Cheapest STICKER price of the zone — labels (« meilleur prix ») and deltas */
 export function selectCheapest(app: AppStore): NearbyStation | null {
@@ -2301,7 +2326,8 @@ export function selectCheapest(app: AppStore): NearbyStation | null {
  * — what a full tank ACTUALLY costs per litre. A round trip the tank cannot
  * cover has no effective price at all (Infinity): no amount of sticker
  * discount makes a station worth more fuel than it sells you. Shared by the
- * map recommendation and the « Recommandé » sort of the Favoris.
+ * map recommendation and the « Recommandé » sorts of the zone list and the
+ * Favoris.
  */
 export function effectiveLiterPrice(
   app: Pick<AppStore, 'consumption' | 'tank'>,

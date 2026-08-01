@@ -77,15 +77,22 @@ test('the reco and distances follow the road matrix, not crow-flies', async ({ p
   await expect(page.getByText('3,5 km').first()).toBeVisible()
   await expect(page.getByRole('button', { name: /Y aller · 6 min/ })).toBeVisible()
 
-  // The list keeps sticker order: crow-flies-close Rivegauche stays the
-  // « meilleur prix » but shows its real 12 km; Rivedroite is recommended
+  // The list defaults to the « Recommandé » sort, so it leads with the same
+  // road-aware pick as the card; crow-flies-close Rivegauche stays the
+  // « meilleur prix » but shows its real 12 km
   await openZoneList(page)
   const rows = page.getByTestId('zone-row')
+  await expect(rows.first()).toContainText('Rivedroite')
+  await expect(rows.first()).toContainText('recommandée · +0,02')
+  await expect(rows.first()).toContainText('3,5 km')
+  await expect(rows.nth(1)).toContainText('Rivegauche')
+  await expect(rows.nth(1)).toContainText('meilleur prix')
+  await expect(rows.nth(1)).toContainText('12,0 km')
+
+  // The « Prix » chip flips back to sticker order
+  await page.getByText('Prix', { exact: true }).click()
   await expect(rows.first()).toContainText('Rivegauche')
-  await expect(rows.first()).toContainText('meilleur prix')
-  await expect(rows.first()).toContainText('12,0 km')
   await expect(rows.nth(1)).toContainText('Rivedroite')
-  await expect(rows.nth(1)).toContainText('recommandée · +0,02')
 })
 
 // The matrix resolves AFTER the stations landed and the map settled — nothing
