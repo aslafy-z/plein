@@ -378,6 +378,7 @@
   "detail_saving_on_tank": "sur un plein de {tank} L {scope}",
   "detail_go_there": "Y aller",
   "settings_title": "Réglages",
+  "settings_brand_tagline": "Le plein au juste prix.",
   "settings_vehicle_section": "Véhicule",
   "settings_profile": "Profil",
   "settings_profile_hint": "changer de profil applique {fuel} · réservoir {tank} L · {consumption} L/100 km",

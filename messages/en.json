@@ -378,6 +378,7 @@
   "detail_saving_on_tank": "on a {tank} L fill-up {scope}",
   "detail_go_there": "Go there",
   "settings_title": "Settings",
+  "settings_brand_tagline": "A fair price at the pump.",
   "settings_vehicle_section": "Vehicle",
   "settings_profile": "Profile",
   "settings_profile_hint": "switching profile applies {fuel} · {tank} L tank · {consumption} L/100 km",

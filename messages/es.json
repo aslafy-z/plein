@@ -378,6 +378,7 @@
   "detail_saving_on_tank": "en un depósito de {tank} L {scope}",
   "detail_go_there": "Ir",
   "settings_title": "Ajustes",
+  "settings_brand_tagline": "Repostar al precio justo.",
   "settings_vehicle_section": "Vehículo",
   "settings_profile": "Perfil",
   "settings_profile_hint": "cambiar de perfil aplica {fuel} · depósito de {tank} L · {consumption} L/100 km",

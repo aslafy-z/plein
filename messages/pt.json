@@ -371,6 +371,7 @@
   "detail_saving_on_tank": "num depósito de {tank} L {scope}",
   "detail_go_there": "Ir",
   "settings_title": "Definições",
+  "settings_brand_tagline": "Abasteça ao preço justo.",
   "settings_vehicle_section": "Veículo",
   "settings_profile": "Perfil",
   "settings_profile_hint": "mudar de perfil aplica {fuel} · depósito {tank} L · {consumption} L/100 km",
