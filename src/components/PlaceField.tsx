@@ -66,6 +66,12 @@ export interface PlaceFieldProps {
   editValue?: string;
   /** Picking a row. The field remembers the place and closes itself first. */
   onPick(r: GeocodeResult): void;
+  /** The pick itself navigates (the destination pick starts the compute and
+      `go()` stacks the route screen on top): the field must NOT pop the
+      search's history entry — the pending `history.back()` would land AFTER
+      the navigation and clobber it. `go()` closes the search plainly, and
+      Back returns into it — the « Itinéraire › » row's idiom. */
+  pickNavigates?: boolean;
   /** Map only — the whole field is nav-open state: ✕, Escape and a click
       outside close it (the route fields are always on screen instead) */
   onClose?(): void;
@@ -198,7 +204,14 @@ export default function PlaceField(props: PlaceFieldProps) {
   const pick = (r: GeocodeResult) => {
     app.rememberSearchedPlace(r);
     cancelSearch();
-    if (props.onClose) {
+    if (props.pickNavigates) {
+      // The caller's onPick navigates via go(), which closes the search
+      // without popping its entry — popping here would race that push
+      if (desktop) {
+        setEditing(false);
+        inputRef.current?.blur();
+      }
+    } else if (props.onClose) {
       // The whole field is nav-open state (the map): picking closes it
       props.onClose();
     } else if (desktop) {

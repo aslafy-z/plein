@@ -132,10 +132,9 @@ async function gotoRoute(page: Page) {
   ).toBeVisible()
 }
 
-/** Pick a destination through the shared search field, then submit */
+/** Pick a destination through the shared search field — picking submits */
 async function submitTrip(page: Page, destination: string) {
   await pickRoutePlace(page, 'to', destination, destination)
-  await page.getByRole('button', { name: 'Comparer les stations sur le trajet' }).click()
 }
 
 test('the itinerary and its map show before a single station is known', async ({ page }) => {
@@ -213,8 +212,8 @@ test('recomputing keeps the previous trip on screen, labelled', async ({ page })
   await openRouteSheet(page)
   await page.getByText('Modifier', { exact: true }).click()
   await closeRouteSheet(page)
+  // Picking the new destination starts the recompute on its own
   await pickRoutePlace(page, 'to', 'Nantes', 'Nantes')
-  await page.getByRole('button', { name: 'Comparer les stations sur le trajet' }).click()
 
   await openRouteSheet(page)
   await expect(page.getByText(/Trajet précédent/).first()).toBeVisible()

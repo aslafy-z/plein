@@ -8,8 +8,8 @@ import { test, expect, gotoMap, closeRouteSheet, openRouteSheet, pickRoutePlace 
 test('the strategy chips swap the recommended stop', async ({ page }) => {
   await gotoMap(page)
   await page.getByText('Trajet', { exact: true }).click()
+  // Picking the destination submits the trip on its own — no CTA tap
   await pickRoutePlace(page, 'to', 'Bordeaux', 'Bordeaux centre')
-  await page.getByText('Comparer les stations sur le trajet').click()
   await expect(page.getByText('Arrêt conseillé').first()).toBeVisible({ timeout: 30_000 })
   await openRouteSheet(page)
 
@@ -40,7 +40,6 @@ test('a low departure tank caps the autonomy and forces a reachable stop', async
   // The expanded sheet covers the endpoint fields on a phone — fold it back
   await closeRouteSheet(page)
   await pickRoutePlace(page, 'to', 'Bordeaux', 'Bordeaux centre')
-  await page.getByText('Comparer les stations sur le trajet').click()
   await expect(page.getByText('Arrêt conseillé').first()).toBeVisible({ timeout: 30_000 })
   await openRouteSheet(page)
 

@@ -90,7 +90,15 @@ function RouteFields() {
         title={m.route_to_field_title()}
         icon={toIcon}
         onChangeText={(text) => app.setTo(text)}
-        onPick={(r: GeocodeResult) => app.setTo(r.label, r.point)}
+        // Picking a destination IS the intent: the comparison starts right
+        // away (the departure is already resolved or geocodes in the same
+        // breath) — no second tap on the CTA. The staged pipeline keeps every
+        // control live while it runs.
+        pickNavigates
+        onPick={(r: GeocodeResult) => {
+          app.setTo(r.label, r.point);
+          app.startRoute(r);
+        }}
         onClear={app.toText.trim() ? () => app.setTo('') : undefined}
         clearAria={m.route_to_clear_aria()}
         emptyHint={m.route_search_hint()}
@@ -569,13 +577,20 @@ export default function RouteScreen() {
             onCollapsedHeight={onCollapsedHeight}
             expanded={sheetOpen}
             onExpandedChange={setSheetOpen}
+            // The timeline runs longer than a screen — the route sheet opens
+            // to the full stage (minus the shell's map peek strip)
+            expandRatio={1}
             hasBody
             expandAria={m.route_sheet_expand_aria()}
             collapseAria={m.route_sheet_collapse_aria()}
             header={(handle) => (
               <div style={{ padding: '0 20px 12px' }}>
                 {handle}
-                <RouteLead phase={phase} />
+                {/* Expanded past the form, the body opens on the timeline's
+                    own trip header — repeating the lead right above it reads
+                    as a doubled screen, not as a summary. The form keeps it:
+                    its title and recap live here on a phone. */}
+                {(!sheetOpen || phase === 'form') && <RouteLead phase={phase} />}
               </div>
             )}
             body={(scrollerRef, gestures) => (

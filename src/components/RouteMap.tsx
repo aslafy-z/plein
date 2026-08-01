@@ -26,6 +26,20 @@ function pointAtKm(polyline: GeoPoint[], cum: number[], km: number): GeoPoint | 
   return null;
 }
 
+/**
+ * Last view of the route map, kept across remounts. A phone shows a stop's
+ * fiche full screen, which unmounts the whole route screen; without this,
+ * coming back rebuilt the map on the corridor auto-fit and threw away the
+ * user's pan/zoom. Only restored while the trip is the same one
+ * (`routeState.key`) — a new computation deserves its own framing.
+ */
+let savedRouteView: {
+  center: L.LatLng;
+  zoom: number;
+  userInteracted: boolean;
+  routeKey: string | null;
+} | null = null;
+
 /** Departure (accent circle) / arrival (warn square) marker markup */
 function endpointHtml(kind: 'from' | 'to'): string {
   const bg = kind === 'from' ? C.accent : C.warn;
@@ -56,14 +70,34 @@ export default function RouteMap({
       re-frames them when the stage is resized, until the user takes over */
   const frameBoundsRef = useRef<L.LatLngBounds | null>(null);
 
+  // Unmount-time closures read the latest state through this ref
+  const appRef = useRef(app);
+  appRef.current = app;
+
   const shell = useLeafletMap({
     bottomInset,
     leftInset,
-    setup: (map) => {
-      // The fit effects below frame the real subject right after mount
-      map.setView([app.searchPos.lat, app.searchPos.lng], 11);
+    setup: (map, sh) => {
+      const saved =
+        savedRouteView && savedRouteView.routeKey === app.routeState.key ? savedRouteView : null;
+      if (saved) {
+        // Back from a full-screen fiche: the user's view returns exactly as
+        // they left it, and the standing route must not re-fit over it.
+        map.setView(saved.center, saved.zoom, { animate: false });
+        sh.userInteractedRef.current = saved.userInteracted;
+        fittedRouteRef.current = app.routeState.route;
+      } else {
+        // The fit effects below frame the real subject right after mount
+        map.setView([app.searchPos.lat, app.searchPos.lng], 11);
+      }
       layerRef.current = L.layerGroup().addTo(map);
       return () => {
+        savedRouteView = {
+          center: map.getCenter(),
+          zoom: map.getZoom(),
+          userInteracted: sh.userInteractedRef.current,
+          routeKey: appRef.current.routeState.key,
+        };
         layerRef.current = null;
         frameBoundsRef.current = null;
         fittedRouteRef.current = null;

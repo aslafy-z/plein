@@ -387,7 +387,9 @@ export interface AppStore {
   searchHistory: SearchedPlace[];
   rememberSearchedPlace(place: GeocodeResult): void;
   routeReady: boolean;
-  startRoute(): void;
+  /** Submit the trip. `toPick` carries a destination picked this same tick
+      (auto-start on pick), before React has committed it to `toText`. */
+  startRoute(toPick?: GeocodeResult): void;
   /** true while the submitted addresses are being geocoded, before navigating */
   geocoding: boolean;
   editRoute(): void;
@@ -1449,18 +1451,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setRouteReady(false);
   }, []);
 
-  const startRoute = useCallback(async () => {
+  const startRoute = useCallback(async (toPick?: GeocodeResult) => {
     // A second tap must not open a second pipeline. The ref settles
     // synchronously, unlike the `geocoding` state the button renders.
-    if (startingRef.current || !toText.trim()) return;
+    if (startingRef.current || !(toPick ?? toText.trim())) return;
     startingRef.current = true;
     setGeocoding(true);
     beginRouteTiming();
     try {
       let from = fromPoint;
-      let to = toPoint;
+      let to = toPick?.point ?? toPoint;
       let fromLabel = fromIsCurrentPosition ? '' : fromText.trim();
-      let toLabel = toText.trim();
+      let toLabel = toPick?.label ?? toText.trim();
       const geocode = getProviders(sourceId).geocode;
       if (!from && (fromIsCurrentPosition || !fromText.trim())) {
         from = userPos;
@@ -1507,7 +1509,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setToPoint(to);
       setPlannedStops({});
       setRouteReady(true);
-      setScreen('route');
+      // go(), not setScreen: a destination picked inside the phone's
+      // full-screen search navigates FROM the open search, and go() stacks
+      // the route screen on top of its entry instead of racing a pop.
+      go('route');
       void computeRoute(from, to, {
         from: fromLabel || m.route_from_current_position(),
         to: toLabel,
@@ -1521,6 +1526,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     fromIsCurrentPosition,
     fromPoint,
     fromText,
+    go,
     rememberSearchedPlace,
     showToast,
     sourceId,
@@ -1752,7 +1758,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       searchHistory,
       rememberSearchedPlace,
       routeReady,
-      startRoute: () => void startRoute(),
+      startRoute: (toPick?: GeocodeResult) => void startRoute(toPick),
       geocoding,
       editRoute,
       routeMode,
