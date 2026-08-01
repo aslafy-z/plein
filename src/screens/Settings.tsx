@@ -14,6 +14,7 @@ import { CONTENT_MAX_WIDTH, useIsDesktop } from '../lib/layout';
 import { LOCALES, type Locale } from '../lib/locale';
 import { m } from '../paraglide/messages.js';
 import { HAS_NATIVE_MAPS } from '../lib/env';
+import { LogoLockup } from '../components/Logo';
 import { APP_VERSION } from '../lib/appUpdate';
 
 const SECTION_LABEL: React.CSSProperties = {
@@ -186,6 +187,11 @@ export default function Settings() {
         boxSizing: 'border-box',
       }}
     >
+      {/* Brand header — the one place the app shows itself off a little */}
+      <div style={{ marginBottom: 22 }}>
+        <LogoLockup tile={52} glyph={34} fontSize={26} tagline={m.settings_brand_tagline()} glow />
+      </div>
+
       <div style={{ fontSize: 24, fontWeight: 800, color: C.ink }}>{m.settings_title()}</div>
 
       {/* Vehicle */}

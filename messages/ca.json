@@ -378,6 +378,7 @@
   "detail_saving_on_tank": "en un dipòsit de {tank} L {scope}",
   "detail_go_there": "Anar-hi",
   "settings_title": "Configuració",
+  "settings_brand_tagline": "El ple al preu just.",
   "settings_vehicle_section": "Vehicle",
   "settings_profile": "Perfil",
   "settings_profile_hint": "canviar de perfil aplica {fuel} · dipòsit de {tank} L · {consumption} L/100 km",
