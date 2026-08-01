@@ -18,7 +18,11 @@ test('searching a place moves the zone, reset returns to my position', async ({ 
   await page.locator('input[placeholder="Ville, adresse…"]').fill('Marseille')
   await page.getByText(/voir les stations ici/).first().click()
 
-  await expect(page.getByText('La moins chère dans cette zone')).toBeVisible({ timeout: 15_000 })
+  // The heading names the reco (« La moins chère » / « Le meilleur choix »),
+  // which is the scoring's business — this spec only asserts the zone MOVED.
+  // Since 1fb3ad6 a zone out of the tank's round-trip range crowns its
+  // nearest station, so Marseille seen from Toulouse is a « meilleur choix ».
+  await expect(page.getByText(/dans cette zone/).first()).toBeVisible({ timeout: 15_000 })
   await expect(page.getByText('Marseille').first()).toBeVisible()
 
   await page.getByRole('button', { name: 'Revenir à ma position' }).click()
