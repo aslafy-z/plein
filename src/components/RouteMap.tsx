@@ -1,12 +1,20 @@
-// Map view of the computed route: polyline, departure/arrival, price pins for
-// every corridor stop (recommended one highlighted) and the autonomy limit.
+// Map of the route stage, at every step of the flow: before a route exists it
+// frames the search area and drops a pin on the departure and the arrival as
+// they are picked (fitting the two once both are set); when the route lands it
+// draws the corridor — polyline, endpoints, price pins for every corridor stop
+// (recommended one highlighted) and the autonomy limit.
+//
+// The map always fills its stage. The only thing an arrangement may change is
+// how much of it is covered: `leftInset` for the desktop panel, `bottomInset`
+// for the phone sheet — insets move the framing, never the rendering.
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { C } from '../theme';
 import { m } from '../paraglide/messages.js';
-import { cumulativeKm, type GeoPoint } from '../lib/geo';
-import { addDarkBasemap } from '../lib/tiles';
-import { installSmoothKeyboard } from '../lib/mapKeyboard';
+import { fmtPrice } from '../lib/format';
+import { cumulativeKm, radiusBounds, type GeoPoint } from '../lib/geo';
+import { useLeafletMap } from '../lib/leafletMap';
+import { pricePinHtml } from '../lib/pricePin';
 import { useApp, selectRouteAnalysis, effectivePrice } from '../state/store';
 
 /** Vertex at a given km along the polyline (vertex precision is plenty here) */
@@ -18,81 +26,100 @@ function pointAtKm(polyline: GeoPoint[], cum: number[], km: number): GeoPoint | 
   return null;
 }
 
+/** Departure (accent circle) / arrival (warn square) marker markup */
+function endpointHtml(kind: 'from' | 'to'): string {
+  const bg = kind === 'from' ? C.accent : C.warn;
+  const border = kind === 'from' ? '#0c2116' : '#2a130c';
+  const radius = kind === 'from' ? '50%' : '4px';
+  return (
+    `<div style="width:16px;height:16px;border-radius:${radius};background:${bg};` +
+    `border:3px solid ${border};box-sizing:border-box"></div>`
+  );
+}
+
 export default function RouteMap({
-  fill = false,
+  bottomInset = 0,
   leftInset = 0,
 }: {
-  fill?: boolean;
-  /** Width of the floating timeline covering the map's left edge (desktop) —
-      route fits pad on that side so the corridor lands in the visible part */
+  /** Height of the sheet covering the map's bottom edge (phone) */
+  bottomInset?: number;
+  /** Width of the floating timeline covering the map's left edge (desktop) */
   leftInset?: number;
 }) {
   const app = useApp();
   const analysis = selectRouteAnalysis(app);
   const route = app.routeState.route;
-  const leftInsetRef = useRef(leftInset);
-  leftInsetRef.current = leftInset;
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
   const fittedRouteRef = useRef<unknown>(null);
-  /** Bounds of the drawn corridor, re-framed if the map is resized under it */
-  const lineBoundsRef = useRef<L.LatLngBounds | null>(null);
-  /** The user panned or zoomed: their framing wins over any re-fit */
-  const userMovedRef = useRef(false);
+  /** Bounds currently framed (corridor / endpoints / search area) — the shell
+      re-frames them when the stage is resized, until the user takes over */
+  const frameBoundsRef = useRef<L.LatLngBounds | null>(null);
 
+  const shell = useLeafletMap({
+    bottomInset,
+    leftInset,
+    setup: (map) => {
+      // The fit effects below frame the real subject right after mount
+      map.setView([app.searchPos.lat, app.searchPos.lng], 11);
+      layerRef.current = L.layerGroup().addTo(map);
+      return () => {
+        layerRef.current = null;
+        frameBoundsRef.current = null;
+        fittedRouteRef.current = null;
+      };
+    },
+    refitBounds: () => frameBoundsRef.current,
+  });
+  const { mapRef, containerRef, userInteractedRef } = shell;
+
+  // ── Before the route: departure/arrival pins over the search-area framing ──
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
-    const map = L.map(containerRef.current, {
-      zoomControl: false,
-      attributionControl: true,
-      // Leaflet's stepped arrows/± give way to the smooth loop below
-      keyboard: false,
-    });
-    map.setView([46.6, 2.4], 6);
-    addDarkBasemap(map);
-    layerRef.current = L.layerGroup().addTo(map);
-    mapRef.current = map;
-    const stopKeyboard = installSmoothKeyboard(map);
+    const map = mapRef.current;
+    const layer = layerRef.current;
+    if (!map || !layer || route) return;
 
-    const markMoved = () => {
-      userMovedRef.current = true;
-    };
-    const el = map.getContainer();
-    el.addEventListener('wheel', markMoved, { passive: true });
-    el.addEventListener('mousedown', markMoved);
-    el.addEventListener('touchstart', markMoved, { passive: true });
+    layer.clearLayers();
+    const from = app.fromPoint ?? app.userPos;
+    const to = app.toPoint;
+    L.marker([from.lat, from.lng], {
+      icon: L.divIcon({ className: '', html: endpointHtml('from'), iconSize: [16, 16], iconAnchor: [8, 8] }),
+      interactive: false,
+    }).addTo(layer);
+    if (to) {
+      L.marker([to.lat, to.lng], {
+        icon: L.divIcon({ className: '', html: endpointHtml('to'), iconSize: [16, 16], iconAnchor: [8, 8] }),
+        interactive: false,
+      }).addTo(layer);
+    }
 
-    // Leaflet keeps the CENTER when the container grows, not the framing: the
-    // fit below runs on whatever size the container had when the route landed,
-    // and the corridor then shrinks to a stamp in the middle of the real one.
-    // Cheap on a phone (a 210px strip, sized at mount) and very visible on a
-    // window, where the map fills the region — so re-frame on every resize
-    // until the user takes the view over.
-    const ro = new ResizeObserver(() => {
-      map.invalidateSize();
-      const box = lineBoundsRef.current;
-      if (box && !userMovedRef.current)
-        map.fitBounds(box, {
-          paddingTopLeft: [26 + leftInsetRef.current, 26],
-          paddingBottomRight: [26, 26],
-        });
-    });
-    ro.observe(containerRef.current);
-    return () => {
-      ro.disconnect();
-      stopKeyboard();
-      el.removeEventListener('wheel', markMoved);
-      el.removeEventListener('mousedown', markMoved);
-      el.removeEventListener('touchstart', markMoved);
-      map.remove();
-      mapRef.current = null;
-      layerRef.current = null;
-      lineBoundsRef.current = null;
-    };
-  }, []);
+    // Both ends set → frame the trip to come; otherwise keep the search-area
+    // framing the map tab uses, so the stage reads as one map across tabs.
+    const box = to
+      ? L.latLngBounds([
+          [from.lat, from.lng],
+          [to.lat, to.lng],
+        ])
+      : (() => {
+          const b = radiusBounds(app.searchPos, app.radius);
+          return L.latLngBounds([b.south, b.west], [b.north, b.east]);
+        })();
+    frameBoundsRef.current = box;
+    // A newly picked endpoint deserves its framing, like a newly computed
+    // route — but a plain re-render must not fight the user's pan.
+    if (!userInteractedRef.current) {
+      shell.fitBounds(box, to ? { pad: 60 } : { pad: 40, maxZoom: 15 });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route, app.fromPoint, app.toPoint, app.userPos, app.searchPos, app.radius]);
 
+  // Picking a new endpoint re-arms the framing the way a new route does
+  useEffect(() => {
+    if (!route) userInteractedRef.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [app.fromPoint, app.toPoint]);
+
+  // ── The computed route: corridor, stops, autonomy limit ────────────────────
   useEffect(() => {
     const map = mapRef.current;
     const layer = layerRef.current;
@@ -104,17 +131,14 @@ export default function RouteMap({
     L.polyline(line, { color: C.accent, weight: 4, opacity: 0.85 }).addTo(layer);
 
     // Departure / arrival
-    const dot = (bg: string, border: string) =>
-      `<div style="width:16px;height:16px;border-radius:50%;background:${bg};` +
-      `border:3px solid ${border};box-sizing:border-box"></div>`;
     const start = route.polyline[0];
     const end = route.polyline[route.polyline.length - 1];
     L.marker([start.lat, start.lng], {
-      icon: L.divIcon({ className: '', html: dot(C.accent, '#0c2116'), iconSize: [16, 16], iconAnchor: [8, 8] }),
+      icon: L.divIcon({ className: '', html: endpointHtml('from'), iconSize: [16, 16], iconAnchor: [8, 8] }),
       interactive: false,
     }).addTo(layer);
     L.marker([end.lat, end.lng], {
-      icon: L.divIcon({ className: '', html: dot(C.warn, '#2a130c'), iconSize: [16, 16], iconAnchor: [8, 8] }),
+      icon: L.divIcon({ className: '', html: endpointHtml('to'), iconSize: [16, 16], iconAnchor: [8, 8] }),
       interactive: false,
     }).addTo(layer);
 
@@ -134,23 +158,14 @@ export default function RouteMap({
       }
     }
 
-    // Corridor stops as price pins (recommended one highlighted)
+    // Corridor stops as price pins (recommended one highlighted) — the same
+    // markup the zone map draws (lib/pricePin)
     for (const st of analysis.stops) {
       const price = effectivePrice(st, app.fuel)?.value;
       if (price == null) continue;
-      const reco = st.id === analysis.recoId;
-      const bg = reco ? '#3ddc84' : '#22282c';
-      const fg = reco ? '#08120c' : '#cfd6da';
-      const font = reco
-        ? "700 13px 'Spline Sans Mono',monospace"
-        : "600 11.5px 'Spline Sans Mono',monospace";
-      const html =
-        `<div style="transform:translate(-50%,-100%);display:flex;flex-direction:column;` +
-        `align-items:center;cursor:pointer">` +
-        `<div class="pin-bubble" style="background:${bg};color:${fg};font:${font};` +
-        `padding:4px 8px;border:1px solid ${reco ? '#3ddc84' : 'rgba(255,255,255,.08)'}">` +
-        `${price.toFixed(2).replace('.', ',')}</div>` +
-        `<div class="pin-tip" style="border-top:6px solid ${bg}"></div></div>`;
+      const html = pricePinHtml(fmtPrice(price), {
+        recommended: st.id === analysis.recoId,
+      });
       const marker = L.marker([st.lat, st.lng], {
         icon: L.divIcon({ className: '', html, iconSize: [0, 0], iconAnchor: [0, 0] }),
       });
@@ -160,35 +175,17 @@ export default function RouteMap({
 
     // Fit once per computed route, not on every strategy/fuel switch
     const box = L.latLngBounds(line);
-    lineBoundsRef.current = box;
+    frameBoundsRef.current = box;
     if (fittedRouteRef.current !== route) {
       fittedRouteRef.current = route;
-      userMovedRef.current = false; // a new route deserves its own framing
-      map.fitBounds(box, {
-        paddingTopLeft: [26 + leftInsetRef.current, 26],
-        paddingBottomRight: [26, 26],
-      });
+      userInteractedRef.current = false; // a new route deserves its own framing
+      shell.fitBounds(box, { pad: 26 });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route, app.routeState.stations, app.fuel, app.routeMode, analysis.recoId]);
 
   return (
-    <div
-      aria-label={m.map_route_aria()}
-      style={{
-        background: C.mapBg,
-        // A strip above the timeline on a phone; the whole stage on a
-        // window, where the floating timeline rides over it
-        ...(fill
-          ? { position: 'absolute' as const, inset: 0 }
-          : {
-              position: 'relative' as const,
-              height: 210,
-              flexShrink: 0,
-              borderBottom: `1px solid ${C.border}`,
-            }),
-      }}
-    >
+    <div aria-label={m.map_route_aria()} style={{ position: 'absolute', inset: 0, background: C.mapBg }}>
       <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
     </div>
   );

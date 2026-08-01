@@ -22,18 +22,6 @@ export interface FavoriteStation {
   lng: number;
 }
 
-/** One entry of the « Récents » history — a real trip, or a default suggestion */
-export interface RecentPlace {
-  label: string;
-  /** Static sub label of a default suggestion (a département, a province…) */
-  sublabel?: string;
-  point: GeoPoint;
-  /** Trip length, for entries recorded from a real route */
-  distanceKm?: number;
-  /** When the trip was made (epoch ms) */
-  at?: number;
-}
-
 /**
  * One entry of the map search history — a place looked up in the place search
  * and picked. Stored exactly as the geocoder returned it, so the row reads the
@@ -68,8 +56,8 @@ export interface PersistedSettings {
   geoGranted: boolean;
   installDismissed: boolean;
   backgroundLocation: boolean;
-  recents: RecentPlace[];
-  /** Places picked in the map's place search, most recent first */
+  /** Places looked up and picked — the map's search and the route fields
+      share this one history */
   searchHistory: SearchedPlace[];
   /** Pinned stations — snapshot so they render even out of the loaded area */
   favorites: FavoriteStation[];
@@ -122,11 +110,51 @@ function migrateServiceTags(raw: unknown): ServiceTag[] | null {
   return raw.filter((t): t is ServiceTag => SERVICE_TAGS.includes(t as ServiceTag));
 }
 
-/** Blob shape written by builds that predate the English-identifier rename */
+/** One entry of the retired « Récents » trip history — folded into
+    `searchHistory` on the way in (a place driven to is a place looked up) */
+interface LegacyRecentPlace {
+  label?: unknown;
+  sublabel?: unknown;
+  point?: { lat?: unknown; lng?: unknown };
+}
+
+/** Blob shape written by builds that predate the English-identifier rename,
+    or that still carried the route's own `recents` store */
 interface LegacySettings {
   conso?: number;
   bgloc?: boolean;
-  recents?: (RecentPlace & { sublabel?: string })[];
+  recents?: LegacyRecentPlace[];
+}
+
+/**
+ * Fold the retired trip history into the search history. The entries already
+ * are `{label, sublabel?, point}`; only `at` has to be invented, and 0 puts
+ * them under every real search. Places the search history already knows —
+ * both stores remembered the same trips — keep their real entry.
+ */
+export function foldRecentsIntoSearchHistory(
+  recents: unknown,
+  history: SearchedPlace[],
+): SearchedPlace[] {
+  if (!Array.isArray(recents)) return history;
+  const known = new Set(history.map((p) => p.label));
+  const folded: SearchedPlace[] = [];
+  for (const r of recents as LegacyRecentPlace[]) {
+    if (typeof r?.label !== 'string' || r.label === '') continue;
+    const lat = r.point?.lat;
+    const lng = r.point?.lng;
+    if (typeof lat !== 'number' || typeof lng !== 'number') continue;
+    if (known.has(r.label)) continue;
+    known.add(r.label);
+    folded.push({
+      label: r.label,
+      sublabel: typeof r.sublabel === 'string' ? r.sublabel : '',
+      point: { lat, lng },
+      kind: 'other',
+      at: 0,
+    });
+  }
+  return [...history, ...folded];
 }
 
 function migrate(raw: Partial<PersistedSettings> & LegacySettings): Partial<PersistedSettings> {
@@ -144,8 +172,12 @@ function migrate(raw: Partial<PersistedSettings> & LegacySettings): Partial<Pers
   if (out.backgroundLocation == null && typeof out.bgloc === 'boolean') {
     out.backgroundLocation = out.bgloc;
   }
+  if (out.recents != null) {
+    out.searchHistory = foldRecentsIntoSearchHistory(out.recents, out.searchHistory ?? []);
+  }
   delete out.conso;
   delete out.bgloc;
+  delete out.recents;
   return out;
 }
 

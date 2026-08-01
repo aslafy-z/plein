@@ -72,9 +72,9 @@ width, never pointer type: a window gets resized and the layout has to follow.
 | navigation | `NavBar` (bottom tabs) | `SideNav` (rail) |
 | zone card + list | `MapSheet` (dragged) | `ZonePanel` (floating glass panel) |
 | filters | bottom sheet | popover anchored under the chips |
-| place search | full screen over the map | dropdown attached under the bar |
+| place search | full screen over the map | dropdown attached under the field |
 | station fiche | full screen, mini-map header | stacked under the list, no mini-map |
-| route | 210px map strip + timeline | floating timeline over `RouteMap fill` |
+| route | map fills the stage; form → timeline in a bottom sheet, CTA on its bottom edge | map fills the stage; form → timeline in the floating panel, endpoint fields in the overlay row |
 
 - **Presentation is shared, never forked.** `ZoneCard`, `ZoneList` and
   `ZoneEmpty` are what the phone sheet and the desktop panel both render; the
@@ -103,15 +103,37 @@ width, never pointer type: a window gets resized and the layout has to follow.
   with it: the zone circle and the route corridor land centered in the VISIBLE
   part of the map. It is the desktop mirror of the phone sheet's
   `bottomInset`, which desktop passes as 0.
-- `PlaceSearch` shares its rows, its field and its ranking across the two
-  arrangements and forks only the container: a dropdown under the bar on a
-  window, the whole screen on a phone. Two things make the phone one work —
-  it is portalled OUT of the map's overlay (whose `z-index` opens a stacking
-  context the bottom sheet would otherwise win), and it is sized on
-  `useVisualViewport()` rather than `inset: 0`, because a keyboard does not
-  shrink the layout viewport and the last rows would sit behind the keys.
-  Being open is nav state (`searchOpen` in the store, like `filtersOpen`), so
-  the system Back closes it instead of leaving the map.
+- **One search field for the whole app** — `PlaceField`
+  (`src/components/PlaceField.tsx`): the map's search and the route's
+  departure/arrival fields are the SAME component, which owns the geocoder
+  debounce, the spinner, the ✕, Enter-takes-the-top-row, the shared history
+  rows and both containers: a dropdown under the field on a window, the whole
+  screen on a phone. Two things make the phone one work — it is portalled OUT
+  of the map's overlay (whose `z-index` opens a stacking context the bottom
+  sheet would otherwise win), and it is sized on `useVisualViewport()` rather
+  than `inset: 0`, because a keyboard does not shrink the layout viewport and
+  the last rows would sit behind the keys. Being open is nav state
+  (`searchOpen` in the store — a target naming WHICH field: `'area'`,
+  `'routeFrom'`, `'routeTo'`), so the system Back closes it instead of
+  leaving the screen. Callers keep the policy: what a pick does, the map's
+  collapsed pill and « Itinéraire › » row shortcut, the route's icons.
+- **One place history** (`src/state/searchHistory.ts`, persisted as
+  `searchHistory`): every field feeds and reads it — a destination picked in
+  the route search is offered back by the map's search, and vice versa.
+- The route (`src/screens/RouteScreen.tsx`) is ONE shell across setup →
+  computing → error → results: only the sheet/panel content swaps, the map
+  never remounts, and picking a new endpoint over a finished route drops
+  `routeReady` and swaps back to the form (no silent recompute). `MapSheet`
+  is a thin wrapper over `SheetShell` (the gesture engine + snap points),
+  which the route sheet reuses with its own header/body/footer; anything that
+  must not fight the sheet drag (the tank slider) marks itself
+  `data-sheet-no-drag`.
+- The two Leaflet wrappers (`MapCanvas`, `RouteMap`) share one map shell —
+  `useLeafletMap` (`src/lib/leafletMap.ts`): one init, one basemap, one
+  keyboard install, one user-takeover rule, one resize/re-fit, inset-aware
+  fits. They also share one price-pin markup (`src/lib/pricePin.ts`).
+  Mechanism is shared, policy is not: each wrapper keeps when to fit, on what
+  bounds, and its own layers.
 - App-level notices (`UpdatePrompt`, `FallbackBanner`) are bars at the top of
   `.app-main`, not map controls. The install offer is a bar on the phone only
   (`InstallPrompt`); on desktop it lives in the side rail's bottom slot with
@@ -126,7 +148,7 @@ Anything that does not fit one of them does not get cached.
 
 | class | data | where | lifetime |
 | --- | --- | --- | --- |
-| durable, app-owned | settings, filters, favorites, recents, `lastPos` | localStorage `plein.settings.v1` | none; shape migrations in `persist.ts` `migrate()` |
+| durable, app-owned | settings, filters, favorites, `searchHistory`, `lastPos` | localStorage `plein.settings.v1` | none; shape migrations in `persist.ts` `migrate()` |
 | durable, app-owned | station arrays per fetched area | IndexedDB `plein.cache` (`src/data/cacheStore.ts`) | three tiers, below |
 | memory | province/district memos, `roadReach`, selector memos, brand POI index, geocode + route LRUs | JS maps | the session |
 | static, SW-owned | bundles, icons, fonts, shell, tiles, `/brands-fra.json`, `/brand-icons/*` | Cache Storage (`public/sw.js`) | cache-name version bump + FIFO caps |
