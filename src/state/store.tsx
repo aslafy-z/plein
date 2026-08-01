@@ -2154,17 +2154,22 @@ export function selectCheapest(app: AppStore): NearbyStation | null {
 }
 
 /**
- * Per-litre price with the trip to the pump folded in: the fuel burnt driving
- * there and back (consumption & tank size from Réglages) is bought at that
- * station's own price — what a full tank ACTUALLY costs per litre. Shared by
- * the map recommendation and the « Recommandé » sort of the Favoris.
+ * Per-litre price with the trip to the pump folded in: you pay for a full
+ * tank but the round trip (consumption & tank size from Réglages) burns part
+ * of it, so the litres you actually keep cost `price × tank / (tank − burnt)`
+ * — what a full tank ACTUALLY costs per litre. A round trip the tank cannot
+ * cover has no effective price at all (Infinity): no amount of sticker
+ * discount makes a station worth more fuel than it sells you. Shared by the
+ * map recommendation and the « Recommandé » sort of the Favoris.
  */
 export function effectiveLiterPrice(
   app: Pick<AppStore, 'consumption' | 'tank'>,
   price: number,
   distKm: number,
 ): number {
-  return price * (1 + (distKm * 2 * app.consumption) / 100 / app.tank);
+  const burntLiters = (distKm * 2 * app.consumption) / 100;
+  if (burntLiters >= app.tank) return Infinity;
+  return (price * app.tank) / (app.tank - burntLiters);
 }
 
 // ── Favoris sorting ──────────────────────────────────────────────────────────
@@ -2174,7 +2179,8 @@ export type FavSort = 'recommended' | 'price' | 'distance';
  * Order the Favoris rows. « Recommandé » ranks on the effective per-litre
  * price (fuel burnt to get there included — same notion as the map card);
  * « Prix » keeps the raw sticker order; rows without any known price (never
- * seen in an area or route fetch yet) sink to the bottom, sorted by distance.
+ * seen in an area or route fetch yet) and rows out of a full tank's round
+ * trip (no effective price) sink to the bottom, sorted by distance.
  */
 export function sortFavoriteRows<T extends { price: number | null; distKm: number }>(
   rows: T[],
@@ -2221,7 +2227,12 @@ export const selectRecommended = cached((app: AppStore): NearbyStation | null =>
   for (const s of zone) min = Math.min(min, eff(s));
   let pick: NearbyStation | null = null;
   for (const s of zone) {
-    if (eff(s) - min <= RECO_TIE_CENTS && (!pick || s.distKm < pick.distKm)) pick = s;
+    // A zone where no round trip fits the tank still crowns its nearest
+    // station — every effective price is Infinity, which never satisfies the
+    // tie test (Infinity − Infinity is NaN), yet an empty card would read as
+    // « no stations » when the map clearly shows some.
+    const tied = Number.isFinite(min) ? eff(s) - min <= RECO_TIE_CENTS : true;
+    if (tied && (!pick || s.distKm < pick.distKm)) pick = s;
   }
   return pick;
 });
