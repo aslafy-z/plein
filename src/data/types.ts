@@ -148,6 +148,16 @@ export interface StationsProvider {
   getStationsNear(center: GeoPoint, radiusKm: number, opts?: StationsFetchOptions): Promise<Station[]>;
   /** Stations within corridorKm of a route polyline. */
   getStationsAlong(polyline: GeoPoint[], corridorKm: number): Promise<Station[]>;
+  /**
+   * Stations by exact id, for a source that can answer cheaper than any geo
+   * query — the French ODS flux filters `id in (…)` server-side, so N ids
+   * cost one small request wherever they sit. Optional: a source whose
+   * partition is coarser than a circle (province, district, country) gains
+   * nothing over `getStationsNear` and leaves it undefined. Ids the source
+   * cannot express are ignored, and a station missing upstream is simply
+   * absent from the result.
+   */
+  getStationsByIds?(ids: readonly string[], opts?: StationsFetchOptions): Promise<Station[]>;
 }
 
 /**

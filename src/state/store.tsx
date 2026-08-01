@@ -1142,19 +1142,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (reqId !== favPricesReq.current) return;
     setFavoritePrices(Object.fromEntries(entries));
     if (navigator.onLine === false) return;
+    // A source that answers by exact id (fra) refreshes all its favorites in
+    // one request wherever they sit; the others fetch one circle per place.
+    const byIdCountries = new Set(
+      (['fra', 'esp', 'and', 'prt'] as const).filter(
+        (country) => getProviders(country).stations.getStationsByIds != null,
+      ),
+    );
     const groups = planFavoriteRefresh(favorites, entries, {
       attemptedAt: favRefreshAttempted.current,
+      byIdCountries,
     });
     if (!groups.length) return;
     await Promise.all(
       groups.map(async (group) => {
         for (const id of group.ids) favRefreshAttempted.current.set(id, Date.now());
+        const provider = getProviders(group.country).stations;
         try {
-          const stations = await getProviders(group.country).stations.getStationsNear(
-            group.center,
-            group.radiusKm,
-            { lowPriority: true },
-          );
+          const stations = provider.getStationsByIds
+            ? await provider.getStationsByIds(group.ids, { lowPriority: true })
+            : await provider.getStationsNear(group.center, group.radiusKm, {
+                lowPriority: true,
+              });
           recordFavoritePrices(favoriteIds.current, stations, Date.now());
         } catch {
           /* the cached price stays on screen, with its honest age */

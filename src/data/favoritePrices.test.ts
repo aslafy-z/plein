@@ -174,6 +174,25 @@ describe('planFavoriteRefresh', () => {
     ]);
   });
 
+  it('merges a by-id country into one request however far apart its favorites sit', async () => {
+    const { planFavoriteRefresh } = await plan();
+    const groups = planFavoriteRefresh(
+      [
+        fav('fra-1', 43.6, 1.44), // Toulouse
+        fav('fra-2', 48.85, 2.35), // Paris — same group anyway: fra answers by id
+        fav('esp-1', 41.4, 2.1), // Barcelona
+        fav('esp-2', 40.4, -3.7), // Madrid — its own circle, esp stays geographic
+      ],
+      new Map(),
+      { now: 100_000, byIdCountries: new Set(['fra' as const]) },
+    );
+    expect(groups.map((g) => [g.country, [...g.ids].sort()])).toEqual([
+      ['fra', ['fra-1', 'fra-2']],
+      ['esp', ['esp-1']],
+      ['esp', ['esp-2']],
+    ]);
+  });
+
   it('never fetches ids outside the country scheme (demo)', async () => {
     const { planFavoriteRefresh } = await plan();
     expect(planFavoriteRefresh([fav('su', 43.6, 1.44)], new Map(), { now: 100_000 })).toEqual([]);

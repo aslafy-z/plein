@@ -285,6 +285,7 @@ export interface FavoriteRefreshGroup {
       the selected map source: an esp favorite is priced by the esp flux
       whatever the map is showing. */
   country: StationCountry;
+  /** Fetch circle for a geo-partitioned source; a by-id source ignores it */
   center: GeoPoint;
   radiusKm: number;
   ids: string[];
@@ -300,11 +301,18 @@ export interface FavoriteRefreshGroup {
  *     are never fetched;
  *   – never-priced favorites go first, then the oldest prices;
  *   – one group per country + place, at most MAX_REFRESH_FETCHES groups.
+ *     A country in `byIdCountries` answers by exact id (the provider's
+ *     `getStationsByIds`), so ALL its stale favorites share one group —
+ *     one request, one slot of the cap — however far apart they sit.
  */
 export function planFavoriteRefresh(
   favorites: readonly FavoriteRefreshTarget[],
   entries: ReadonlyMap<string, { fetchedAt: number }>,
-  opts: { now?: number; attemptedAt?: ReadonlyMap<string, number> } = {},
+  opts: {
+    now?: number;
+    attemptedAt?: ReadonlyMap<string, number>;
+    byIdCountries?: ReadonlySet<StationCountry>;
+  } = {},
 ): FavoriteRefreshGroup[] {
   const now = opts.now ?? Date.now();
   const stale = favorites.filter((f) => {
@@ -320,7 +328,10 @@ export function planFavoriteRefresh(
   const groups: FavoriteRefreshGroup[] = [];
   for (const f of sorted) {
     const country = stationCountry(f.id)!;
-    const near = groups.find((g) => g.country === country && haversineKm(g.center, f) <= g.radiusKm);
+    const byId = opts.byIdCountries?.has(country) === true;
+    const near = groups.find(
+      (g) => g.country === country && (byId || haversineKm(g.center, f) <= g.radiusKm),
+    );
     if (near) {
       near.ids.push(f.id);
       continue;
