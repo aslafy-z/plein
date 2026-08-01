@@ -53,6 +53,7 @@ import {
 } from './persist';
 import { pushSearchIn } from './searchHistory';
 import { beginRouteTiming, markRoute } from '../lib/perf';
+import { CROW_ROAD_FACTOR, effectiveLiterPrice, usableRangeKm } from '../lib/fuelEconomics';
 import {
   beginCorridor,
   beginGeometry,
@@ -119,6 +120,9 @@ const DEFAULT_START_TANK_PCT = 70;
 const EUR_PER_DETOUR_MIN = 0.35;
 /** Minutes spent actually refuelling at a stop */
 const REFUEL_MIN = 4;
+// Shared fuel-economics constants live in lib/fuelEconomics — re-exported so
+// existing imports (tests, screens) keep one canonical source.
+export { CROW_ROAD_FACTOR, effectiveLiterPrice };
 /**
  * Stations covered by one road-distance matrix call, nearest first. Public
  * OSRM caps table sizes, so a dense zone always holds more stations than one
@@ -2105,14 +2109,10 @@ export function selectReachCandidates(stations: Station[], userPos: GeoPoint): S
     .map((c) => c.s);
 }
 
-/**
- * Crow-flies → road distance. A real drive runs 20–40 % longer than the
- * straight line (rivers, ring roads, one-ways). Only the ROAD_REACH_MAX
- * nearest stations get measured road numbers; without this factor the others
- * would be ranked — and shown — on a shorter scale than the measured ones and
- * would steal a recommendation they don't deserve.
- */
-export const CROW_ROAD_FACTOR = 1.3;
+// CROW_ROAD_FACTOR (imported above, re-exported): only the ROAD_REACH_MAX
+// nearest stations get measured road numbers; without that factor the others
+// would be ranked — and shown — on a shorter scale than the measured ones and
+// would steal a recommendation they don't deserve.
 /** ~40 km/h door-to-pump, for stations the reach matrix did not cover */
 const FALLBACK_MIN_PER_KM = 1.5;
 
@@ -2319,25 +2319,9 @@ export function selectCheapest(app: AppStore): NearbyStation | null {
   return selectByPrice(app)[0] ?? null;
 }
 
-/**
- * Per-litre price with the trip to the pump folded in: you pay for a full
- * tank but the round trip (consumption & tank size from Réglages) burns part
- * of it, so the litres you actually keep cost `price × tank / (tank − burnt)`
- * — what a full tank ACTUALLY costs per litre. A round trip the tank cannot
- * cover has no effective price at all (Infinity): no amount of sticker
- * discount makes a station worth more fuel than it sells you. Shared by the
- * map recommendation and the « Recommandé » sorts of the zone list and the
- * Favoris.
- */
-export function effectiveLiterPrice(
-  app: Pick<AppStore, 'consumption' | 'tank'>,
-  price: number,
-  distKm: number,
-): number {
-  const burntLiters = (distKm * 2 * app.consumption) / 100;
-  if (burntLiters >= app.tank) return Infinity;
-  return (price * app.tank) / (app.tank - burntLiters);
-}
+// effectiveLiterPrice (imported above, re-exported): the per-litre price with
+// the trip to the pump folded in — shared with the route optimizer's economics
+// module so the map view and the route plan value a detour the same way.
 
 // ── Favoris sorting ──────────────────────────────────────────────────────────
 export type FavSort = 'recommended' | 'price' | 'distance';
@@ -2593,9 +2577,10 @@ export function selectZoneDelta(app: AppStore, station: NearbyStation | null): Z
 
 /** Autonomy narrative for the route ribbon (depends on tank setting) */
 export function selectAutonomy(app: AppStore): { autonomyKm: number; limitKm: number } {
-  const autonomyKm = Math.round(((app.tank * (app.startTankPct / 100)) / app.consumption) * 100);
-  // Keep a ~20 % reserve before the "you must stop" line
-  const limitKm = Math.round((autonomyKm * 0.8) / 10) * 10;
+  const startFuel = (app.tank * app.startTankPct) / 100;
+  const autonomyKm = Math.round((startFuel / app.consumption) * 100);
+  // The explicit reserve function draws the "you must stop" line
+  const limitKm = Math.round(usableRangeKm(startFuel, app.consumption) / 10) * 10;
   return { autonomyKm, limitKm };
 }
 
