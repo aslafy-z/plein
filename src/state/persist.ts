@@ -93,7 +93,8 @@ export function migrateFuelId(raw: unknown): FuelId | null {
     : null;
 }
 
-function migrateVehicleId(raw: unknown): VehicleId | null {
+/** Canonical vehicle id for a value coming from storage or a shared link */
+export function migrateVehicleId(raw: unknown): VehicleId | null {
   if (typeof raw !== 'string') return null;
   const mapped = LEGACY_VEHICLES[raw] ?? raw;
   return mapped === 'car' || mapped === 'motorcycle' ? (mapped as VehicleId) : null;

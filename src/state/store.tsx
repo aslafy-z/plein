@@ -66,7 +66,19 @@ import {
   type RouteState,
 } from './routePipeline';
 import { mapUrlQuery, parseMapUrl } from '../lib/mapUrl';
-import { mapViewShareData, stationShareData, type ShareData } from '../lib/share';
+import {
+  coordinateLabel,
+  parseRouteUrl,
+  routeScreenFromUrl,
+  routeUrlQuery,
+  type RouteUrlView,
+} from '../lib/routeUrl';
+import {
+  mapViewShareData,
+  routeShareData,
+  stationShareData,
+  type ShareData,
+} from '../lib/share';
 import {
   collectCachedStations,
   readStationsCache,
@@ -445,6 +457,8 @@ export interface AppStore {
   shareStation(target: Station | RouteStation): void;
   /** Share the map as it stands — same link the address bar carries */
   shareMapView(): void;
+  /** Share the trip as it stands — same link the address bar carries */
+  shareRoute(): void;
 
   // PWA install
   installReady: boolean;
@@ -465,8 +479,12 @@ function pathFor(screen: Screen, detailId: string | null): string {
     case 'favs':
       return '/favorites';
     case 'routeSetup':
-    case 'route':
       return '/route';
+    // The ribbon owns its own path, so the URL alone can rebuild the right
+    // screen — a « Ma position » trip carries no departure in its query, and
+    // the query's completeness could not tell the two screens apart.
+    case 'route':
+      return '/route/results';
     case 'settings':
       return '/settings';
     case 'detail':
@@ -480,7 +498,12 @@ function navFromPath(path: string): { screen: Screen; detailId: string | null } 
   // /list is the pre-Favoris URL — keep old bookmarks working
   if (path.startsWith('/favorites') || path.startsWith('/list'))
     return { screen: 'favs', detailId: null };
-  if (path.startsWith('/route')) return { screen: 'routeSetup', detailId: null };
+  if (path.startsWith('/route')) {
+    return {
+      screen: path.startsWith('/route/results') ? 'route' : 'routeSetup',
+      detailId: null,
+    };
+  }
   if (path.startsWith('/settings')) return { screen: 'settings', detailId: null };
   if (path.startsWith('/station/')) {
     // Bookmarks predating the `fra-` prefix still carry a bare French id
@@ -538,12 +561,26 @@ const Ctx = createContext<AppStore | null>(null);
 export function AppProvider({ children }: { children: ReactNode }) {
   const persisted = useRef(loadPersisted()).current;
 
-  const initialNav = navFromPath(window.location.pathname);
+  const pathNav = navFromPath(window.location.pathname);
+  const onRoutePath = pathNav.screen === 'route' || pathNav.screen === 'routeSetup';
+  // A shared route link (`/route/results?d=…&f=…`) seeds the trip the same
+  // way a map link seeds the view — and its completeness decides which route
+  // screen actually opens: a half-specified link degrades to the setup form
+  // pre-filled, never to an error.
+  const initialRoute = useRef(parseRouteUrl(onRoutePath ? window.location.search : '')).current;
+  const initialNav = {
+    screen: onRoutePath
+      ? routeScreenFromUrl(pathNav.screen === 'route', initialRoute)
+      : pathNav.screen,
+    detailId: pathNav.detailId,
+  };
   // A link followed by someone who hasn't onboarded yet: the walkthrough comes
   // first, so the destination is parked here and restored when it ends.
   const pendingNav = useRef(persisted.onboarded ? null : initialNav);
   // A shared map link (`/?ll=…&z=…&f=…&r=…`) wins over the persisted settings:
-  // whoever opens it must see the view that was shared, not their own.
+  // whoever opens it must see the view that was shared, not their own. `f` is
+  // the same key with the same legacy migration on both screens, so a route
+  // link's fuel seeds through here too.
   const initialMap = useRef(parseMapUrl(window.location.search)).current;
   const [screen, setScreen] = useState<Screen>(
     persisted.onboarded ? initialNav.screen : 'onboarding',
@@ -576,29 +613,65 @@ export function AppProvider({ children }: { children: ReactNode }) {
   usePersisted('serviceTags', activeServiceTags);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState<SearchTarget | null>(null);
-  const [routeMode, setRouteMode] = useState<RouteMode>('balanced');
+  const [routeMode, setRouteMode] = useState<RouteMode>(initialRoute.mode ?? 'balanced');
   const [plannedStops, setPlannedStops] = useState<Record<string, boolean>>({});
   const [detailId, setDetailId] = useState<string | null>(
     persisted.onboarded ? initialNav.detailId : null,
   );
-  const [fromText, setFromText] = useState('');
+  // Endpoints seeded from the link: a label displays as itself, coordinates
+  // without one display as coordinates — either alone is enough (a bare label
+  // geocodes through the path `startRoute` already takes).
+  const [fromText, setFromText] = useState(
+    () =>
+      initialRoute.fromLabel ??
+      (initialRoute.fromPoint ? coordinateLabel(initialRoute.fromPoint) : ''),
+  );
   // The departure defaults to « wherever I am ». It is a state flag, not a
   // string compared against a label: a translated label would silently stop
   // matching and the app would try to geocode the words « My position ».
-  const [fromIsCurrentPosition, setFromIsCurrentPosition] = useState(true);
-  const [toText, setToText] = useState('');
-  const [fromPoint, setFromPoint] = useState<GeoPoint | null>(null);
-  const [toPoint, setToPoint] = useState<GeoPoint | null>(null);
-  const [routeReady, setRouteReady] = useState(false);
-  const [vehicle, setVehicleState] = useState<VehicleId>(persisted.vehicle ?? 'car');
-  const [tank, setTankState] = useState<number>(persisted.tank ?? VEHICLE_PRESETS.car.tank);
-  const [consumption, setConsumptionState] = useState<number>(
-    persisted.consumption ?? DEFAULT_CONSUMPTION,
+  const [fromIsCurrentPosition, setFromIsCurrentPosition] = useState(
+    initialRoute.fromLabel == null && initialRoute.fromPoint == null,
   );
-  const [avoidMotorway, setAvoidMotorwayState] = useState<boolean>(persisted.avoidMotorway ?? false);
-  const [avoidToll, setAvoidTollState] = useState<boolean>(persisted.avoidToll ?? false);
+  const [toText, setToText] = useState(
+    () =>
+      initialRoute.toLabel ??
+      (initialRoute.toPoint ? coordinateLabel(initialRoute.toPoint) : ''),
+  );
+  const [fromPoint, setFromPoint] = useState<GeoPoint | null>(initialRoute.fromPoint);
+  const [toPoint, setToPoint] = useState<GeoPoint | null>(initialRoute.toPoint);
+  // A ribbon link whose endpoints need no geocoding is ready from the first
+  // frame: the screen opens on the awaited-trip skeleton, not on a flash of
+  // the setup form, while the auto-started compute runs.
+  const [routeReady, setRouteReady] = useState(
+    initialNav.screen === 'route' &&
+      initialRoute.toPoint != null &&
+      (initialRoute.fromPoint != null || initialRoute.fromLabel == null),
+  );
+  // The link's vehicle assumptions win over the persisted profile but are
+  // never written back to it: opening someone else's trip must not silently
+  // rewrite the reader's own vehicle (the setters below persist on user
+  // action only).
+  const [vehicle, setVehicleState] = useState<VehicleId>(
+    initialRoute.vehicle ?? persisted.vehicle ?? 'car',
+  );
+  const [tank, setTankState] = useState<number>(
+    initialRoute.tank ?? persisted.tank ?? VEHICLE_PRESETS.car.tank,
+  );
+  const [consumption, setConsumptionState] = useState<number>(
+    initialRoute.consumption ?? persisted.consumption ?? DEFAULT_CONSUMPTION,
+  );
+  // A link that names a trip decides the avoids too — `x` absent means OFF,
+  // or the reader's own « éviter les péages » would silently reroute the
+  // shared trip.
+  const linkNamesTrip = initialRoute.toPoint != null || initialRoute.toLabel != null;
+  const [avoidMotorway, setAvoidMotorwayState] = useState<boolean>(
+    linkNamesTrip ? (initialRoute.avoidMotorway ?? false) : (persisted.avoidMotorway ?? false),
+  );
+  const [avoidToll, setAvoidTollState] = useState<boolean>(
+    linkNamesTrip ? (initialRoute.avoidToll ?? false) : (persisted.avoidToll ?? false),
+  );
   const [startTankPct, setStartTankPctState] = useState<number>(
-    persisted.startTankPct ?? DEFAULT_START_TANK_PCT,
+    initialRoute.startTankPct ?? persisted.startTankPct ?? DEFAULT_START_TANK_PCT,
   );
   const [alerts, setAlertsState] = useState<boolean>(persisted.alerts ?? true);
   const [backgroundLocation, setBackgroundLocationState] = useState<boolean>(
@@ -802,6 +875,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }),
     [searchPos, mapZoom, fuel, radius, brandSel, activeServiceTags],
   );
+  // The trip + its assumptions, as they appear in the URL and in a share —
+  // one view feeds both, so the share action produces exactly the link the
+  // address bar shows. Route params change on user input, not several times
+  // a second: the shared throttle below is a no-op here, but costs nothing.
+  const routeView = useMemo<RouteUrlView>(
+    () => ({
+      fromPoint,
+      fromLabel: fromIsCurrentPosition ? '' : fromText,
+      fromIsCurrentPosition,
+      toPoint,
+      toLabel: toText,
+      fuel,
+      mode: routeMode,
+      vehicle,
+      tank,
+      consumption,
+      startTankPct,
+      avoidMotorway,
+      avoidToll,
+    }),
+    [
+      avoidMotorway, avoidToll, consumption, fromIsCurrentPosition, fromPoint, fromText, fuel,
+      routeMode, startTankPct, tank, toPoint, toText, vehicle,
+    ],
+  );
+  const routeQuery = useMemo(() => routeUrlQuery(routeView), [routeView]);
   // Browsers cap history writes (Safari: ~100 per 30 s) — a live pan would
   // blow through it, so map-params updates are throttled. Real navigations
   // always land immediately.
@@ -832,7 +931,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       (cur.detailId ?? null) === detailId &&
       !!cur.filtersOpen === filtersOpen &&
       navSearchTarget(cur) === searchOpen;
-    const url = pathFor(screen, detailId) + (screen === 'map' ? mapQuery : '');
+    const url =
+      pathFor(screen, detailId) +
+      (screen === 'map'
+        ? mapQuery
+        : screen === 'route' || screen === 'routeSetup'
+          ? routeQuery
+          : '');
     if (sameNav && url === window.location.pathname + window.location.search) return;
     // Swapping one open search field for another (departure ↔ arrival) reads
     // as a swap on screen, so it swaps the entry too — Back must close the
@@ -870,7 +975,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const wait = sameNav ? MAP_URL_MIN_MS - (Date.now() - urlWrite.current.at) : 0;
     if (wait <= 0) write();
     else urlWrite.current.timer = setTimeout(write, wait);
-  }, [screen, detailId, filtersOpen, searchOpen, mapQuery]);
+  }, [screen, detailId, filtersOpen, searchOpen, mapQuery, routeQuery]);
 
   // ── Stations near me (fetch at MAX radius, filter client-side) ─────────────
   // Stale-while-revalidate: a cached area paints instantly (refreshing: true)
@@ -1535,6 +1640,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     userPos,
   ]);
 
+  // A ribbon link runs its compute through the same `startRoute` path a
+  // manual setup takes, so geocoding, error toasts and history entries behave
+  // identically. One-shot by construction (the ref spends itself): the
+  // URL rewrite that follows the compute must never re-trigger it — a route
+  // is OSRM plus a corridor fetch, far too expensive to run twice.
+  const pendingAutoStart = useRef(initialNav.screen === 'route');
+  useEffect(() => {
+    if (!pendingAutoStart.current || screen !== 'route') return;
+    pendingAutoStart.current = false;
+    void startRoute();
+  }, [screen, startRoute]);
+
   /** Re-run both stages for the endpoints already resolved. */
   const retryRoute = useCallback(() => {
     if (!fromPoint || !toPoint) return;
@@ -1687,6 +1804,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
   }, [brandSel, fuel, mapZoom, radius, searchLabel, searchPos, activeServiceTags, share]);
 
+  /**
+   * Share the trip as it stands — the very same link the address bar carries
+   * (both are built from `routeView`), for the standalone PWA that has no
+   * address bar to copy it from.
+   */
+  const shareRoute = useCallback(() => {
+    // Wording follows what is displayed: a computed route is labelled with
+    // the endpoints it was computed for, never with text being edited.
+    const from = routeState.route
+      ? routeState.endpoints.from
+      : fromIsCurrentPosition
+        ? m.route_from_current_position()
+        : fromText;
+    const to = routeState.route ? routeState.endpoints.to : toText;
+    share(routeShareData(routeView, window.location.origin, { from, to }));
+  }, [fromIsCurrentPosition, fromText, routeState, routeView, share, toText]);
+
   const finishOnboarding = useCallback(
     (withGeoloc: boolean) => {
       savePersisted({ onboarded: true, sheetHint: true });
@@ -1802,6 +1936,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       openPlannedStopsInMaps,
       shareStation,
       shareMapView,
+      shareRoute,
       finishOnboarding,
       sheetHint,
       consumeSheetHint,
@@ -1826,8 +1961,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       backgroundLocation, setBackgroundLocation, sourceId, setSourceId, mapsSite, setMapsSite,
       locale, localeIsExplicit, setLocale, detailId, toast, showToast,
       canInstall, installDismissed, promptInstall, dismissInstallBanner, persisted.lastPos,
-      openInMaps, openPlannedStopsInMaps, shareStation, shareMapView, finishOnboarding,
-      sheetHint, consumeSheetHint,
+      openInMaps, openPlannedStopsInMaps, shareStation, shareMapView, shareRoute,
+      finishOnboarding, sheetHint, consumeSheetHint,
     ],
   );
 
