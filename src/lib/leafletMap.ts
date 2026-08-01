@@ -122,8 +122,6 @@ export function useLeafletMap(options: LeafletShellOptions): LeafletShell {
     const markInteract = () => {
       if (Date.now() > programmaticUntilRef.current) userInteractedRef.current = true;
     };
-    map.on('dragstart', markInteract);
-    map.on('zoomstart', markInteract);
     const el = map.getContainer();
     const domInteract = () => {
       userInteractedRef.current = true;
@@ -158,6 +156,12 @@ export function useLeafletMap(options: LeafletShellOptions): LeafletShell {
     ro.observe(containerRef.current);
 
     const cleanup = optionsRef.current.setup(map, shell);
+
+    // AFTER setup: the caller's initial setView fires a zoomstart of its own
+    // (Leaflet's first _resetView), and hearing it here would mark the mount
+    // itself as a user takeover — killing every auto-fit for good.
+    map.on('dragstart', markInteract);
+    map.on('zoomstart', markInteract);
 
     return () => {
       cleanup?.();
