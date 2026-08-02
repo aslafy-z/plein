@@ -1,8 +1,11 @@
 // Minimal service worker: makes the PWA robustly installable and keeps the
-// shell usable offline. Hashed build assets are cache-first (immutable);
-// navigations are network-first with the cached shell as offline fallback;
-// basemap tiles are cached lazily (cache-first, capped) so panning around
-// an already-seen area doesn't refetch every tile.
+// shell usable offline. Install precaches the shell and the assets it
+// references (the page that registered this worker loaded BEFORE the worker
+// controlled it, so lazy caching alone would leave a freshly-installed PWA
+// with nothing to boot from offline). After that, hashed build assets are
+// cache-first (immutable); navigations are network-first with the cached
+// shell as offline fallback; basemap tiles are cached lazily (cache-first,
+// capped) so panning around an already-seen area doesn't refetch every tile.
 //
 // Prices are deliberately NOT cached here: the app keeps its own `fetchedAt`
 // per fetched area and that has to stay the single source of truth about how
@@ -70,7 +73,48 @@ async function brandIndexFromCache(event, req) {
   return hit;
 }
 
-self.addEventListener('install', () => self.skipWaiting());
+// Everything the built index.html references under the cache-first prefixes:
+// the entry chunks, the stylesheet, the preloaded fonts and the app icons.
+const PRECACHE_ASSET_RE = /(?:src|href)="(\/(?:assets|icons|fonts)\/[^"]+)"/g;
+
+// The first navigation ever happens before this worker controls the page, so
+// without an install-time precache a PWA installed after a single visit opens
+// on Response.error() the first time it launches offline. A rejected precache
+// rejects the install: the browser drops this worker and the next (online)
+// registration retries, which beats installing a worker that would serve a
+// half-cached shell.
+async function precacheShell() {
+  // no-cache: revalidate — precaching a stale HTML would pin a shell whose
+  // asset URLs a deploy has already replaced.
+  const res = await fetch('/', { cache: 'no-cache' });
+  if (!res.ok) throw new Error('shell precache HTTP ' + res.status);
+  const html = await res.clone().text();
+  const shell = await caches.open(SHELL_CACHE);
+  await shell.put('/', res);
+
+  const assets = await caches.open(ASSET_CACHE);
+  const urls = [...new Set([...html.matchAll(PRECACHE_ASSET_RE)].map((m) => m[1]))];
+  await Promise.all(
+    urls.map(async (url) => {
+      if (await assets.match(url)) return;
+      const asset = await fetch(url);
+      if (!asset.ok) throw new Error('asset precache HTTP ' + asset.status + ' ' + url);
+      await assets.put(url, asset);
+    }),
+  );
+
+  // The brand index is not needed to boot — best effort, never fails install.
+  await (async () => {
+    const data = await caches.open(DATA_CACHE);
+    const brands = await fetch('/brands-fra.json');
+    if (brands.ok) await data.put('/brands-fra.json', brands);
+  })().catch(() => {});
+}
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(precacheShell());
+  self.skipWaiting();
+});
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(

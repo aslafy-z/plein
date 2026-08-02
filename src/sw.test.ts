@@ -113,11 +113,105 @@ function loadSw(fetchImpl: (req: SwRequest) => Promise<Response>) {
     await Promise.all(waits)
   }
 
-  return { caches, fetchEvent, activate, limits }
+  const install = async () => {
+    const waits: Promise<unknown>[] = []
+    listeners.get('install')?.({ waitUntil: (v: Promise<unknown>) => waits.push(v) })
+    await Promise.all(waits)
+  }
+
+  return { caches, fetchEvent, activate, install, limits }
 }
 
 const shellCache = (sw: ReturnType<typeof loadSw>) => sw.caches.stores.get('plein-shell-v1')
 const assetCache = (sw: ReturnType<typeof loadSw>) => sw.caches.stores.get('plein-assets-v1')
+
+// What a built index.html references: entry chunks, stylesheet, preloaded
+// fonts, app icons. The first offline launch of a freshly-installed PWA has
+// exactly this to boot from.
+const SHELL_HTML = [
+  '<html><head>',
+  '<link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />',
+  '<link rel="preload" href="/fonts/archivo-latin-v25.woff2" as="font" crossorigin />',
+  '<link rel="stylesheet" crossorigin href="/assets/index-abc.css" />',
+  '<script type="module" crossorigin src="/assets/index-abc.js"></script>',
+  '</head><body></body></html>',
+].join('\n')
+
+const SHELL_URLS = [
+  '/icons/icon.svg',
+  '/fonts/archivo-latin-v25.woff2',
+  '/assets/index-abc.css',
+  '/assets/index-abc.js',
+]
+
+const shellFetch =
+  (overrides: Record<string, Response | 'offline'> = {}) =>
+  async (req: SwRequest): Promise<Response> => {
+    const url = keyOf(req)
+    const override = overrides[new URL(url).pathname]
+    if (override === 'offline') throw new TypeError('Failed to fetch')
+    if (override) return override.clone()
+    if (url === `${ORIGIN}/`) return new Response(SHELL_HTML, { status: 200 })
+    if (SHELL_URLS.some((u) => url === ORIGIN + u) || url === `${ORIGIN}/brands-fra.json`)
+      return new Response(url, { status: 200 })
+    return new Response('nope', { status: 404 })
+  }
+
+describe('service worker — install precache', () => {
+  it('precaches the shell and every asset it references', async () => {
+    const sw = loadSw(shellFetch())
+
+    await sw.install()
+
+    expect(await shellCache(sw)?.entries.get(`${ORIGIN}/`)?.text()).toBe(SHELL_HTML)
+    for (const url of SHELL_URLS) {
+      expect(assetCache(sw)?.entries.has(ORIGIN + url), `${url} must be precached`).toBe(true)
+    }
+    expect(sw.caches.stores.get('plein-data-v1')?.entries.has(`${ORIGIN}/brands-fra.json`)).toBe(
+      true,
+    )
+  })
+
+  it('boots offline after a single online visit', async () => {
+    let online = true
+    const fetchImpl = shellFetch()
+    const sw = loadSw(async (req) => {
+      if (!online) throw new TypeError('Failed to fetch')
+      return fetchImpl(req)
+    })
+
+    // Visit once (the page itself is NOT service-worker-controlled yet: only
+    // the install precache runs), then launch the installed PWA offline.
+    await sw.install()
+    online = false
+
+    const { res: nav } = await sw.fetchEvent(request('/', 'navigate'))
+    expect(await nav?.text()).toBe(SHELL_HTML)
+    const { res: js } = await sw.fetchEvent(request('/assets/index-abc.js'))
+    expect(js?.status).toBe(200)
+  })
+
+  it('rejects the install when the shell or one of its assets fails', async () => {
+    const noShell = loadSw(shellFetch({ '/': 'offline' }))
+    await expect(noShell.install()).rejects.toThrow()
+
+    const noChunk = loadSw(
+      shellFetch({ '/assets/index-abc.js': new Response('nope', { status: 404 }) }),
+    )
+    await expect(noChunk.install()).rejects.toThrow()
+    // A half-cached shell must not look bootable
+    expect(assetCache(noChunk)?.entries.has(`${ORIGIN}/assets/index-abc.js`)).toBe(false)
+  })
+
+  it('does not let the brand index block the install', async () => {
+    const sw = loadSw(shellFetch({ '/brands-fra.json': 'offline' }))
+
+    await sw.install()
+
+    expect(await shellCache(sw)?.entries.get(`${ORIGIN}/`)?.text()).toBe(SHELL_HTML)
+    expect(sw.caches.stores.get('plein-data-v1')?.entries.size ?? 0).toBe(0)
+  })
+})
 
 describe('service worker — navigations', () => {
   it('caches a successful navigation as the offline shell, inside waitUntil', async () => {
