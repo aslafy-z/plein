@@ -9,6 +9,9 @@ import { IS_DEV } from './env';
 
 export const APP_VERSION: string = __APP_VERSION__;
 
+/** Repository home (package.json `repository`) — the Settings contact links */
+export const REPO_URL: string = __REPO_URL__;
+
 /** Visibility flaps in bursts on mobile; at most one check per interval. */
 const MIN_INTERVAL_MS = 60_000;
 

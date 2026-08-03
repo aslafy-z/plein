@@ -44,7 +44,6 @@ export interface PersistedSettings {
   radius: number;
   sourceId: DataSourceId;
   onboarded: boolean;
-  alerts: boolean;
   mapsSite: MapsSiteId;
   /** Explicit language choice — absent means « follow the browser » */
   locale: string;
@@ -55,7 +54,6 @@ export interface PersistedSettings {
       fetch waits for the fresh fix instead of loading the stale area twice */
   geoGranted: boolean;
   installDismissed: boolean;
-  backgroundLocation: boolean;
   /** Places looked up and picked — the map's search and the route fields
       share this one history */
   searchHistory: SearchedPlace[];
@@ -120,10 +118,13 @@ interface LegacyRecentPlace {
 }
 
 /** Blob shape written by builds that predate the English-identifier rename,
-    or that still carried the route's own `recents` store */
+    that still carried the route's own `recents` store, or that persisted the
+    retired notification toggles (they never drove anything) */
 interface LegacySettings {
   conso?: number;
   bgloc?: boolean;
+  alerts?: boolean;
+  backgroundLocation?: boolean;
   recents?: LegacyRecentPlace[];
 }
 
@@ -170,14 +171,13 @@ function migrate(raw: Partial<PersistedSettings> & LegacySettings): Partial<Pers
   if (serviceTags) out.serviceTags = serviceTags;
   else delete out.serviceTags;
   if (out.consumption == null && typeof out.conso === 'number') out.consumption = out.conso;
-  if (out.backgroundLocation == null && typeof out.bgloc === 'boolean') {
-    out.backgroundLocation = out.bgloc;
-  }
   if (out.recents != null) {
     out.searchHistory = foldRecentsIntoSearchHistory(out.recents, out.searchHistory ?? []);
   }
   delete out.conso;
   delete out.bgloc;
+  delete out.alerts;
+  delete out.backgroundLocation;
   delete out.recents;
   return out;
 }

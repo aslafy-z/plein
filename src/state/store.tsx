@@ -502,10 +502,6 @@ export interface AppStore {
   /** Average consumption, L/100 km — feeds autonomy + trip cost */
   consumption: number;
   setConsumption(v: number): void;
-  alerts: boolean;
-  setAlerts(v: boolean): void;
-  backgroundLocation: boolean;
-  setBackgroundLocation(v: boolean): void;
   sourceId: DataSourceId;
   setSourceId(s: DataSourceId): void;
   /** Maps website opened by « Y aller » on desktop */
@@ -742,10 +738,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
   const [startTankPct, setStartTankPctState] = useState<number>(
     initialRoute.startTankPct ?? persisted.startTankPct ?? DEFAULT_START_TANK_PCT,
-  );
-  const [alerts, setAlertsState] = useState<boolean>(persisted.alerts ?? true);
-  const [backgroundLocation, setBackgroundLocationState] = useState<boolean>(
-    persisted.backgroundLocation ?? false,
   );
   // Forced migration to « Automatique » : legacy persisted ids ('gouv' before
   // the country rename) and new installs land on 'auto'; only explicit choices
@@ -1630,16 +1622,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     savePersisted({ startTankPct: v });
   }, []);
 
-  const setAlerts = useCallback((v: boolean) => {
-    setAlertsState(v);
-    savePersisted({ alerts: v });
-  }, []);
-
-  const setBackgroundLocation = useCallback((v: boolean) => {
-    setBackgroundLocationState(v);
-    savePersisted({ backgroundLocation: v });
-  }, []);
-
   const setSourceId = useCallback((s: DataSourceId) => {
     setSourceIdState(s);
     savePersisted({ sourceId: s });
@@ -2065,10 +2047,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setTank,
       consumption,
       setConsumption,
-      alerts,
-      setAlerts,
-      backgroundLocation,
-      setBackgroundLocation,
       sourceId,
       setSourceId,
       mapsSite,
@@ -2108,8 +2086,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       plannedStops, togglePlannedStop, vehicle, setVehicle, tank, setTank,
       consumption, setConsumption,
       avoidMotorway, avoidToll, setAvoidMotorway, setAvoidToll, startTankPct, setStartTankPct,
-      setFiltersOpenNav, alerts, setAlerts,
-      backgroundLocation, setBackgroundLocation, sourceId, setSourceId, mapsSite, setMapsSite,
+      setFiltersOpenNav, sourceId, setSourceId, mapsSite, setMapsSite,
       locale, localeIsExplicit, setLocale, detailId, toast, showToast,
       canInstall, installDismissed, promptInstall, dismissInstallBanner, persisted.lastPos,
       openInMaps, openPlannedStopsInMaps, shareStation, shareMapView, shareRoute,

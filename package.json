@@ -3,6 +3,10 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aslafy-z/plein.git"
+  },
   "scripts": {
     "dev": "vite",
     "prebuild": "npm run messages",
