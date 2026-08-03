@@ -177,10 +177,20 @@ export default function MapCanvas({
     // pan-to-station). Snapping it onto the center at the first move event
     // was a visible jump — measure the gap here and absorb it gradually.
     // The keyboard loop begins its gestures the same way (shell option).
+    //
+    // The center is CAPTURED per gesture, not read per frame: the visible
+    // center depends on the sheet height, and the live search resizes the
+    // sheet mid-pan whenever the zone crosses a results boundary (list ⇄
+    // empty block). A per-frame read made the glide target — and the circle —
+    // jump with every resize, and the circle↔results coupling could
+    // oscillate. The next gesture re-measures both, and the offset decay
+    // absorbs whatever the sheet did in between.
+    let gestureMid: L.Point | null = null;
     const measureCircleOffset = () => {
       if (!circleRef.current) return;
       const p = map.latLngToContainerPoint(circleRef.current.getLatLng());
       const mid = sh.visibleCenterPoint(map);
+      gestureMid = mid;
       circleOffsetRef.current = { x: p.x - mid.x, y: p.y - mid.y };
     };
     measureCircleOffsetRef.current = measureCircleOffset;
@@ -221,8 +231,13 @@ export default function MapCanvas({
     map.on('zoomend', () => {
       zooming = false;
       if (sh.userInteractedRef.current) {
+        // Re-capture the gesture center too: a pinch can flow into a drag
+        // without a dragstart, and the glide must aim at the point the
+        // circle was just snapped onto
+        const mid = sh.visibleCenterPoint(map);
+        gestureMid = mid;
         circleOffsetRef.current = { x: 0, y: 0 };
-        circleRef.current?.setLatLng(map.containerPointToLatLng(sh.visibleCenterPoint(map)));
+        circleRef.current?.setLatLng(map.containerPointToLatLng(mid));
       }
     });
     // Results follow the circle LIVE while the finger drags (throttled):
@@ -253,7 +268,7 @@ export default function MapCanvas({
         off.x = 0;
         off.y = 0;
       }
-      const mid = sh.visibleCenterPoint(map);
+      const mid = gestureMid ?? sh.visibleCenterPoint(map);
       const c = map.containerPointToLatLng(L.point(mid.x + off.x, mid.y + off.y));
       circleRef.current?.setLatLng(c);
       const now = Date.now();
