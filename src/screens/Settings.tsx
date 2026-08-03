@@ -15,7 +15,7 @@ import { LOCALES, type Locale } from '../lib/locale';
 import { m } from '../paraglide/messages.js';
 import { HAS_NATIVE_MAPS } from '../lib/env';
 import { LogoLockup } from '../components/Logo';
-import { APP_VERSION } from '../lib/appUpdate';
+import { APP_VERSION, REPO_URL } from '../lib/appUpdate';
 
 const SECTION_LABEL: React.CSSProperties = {
   fontSize: 12,
@@ -32,8 +32,6 @@ const CREDIT_LINK: React.CSSProperties = { color: C.ghost, textDecoration: 'unde
 const SOURCES: DataSourceId[] = ['auto', 'fra', 'esp', 'and', 'prt', 'demo'];
 
 const FEEDBACK_EMAIL = 'plein@zadkiel.fr';
-
-const REPO_URL = 'https://github.com/aslafy-z/plein';
 
 const VEHICLES: VehicleId[] = ['car', 'motorcycle'];
 

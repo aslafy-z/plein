@@ -1,6 +1,7 @@
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { execFile, execFileSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
 import { cloudflare } from "@cloudflare/vite-plugin";
@@ -20,6 +21,16 @@ function buildVersion(): string {
   } catch {
     return Date.now().toString(36)
   }
+}
+
+// Repository home, stamped into the bundle (`__REPO_URL__`) for the Settings
+// contact links. package.json's `repository` is the single source of truth —
+// the npm form (`git+…/plein.git`) is normalized to a browsable URL here.
+function repoUrl(): string {
+  const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as {
+    repository?: { url?: string }
+  }
+  return (pkg.repository?.url ?? '').replace(/^git\+/, '').replace(/\.git$/, '')
 }
 
 function versionStamp(version: string): Plugin {
@@ -199,6 +210,7 @@ export default defineConfig({
   plugins: [paraglide(), react(), devProxies(), versionStamp(APP_VERSION), cloudflare()],
   define: {
     __APP_VERSION__: JSON.stringify(APP_VERSION),
+    __REPO_URL__: JSON.stringify(repoUrl()),
   },
   server: {
     host: true,
