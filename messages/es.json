@@ -472,7 +472,11 @@
   "settings_source_down": "La fuente en tiempo real no está disponible actualmente — los datos de demostración siguen disponibles abajo.",
   "settings_price_disclaimer_title": "Unas palabras sobre los precios",
   "settings_price_disclaimer_body": " — proceden de las declaraciones oficiales de las gasolineras y son solo orientativos, sin garantía: no podemos comprobarlos uno a uno y un precio puede haber cambiado para cuando llegues al surtidor. Échale un vistazo in situ antes de repostar — el desvío queda a tu criterio. Por ahora no es posible avisar de un precio erróneo ni corregirlo desde la aplicación — pero cuéntanoslo por correo justo debajo 💚",
-  "settings_feedback_title": "Enviar un comentario",
+  "settings_feedback_section": "Contacto",
+  "settings_feedback_email_title": "Escríbenos",
+  "settings_feedback_github_title": "Notificar un problema en GitHub",
+  "settings_feedback_github_sub": "se necesita una cuenta de GitHub",
+  "settings_feedback_version_title": "Versión de la aplicación",
   "feedback_mail_subject": "Comentarios sobre Plein.",
   "feedback_mail_body": "Hola:\n\nMi comentario sobre la aplicación:\n\n\n—\nVersión: {version}",
   "settings_cache_title": "Datos sin conexión",
@@ -507,6 +511,5 @@
   "settings_credits_addresses": "· direcciones: {source}",
   "settings_credits_and_extra": "· © Govern d'Andorra · direcciones: IDE Andorra",
   "settings_credits_misc": "Precios orientativos · rutas: OSRM / Valhalla · mapas: ©",
-  "settings_credits_version": "Plein. · versión",
   "settings_credits_commit_title": "Ver el commit en GitHub"
 }

@@ -472,7 +472,11 @@
   "settings_source_down": "Source temps réel indisponible actuellement — les données de démonstration restent disponibles ci-dessous.",
   "settings_price_disclaimer_title": "Un mot sur les prix",
   "settings_price_disclaimer_body": " — ils proviennent des déclarations officielles des stations et sont donnés à titre indicatif, sans garantie : nous ne pouvons pas les vérifier un par un, et il peut arriver qu'un prix ait changé le temps d'arriver à la pompe. Jetez-y un œil sur place avant de faire le plein — le détour reste à votre appréciation. Un prix erroné ne peut pour le moment être ni signalé ni corrigé depuis l'application — mais dites-le-nous par e-mail juste en dessous 💚",
-  "settings_feedback_title": "Envoyer un retour",
+  "settings_feedback_section": "Contact",
+  "settings_feedback_email_title": "Nous écrire",
+  "settings_feedback_github_title": "Signaler un problème sur GitHub",
+  "settings_feedback_github_sub": "compte GitHub requis",
+  "settings_feedback_version_title": "Version de l'application",
   "feedback_mail_subject": "Retour sur Plein.",
   "feedback_mail_body": "Bonjour,\n\nMon retour sur l'application :\n\n\n—\nVersion : {version}",
   "settings_cache_title": "Données hors ligne",
@@ -507,6 +511,5 @@
   "settings_credits_addresses": "· adresses : {source}",
   "settings_credits_and_extra": "· © Govern d'Andorra · adresses : IDE Andorra",
   "settings_credits_misc": "Prix à titre indicatif · itinéraires : OSRM / Valhalla · cartes : ©",
-  "settings_credits_version": "Plein. · version",
   "settings_credits_commit_title": "Voir le commit sur GitHub"
 }

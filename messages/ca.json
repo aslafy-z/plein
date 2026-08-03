@@ -472,7 +472,11 @@
   "settings_source_down": "La font en temps real no està disponible actualment — les dades de demostració continuen disponibles a sota.",
   "settings_price_disclaimer_title": "Unes paraules sobre els preus",
   "settings_price_disclaimer_body": " — provenen de les declaracions oficials de les benzineres i són només orientatius, sense garantia: no els podem comprovar un per un i un preu pot haver canviat quan arribis al sortidor. Fes-hi un cop d'ull in situ abans de fer el ple — el desviament queda al teu criteri. De moment no es pot avisar d'un preu erroni ni corregir-lo des de l'aplicació — però explica'ns-ho per correu just a sota 💚",
-  "settings_feedback_title": "Envia un comentari",
+  "settings_feedback_section": "Contacte",
+  "settings_feedback_email_title": "Escriu-nos",
+  "settings_feedback_github_title": "Informa d'un problema a GitHub",
+  "settings_feedback_github_sub": "cal un compte de GitHub",
+  "settings_feedback_version_title": "Versió de l'aplicació",
   "feedback_mail_subject": "Comentaris sobre Plein.",
   "feedback_mail_body": "Hola,\n\nEl meu comentari sobre l'aplicació:\n\n\n—\nVersió: {version}",
   "settings_cache_title": "Dades sense connexió",
@@ -507,6 +511,5 @@
   "settings_credits_addresses": "· adreces: {source}",
   "settings_credits_and_extra": "· © Govern d'Andorra · adreces: IDE Andorra",
   "settings_credits_misc": "Preus orientatius · rutes: OSRM / Valhalla · mapes: ©",
-  "settings_credits_version": "Plein. · versió",
   "settings_credits_commit_title": "Veure el commit a GitHub"
 }

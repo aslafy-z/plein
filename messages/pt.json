@@ -465,7 +465,11 @@
   "settings_source_down": "A fonte em tempo real está indisponível de momento — os dados de demonstração continuam disponíveis abaixo.",
   "settings_price_disclaimer_title": "Uma palavra sobre os preços",
   "settings_price_disclaimer_body": " — vêm das declarações oficiais dos postos e são indicativos, sem garantia: não os podemos verificar um a um, e um preço pode ter mudado até chegar à bomba. Confirme no local antes de abastecer — o desvio fica ao seu critério. De momento não é possível comunicar um preço errado nem corrigi-lo a partir da aplicação — mas conte-nos por e-mail já a seguir 💚",
-  "settings_feedback_title": "Enviar um comentário",
+  "settings_feedback_section": "Contacto",
+  "settings_feedback_email_title": "Escreva-nos",
+  "settings_feedback_github_title": "Comunicar um problema no GitHub",
+  "settings_feedback_github_sub": "requer conta GitHub",
+  "settings_feedback_version_title": "Versão da aplicação",
   "feedback_mail_subject": "Comentários sobre a Plein.",
   "feedback_mail_body": "Olá,\n\nO meu comentário sobre a aplicação:\n\n\n—\nVersão: {version}",
   "settings_cache_title": "Dados offline",
@@ -500,6 +504,5 @@
   "settings_credits_addresses": "· moradas: {source}",
   "settings_credits_and_extra": "· © Govern d'Andorra · moradas: IDE Andorra",
   "settings_credits_misc": "Preços indicativos · rotas: OSRM / Valhalla · mapas: ©",
-  "settings_credits_version": "Plein. · versão",
   "settings_credits_commit_title": "Ver o commit no GitHub"
 }

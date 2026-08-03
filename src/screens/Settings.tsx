@@ -33,6 +33,8 @@ const SOURCES: DataSourceId[] = ['auto', 'fra', 'esp', 'and', 'prt', 'demo'];
 
 const FEEDBACK_EMAIL = 'plein@zadkiel.fr';
 
+const REPO_URL = 'https://github.com/aslafy-z/plein';
+
 const VEHICLES: VehicleId[] = ['car', 'motorcycle'];
 
 function geoStatusLabel(status: 'granted' | 'denied' | 'unavailable' | 'pending'): string {
@@ -161,6 +163,30 @@ export default function Settings() {
   const feedbackHref = `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent(
     m.feedback_mail_subject(),
   )}&body=${encodeURIComponent(m.feedback_mail_body({ version: APP_VERSION }))}`;
+  const contactRows: {
+    title: string;
+    sub: string;
+    href: string;
+    external?: boolean;
+    mono?: boolean;
+    titleAttr?: string;
+  }[] = [
+    { title: m.settings_feedback_email_title(), sub: FEEDBACK_EMAIL, href: feedbackHref },
+    {
+      title: m.settings_feedback_github_title(),
+      sub: m.settings_feedback_github_sub(),
+      href: `${REPO_URL}/issues/new?body=${encodeURIComponent(`\n\n—\n${APP_VERSION}`)}`,
+      external: true,
+    },
+    {
+      title: m.settings_feedback_version_title(),
+      sub: APP_VERSION,
+      href: `${REPO_URL}/commit/${APP_VERSION.split('+')[0]}`,
+      external: true,
+      mono: true,
+      titleAttr: m.settings_credits_commit_title(),
+    },
+  ];
 
   return (
     <div
@@ -531,30 +557,58 @@ export default function Settings() {
             {m.settings_price_disclaimer_body()}
           </div>
 
-          <a
-            href={feedbackHref}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              padding: '14px 16px',
-              borderBottom: '1px solid rgba(255,255,255,.06)',
-              cursor: 'pointer',
-              width: '100%',
-              textAlign: 'left',
-              textDecoration: 'none',
-            }}
-          >
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>
-                {m.settings_feedback_title()}
-              </div>
-              <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>{FEEDBACK_EMAIL}</div>
-            </div>
-            <span style={{ color: C.faint }}>›</span>
-          </a>
-
           <CachedData onCleared={() => app.notify(m.toast_cache_cleared())} />
+        </div>
+      </div>
+
+      {/* Contact */}
+      <div style={{ marginTop: 18 }}>
+        <div style={SECTION_LABEL}>{m.settings_feedback_section()}</div>
+        <div
+          style={{
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            borderRadius: 16,
+            overflow: 'hidden',
+          }}
+        >
+          {contactRows.map((row, i) => (
+            <a
+              key={row.title}
+              href={row.href}
+              title={row.titleAttr}
+              {...(row.external ? { target: '_blank', rel: 'noreferrer' } : {})}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: '14px 16px',
+                borderBottom:
+                  i < contactRows.length - 1 ? '1px solid rgba(255,255,255,.06)' : undefined,
+                cursor: 'pointer',
+                width: '100%',
+                textAlign: 'left',
+                textDecoration: 'none',
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>{row.title}</div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: C.faint,
+                    marginTop: 2,
+                    fontFamily: row.mono
+                      ? "'Spline Sans Mono', ui-monospace, monospace"
+                      : undefined,
+                  }}
+                >
+                  {row.sub}
+                </div>
+              </div>
+              <span style={{ color: C.faint }}>{row.external ? '↗' : '›'}</span>
+            </a>
+          ))}
         </div>
       </div>
 
@@ -645,22 +699,6 @@ export default function Settings() {
         <div>
           {m.settings_credits_misc()}{' '}
           <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" style={CREDIT_LINK}>OpenStreetMap</a> · © CARTO
-        </div>
-        <div>
-          {m.settings_credits_version()}{' '}
-          <a
-            href={`https://github.com/aslafy-z/plein/commit/${APP_VERSION.split('+')[0]}`}
-            target="_blank"
-            rel="noreferrer"
-            title={m.settings_credits_commit_title()}
-            style={{
-              color: C.mut,
-              textDecoration: 'underline',
-              fontFamily: "'Spline Sans Mono', ui-monospace, monospace",
-            }}
-          >
-            {APP_VERSION}
-          </a>
         </div>
       </div>
     </div>

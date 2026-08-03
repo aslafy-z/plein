@@ -472,7 +472,11 @@
   "settings_source_down": "The live source is unavailable right now — the demo dataset below stays available.",
   "settings_price_disclaimer_title": "A word about the prices",
   "settings_price_disclaimer_body": " — they come from the stations' own official filings and are indicative only, with no guarantee: we cannot check them one by one, and a price may well have changed by the time you reach the pump. Have a look on site before filling up — the detour is your call. A wrong price cannot be reported or corrected from the app for now — but do tell us by e-mail right below 💚",
-  "settings_feedback_title": "Send feedback",
+  "settings_feedback_section": "Contact",
+  "settings_feedback_email_title": "Write to us",
+  "settings_feedback_github_title": "Report an issue on GitHub",
+  "settings_feedback_github_sub": "GitHub account required",
+  "settings_feedback_version_title": "App version",
   "feedback_mail_subject": "Feedback on Plein.",
   "feedback_mail_body": "Hello,\n\nMy feedback on the app:\n\n\n—\nVersion: {version}",
   "settings_cache_title": "Offline data",
@@ -507,6 +511,5 @@
   "settings_credits_addresses": "· addresses: {source}",
   "settings_credits_and_extra": "· © Govern d'Andorra · addresses: IDE Andorra",
   "settings_credits_misc": "Prices are indicative · routing: OSRM / Valhalla · maps: ©",
-  "settings_credits_version": "Plein. · version",
   "settings_credits_commit_title": "View the commit on GitHub"
 }
