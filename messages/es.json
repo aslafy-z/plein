@@ -478,7 +478,7 @@
   "settings_feedback_github_sub": "se necesita una cuenta de GitHub",
   "settings_feedback_version_title": "Versión de la aplicación",
   "feedback_mail_subject": "Comentarios sobre Plein.",
-  "feedback_mail_body": "Hola:\n\nMi comentario sobre la aplicación:\n\n\n—\nVersión: {version}",
+  "feedback_mail_body": "Hola:\n\nMi comentario sobre la aplicación:\n\n\n{details}",
   "settings_cache_title": "Datos sin conexión",
   "settings_cache_empty": "Aún no hay ninguna zona guardada",
   "settings_cache_summary": [

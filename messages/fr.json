@@ -478,7 +478,7 @@
   "settings_feedback_github_sub": "compte GitHub requis",
   "settings_feedback_version_title": "Version de l'application",
   "feedback_mail_subject": "Retour sur Plein.",
-  "feedback_mail_body": "Bonjour,\n\nMon retour sur l'application :\n\n\n—\nVersion : {version}",
+  "feedback_mail_body": "Bonjour,\n\nMon retour sur l'application :\n\n\n{details}",
   "settings_cache_title": "Données hors ligne",
   "settings_cache_empty": "Aucune zone enregistrée pour l'instant",
   "settings_cache_summary": [

@@ -478,7 +478,7 @@
   "settings_feedback_github_sub": "cal un compte de GitHub",
   "settings_feedback_version_title": "Versió de l'aplicació",
   "feedback_mail_subject": "Comentaris sobre Plein.",
-  "feedback_mail_body": "Hola,\n\nEl meu comentari sobre l'aplicació:\n\n\n—\nVersió: {version}",
+  "feedback_mail_body": "Hola,\n\nEl meu comentari sobre l'aplicació:\n\n\n{details}",
   "settings_cache_title": "Dades sense connexió",
   "settings_cache_empty": "Encara no hi ha cap zona desada",
   "settings_cache_summary": [
