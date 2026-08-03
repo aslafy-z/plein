@@ -31,6 +31,8 @@ const CREDIT_LINK: React.CSSProperties = { color: C.ghost, textDecoration: 'unde
 
 const SOURCES: DataSourceId[] = ['auto', 'fra', 'esp', 'and', 'prt', 'demo'];
 
+const FEEDBACK_EMAIL = 'plein@zadkiel.fr';
+
 const VEHICLES: VehicleId[] = ['car', 'motorcycle'];
 
 function geoStatusLabel(status: 'granted' | 'denied' | 'unavailable' | 'pending'): string {
@@ -147,30 +149,18 @@ function CachedData({ onCleared }: { onCleared: () => void }) {
 export default function Settings() {
   const app = useApp();
   const desktop = useIsDesktop();
-  const { fuel, vehicle, tank, consumption, alerts, backgroundLocation, sourceId, geoStatus, mapsSite } = app;
+  const { fuel, vehicle, tank, consumption, sourceId, geoStatus, mapsSite } = app;
   // Slider ranges follow the profile (a motorcycle tank is far smaller than a car's)
   const tankRange =
     vehicle === 'motorcycle' ? { min: 5, max: 30, step: 1 } : { min: 30, max: 80, step: 5 };
   const otherVehicle: VehicleId = vehicle === 'car' ? 'motorcycle' : 'car';
   const otherPreset = VEHICLE_PRESETS[otherVehicle];
 
-  // `soon`: feature not built yet — activating shows a toast, like « Signaler »
-  const toggles: { label: string; sub: string; on: boolean; set: (v: boolean) => void; soon: string }[] = [
-    {
-      label: m.settings_alerts_title(),
-      sub: m.settings_alerts_sub(),
-      on: alerts,
-      set: app.setAlerts,
-      soon: m.toast_alerts_soon(),
-    },
-    {
-      label: m.settings_background_location_title(),
-      sub: m.settings_background_location_sub(),
-      on: backgroundLocation,
-      set: app.setBackgroundLocation,
-      soon: m.toast_background_location_soon(),
-    },
-  ];
+  // The message functions re-run on every render, so the prefilled mail
+  // follows a locale switch without any extra wiring
+  const feedbackHref = `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent(
+    m.feedback_mail_subject(),
+  )}&body=${encodeURIComponent(m.feedback_mail_body({ version: APP_VERSION }))}`;
 
   return (
     <div
@@ -448,68 +438,6 @@ export default function Settings() {
       </div>
       )}
 
-      {/* Notifications */}
-      <div style={{ marginTop: 18 }}>
-        <div style={SECTION_LABEL}>{m.settings_notifications_section()}</div>
-        <div
-          style={{
-            background: C.surface,
-            border: `1px solid ${C.border}`,
-            borderRadius: 16,
-            overflow: 'hidden',
-          }}
-        >
-          {toggles.map((t) => (
-            <button
-              key={t.label}
-              onClick={() => {
-                if (!t.on) app.notify(t.soon);
-                t.set(!t.on);
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '14px 16px',
-                borderBottom: '1px solid rgba(255,255,255,.06)',
-                cursor: 'pointer',
-                width: '100%',
-                textAlign: 'left',
-              }}
-            >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>{t.label}</div>
-                <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>{t.sub}</div>
-              </div>
-              <div
-                style={{
-                  width: 44,
-                  height: 26,
-                  borderRadius: 13,
-                  background: t.on ? C.accent : C.toggleOff,
-                  flexShrink: 0,
-                  position: 'relative',
-                  transition: 'background .15s',
-                }}
-              >
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: 3,
-                    left: t.on ? 21 : 3,
-                    width: 20,
-                    height: 20,
-                    borderRadius: '50%',
-                    background: C.ink,
-                    transition: 'left .15s',
-                  }}
-                />
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Data */}
       <div style={{ marginTop: 18 }}>
         <div style={SECTION_LABEL}>{m.settings_data_section()}</div>
@@ -603,8 +531,8 @@ export default function Settings() {
             {m.settings_price_disclaimer_body()}
           </div>
 
-          <button
-            onClick={() => app.notify(m.toast_price_report_soon())}
+          <a
+            href={feedbackHref}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -614,13 +542,17 @@ export default function Settings() {
               cursor: 'pointer',
               width: '100%',
               textAlign: 'left',
+              textDecoration: 'none',
             }}
           >
-            <span style={{ flex: 1, fontSize: 14.5, fontWeight: 600, color: C.ink }}>
-              {m.settings_report_price()}
-            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>
+                {m.settings_feedback_title()}
+              </div>
+              <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>{FEEDBACK_EMAIL}</div>
+            </div>
             <span style={{ color: C.faint }}>›</span>
-          </button>
+          </a>
 
           <CachedData onCleared={() => app.notify(m.toast_cache_cleared())} />
         </div>
