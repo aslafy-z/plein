@@ -682,7 +682,7 @@ export default function Settings() {
             rel="noreferrer"
             style={{ color: C.mut, textDecoration: 'underline' }}
           >
-            zadkiel.fr
+            Zadkiel AHARONIAN
           </a>
         </div>
         {/* Credits, one line per country so each flux is named where it applies */}
