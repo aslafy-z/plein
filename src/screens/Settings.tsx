@@ -161,6 +161,17 @@ export default function Settings() {
   const feedbackHref = `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent(
     m.feedback_mail_subject(),
   )}&body=${encodeURIComponent(m.feedback_mail_body({ version: APP_VERSION }))}`;
+  // Diagnostic block a GitHub issue arrives with — data, not copy, so it is
+  // assembled here in English rather than through the catalog
+  const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
+  const issueBody = [
+    '',
+    '',
+    '—',
+    `version: ${APP_VERSION}`,
+    `platform: ${nav.userAgentData?.platform || nav.platform || 'unknown'}`,
+    `user agent: ${nav.userAgent}`,
+  ].join('\n');
   const contactRows: {
     title: string;
     sub: string;
@@ -173,7 +184,7 @@ export default function Settings() {
     {
       title: m.settings_feedback_github_title(),
       sub: m.settings_feedback_github_sub(),
-      href: `${REPO_URL}/issues/new?body=${encodeURIComponent(`\n\n—\n${APP_VERSION}`)}`,
+      href: `${REPO_URL}/issues/new?body=${encodeURIComponent(issueBody)}`,
       external: true,
     },
     {
