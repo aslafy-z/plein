@@ -123,16 +123,22 @@ export function useLeafletMap(options: LeafletShellOptions): LeafletShell {
     mapRef.current = map;
 
     // ── The takeover rule, one copy for both maps ─────────────────────────
-    // Leaflet's dragstart/zoomstart fire for programmatic fits too, so they
-    // only count outside the programmatic window; the DOM events below can
-    // only ever come from the user and mark the takeover directly — a
-    // wheel/pinch/double-tap landing inside the window must not be swallowed.
+    // Leaflet's zoomstart fires for programmatic fits too, so it only counts
+    // outside the programmatic window. Everything else below can only ever
+    // come from the user — the DOM events by nature, and dragstart because
+    // Leaflet only fires it from a real pointer drag (programmatic pans fire
+    // movestart, never dragstart) — so they mark the takeover directly AND
+    // end the programmatic window: a drag begun right after a fit (the load /
+    // geolocation moment) used to be swallowed by the window, leaving the
+    // map moved but the app convinced it still owned the view — the next
+    // auto-fit (the sheet resizing on a results change) yanked the pan back.
     const markInteract = () => {
       if (Date.now() > programmaticUntilRef.current) userInteractedRef.current = true;
     };
     const el = map.getContainer();
     const domInteract = () => {
       userInteractedRef.current = true;
+      programmaticUntilRef.current = 0;
     };
     const onTouchStart = (e: TouchEvent) => {
       if (e.touches.length >= 2) domInteract(); // pinch, not a tap
@@ -168,7 +174,7 @@ export function useLeafletMap(options: LeafletShellOptions): LeafletShell {
     // AFTER setup: the caller's initial setView fires a zoomstart of its own
     // (Leaflet's first _resetView), and hearing it here would mark the mount
     // itself as a user takeover — killing every auto-fit for good.
-    map.on('dragstart', markInteract);
+    map.on('dragstart', domInteract);
     map.on('zoomstart', markInteract);
 
     return () => {
