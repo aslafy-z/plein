@@ -95,8 +95,16 @@ export function useLeafletMap(options: LeafletShellOptions): LeafletShell {
         });
       },
       visibleCenterPoint(map) {
+        // Both insets count: the floating panel covers the LEFT edge on
+        // desktop, the bottom sheet the BOTTOM edge on a phone. Ignoring the
+        // sheet made every « center of what the user sees » land half a sheet
+        // too low — the circle glide absorbed that gap on the first small pan
+        // and the whole search zone drifted under the sheet.
         const size = map.getSize();
-        return L.point((size.x + leftInsetRef.current) / 2, size.y / 2);
+        return L.point(
+          (size.x + leftInsetRef.current) / 2,
+          (size.y - bottomInsetRef.current) / 2,
+        );
       },
     };
   }
