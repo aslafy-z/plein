@@ -8,6 +8,7 @@ import { useIsDesktop } from '../lib/layout';
 import { useLeafletMap, type LeafletShell } from '../lib/leafletMap';
 import { pricePinDotHtml, pricePinHtml } from '../lib/pricePin';
 import ShareIcon from './ShareIcon';
+import LocateIcon from './LocateIcon';
 import {
   useApp,
   selectVisible,
@@ -703,31 +704,18 @@ export default function MapCanvas({
             title={m.map_my_position()}
             style={{
               ...clusterButton,
-              // Away from the user's position, the whole button turns on —
-              // a 16px icon changing hue alone read as nothing at all
-              background: app.searchedAway ? C.accentSoft15 : 'transparent',
+              // Map-app convention: the control lights up green when the view
+              // IS on the user — everywhere else in the app green means « on /
+              // good », so green-when-away read backwards. Elsewhere it stays
+              // the same tappable ink as the zoom and share buttons above.
+              background: app.searchedAway ? 'transparent' : C.accentSoft15,
             }}
           >
-            <div
-              style={{
-                width: 16,
-                height: 16,
-                borderRadius: '50%',
-                border: `2.5px solid ${app.searchedAway ? C.accent : C.mut}`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <div
-                style={{
-                  width: 5,
-                  height: 5,
-                  borderRadius: '50%',
-                  background: app.searchedAway ? C.accent : C.mut,
-                }}
-              />
-            </div>
+            <LocateIcon
+              color={app.searchedAway ? C.ink : C.accent}
+              dot={!app.searchedAway}
+              size={19}
+            />
           </button>
         </div>
       ) : (
@@ -759,7 +747,10 @@ export default function MapCanvas({
             <ShareIcon color={C.ink} size={18} />
           </button>
 
-          {/* Recenter on the user */}
+          {/* Recenter on the user. Map-app convention: green + filled dot
+              when the view IS on the user, plain tappable ink (the share
+              button's look) when it is elsewhere — green meaning « away »
+              read backwards next to every other green in the app. */}
           <button
             onClick={() => app.resetSearchToUser()}
             aria-label={m.map_recenter_aria()}
@@ -772,7 +763,7 @@ export default function MapCanvas({
               height: 44,
               borderRadius: '50%',
               ...pillGlass,
-              border: `1px solid ${app.searchedAway ? C.accentBorderStrong : 'rgba(255,255,255,.1)'}`,
+              border: `1px solid ${app.searchedAway ? 'rgba(255,255,255,.1)' : C.accentBorderStrong}`,
               boxShadow: '0 6px 18px rgba(0,0,0,.45)',
               display: 'flex',
               alignItems: 'center',
@@ -780,26 +771,11 @@ export default function MapCanvas({
               zIndex: 1000,
             }}
           >
-            <div
-              style={{
-                width: 16,
-                height: 16,
-                borderRadius: '50%',
-                border: `2.5px solid ${app.searchedAway ? C.accent : C.mut}`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <div
-                style={{
-                  width: 5,
-                  height: 5,
-                  borderRadius: '50%',
-                  background: app.searchedAway ? C.accent : C.mut,
-                }}
-              />
-            </div>
+            <LocateIcon
+              color={app.searchedAway ? C.ink : C.accent}
+              dot={!app.searchedAway}
+              size={19}
+            />
           </button>
         </>
       )}
