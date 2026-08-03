@@ -230,11 +230,17 @@ export default function MapCanvas({
     // skips loading when the area already in memory covers the new zone.
     let lastLiveSearch = 0;
     map.on('move', () => {
-      // Re-clip on EVERY frame, before any early return: even when the circle
-      // stands still (programmatic pan, auto-fit) the frozen box drifts with
-      // the map and drags its edges — and the cut they make in a circle wider
-      // than the screen — into view.
-      if (circleRef.current) reclipRenderer(map, circleRef.current);
+      // Re-clip on EVERY pan frame, before any early return: even when the
+      // circle stands still (programmatic pan, auto-fit) the frozen box
+      // drifts with the map and drags its edges — and the cut they make in a
+      // circle wider than the screen — into view. NEVER during a live zoom
+      // (pinch, keyboard +/-), which also fires `move` per frame: `_update()`
+      // re-stamps the reference center/zoom the renderer computes its CSS
+      // scale against WITHOUT reprojecting the paths, so the circle freezes
+      // at its pre-zoom size until release instead of scaling under the
+      // gesture. The animated zooms (wheel, double-tap) are immune — Leaflet
+      // guards `_update` on `_animatingZoom` — but a live gesture is not.
+      if (circleRef.current && !zooming) reclipRenderer(map, circleRef.current);
       if (!sh.userInteractedRef.current || zooming) return;
       if (Date.now() < sh.programmaticUntilRef.current) return; // pan-to-station, fits…
       // Absorb the gap left at dragstart over the first frames of the pan
