@@ -22,3 +22,34 @@ export function reportAreaLoad(path: AreaLoadPath): void {
 export function lastAreaLoadDebug(): { path: AreaLoadPath; at: number } | null {
   return lastAreaLoad;
 }
+
+// ── Tile layer ──────────────────────────────────────────────────────────────
+// The counters live in lib/tiles.ts, which imports Leaflet — a module the
+// node unit suite (and anything else leaflet-free) must never pull in just to
+// type a snapshot. tiles.ts registers its getter here at load; before any map
+// existed the neutral reading below is also the truthful one.
+
+export interface TileLayerDebug {
+  /** Layer new maps get right now (the session-wide fallback decision) */
+  active: 'carto' | 'fallback';
+  cartoUnreachable: boolean;
+  tilesLoaded: number;
+  tilesErrored: number;
+}
+
+let tileDebugSource: (() => TileLayerDebug) | null = null;
+
+export function registerTileDebugSource(source: () => TileLayerDebug): void {
+  tileDebugSource = source;
+}
+
+export function tileLayerDebugSnapshot(): TileLayerDebug {
+  return (
+    tileDebugSource?.() ?? {
+      active: 'carto',
+      cartoUnreachable: false,
+      tilesLoaded: 0,
+      tilesErrored: 0,
+    }
+  );
+}

@@ -10,6 +10,7 @@
 import L from 'leaflet';
 import { IS_DEV } from './env';
 import { currentTheme, onThemeChange } from './colorScheme';
+import { registerTileDebugSource, type TileLayerDebug } from './debugState';
 
 const cartoUrl = () =>
   `https://{s}.basemaps.cartocdn.com/${currentTheme() === 'light' ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png`;
@@ -20,27 +21,19 @@ const GIVE_UP_MS = 6000;
 let cartoUnreachable = false;
 
 // Session totals across every mounted map and both layers — the debug
-// overlay's tile section. Counters only: no behavior hangs off them.
+// overlay's tile section. Counters only: no behavior hangs off them; the
+// registration keeps this module's Leaflet import out of the snapshot code.
 let tilesLoaded = 0;
 let tilesErrored = 0;
 
-export interface TileLayerDebug {
-  /** Layer new maps get right now (the session-wide fallback decision) */
-  active: 'carto' | 'fallback';
-  cartoUnreachable: boolean;
-  tilesLoaded: number;
-  tilesErrored: number;
-}
-
-/** Read-only window for the debug overlay — see src/lib/debugSnapshot.ts */
-export function tileLayerDebug(): TileLayerDebug {
-  return {
+registerTileDebugSource(
+  (): TileLayerDebug => ({
     active: cartoUnreachable ? 'fallback' : 'carto',
     cartoUnreachable,
     tilesLoaded,
     tilesErrored,
-  };
-}
+  }),
+);
 
 // Small pans shouldn't refetch tiles: keep a wide ring of off-screen tiles
 // alive instead of Leaflet's default 2-tile buffer, and load new tiles while

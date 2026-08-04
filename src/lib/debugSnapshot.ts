@@ -20,10 +20,14 @@ import {
   STALE_MS,
 } from '../data/stationsCache';
 import { consoleErrorsDebug, type RecordedError } from './debugMode';
-import { lastAreaLoadDebug, type AreaLoadPath } from './debugState';
+import {
+  lastAreaLoadDebug,
+  tileLayerDebugSnapshot,
+  type AreaLoadPath,
+  type TileLayerDebug,
+} from './debugState';
 import { APP_VERSION } from './appUpdate';
 import { IS_DEV } from './env';
-import { tileLayerDebug, type TileLayerDebug } from './tiles';
 import type { GeoPoint } from './geo';
 
 // The service worker's cache names and caps, mirrored from public/sw.js —
@@ -310,7 +314,7 @@ export async function collectDebugSnapshot(
       refreshing: app.stations.refreshing,
       lastError: app.stations.lastError ?? null,
     },
-    tiles: tileLayerDebug(),
+    tiles: tileLayerDebugSnapshot(),
     position: {
       geoStatus: app.geoStatus,
       hasKnownPos: app.hasKnownPos,
