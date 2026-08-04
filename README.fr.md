@@ -119,8 +119,9 @@ L'app n'a **aucun backend** : le navigateur interroge directement ces services
 publics. Les sources sont pluggables (`src/data/types.ts`). Hors connexion ou
 flux indisponible, l'app garde les dernières stations chargées (cache par
 zone) avec une bannière explicite et réessaie dès que la connexion revient ;
-un jeu de données de démonstration hors-ligne reste sélectionnable dans les
-réglages.
+le jeu de données de démonstration hors-ligne ne prend jamais le relais en
+silence — les réglages ne le proposent que lorsque la source réelle est en
+panne, comme échappatoire explicite.
 
 ## 🛠️ Développement
 

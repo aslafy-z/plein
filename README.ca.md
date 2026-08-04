@@ -122,8 +122,9 @@ L'app no té **cap backend**: el navegador consulta directament aquests
 serveis públics. Les fonts són connectables (`src/data/types.ts`). Sense
 connexió o amb un flux caigut, l'app conserva les últimes estacions
 carregades (memòria cau per zona) amb un bàner explícit i ho torna a provar
-així que torna la connexió; un joc de dades de demostració fora de línia
-continua sent seleccionable als ajustos.
+així que torna la connexió; el joc de dades de demostració fora de línia mai
+no substitueix la font en silenci: els ajustos només l'ofereixen mentre la
+font real falla, com a sortida explícita.
 
 ## 🛠️ Desenvolupament
 
