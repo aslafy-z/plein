@@ -98,7 +98,7 @@ l'app choisit selon la zone affichée (source *Automatique*). Le reste
 
 | Donnée | Source | Licence |
 | --- | --- | --- |
-| Prix des carburants & enseignes | [Preus dels carburants](https://sig.govern.ad/IPE/PreusCarburants) (sig.govern.ad, Govern d'Andorra — Oficina de l'energia i del canvi climàtic) — l'enseigne est déduite du nom de la station ; le flux ne porte ni adresse ni horaires | © Govern d'Andorra |
+| Prix des carburants & enseignes | [Preus dels carburants](https://sig.govern.ad/IPE/PreusCarburants) (sig.govern.ad, Govern d'Andorra — Oficina de l'Energia i del Canvi Climàtic) — l'enseigne est déduite du nom de la station ; le flux ne porte ni adresse ni horaires | © Govern d'Andorra |
 | Géocodage & autocomplétion | Nomenclàtor (gazetteer officiel) & LocatorIDE (sig.govern.ad, IDE Andorra) | © Govern d'Andorra |
 
 ### 🇵🇹 Portugal
@@ -112,8 +112,8 @@ l'app choisit selon la zone affichée (source *Automatique*). Le reste
 
 | Donnée | Source | Licence |
 | --- | --- | --- |
-| Calcul d'itinéraires | [OSRM](https://project-osrm.org/) (serveur démo) · [Valhalla](https://valhalla.github.io/valhalla/) (serveur public FOSSGIS) pour « éviter autoroutes / péages » | Données © OpenStreetMap |
-| Fonds de carte | [CARTO](https://carto.com/attributions) clair / sombre selon le thème (tuiles OpenStreetMap en secours hors-ligne) | Données © contributeurs [OpenStreetMap](https://www.openstreetmap.org/copyright) |
+| Calcul d'itinéraires | [OSRM](https://project-osrm.org/) (serveur démo) · [Valhalla](https://valhalla.github.io/valhalla/) (serveur public FOSSGIS) pour « éviter autoroutes / péages » | © contributeurs [OpenStreetMap](https://www.openstreetmap.org/copyright) |
+| Fonds de carte | [CARTO](https://carto.com/attributions) clair / sombre selon le thème (tuiles OpenStreetMap en secours hors-ligne) | © contributeurs [OpenStreetMap](https://www.openstreetmap.org/copyright) |
 
 L'app n'a **aucun backend** : le navigateur interroge directement ces services
 publics. Les sources sont pluggables (`src/data/types.ts`). Hors connexion ou
