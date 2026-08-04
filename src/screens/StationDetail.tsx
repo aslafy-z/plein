@@ -15,7 +15,7 @@ import {
   effectivePrice,
   fuelRange,
   priceCents,
-  roadReachOf,
+  stationTrip,
 } from '../state/store';
 import { routeBusy } from '../state/routePipeline';
 import { stationCountry } from '../data/stationIds';
@@ -23,7 +23,6 @@ import { fmtPrice, distLabel, agoLabel, durationLabel } from '../lib/format';
 import { fuelLabel, openStatusLabel, serviceLabel } from '../lib/labels';
 import { useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
-import { haversineKm } from '../lib/geo';
 import { openStatus } from '../lib/hours';
 import { brandIconSrc } from '../lib/brandIcons';
 import { addDarkBasemap } from '../lib/tiles';
@@ -157,10 +156,9 @@ export default function StationDetail() {
 
   if (!s) return pending ? <StationDetailPending desktop={desktop} /> : null;
 
-  const { distKm, driveMin } = roadReachOf(
-    haversineKm(app.userPos, { lat: s.lat, lng: s.lng }),
-    app.roadReach[s.id],
-  );
+  // Same trip origin as the zone the fiche was opened from — the search
+  // center when the area is out of the user's reach
+  const { distKm, driveMin } = stationTrip(app, s);
   // Same figure the timeline card shows: the minutes on the plan's own legs
   // (routed when the matrix answered), the load-time estimate as fallback
   const routeDetourMin = isRoute

@@ -2216,7 +2216,8 @@ export function fuelRange(
  * Stations worth one road-matrix call: the ROAD_REACH_MAX nearest ones, and
  * only those within MAX_RADIUS_KM of the user. When the user searches a
  * faraway area, its stations are not "near me" in any sense worth a routing
- * call — they keep crow-flies distances and the list comes back empty.
+ * call — they keep crow-flies estimates (from the search center, see
+ * searchOutOfReach) and the list comes back empty.
  */
 export function selectReachCandidates(stations: Station[], userPos: GeoPoint): Station[] {
   return stations
@@ -2252,14 +2253,45 @@ export function roadReachOf(
 }
 
 /**
+ * Is the searched area beyond any plausible drive from where the user is?
+ * The same MAX_RADIUS_KM line selectReachCandidates draws: within it a trip
+ * from the user's position is a real drive worth showing and measuring;
+ * beyond it the zone is a place being EXPLORED (a shared link, a destination
+ * looked up before a trip) and the trip numbers start at the search center
+ * instead — from home every distance reads ~the same hundreds of km, every
+ * round trip busts the tank (effective price Infinity for the whole zone),
+ * and the Infinity tie-break would crown the station nearest to home, i.e.
+ * an arbitrary — often the dearest — pump of the area.
+ */
+export function searchOutOfReach(app: Pick<AppStore, 'userPos' | 'searchPos'>): boolean {
+  return haversineKm(app.userPos, app.searchPos) > MAX_RADIUS_KM;
+}
+
+/**
+ * Distance & drive time to a station, from where the trip to it would start:
+ * the user's position (road-measured when the reach matrix covered it), or
+ * the search center once the searched area is out of reach. One rule for
+ * every surface — the zone selectors and the fiche read it here, so the card,
+ * the rows and the place chip can never disagree on what a distance means.
+ */
+export function stationTrip(
+  app: Pick<AppStore, 'userPos' | 'searchPos' | 'roadReach'>,
+  s: Pick<Station, 'id' | 'lat' | 'lng'>,
+  outOfReach: boolean = searchOutOfReach(app),
+): { distKm: number; driveMin: number } {
+  const p = { lat: s.lat, lng: s.lng };
+  if (outOfReach) return roadReachOf(haversineKm(app.searchPos, p));
+  return roadReachOf(haversineKm(app.userPos, p), app.roadReach[s.id]);
+}
+
+/**
  * Distance/time enrichment shared by the zone and map selectors. The radius
  * filter always uses crow-flies from the search center — it describes the
  * search area, not a drive.
  */
-function enrichDistance(app: AppStore, s: Station): NearbyStation {
-  const crowKm = haversineKm(app.userPos, { lat: s.lat, lng: s.lng });
+function enrichDistance(app: AppStore, s: Station, outOfReach: boolean): NearbyStation {
   const searchKm = haversineKm(app.searchPos, { lat: s.lat, lng: s.lng });
-  return { ...s, ...roadReachOf(crowKm, app.roadReach[s.id]), searchKm };
+  return { ...s, ...stationTrip(app, s, outOfReach), searchKm };
 }
 
 /**
@@ -2268,9 +2300,11 @@ function enrichDistance(app: AppStore, s: Station): NearbyStation {
  * predicates (a radius comparison, a brand lookup, a price presence check),
  * so a whole render tree costs one distance pass instead of twenty.
  */
-const selectEnriched = cached((app: AppStore): NearbyStation[] =>
-  app.stations.data.map((s) => enrichDistance(app, s)),
-);
+const selectEnriched = cached((app: AppStore): NearbyStation[] => {
+  // Hoisted out of the loop: the answer is per-search, not per-station
+  const outOfReach = searchOutOfReach(app);
+  return app.stations.data.map((s) => enrichDistance(app, s, outOfReach));
+});
 
 /**
  * Sources that say whether a station dispenses AdBlue. Spain (`Precio Adblue`)
