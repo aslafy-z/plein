@@ -10,7 +10,7 @@ import { pricePinDotHtml, pricePinHtml } from '../lib/pricePin';
 import { zoneCircle } from '../lib/zoneCircle';
 import { useDebugMode } from '../lib/debugMode';
 import { fmtAgeMs } from '../lib/debugSnapshot';
-import { readCachedTiles, type TileStyle } from '../lib/tileCache';
+import { readCachedTiles, type CachedTile, type TileStyle } from '../lib/tileCache';
 import { tileToBounds } from '../lib/tilePyramid';
 import { readAllCachedAreas } from '../data/stationsCache';
 import ShareIcon from './ShareIcon';
@@ -119,6 +119,16 @@ let savedView: {
   userInteracted: boolean;
   searchPos: GeoPoint;
 } | null = null;
+
+/**
+ * Last read of the SW tile cache, kept across unmounts for the same reason
+ * `savedView` is: switching tab destroys the map, and the tile grid's read is
+ * held back by DEBUG_TILE_READ_DELAY_MS — so coming back to the map left the
+ * grid missing for three seconds every single time, blinking out and back on
+ * every tab round trip. The cache barely moves in that window, so the layer
+ * repaints from this at once and the delayed read only refreshes it.
+ */
+let lastTileRead: CachedTile[] | null = null;
 
 /**
  * Stations wearing a price bubble: the PIN_CAP cheapest of the EFFECTIVE
@@ -817,59 +827,77 @@ export default function MapCanvas({
       debugTilesCanvasRef.current = null;
       return;
     }
+    // Drawing is separate from reading: the same pass paints the last known
+    // cache right away (on mount, and on every view change — the buckets are
+    // keyed on the distance to the CURRENT zoom, so the fades were stale for
+    // the whole delay too) and paints again when the fresh read lands.
+    const draw = (tiles: CachedTile[]) => {
+      const zoom = Math.round(map.getZoom());
+      const root =
+        debugTilesLayerRef.current ?? (debugTilesLayerRef.current = L.layerGroup().addTo(map));
+      const canvas =
+        debugTilesCanvasRef.current ?? (debugTilesCanvasRef.current = L.canvas({ padding: 0.3 }));
+
+      // Nearest levels win the ring budget: a level deeper holds 4× the
+      // tiles, so an unbounded set is dominated by whichever zoom was
+      // panned the most. The overlay's per-zoom counts stay the full truth.
+      const near = tiles
+        .filter((t) => Math.abs(t.z - zoom) <= DEBUG_TILE_ZOOM_SPAN)
+        .sort((a, b) => Math.abs(a.z - zoom) - Math.abs(b.z - zoom))
+        .slice(0, DEBUG_TILE_MAX_RINGS);
+
+      const buckets = new Map<string, L.LatLngExpression[][]>();
+      for (const t of near) {
+        const b = tileToBounds(t);
+        const key = `${t.style}|${Math.abs(t.z - zoom)}`;
+        const rings = buckets.get(key) ?? [];
+        rings.push([
+          [b.south, b.west],
+          [b.south, b.east],
+          [b.north, b.east],
+          [b.north, b.west],
+        ]);
+        buckets.set(key, rings);
+      }
+
+      // Rebuilt whole rather than diffed: the buckets are keyed on the
+      // distance to the CURRENT zoom, so a zoom change restyles every one of
+      // them anyway, and there are only ever a handful of layers to make.
+      root.clearLayers();
+      for (const [key, rings] of buckets) {
+        const [style, dist] = key.split('|') as [TileStyle, string];
+        L.polygon(rings, {
+          renderer: canvas,
+          color: DEBUG_TILE_COLORS[style],
+          weight: 1,
+          // The current zoom's tiles read strongest; each level away fades
+          opacity: 0.75 - 0.18 * Number(dist),
+          fillColor: DEBUG_TILE_COLORS[style],
+          fillOpacity: 0.05,
+          interactive: false,
+        }).addTo(root);
+      }
+    };
+
     let live = true;
+    // On the next frame, not in the effect body: a map can be torn down right
+    // after it is built (StrictMode's throwaway first mount, a tab flicked
+    // through), and paths handed to a renderer that dies in the same tick
+    // leave Leaflet redrawing a canvas whose context is already gone. A frame
+    // is invisible to the eye and lets the cleanup cancel the paint instead.
+    const frame = requestAnimationFrame(() => {
+      if (live && lastTileRead) draw(lastTileRead);
+    });
     const timer = window.setTimeout(() => {
       void readCachedTiles().then((tiles) => {
+        lastTileRead = tiles;
         if (!live || !mapRef.current) return;
-        const zoom = Math.round(map.getZoom());
-        const root =
-          debugTilesLayerRef.current ?? (debugTilesLayerRef.current = L.layerGroup().addTo(map));
-        const canvas =
-          debugTilesCanvasRef.current ?? (debugTilesCanvasRef.current = L.canvas({ padding: 0.3 }));
-
-        // Nearest levels win the ring budget: a level deeper holds 4× the
-        // tiles, so an unbounded set is dominated by whichever zoom was
-        // panned the most. The overlay's per-zoom counts stay the full truth.
-        const near = tiles
-          .filter((t) => Math.abs(t.z - zoom) <= DEBUG_TILE_ZOOM_SPAN)
-          .sort((a, b) => Math.abs(a.z - zoom) - Math.abs(b.z - zoom))
-          .slice(0, DEBUG_TILE_MAX_RINGS);
-
-        const buckets = new Map<string, L.LatLngExpression[][]>();
-        for (const t of near) {
-          const b = tileToBounds(t);
-          const key = `${t.style}|${Math.abs(t.z - zoom)}`;
-          const rings = buckets.get(key) ?? [];
-          rings.push([
-            [b.south, b.west],
-            [b.south, b.east],
-            [b.north, b.east],
-            [b.north, b.west],
-          ]);
-          buckets.set(key, rings);
-        }
-
-        // Rebuilt whole rather than diffed: the buckets are keyed on the
-        // distance to the CURRENT zoom, so a zoom change restyles every one of
-        // them anyway, and there are only ever a handful of layers to make.
-        root.clearLayers();
-        for (const [key, rings] of buckets) {
-          const [style, dist] = key.split('|') as [TileStyle, string];
-          L.polygon(rings, {
-            renderer: canvas,
-            color: DEBUG_TILE_COLORS[style],
-            weight: 1,
-            // The current zoom's tiles read strongest; each level away fades
-            opacity: 0.75 - 0.18 * Number(dist),
-            fillColor: DEBUG_TILE_COLORS[style],
-            fillOpacity: 0.05,
-            interactive: false,
-          }).addTo(root);
-        }
+        draw(tiles);
       });
     }, DEBUG_TILE_READ_DELAY_MS);
     return () => {
       live = false;
+      cancelAnimationFrame(frame);
       clearTimeout(timer);
     };
   }, [debugMode, viewTick]);
