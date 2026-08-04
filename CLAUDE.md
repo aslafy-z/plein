@@ -18,8 +18,16 @@ it lives only in `messages/fr.json`.
   JSDoc/TSDoc, docs and Markdown files, test names and descriptions, GitHub
   issues, pull request titles and bodies, commit messages, and PR/issue
   comments and review replies.
+- **English is the reference for naming UI things.** When comments, docs,
+  commit messages or PR text refer to a screen, section or label, use its
+  `messages/en.json` copy — the Settings « Data » section, the
+  « Directions › » shortcut — never the French name (« réglages »,
+  « Données », « Itinéraire »).
 - Don't translate existing French comments you happen to touch; only what you
   newly write follows this rule.
+- **Never hard-wrap commit messages or PR descriptions.** Write each
+  paragraph as one long line and let the renderer wrap; only actual
+  paragraph breaks get a newline.
 - The **only** admitted French outside the catalog is text a source API
   invents (the gouv flux's free-text services) and proper nouns (enseignes,
   domain names, `Haute-Garonne`).
@@ -116,7 +124,7 @@ width, never pointer type: a window gets resized and the layout has to follow.
   (`searchOpen` in the store — a target naming WHICH field: `'area'`,
   `'routeFrom'`, `'routeTo'`), so the system Back closes it instead of
   leaving the screen. Callers keep the policy: what a pick does, the map's
-  collapsed pill and « Itinéraire › » row shortcut, the route's icons.
+  collapsed pill and « Directions › » row shortcut, the route's icons.
 - **One place history** (`src/state/searchHistory.ts`, persisted as
   `searchHistory`): every field feeds and reads it — a destination picked in
   the route search is offered back by the map's search, and vice versa.
@@ -202,7 +210,7 @@ Anything that does not fit one of them does not get cached.
   under `STALE_MS` (10 min) the network is not touched at all; under
   `MAX_CACHE_AGE_MS` (7 d) the area paints immediately and revalidates behind,
   the freshness chip naming the day past `REVALIDATE_MS` (6 h) instead of
-  saying « il y a N j »; beyond, the area is dropped and the app shows its
+  saying « N days ago »; beyond, the area is dropped and the app shows its
   loading/error path rather than last week's prices.
 - **The index is eager, the payloads are lazy.** `areas` (a few hundred bytes)
   loads at boot so the containment test runs in memory; a station array is read
@@ -213,7 +221,7 @@ Anything that does not fit one of them does not get cached.
   open, a private window or a refusing browser yields the in-memory store, and
   the app behaves as before minus persistence. A `QuotaExceededError` sheds
   the oldest area and retries once; a second failure stops persisting for the
-  session. `cacheStats()` is what Settings « Données » renders — the
+  session. `cacheStats()` is what the Settings « Data » section renders — the
   instrumentation is data, since the e2e fixture fails on a console error.
 - Seeding a cached area in e2e goes through `seedStationsCache()`
   (`e2e/fixtures.ts`), which writes IndexedDB from a loaded page and expects a
