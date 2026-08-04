@@ -118,6 +118,12 @@ export function useLeafletMap(options: LeafletShellOptions): LeafletShell {
       attributionControl: true,
       // Leaflet's stepped arrows/± give way to the smooth loop installed below
       keyboard: false,
+      // The ResizeObserver below owns resizing. Leaflet's own window-resize
+      // tracker would invalidateSize from its own rAF, BEFORE the observer
+      // fires — a center-keeping pan outside the programmatic window the
+      // observer opens, which the zone map's glide handler would read as a
+      // user pan (see the observer for what that did to a shared link).
+      trackResize: false,
     });
     addDarkBasemap(map);
     mapRef.current = map;
@@ -161,6 +167,19 @@ export function useLeafletMap(options: LeafletShellOptions): LeafletShell {
     // while the user hasn't taken over (Leaflet alone would keep the CENTER,
     // not the framing). A caller without refitBounds keeps center-keeping.
     const ro = new ResizeObserver(() => {
+      // The center-keeping pan inside invalidateSize fires move/moveend like
+      // any other, so it needs the programmatic window fitBounds opens: a map
+      // opened on a shared link counts as user-owned from the first frame, and
+      // without the window the zone map's glide handler read the resize pan
+      // (the mobile URL bar collapsing right after load) as a user pan and
+      // committed the visible-center offset into searchPos — the link's `ll`
+      // walked north by half a sheet on every reload. Only an actual size
+      // change opens it: the observe() callback at mount must not delay the
+      // takeover rule for nothing.
+      const el = map.getContainer();
+      if (!map.getSize().equals(L.point(el.clientWidth, el.clientHeight))) {
+        programmaticUntilRef.current = Date.now() + PROGRAMMATIC_MS;
+      }
       map.invalidateSize();
       const box = optionsRef.current.refitBounds?.() ?? null;
       if (box && !userInteractedRef.current) {
