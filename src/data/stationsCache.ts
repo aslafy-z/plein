@@ -48,7 +48,7 @@ const MATCH_KM = 3;
 const BUDGET_BYTES = 8 * 1024 * 1024;
 /** Older than this → the UI flags the data as outdated */
 export const STALE_MS = 10 * 60_000;
-/** Older than this → the chip stops saying « il y a N h » and names the day */
+/** Older than this → the chip stops saying « N h ago » and names the day */
 export const REVALIDATE_MS = 6 * 3_600_000;
 /** Hard ceiling: entries this old never paint at all. A cold boot that finds
  *  a week-old area must land on the loading/error path, not present last
@@ -566,7 +566,7 @@ export function writeStationsCache(
   queueFlush();
 }
 
-// ── Inspection and control (Settings « Données ») ────────────────────────────
+// ── Inspection and control (Settings « Data ») ───────────────────────────────
 
 export async function cacheStats(): Promise<StationsCacheStats> {
   await ready();

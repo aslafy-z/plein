@@ -309,7 +309,7 @@ export const DEMO_ROUTE_STATIONS: Station[] = [
     h: 4, services: ['shop', 'airPump'], prices: { diesel: 1.71, e10: 1.81, e85: 0.86 },
   }),
 
-  // Toulouse → Clermont-Ferrand (A20 puis A75)
+  // Toulouse → Clermont-Ferrand (A20 then A75)
   buildRoute({
     id: 'cl-villemur', name: 'Total Relais · Villemur', init: 'TO', brand: 'TotalEnergies',
     dest: DEST.clermont, f: 0.095, off: 0.6, address: 'RD14', city: 'Villemur-sur-Tarn', postalCode: '31340',

@@ -162,7 +162,7 @@ export function fluxDateToIso(stamp: string | undefined): string | undefined {
 }
 
 // ── Opening hours ────────────────────────────────────────────────────────────
-/** Day letters of `Horario`, in flux order (L=lundi … D=dimanche) */
+/** Day letters of `Horario`, in flux order (L=Monday … D=Sunday) */
 const DAY_LETTERS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
 /**
@@ -331,7 +331,7 @@ async function loadProvince(id: string, lowPriority: boolean): Promise<Station[]
 export class EspStationsProvider implements StationsProvider {
   readonly id = 'esp' as const;
   readonly capabilities: SourceCapabilities = {
-    brands: true, // the flux carries the rótulo (enseigne) directly
+    brands: true, // the flux carries the rótulo (banner) directly
   };
 
   async getStationsNear(

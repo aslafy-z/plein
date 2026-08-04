@@ -445,7 +445,7 @@ describe('freshnessLevel', () => {
   });
 
   it('owns up to a failed refresh rather than reporting a reassuring age', () => {
-    // « à l'instant » under a banner saying the source is down is the exact
+    // « just now » under a banner saying the source is down is the exact
     // contradiction this level exists to prevent
     expect(freshnessLevel(NOW - 1_000, true, NOW)).toBe('unrefreshed');
     expect(freshnessLevel(NOW - STALE_MS - 1, true, NOW)).toBe('unrefreshed');

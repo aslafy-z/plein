@@ -112,7 +112,7 @@ export class DemoStationsProvider implements StationsProvider {
     }
     // The pre-built axes only cover a few destinations. If the matches don't
     // actually spread along the route (e.g. all clustered near the departure),
-    // add fictional corridor stops so the Trajet screen works from anywhere.
+    // add fictional corridor stops so the Route screen works from anywhere.
     const deep = found.filter((f) => f.alongKm > totalKm * 0.25).length;
     const stations = found.map((f) => f.station);
     if (deep < 3) return [...stations, ...synthCorridorStations(polyline)];

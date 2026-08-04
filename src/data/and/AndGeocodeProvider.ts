@@ -32,7 +32,7 @@ async function fetchJson(url: string): Promise<unknown> {
 
 /**
  * "el Pas de la Casa, Encamp" → label + the parish alone. Naming the country
- * in front of it is the view's job (`placeSublabel`): « Andorre » is a word
+ * in front of it is the view's job (`placeSublabel`): « Andorra » is a word
  * the app chooses, not one the flux returns.
  */
 function splitLabel(text: string): Pick<GeocodeResult, 'label' | 'sublabel' | 'country'> {

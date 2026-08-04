@@ -156,7 +156,7 @@ function candidatesNear(grid: PoiGrid, count: number, p: GeoPoint): number[] {
  * coordinates. The gouv flux position is often geocoded from a partial
  * address (mid-street, missing house number), while OSM contributors place
  * the node on the forecourt itself: snapping fixes both the map pin and the
- * « Y aller » navigation target.
+ * « Go there » navigation target.
  */
 export function enrichWithBrands(stations: Station[], pois: FuelPoi[]): Station[] {
   if (!pois.length) return stations;

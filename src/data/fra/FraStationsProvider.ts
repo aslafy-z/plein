@@ -305,7 +305,7 @@ function parseRecord(rec: Raw): Station | null {
   const id = toStr(rec.id) ?? `${coords.lat.toFixed(5)},${coords.lng.toFixed(5)}`;
   const pretty = ville ? titleCase(ville) : '';
   return {
-    // Prefixed like the Spanish and Andorran ones — the « Automatique »
+    // Prefixed like the Spanish and Andorran ones — the « Automatic »
     // source mixes the three and reads the country off the id
     id: `fra-${id}`,
     name: pretty ? `Station · ${pretty}` : 'Station',
@@ -391,7 +391,7 @@ export class FraStationsProvider implements StationsProvider {
    * server-side, so favorites spread over the whole country cost one small
    * page — no geo circle at all. Brands are NOT enriched here: the OSM POI
    * index is loaded by proximity and these ids share none; the callers (the
-   * favorite-price refresh) consume prices alone, and the Favoris row renders
+   * favorite-price refresh) consume prices alone, and the Favorites row renders
    * its own pinned snapshot.
    */
   async getStationsByIds(

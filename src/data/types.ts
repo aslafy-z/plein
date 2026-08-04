@@ -199,7 +199,7 @@ export interface GeocodeResult {
 
 export interface GeocodeSearchOptions {
   /**
-   * Suggestions known SO FAR, published each time a source lands. « Automatique »
+   * Suggestions known SO FAR, published each time a source lands. « Automatic »
    * queries four national geocoders at once and one of them can be seconds
    * behind the others: the list fills in as they answer instead of waiting for
    * the slowest. The promise still resolves with the complete merge, so a view

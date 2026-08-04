@@ -13,7 +13,7 @@ const TTL_MS = 10 * 60_000;
 /**
  * Memoizes a geocoder's answers. Failures are never cached — a timeout must
  * not pin an empty list on a query for ten minutes — and a hit still calls
- * `onPartial`, so a caller that paints from it (« automatique » fills its list
+ * `onPartial`, so a caller that paints from it (« Automatic » fills its list
  * as sources land) sees the same sequence as on a miss.
  */
 export function withGeocodeMemo(inner: GeocodeProvider): GeocodeProvider {
