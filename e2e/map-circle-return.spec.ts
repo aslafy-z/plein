@@ -76,6 +76,31 @@ async function drag(page: Page, from: { x: number; y: number }, dx: number, dy: 
   await page.mouse.up()
 }
 
+/**
+ * The map holds still: a pin's screen position survives two animation
+ * frames. The load auto-fit, the pan-to-station after a tap and the drag
+ * inertia all move the pins per frame, and their duration stretches with CI
+ * load — a fixed wait measured screen positions mid-flight often enough for
+ * the follow-up click to land where a pin used to be.
+ */
+async function waitForMapSettled(page: Page) {
+  await page.waitForFunction(
+    () =>
+      new Promise<boolean>((resolve) => {
+        const pin = document.querySelector('.pin-bubble')
+        if (!pin) return resolve(false)
+        const r0 = pin.getBoundingClientRect()
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            const r1 = pin.getBoundingClientRect()
+            // width 0 = the pin was re-rendered away between the two reads
+            resolve(r1.width > 0 && r1.x === r0.x && r1.y === r0.y)
+          }),
+        )
+      }),
+  )
+}
+
 test('one drag brings the circle back after pin-hopping away from the zone', async ({ page }) => {
   await mockStationChain(page)
   const stage = await page.locator('.leaflet-container').boundingBox()
@@ -83,6 +108,7 @@ test('one drag brings the circle back after pin-hopping away from the zone', asy
   const cx = stage!.x + stage!.width / 2
   const cy = stage!.y + stage!.height / 2
   const gapToZone = async () => {
+    await waitForMapSettled(page)
     const p = await zonePin(page)
     return Math.hypot(p.x - cx, p.y - cy)
   }
@@ -95,7 +121,7 @@ test('one drag brings the circle back after pin-hopping away from the zone', asy
     const circle = await zonePin(page)
     const target = await page.evaluate(
       ({ circle, stage }) => {
-        let best: { x: number; y: number; d: number } | null = null
+        let best: { x: number; y: number; d: number; label: string } | null = null
         for (const el of document.querySelectorAll('.pin-bubble')) {
           const r = el.getBoundingClientRect()
           const x = r.x + r.width / 2
@@ -103,16 +129,21 @@ test('one drag brings the circle back after pin-hopping away from the zone', asy
           if (x < stage.x + 16 || x > stage.x + stage.width - 70) continue
           if (y < stage.y + 130 || y > stage.y + stage.height - 300) continue
           const d = circle ? Math.hypot(x - circle.x, y - circle.y) : y
-          if (!best || d > best.d) best = { x, y, d }
+          if (!best || d > best.d) best = { x, y, d, label: el.textContent ?? '' }
         }
         return best
       },
       { circle, stage: stage! },
     )
     expect(target, 'a pin to hop to must be in view').not.toBeNull()
-    await page.mouse.click(target!.x, target!.y)
+    // Tap the pin ELEMENT, not the coordinates it was measured at: the
+    // locator click re-resolves the position and waits for the pin to hold
+    // still, so a pan still in flight cannot turn the tap into a miss on
+    // bare map. The chain's prices are pairwise distinct, so the label
+    // names exactly one pin. The next measurement (gapToZone in the loop
+    // condition) waits out the pan-to-station this tap starts.
+    await page.locator('.pin-bubble', { hasText: target!.label }).first().click()
     await expect(page.getByText('Selected station')).toBeVisible()
-    await page.waitForTimeout(800) // the pan-to-station animation
   }
 
   const before = await gapToZone()
@@ -122,6 +153,7 @@ test('one drag brings the circle back after pin-hopping away from the zone', asy
   await page.waitForTimeout(400)
   await drag(page, { x: cx, y: cy }, 110, -90)
   await page.waitForTimeout(500)
+  await waitForMapSettled(page) // drag inertia can outlast the wait on CI
 
   // The drawn circle (readable again now that it is back in view) must be
   // around the visible center — which sits up to half an inset from the
