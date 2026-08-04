@@ -7,6 +7,7 @@ import { haversineKm, radiusBounds, type GeoPoint } from '../lib/geo';
 import { useIsDesktop } from '../lib/layout';
 import { useLeafletMap, type LeafletShell } from '../lib/leafletMap';
 import { pricePinDotHtml, pricePinHtml } from '../lib/pricePin';
+import { USER_DOT_SIZE, userDotHtml } from '../lib/userDot';
 import { zoneCircle } from '../lib/zoneCircle';
 import { useDebugMode } from '../lib/debugMode';
 import { fmtAgeMs } from '../lib/debugSnapshot';
@@ -529,13 +530,14 @@ export default function MapCanvas({
     const map = mapRef.current;
     if (!map) return;
     if (!userDotRef.current) {
-      const userHtml =
-        `<div style="width:34px;height:34px;border-radius:50%;background:${C.accentSoft15};` +
-        `display:flex;align-items:center;justify-content:center">` +
-        `<div style="width:14px;height:14px;border-radius:50%;background:${C.accent};` +
-        `border:3px solid ${C.accentDeep};box-sizing:border-box"></div></div>`;
+      // One dot markup for both maps — lib/userDot
       userDotRef.current = L.marker([app.userPos.lat, app.userPos.lng], {
-        icon: L.divIcon({ className: '', html: userHtml, iconSize: [34, 34], iconAnchor: [17, 17] }),
+        icon: L.divIcon({
+          className: '',
+          html: userDotHtml(),
+          iconSize: [USER_DOT_SIZE, USER_DOT_SIZE],
+          iconAnchor: [USER_DOT_SIZE / 2, USER_DOT_SIZE / 2],
+        }),
         interactive: false,
         keyboard: false,
       }).addTo(map);
