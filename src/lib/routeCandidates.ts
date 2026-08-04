@@ -19,10 +19,11 @@ const OFF_ROUTE_MIN_PER_KM = 1.5;
  * scale — a simplified polyline measures shorter than the road distance it
  * claims, and the autonomy limit is on road km) and crow-flies km off it.
  *
- * Costs O(stations × polyline vertices), which is hundreds of milliseconds on
- * a long route, so it runs EXACTLY ONCE per corridor — when the route loads.
- * `selectRouteCandidates` then reads the stored fields instead of measuring
- * again on every recompute.
+ * Measuring a station against the line is sublinear in its vertices (see the
+ * polyline index in lib/geo), but a corridor still holds a thousand of them
+ * and every recompute would pay for all of them again — so this runs EXACTLY
+ * ONCE per corridor, when the route loads, and `selectRouteCandidates` reads
+ * the stored fields instead of measuring anything.
  */
 export function projectCorridor(route: Route, stations: readonly Station[]): RouteStation[] {
   const cum = cumulativeKm(route.polyline);
@@ -85,10 +86,9 @@ const DEDUPE_DECIMALS = 3;
  * same output, always ordered by (projectionKm, id).
  *
  * `stations` arrive ALREADY projected — `kmAlong` and `offRouteKm` are measured
- * once when the corridor loads (see `loadRoute`). Projecting is O(polyline
- * vertices) per station, so a corridor of a few hundred stations against a few
- * thousand vertices costs seconds; this function runs inside a selector and
- * must stay O(stations log stations).
+ * once when the corridor loads (see `loadRoute`). This function runs inside a
+ * selector, on every store update: it reads those fields and must stay
+ * O(stations log stations), never measure against the polyline again.
  *
  * `priceOf` injects the effective-fuel logic (SP95-for-E10 etc.) so this
  * module stays free of catalog knowledge; stations it returns undefined for

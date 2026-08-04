@@ -54,21 +54,96 @@ export function cumulativeKm(line: GeoPoint[]): number[] {
   return out;
 }
 
+// ── Polyline index ───────────────────────────────────────────────────────────
+// `nearestOnPolyline` is asked the same question once PER STATION against the
+// same route: a corridor of a thousand gouv records against an `overview=full`
+// OSRM geometry (tens of thousands of vertices) is tens of millions of
+// haversines — seconds of frozen main thread while the route screen waits, and
+// the naive form also rebuilt the whole cumulative array on every one of those
+// calls. So the line is indexed ONCE (memoized on the array itself, which is
+// stable for a computed route) into consecutive blocks of vertices, each with
+// its first vertex as anchor and the radius that encloses the block. A query
+// then measures the anchors, and only opens the few blocks that can still hold
+// something closer than the best anchor — the answer is the same vertex the
+// full scan returns, for a fraction of the work.
+
+interface PolylineIndex {
+  cum: number[];
+  blockSize: number;
+  /** First vertex of each block */
+  anchors: GeoPoint[];
+  /** km from a block's anchor to its furthest vertex */
+  radii: number[];
+}
+
+const polylineIndexes = new WeakMap<GeoPoint[], PolylineIndex>();
+
+function polylineIndex(line: GeoPoint[], cumKm?: number[]): PolylineIndex {
+  const memo = polylineIndexes.get(line);
+  if (memo) return memo;
+  const cum = cumKm ?? cumulativeKm(line);
+  // √n blocks of √n vertices: the anchor pass and an opened block cost the
+  // same, which is where the two halves of the query balance out.
+  const blockSize = Math.max(16, Math.ceil(Math.sqrt(line.length)));
+  const anchors: GeoPoint[] = [];
+  const radii: number[] = [];
+  for (let start = 0; start < line.length; start += blockSize) {
+    const anchor = line[start];
+    let radius = 0;
+    for (let i = start + 1; i < Math.min(start + blockSize, line.length); i++) {
+      const d = haversineKm(anchor, line[i]);
+      if (d > radius) radius = d;
+    }
+    anchors.push(anchor);
+    radii.push(radius);
+  }
+  const index = { cum, blockSize, anchors, radii };
+  polylineIndexes.set(line, index);
+  return index;
+}
+
 /**
  * For a point near a polyline: distance to the closest vertex (km) and the
  * km-along-route of that vertex. Vertex-level precision is plenty for
  * "station along a motorway corridor" purposes.
+ *
+ * `cumKm` only seeds the index the first time a line is measured against — it
+ * is memoized from there on, so callers in a loop need not thread it through.
  */
 export function nearestOnPolyline(
   p: GeoPoint,
   line: GeoPoint[],
   cumKm?: number[],
 ): { distKm: number; alongKm: number; index: number } {
-  const cum = cumKm ?? cumulativeKm(line);
-  let best = { distKm: Infinity, alongKm: 0, index: 0 };
-  for (let i = 0; i < line.length; i++) {
-    const d = haversineKm(p, line[i]);
-    if (d < best.distKm) best = { distKm: d, alongKm: cum[i], index: i };
+  const best = { distKm: Infinity, alongKm: 0, index: 0 };
+  if (!line.length) return best;
+  const { cum, blockSize, anchors, radii } = polylineIndex(line, cumKm);
+
+  // The nearest anchor is itself a vertex, so its distance bounds the answer
+  // from above — every block whose closest possible vertex sits beyond it is
+  // out, and cannot be opened.
+  const anchorKm: number[] = [];
+  let limit = Infinity;
+  for (let b = 0; b < anchors.length; b++) {
+    const d = haversineKm(p, anchors[b]);
+    anchorKm.push(d);
+    if (d < limit) limit = d;
+  }
+
+  // Blocks in vertex order, so equal distances still resolve to the first
+  // vertex the full scan would have kept. A NaN bound never prunes.
+  for (let b = 0; b < anchors.length; b++) {
+    if (anchorKm[b] - radii[b] > limit) continue;
+    const start = b * blockSize;
+    for (let i = start; i < Math.min(start + blockSize, line.length); i++) {
+      const d = i === start ? anchorKm[b] : haversineKm(p, line[i]);
+      if (d < best.distKm) {
+        best.distKm = d;
+        best.alongKm = cum[i];
+        best.index = i;
+        if (d < limit) limit = d;
+      }
+    }
   }
   return best;
 }

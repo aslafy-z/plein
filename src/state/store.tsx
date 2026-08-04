@@ -1518,8 +1518,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // The route corridor is the same shape of problem as the map area: a
         // favorite it crosses keeps its price for the Favorites tab
         recordFavoritePrices(favoriteIds.current, raw, Date.now());
+        // Project BEFORE the updater, never inside it: React treats updaters as
+        // pure and runs them more than once (StrictMode does it deliberately),
+        // which paid the corridor's whole projection twice for one commit.
+        const placed = placeAlongRoute(raw, route);
         markRoute('route:stations');
-        setRouteState((s) => commitCorridor(s, key, placeAlongRoute(raw, route)));
+        setRouteState((s) => commitCorridor(s, key, placed));
       } catch {
         if (reqId !== routeReq.current) return;
         // The geometry is real and stays on screen; only this stage failed, and
