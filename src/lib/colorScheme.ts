@@ -26,6 +26,11 @@ const media: MediaQueryList | null =
     ? window.matchMedia('(prefers-color-scheme: light)')
     : null;
 
+const reducedMotion: MediaQueryList | null =
+  typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+    ? window.matchMedia('(prefers-reduced-motion: reduce)')
+    : null;
+
 const listeners = new Set<() => void>();
 
 /** The explicit choice made in Réglages, or null while the browser decides */
@@ -65,16 +70,39 @@ function notify(): void {
   for (const cb of listeners) cb();
 }
 
+/**
+ * notify(), cross-faded. A theme flip re-colors every surface at once — CSS
+ * variables, tile filters, gradients, inline styles — so animating the
+ * properties one by one would leave the non-interpolable ones (gradients, the
+ * basemap swap) snapping mid-fade. The View Transitions API animates the flip
+ * as ONE whole-page cross-fade instead: the attribute change inside the
+ * callback stays the entire switch. Browsers without the API, a user asking
+ * for reduced motion, and a notify() that would not re-color anything (the
+ * resolved theme is already on the document) all take the plain instant path.
+ */
+function animatedNotify(): void {
+  if (
+    typeof document === 'undefined' ||
+    typeof document.startViewTransition !== 'function' ||
+    reducedMotion?.matches === true ||
+    document.documentElement.dataset.theme === currentTheme()
+  ) {
+    notify();
+    return;
+  }
+  document.startViewTransition(notify);
+}
+
 /** Persist an explicit choice and apply it */
 export function applyTheme(theme: Theme): void {
   savePersisted({ theme });
-  notify();
+  animatedNotify();
 }
 
 /** Drop the explicit choice and follow the browser again */
 export function followBrowserTheme(): Theme {
   savePersisted({ theme: undefined });
-  notify();
+  animatedNotify();
   return detectedTheme();
 }
 
@@ -90,7 +118,7 @@ export function onThemeChange(cb: () => void): () => void {
 // While no explicit choice is made, the app follows the browser LIVE — a
 // system flipping to dark at dusk flips the app with it.
 media?.addEventListener('change', () => {
-  if (explicitTheme() == null) notify();
+  if (explicitTheme() == null) animatedNotify();
 });
 
 // index.html already set the attribute pre-paint; re-sync here so the meta

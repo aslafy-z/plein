@@ -625,6 +625,22 @@ button {
   animation: dialog-in 0.18s cubic-bezier(0.2, 0.8, 0.3, 1);
 }
 
+/* Theme switch: colorScheme.ts flips `data-theme` inside a view transition,
+   so the whole re-color lands as one whole-page cross-fade instead of an
+   abrupt swap. These rules only pace the browser's default cross-fade; a
+   browser without the API never starts a transition and flips instantly.
+   The pseudo-elements stay in their OWN rules — an unsupporting browser
+   drops every selector list they appear in, so sharing one with a plain
+   selector would silently kill that rule too. */
+::view-transition-old(root) {
+  animation-duration: 0.35s;
+  animation-timing-function: ease;
+}
+::view-transition-new(root) {
+  animation-duration: 0.35s;
+  animation-timing-function: ease;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .anim-sheet,
   .anim-fade,
@@ -632,6 +648,14 @@ button {
   .sheet-hint,
   .skeleton-row::after,
   .spin {
+    animation: none;
+  }
+  /* colorScheme.ts already skips the view transition under reduced motion;
+     this covers a preference that flips while one is mid-flight. */
+  ::view-transition-old(root) {
+    animation: none;
+  }
+  ::view-transition-new(root) {
     animation: none;
   }
 }
