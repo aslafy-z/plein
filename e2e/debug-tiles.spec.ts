@@ -74,6 +74,25 @@ test('debug mode draws the cached tiles over the map', async ({ page }) => {
     .toBeGreaterThan(0.2)
 })
 
+test('the tile layer is back as soon as the map tab is', async ({ page }) => {
+  await page.goto('/?debug=1')
+  await page.waitForSelector('.leaflet-container')
+  expect(await seedTilePyramid(page, CENTER)).toBeGreaterThan(0)
+  await expect
+    .poll(() => page.evaluate(CYAN_COVERAGE), { timeout: 20_000 })
+    .toBeGreaterThan(0.2)
+
+  // Another tab unmounts the map; coming back builds a new one. The layer's
+  // read is held back a few seconds, so redrawing only from it made the grid
+  // blink out on every round trip — it repaints from the last read at once.
+  await page.getByRole('button', { name: 'Settings' }).first().click()
+  await page.getByText('Map', { exact: true }).first().click()
+  await page.waitForSelector('.leaflet-container')
+  await expect
+    .poll(() => page.evaluate(CYAN_COVERAGE), { timeout: 2000 })
+    .toBeGreaterThan(0.2)
+})
+
 test('debug mode off leaves the map free of the tile layer', async ({ page }) => {
   await page.goto('/')
   await page.waitForSelector('.leaflet-container')
