@@ -36,9 +36,13 @@ const FLING_WINDOW_MS = 100;
 const FLING_HOLD_MS = 150;
 const TRANSITION = 'height .3s cubic-bezier(.4,0,.2,1)';
 
-/** Pointer/touch handlers the body's scroll container must carry so a pull
-    from its top drags the sheet closed */
-export interface SheetBodyGestures {
+/** Pointer handlers a body region carries so it can drag the sheet. Two
+    contracts share this shape: the body's SCROLL CONTAINER gets the
+    scroll-arbitrating set (native scroll, except a pull down from scroll-top
+    closes the sheet), and any STATIC BAR outside the scroller (the zone
+    list's count/sort row) gets the header's unconditional set — it must set
+    `touchAction: 'none'` or the browser claims the touch gesture first. */
+export interface SheetGestures {
   onPointerDown(e: React.PointerEvent<HTMLDivElement>): void;
   onPointerMove(e: React.PointerEvent<HTMLDivElement>): void;
   onPointerUp(e: React.PointerEvent<HTMLDivElement>): void;
@@ -81,8 +85,14 @@ export default function SheetShell({
       gesture engine) and the caller decides where it sits. */
   header: (handle: ReactNode) => ReactNode;
   /** Expanded part — the render prop owns the scroll container and must
-      attach the ref and gestures to it */
-  body?: (scrollerRef: RefObject<HTMLDivElement>, gestures: SheetBodyGestures) => ReactNode;
+      attach the ref and gestures to it. `staticBarGestures` goes on any
+      non-scrolling bar the body keeps outside the scroller, so it drags
+      too. */
+  body?: (
+    scrollerRef: RefObject<HTMLDivElement>,
+    gestures: SheetGestures,
+    staticBarGestures: SheetGestures,
+  ) => ReactNode;
   /** Pinned to the sheet's bottom edge, inside the collapsed height */
   footer?: ReactNode;
   /** What the drag handle announces — names the caller's content, since the
@@ -430,11 +440,22 @@ export default function SheetShell({
     return () => cancelAnimationFrame(raf);
   }, [height, expanded, instantContentResize]);
 
-  const bodyGestures: SheetBodyGestures = {
+  const bodyGestures: SheetGestures = {
     onPointerDown: listPointerDown,
     onPointerMove: listPointerMove,
     onPointerUp: listPointerUp,
     onPointerCancel: listPointerUp,
+    onClickCapture: swallowClickAfterDrag,
+  };
+
+  // The header's own handlers, verbatim: a tap still lands on whatever button
+  // the bar carries (only the handle toggles on pointerup), a real drag
+  // captures the pointer and swallows the trailing click.
+  const staticBarGestures: SheetGestures = {
+    onPointerDown: cardPointerDown,
+    onPointerMove: cardPointerMove,
+    onPointerUp: cardPointerUp,
+    onPointerCancel: cardPointerCancel,
     onClickCapture: swallowClickAfterDrag,
   };
 
@@ -515,7 +536,7 @@ export default function SheetShell({
       </div>
 
       {/* ── Body revealed by pulling the sheet up ── */}
-      {listAttached && body?.(listRef, bodyGestures)}
+      {listAttached && body?.(listRef, bodyGestures, staticBarGestures)}
 
       {/* ── Footer pinned to the bottom edge, always visible ── */}
       {footer && <div ref={footerRef} style={{ flexShrink: 0, marginTop: 'auto' }}>{footer}</div>}

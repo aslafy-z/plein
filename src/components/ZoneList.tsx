@@ -1,5 +1,6 @@
 import { useEffect, useRef, type DOMAttributes, type MutableRefObject, type Ref } from 'react';
 import { C, mono } from '../theme';
+import type { SheetGestures } from './SheetShell';
 import {
   useApp,
   selectSorted,
@@ -34,12 +35,17 @@ import BrandAvatar from './BrandAvatar';
 export default function ZoneList({
   scrollerRef,
   gestures,
+  staticBarGestures,
   onRowPick,
 }: {
   /** The phone sheet reads the scroll offset to arm its drag-to-close */
   scrollerRef?: Ref<HTMLDivElement>;
   /** Pointer handlers the phone sheet puts on the scroller */
   gestures?: DOMAttributes<HTMLDivElement>;
+  /** Pointer handlers the phone sheet puts on the count/sort row — it sits
+      above the scroller and scrolls nothing, so it drags the sheet like the
+      card does; the panel doesn't drag and passes none */
+  staticBarGestures?: SheetGestures;
   /** Called after a row is picked — the phone sheet collapses onto the map */
   onRowPick?: () => void;
 }) {
@@ -106,7 +112,16 @@ export default function ZoneList({
           exactly what this row needs — « {n} stations dans la zone » wrapped
           onto three lines there, so the count dropped the zone suffix the
           list already IS. */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 20px 10px' }}>
+      <div
+        {...staticBarGestures}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '12px 20px 10px',
+          ...(staticBarGestures ? { touchAction: 'none', cursor: 'grab' } : null),
+        }}
+      >
         <span
           style={{
             fontSize: 11.5,
