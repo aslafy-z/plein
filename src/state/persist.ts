@@ -51,8 +51,14 @@ export interface PersistedSettings {
       on the way out by lib/colorScheme.ts, like `locale` by lib/locale.ts) */
   theme: string;
   /** Last position the app was centered on — restored on reload so the
-      station cache hits instantly instead of flashing Toulouse/demo data */
+      station cache hits instantly instead of flashing Toulouse/demo data.
+      It is wherever the map was looking, a searched place included: it says
+      nothing about where the USER is (that's `lastFix`) */
   lastPos: GeoPoint;
+  /** Last position geolocation actually returned. Absent means the user has
+      never been located on this device — the map then has no dot to draw and
+      no origin to measure trips from, whatever `lastPos` it opens on */
+  lastFix: GeoPoint;
   /** true when geolocation succeeded before — on reload the first stations
       fetch waits for the fresh fix instead of loading the stale area twice */
   geoGranted: boolean;
@@ -198,6 +204,14 @@ function migrate(raw: Partial<PersistedSettings> & LegacySettings): Partial<Pers
     });
   }
   if (out.consumption == null && typeof out.conso === 'number') out.consumption = out.conso;
+  // `lastFix` split off `lastPos`, which used to stand for both « where the
+  // map was looking » and « where the user is ». A blob that granted
+  // geolocation before was written by a build where the two agreed, so its
+  // last centered position is the best fix we have; a blob that never
+  // granted has no fix at all, and must not inherit a searched place as one.
+  if (out.lastFix == null && out.geoGranted === true && out.lastPos != null) {
+    out.lastFix = out.lastPos;
+  }
   if (out.recents != null) {
     out.searchHistory = foldRecentsIntoSearchHistory(out.recents, out.searchHistory ?? []);
   }

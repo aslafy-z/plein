@@ -219,11 +219,19 @@ Anything that does not fit one of them does not get cached.
 
 | class | data | where | lifetime |
 | --- | --- | --- | --- |
-| durable, app-owned | settings, filters, favorites, `searchHistory`, `lastPos` | localStorage `plein.settings.v1` | none; shape migrations in `persist.ts` `migrate()` |
+| durable, app-owned | settings, filters, favorites, `searchHistory`, `lastPos`, `lastFix` | localStorage `plein.settings.v1` | none; shape migrations in `persist.ts` `migrate()` |
 | durable, app-owned | station arrays per fetched area | IndexedDB `plein.cache` (`src/data/cacheStore.ts`) | three tiers, below |
 | memory | province/district memos, `roadReach`, selector memos, brand POI index, geocode + route LRUs | JS maps | the session |
 | static, SW-owned | bundles, icons, fonts, shell, tiles, `/brands-fr.json`, `/brand-icons/*` | Cache Storage (`public/sw.js`) | cache-name version bump + FIFO caps |
 
+- **Where the map looks and where the user is are two different values.**
+  `lastPos` is the area the map opened on — a searched place included — and
+  only warms the cache and frames the first view; `lastFix` is a position
+  geolocation actually returned. `hasKnownPos` (`lastFix` present, or a fix
+  landed this session) is what gates everything that presents a position as
+  the user: the map dot, the lit recentre control, the distances and ETAs,
+  the « distance » sort. Refused or still pending on a first visit, the app
+  opens on the default area and claims nothing about it.
 - **Prices never go in the service worker.** `fetchedAt` per fetched area is
   the single source of truth about how old the numbers on screen are; an HTTP
   cache in front of a price API would age them without anything knowing.

@@ -97,3 +97,40 @@ describe('loadPersisted country-code migration', () => {
     expect(history.map((p) => p.country)).toEqual(['ad', 'pt', undefined])
   })
 })
+
+// `lastPos` used to stand for both « where the map was looking » and « where
+// the user is ». Splitting the fix off into `lastFix` decides, for every blob
+// already on a device, whether the app may draw a user dot on it.
+describe('loadPersisted position migration', () => {
+  const stubBlob = (blob: unknown) =>
+    vi.stubGlobal('localStorage', {
+      getItem: () => JSON.stringify(blob),
+      setItem: () => {},
+      removeItem: () => {},
+    })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  const toulouse = { lat: 43.6047, lng: 1.4442 }
+
+  it('takes a granted blob’s last position as its fix', () => {
+    stubBlob({ geoGranted: true, lastPos: toulouse })
+    expect(loadPersisted().lastFix).toEqual(toulouse)
+  })
+
+  it('invents no fix for a blob that never located the user', () => {
+    stubBlob({ lastPos: toulouse })
+    expect(loadPersisted().lastFix).toBeUndefined()
+    stubBlob({ geoGranted: false, lastPos: toulouse })
+    expect(loadPersisted().lastFix).toBeUndefined()
+  })
+
+  it('leaves a real fix alone when the map was searched elsewhere', () => {
+    const paris = { lat: 48.8566, lng: 2.3522 }
+    stubBlob({ geoGranted: true, lastPos: paris, lastFix: toulouse })
+    expect(loadPersisted().lastFix).toEqual(toulouse)
+    expect(loadPersisted().lastPos).toEqual(paris)
+  })
+})

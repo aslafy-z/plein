@@ -7,7 +7,7 @@ import { haversineKm, radiusBounds, type GeoPoint } from '../lib/geo';
 import { useIsDesktop } from '../lib/layout';
 import { useLeafletMap, type LeafletShell } from '../lib/leafletMap';
 import { pricePinDotHtml, pricePinHtml } from '../lib/pricePin';
-import { USER_DOT_SIZE, userDotHtml } from '../lib/userDot';
+import { USER_DOT_CLASS, USER_DOT_SIZE, userDotHtml } from '../lib/userDot';
 import { zoneCircle } from '../lib/zoneCircle';
 import { useDebugMode } from '../lib/debugMode';
 import { fmtAgeMs } from '../lib/debugSnapshot';
@@ -526,14 +526,25 @@ export default function MapCanvas({
     circleRef.current?.setStyle({ dashArray: tripOrigin ? undefined : '5 9' });
   }, [tripOrigin, app.searchPos, app.radius]);
 
+  // The user dot is drawn ONLY where geolocation actually put the user. Until
+  // a fix lands — refused, unavailable, or still being acquired on a first
+  // visit — the map opens on a default area and `userPos` is that fallback,
+  // not a position: a dot there would claim the user stands in Toulouse.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    if (!app.hasKnownPos) {
+      userDotRef.current?.remove();
+      userDotRef.current = null;
+      return;
+    }
     if (!userDotRef.current) {
       // One dot markup for both maps — lib/userDot
       userDotRef.current = L.marker([app.userPos.lat, app.userPos.lng], {
         icon: L.divIcon({
-          className: '',
+          // The class is the e2e's handle on « is the user drawn » — the dot
+          // is a Leaflet layer, invisible to a role or a test id
+          className: USER_DOT_CLASS,
           html: userDotHtml(),
           iconSize: [USER_DOT_SIZE, USER_DOT_SIZE],
           iconAnchor: [USER_DOT_SIZE / 2, USER_DOT_SIZE / 2],
@@ -544,7 +555,7 @@ export default function MapCanvas({
     } else {
       userDotRef.current.setLatLng([app.userPos.lat, app.userPos.lng]);
     }
-  }, [app.userPos]);
+  }, [app.userPos, app.hasKnownPos]);
 
   // ── User → zone link for a zone searched away WITHIN reach ──────────────────
   // A sparse, muted dashed segment from the user's position to the circle,
@@ -560,8 +571,10 @@ export default function MapCanvas({
   // The recenter control stays lit while the view is still tied to the
   // user's position: on it, or away with the origin link drawn. Only the
   // center dot is reserved for « the view IS on the user ». Plain ink means
-  // the tie is gone — zone out of reach, or no position ever known.
-  const locateActive = !app.searchedAway || linkWanted;
+  // the tie is gone — zone out of reach, or no position ever known. A view
+  // that merely sits on the default area is NOT on the user: without a fix
+  // the control reads as an invitation to locate, never as a state reached.
+  const locateActive = app.hasKnownPos && (!app.searchedAway || linkWanted);
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -1014,7 +1027,7 @@ export default function MapCanvas({
   const locateGlyph = (
     <LocateIcon
       color={locating ? C.mut : locateActive ? C.accent : C.ink}
-      dot={!app.searchedAway}
+      dot={locateActive && !app.searchedAway}
       size={19}
       spinning={locating}
     />
@@ -1153,6 +1166,7 @@ export default function MapCanvas({
             onClick={() => app.resetSearchToUser()}
             aria-label={locateAria}
             aria-busy={locating}
+            data-locate-active={locateActive}
             title={locateTitle}
             style={{
               ...clusterButton,
@@ -1204,6 +1218,7 @@ export default function MapCanvas({
             onClick={() => app.resetSearchToUser()}
             aria-label={locateAria}
             aria-busy={locating}
+            data-locate-active={locateActive}
             title={locateTitle}
             style={{
               position: 'absolute',

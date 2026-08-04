@@ -434,6 +434,12 @@ export interface AppStore {
   resetFilters(): void;
 
   // stations around me
+  /**
+   * Where trips are measured from — the user's own position once geolocation
+   * has answered, the fallback the map opened on until then. Only meaningful
+   * as « the user » when `hasKnownPos` is true: read that first before
+   * drawing a dot, lighting a control or showing a distance.
+   */
   userPos: GeoPoint;
   geoStatus: 'pending' | 'granted' | 'denied' | 'unavailable';
   /**
@@ -444,7 +450,12 @@ export interface AppStore {
    * is actually waiting on the GPS — which is the whole point of showing it.
    */
   geoLocating: boolean;
-  /** true when a real position was known before (persisted across reloads) */
+  /**
+   * true when geolocation has actually located the user — this session, or a
+   * past one (`lastFix`, persisted). False on a first visit refused or still
+   * pending: the map opens on a default area, and nothing may pass that area
+   * off as the user (no dot, no lit recentre control, no distances).
+   */
   hasKnownPos: boolean;
   requestGeolocation(): void;
   /** Center of the stations search (follows userPos until the user searches elsewhere on the map) */
@@ -793,9 +804,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => currentTheme());
   const [themeIsExplicit, setThemeIsExplicit] = useState(() => explicitTheme() != null);
   const [toast, setToast] = useState<string | null>(null);
-  // Start from the last known position so the per-area cache hits instantly
+  // Start from the last centered position so the per-area cache hits instantly
   const initialPos = persisted.lastPos ?? DEFAULT_POS;
-  const [userPos, setUserPos] = useState<GeoPoint>(initialPos);
+  // The user's own position is a different thing: only a real fix ever sets
+  // it. Absent one, `userPos` still holds the fallback the map opens on — it
+  // is what a trip would be measured from IF an origin were known — but
+  // `hasKnownPos` is false and nothing on screen may present it as the user.
+  const [userPos, setUserPos] = useState<GeoPoint>(persisted.lastFix ?? initialPos);
+  const [geoFixed, setGeoFixed] = useState(persisted.lastFix != null);
   const [geoStatus, setGeoStatus] = useState<AppStore['geoStatus']>('pending');
   const [geoLocating, setGeoLocating] = useState(false);
   // Search area: follows the user's position until they search elsewhere on
@@ -905,11 +921,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (req !== geoReq.current) return;
         const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserPos(p);
+        setGeoFixed(true);
         if (!searchMovedRef.current) setSearchPos(p);
         setGeoStatus('granted');
         setGeoHold(false);
         endGeoRequest();
-        savePersisted({ lastPos: p, geoGranted: true });
+        savePersisted({ lastPos: p, lastFix: p, geoGranted: true });
       },
       () => {
         if (req !== geoReq.current) return;
@@ -2123,7 +2140,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       userPos,
       geoStatus,
       geoLocating,
-      hasKnownPos: persisted.lastPos != null || geoStatus === 'granted',
+      hasKnownPos: geoFixed,
       requestGeolocation,
       searchPos,
       searchedAway: haversineKm(searchPos, userPos) > 0.5,
@@ -2222,7 +2239,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setFiltersOpenNav, sourceId, setSourceId, mapsSite, setMapsSite,
       locale, localeIsExplicit, setLocale, theme, themeIsExplicit, setTheme,
       detailId, toast, showToast,
-      canInstall, installDismissed, promptInstall, dismissInstallBanner, persisted.lastPos,
+      canInstall, installDismissed, promptInstall, dismissInstallBanner, geoFixed,
       openInMaps, openPlannedStopsInMaps, shareStation, shareMapView, shareRoute,
       finishOnboarding, sheetHint, consumeSheetHint,
     ],
