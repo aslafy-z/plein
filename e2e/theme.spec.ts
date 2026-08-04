@@ -27,7 +27,7 @@ test('an explicit choice re-colors in place and survives a reload', async ({ pag
 
   // No reload: the attribute flips and the shell repaints from the variables
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
-  await expect(page.locator('.app-shell')).toHaveCSS('background-color', 'rgb(242, 245, 243)')
+  await expect(page.locator('.app-shell')).toHaveCSS('background-color', 'rgb(233, 239, 235)')
 
   // The choice beats the (dark) browser preference after a reload too
   await page.reload()
@@ -51,7 +51,7 @@ test.describe('seeded choice', () => {
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
     await expect(page.locator('.app-shell')).toHaveCSS(
       'background-color',
-      'rgb(242, 245, 243)',
+      'rgb(233, 239, 235)',
     )
   })
 })

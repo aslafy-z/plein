@@ -141,82 +141,113 @@
   --c-origin-line: #9aa7b0;
 }
 
-/* « Cap jour » — same hue family, flipped: paper surfaces, the brand green
-   deepened so it holds its contrast as text on white, warm orange darkened
-   the same way. Borders and dividers turn black-alpha, shadows soften. */
+/* « Cap jour » — the dark system flipped, and NOT a bleached copy of it.
+   Two things make a light theme fail where the dark one works, and both are
+   fixed here by where the contrast is SPENT rather than by adding more of it.
+
+   1. A near-white page has nowhere to put a white card. The first version ran
+      `--c-bg` at #f2f5f3 with white surfaces, a 1.10:1 step — cards, nav bar
+      and sheets all dissolved into one flat glare, and the only shape left
+      standing was the green button, which is what « too much contrast with
+      the green » actually is. So the page base drops to a tinted paper
+      (#e9efeb, L* 94) and the ramp below it opens up: white cards separate,
+      chips sit BELOW the page like they sit above it in dark, and the field
+      stops glaring.
+   2. Black-alpha on paper reads far weaker than white-alpha on near-black at
+      the same alpha, so a mirrored border ramp leaves every outline invisible
+      (an unselected filter chip was a 1.4:1 line). The light ramp is
+      therefore STEEPER and re-anchored by role: `--c-divider`/`--c-border`/
+      `--c-border-08` stay hairlines between rows, and everything from
+      `--c-border-09` up — the tokens that outline a control or carry its
+      state — is pinned at or above the 3:1 that WCAG 1.4.11 asks of a
+      component boundary.
+
+   Every text pair clears WCAG AA 4.5:1 on the surface it lands on, including
+   the ones the first version missed: the white CTA label on the green
+   (4.15 → 6.05), a price in accent green (3.78 → 5.19), the same green on its
+   own soft tint (3.36 → 4.53), `--c-faint` placeholders and inactive tab
+   icons (2.82 → 5.39), the `--c-ghost` credit link (1.99 → 4.63), and the off
+   toggle track, which a component boundary needs at 3:1 (1.33 → 3.02). The
+   green itself is deepened AND de-saturated (#0d8f4f → #0e7146): its
+   luminance contrast has to go UP for the label to be legible, so what gets
+   removed is the chroma vibration against the surrounding paper, not the
+   ratio — the button stops shouting because the page finally answers it, not
+   because the green was dimmed. */
 :root[data-theme='light'] {
-  --c-page-bg: #eaeeec;
-  --c-bg: #f2f5f3;
-  --c-bg-0: rgba(242, 245, 243, 0);
+  --c-page-bg: #dbe2de;
+  --c-bg: #e9efeb;
+  --c-bg-0: rgba(233, 239, 235, 0);
   --c-surface: #ffffff;
-  --c-surface-2: #e9eeeb;
-  --c-surface-3: #dfe6e2;
+  --c-surface-2: #dce4df;
+  --c-surface-3: #ccd6d0;
   --c-card: #ffffff;
-  --c-nav-bg: #f8faf9;
-  --c-map-bg: #dfe5e1;
-  --c-accent: #0d8f4f;
-  --c-accent-hover: #0a6e3d;
+  --c-nav-bg: #f6f9f7;
+  --c-map-bg: #d7ded9;
+  --c-accent: #0e7146;
+  --c-accent-hover: #0a5836;
   --c-on-accent: #ffffff;
-  --c-ink: #14181b;
-  --c-body: #3d474d;
-  --c-body-2: #4d585e;
-  --c-mut: #5f6b71;
-  --c-faint: #8a9499;
-  --c-ghost: #a8b1b5;
-  --c-warn: #c14f2e;
-  --c-border: rgba(16, 24, 20, 0.1);
-  --c-border-08: rgba(16, 24, 20, 0.11);
-  --c-border-09: rgba(16, 24, 20, 0.12);
-  --c-border-12: rgba(16, 24, 20, 0.16);
-  --c-border-15: rgba(16, 24, 20, 0.19);
-  --c-border-18: rgba(16, 24, 20, 0.22);
-  --c-border-20: rgba(16, 24, 20, 0.24);
-  --c-border-25: rgba(16, 24, 20, 0.3);
-  --c-divider: rgba(16, 24, 20, 0.08);
-  --c-accent-border: rgba(13, 143, 79, 0.3);
-  --c-accent-border-strong: rgba(13, 143, 79, 0.45);
-  --c-accent-border-30: rgba(13, 143, 79, 0.35);
-  --c-accent-border-40: rgba(13, 143, 79, 0.5);
-  --c-accent-soft: rgba(13, 143, 79, 0.1);
-  --c-accent-soft-05: rgba(13, 143, 79, 0.06);
-  --c-accent-soft-09: rgba(13, 143, 79, 0.08);
-  --c-accent-soft-10: rgba(13, 143, 79, 0.09);
-  --c-accent-soft-14: rgba(13, 143, 79, 0.12);
-  --c-accent-soft-15: rgba(13, 143, 79, 0.13);
-  --c-accent-pale: #063d20;
+  --c-ink: #161d1a;
+  --c-body: #2f3733;
+  --c-body-2: #3b433f;
+  --c-mut: #4d5551;
+  --c-faint: #5a625e;
+  --c-ghost: #646c68;
+  --c-warn: #a8421c;
+  /* hairlines between rows — decorative, no WCAG floor */
+  --c-border: rgba(12, 30, 22, 0.14);
+  --c-border-08: rgba(12, 30, 22, 0.16);
+  --c-divider: rgba(12, 30, 22, 0.12);
+  /* control outlines and states — held at ≥ 3:1 on paper AND on white */
+  --c-border-09: rgba(12, 30, 22, 0.48);
+  --c-border-12: rgba(12, 30, 22, 0.52);
+  --c-border-15: rgba(12, 30, 22, 0.58);
+  --c-border-18: rgba(12, 30, 22, 0.62);
+  --c-border-20: rgba(12, 30, 22, 0.66);
+  --c-border-25: rgba(12, 30, 22, 0.74);
+  --c-accent-border: rgba(14, 113, 70, 0.7);
+  --c-accent-border-strong: rgba(14, 113, 70, 0.9);
+  --c-accent-border-30: rgba(14, 113, 70, 0.75);
+  --c-accent-border-40: rgba(14, 113, 70, 0.85);
+  --c-accent-soft: rgba(14, 113, 70, 0.1);
+  --c-accent-soft-05: rgba(14, 113, 70, 0.06);
+  --c-accent-soft-09: rgba(14, 113, 70, 0.08);
+  --c-accent-soft-10: rgba(14, 113, 70, 0.09);
+  --c-accent-soft-14: rgba(14, 113, 70, 0.12);
+  --c-accent-soft-15: rgba(14, 113, 70, 0.13);
+  --c-accent-pale: #05301a;
   --c-accent-deep: #ffffff;
-  --c-accent-glow-25: rgba(13, 143, 79, 0.18);
-  --c-accent-glow-28: rgba(13, 143, 79, 0.2);
-  --c-accent-glow-35: rgba(13, 143, 79, 0.25);
-  --c-accent-glow-55: rgba(13, 143, 79, 0.35);
-  --c-warn-soft: rgba(193, 79, 46, 0.1);
-  --c-warn-soft-14: rgba(193, 79, 46, 0.12);
-  --c-warn-border-30: rgba(193, 79, 46, 0.35);
-  --c-warn-border-35: rgba(193, 79, 46, 0.4);
+  --c-accent-glow-25: rgba(14, 113, 70, 0.2);
+  --c-accent-glow-28: rgba(14, 113, 70, 0.22);
+  --c-accent-glow-35: rgba(14, 113, 70, 0.28);
+  --c-accent-glow-55: rgba(14, 113, 70, 0.4);
+  --c-warn-soft: rgba(168, 66, 28, 0.1);
+  --c-warn-soft-14: rgba(168, 66, 28, 0.12);
+  --c-warn-border-30: rgba(168, 66, 28, 0.45);
+  --c-warn-border-35: rgba(168, 66, 28, 0.55);
   --c-warn-deep: #ffffff;
-  --c-warn-text: #963a1d;
-  --c-toggle-off: #cfd8d3;
-  --c-overlay: rgba(242, 245, 243, 0.85);
-  --c-scrim: rgba(20, 28, 24, 0.4);
-  --c-scrim-soft: rgba(20, 28, 24, 0.22);
-  --c-glass-bg: rgba(250, 252, 251, 0.88);
-  --c-glass-bg-soft: rgba(250, 252, 251, 0.84);
-  --c-glass-bg-strong: rgba(250, 252, 251, 0.96);
-  --c-glass-border: rgba(16, 24, 20, 0.1);
-  --c-shadow-35: rgba(22, 32, 27, 0.12);
-  --c-shadow-40: rgba(22, 32, 27, 0.14);
-  --c-shadow-45: rgba(22, 32, 27, 0.16);
-  --c-shadow-50: rgba(22, 32, 27, 0.18);
-  --c-shadow-55: rgba(22, 32, 27, 0.2);
-  --c-skeleton: #dde3e0;
-  --c-skeleton-sweep: rgba(255, 255, 255, 0.55);
-  --c-attribution-bg: rgba(250, 252, 251, 0.8);
+  --c-warn-text: #8a3417;
+  --c-toggle-off: #818b85;
+  --c-overlay: rgba(233, 239, 235, 0.9);
+  --c-scrim: rgba(14, 22, 18, 0.45);
+  --c-scrim-soft: rgba(14, 22, 18, 0.25);
+  --c-glass-bg: rgba(247, 250, 248, 0.92);
+  --c-glass-bg-soft: rgba(247, 250, 248, 0.88);
+  --c-glass-bg-strong: rgba(250, 252, 251, 0.97);
+  --c-glass-border: rgba(12, 30, 22, 0.26);
+  --c-shadow-35: rgba(18, 30, 24, 0.14);
+  --c-shadow-40: rgba(18, 30, 24, 0.16);
+  --c-shadow-45: rgba(18, 30, 24, 0.18);
+  --c-shadow-50: rgba(18, 30, 24, 0.2);
+  --c-shadow-55: rgba(18, 30, 24, 0.22);
+  --c-skeleton: #d5ddd8;
+  --c-skeleton-sweep: rgba(255, 255, 255, 0.6);
+  --c-attribution-bg: rgba(247, 250, 248, 0.85);
   --c-pin-dot-bg: #ffffff;
-  --c-pin-dot-border: rgba(16, 24, 20, 0.35);
-  --c-pin-dot-deal-border: rgba(255, 255, 255, 0.75);
-  --c-pin-dot-high-bg: #f7ded4;
-  --c-pin-dot-high-border: rgba(193, 79, 46, 0.7);
-  --c-origin-line: #66737a;
+  --c-pin-dot-border: rgba(12, 30, 22, 0.55);
+  --c-pin-dot-deal-border: rgba(255, 255, 255, 0.85);
+  --c-pin-dot-high-bg: #f6d9cd;
+  --c-pin-dot-high-border: rgba(168, 66, 28, 0.8);
+  --c-origin-line: #5d6a64;
 }
 
 * {
@@ -452,8 +483,12 @@ button {
 .tiles-carto {
   filter: grayscale(0.55) saturate(0.55) brightness(1.5) contrast(0.9);
 }
+/* The map is the largest light surface on screen, so it is toned to the same
+   paper the shell sits on rather than left at full daylight — a white-hot
+   basemap under a tinted UI is the other half of the glare, and it is what
+   makes a green pin read as neon instead of as a price. */
 [data-theme='light'] .tiles-carto {
-  filter: grayscale(0.2) saturate(0.75) contrast(0.98);
+  filter: grayscale(0.3) saturate(0.65) brightness(0.97) contrast(0.96);
 }
 /* OSM fallback (inverted to dark), same neutral treatment */
 .tiles-dark {
