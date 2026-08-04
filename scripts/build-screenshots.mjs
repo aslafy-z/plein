@@ -264,11 +264,16 @@ async function shootLocale(browser, locale) {
       // full-screen place search, and the input to fill is the search's own.
       // Type the departure rather than leaving the implicit "My position", so
       // the ribbon header reads "Toulouse → Nantes" as the README caption says.
+      // getByRole('textbox') skips the sheet's tank slider, which is also an
+      // <input> and stays visible under the opening search.
+      const searchInput = page.getByRole('textbox').first();
       await page.locator(`button[aria-label="${msg.route_from_field_title}"]`).click();
-      await page.locator('input:visible').first().fill('Toulouse');
+      await searchInput.waitFor({ timeout: 10_000 });
+      await searchInput.fill('Toulouse');
       await page.getByText(/^Toulouse/).first().click({ timeout: 30_000 });
       await page.locator(`button[aria-label="${msg.route_to_field_title}"]`).click();
-      await page.locator('input:visible').first().fill('Nantes');
+      await searchInput.waitFor({ timeout: 10_000 });
+      await searchInput.fill('Nantes');
       await page.getByText(/^Nantes/).first().click({ timeout: 30_000 });
       await page.getByText(msg.route_compare_cta).click();
       await page.getByText(msg.ribbon_recommended_stop).waitFor({ timeout: 60_000 });
