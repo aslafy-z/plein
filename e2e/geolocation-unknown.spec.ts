@@ -3,7 +3,7 @@
 // default area — but an area is not a person. Nothing may present that
 // fallback as the user: no dot on it, and the recentre control stays plain
 // ink, an invitation to locate rather than a state already reached.
-import { test, expect } from './fixtures'
+import { test, expect, gotoMap } from './fixtures'
 
 /** The user dot is a Leaflet layer — its class is the only handle on it */
 const USER_DOT = '.leaflet-marker-icon.user-dot'
@@ -53,6 +53,18 @@ test('a fix still under way claims nothing either', async ({ page }) => {
   await expect(recentre).toBeVisible()
   await expect(recentre).toHaveAttribute('data-locate-active', 'false')
   await expect(page.locator(USER_DOT)).toHaveCount(0)
+})
+
+test('the route stage marks no user either', async ({ page }) => {
+  await stubRefusedFix(page)
+  await gotoMap(page)
+  await page.getByText('Route', { exact: true }).click()
+
+  const recentre = page.getByTestId('route-recenter')
+  await expect(recentre).toBeVisible()
+  await expect(page.locator(USER_DOT)).toHaveCount(0)
+  // The picto's center dot is what says « the view sits on you »
+  await expect(recentre.locator('svg circle[r="2.1"]')).toHaveCount(0)
 })
 
 test.describe('a device located before', () => {
