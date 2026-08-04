@@ -33,6 +33,7 @@ import { LOCALES, type Locale } from '../lib/locale';
 import { m } from '../paraglide/messages.js';
 import { HAS_NATIVE_MAPS } from '../lib/env';
 import { LogoLockup } from '../components/Logo';
+import LocateIcon from '../components/LocateIcon';
 import { APP_VERSION, REPO_URL } from '../lib/appUpdate';
 import { bugReportUrl, environmentLines } from '../lib/issueReport';
 
@@ -693,12 +694,10 @@ export default function Settings() {
                 </div>
               </div>
               {geoLocating ? (
-                <span
-                  className="spin"
-                  aria-hidden
-                  style={{ color: C.accent, fontSize: 14, lineHeight: 1, flexShrink: 0 }}
-                >
-                  ↻
+                // The same turning crosshair the map's recentre control shows,
+                // so one wait reads as one thing wherever it is asked for
+                <span style={{ display: 'flex', flexShrink: 0 }}>
+                  <LocateIcon color={C.mut} dot={false} size={17} spinning />
                 </span>
               ) : (
                 geoStatus !== 'granted' && (
