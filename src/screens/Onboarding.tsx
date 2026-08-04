@@ -32,7 +32,9 @@ export default function Onboarding() {
               margin: '0 auto',
               padding: '40px 26px',
             }
-          : { padding: '26px 26px 22px' }),
+          : // The phone CTA block sits on the bottom edge, so the gesture bar
+            // must be padded out like every other bottom-edge chrome
+            { padding: '26px 26px calc(22px + env(safe-area-inset-bottom, 0px))' }),
       }}
     >
       {/* Logo row — « 2a Goutte-repère » */}
