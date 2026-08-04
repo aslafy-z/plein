@@ -17,7 +17,6 @@ import {
   selectPriceStats,
   effectivePrice,
   priceTier,
-  searchOutOfReach,
   selectTripOriginKnown,
   type AppStore,
 } from '../state/store';
@@ -164,6 +163,7 @@ export default function MapCanvas({
   const circleOffsetRef = useRef({ x: 0, y: 0 });
   const userDotRef = useRef<L.Marker | null>(null);
   const originLineRef = useRef<L.Polyline | null>(null);
+  const centerDotRef = useRef<L.CircleMarker | null>(null);
   const markersRef = useRef(new Map<string, { marker: L.Marker; sig: string }>());
   /** Set by setup — the keyboard gesture start needs it through the shell */
   const measureCircleOffsetRef = useRef<(() => void) | null>(null);
@@ -375,6 +375,7 @@ export default function MapCanvas({
       circleOffsetRef.current = { x: 0, y: 0 };
       userDotRef.current = null;
       originLineRef.current = null;
+      centerDotRef.current = null;
     };
   };
 
@@ -477,14 +478,16 @@ export default function MapCanvas({
     }
   }, [app.userPos]);
 
-  // ── User → zone link while the searched area is out of reach ────────────────
-  // A sparse, muted dashed segment from the user's position to the zone: at
-  // zone zoom the origin end sits off-screen, so what shows is a stub
-  // entering from the edge — « your position is that way, far ». Only drawn
-  // from a KNOWN position: without one there is no origin to link from, and
-  // the dashed circle alone carries the state. Deliberately nothing like the
-  // route polyline — this must never read as an itinerary.
-  const linkWanted = app.hasKnownPos && searchOutOfReach(app);
+  // ── User → zone link while the zone is searched away ────────────────────────
+  // A sparse, muted dashed segment from the user's position to the zone
+  // center, whenever the circle sits away from a KNOWN position. Within
+  // reach both ends are visible and it reads « the zone hangs off you,
+  // there »; out of reach the origin end sits off-screen and what shows is
+  // a stub entering from the edge — « your position is that way, far ».
+  // Without a known position no line is drawn (there is no origin to link
+  // from) — the dashed circle alone carries that state. Deliberately
+  // nothing like the route polyline — this must never read as an itinerary.
+  const linkWanted = app.hasKnownPos && app.searchedAway;
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -509,6 +512,30 @@ export default function MapCanvas({
       originLineRef.current.setLatLngs(pts);
     }
   }, [linkWanted, app.userPos, app.searchPos]);
+
+  // ── Zone center dot — systematically present, discreet ──────────────────────
+  // A small fixed-size dot anchoring what the circle is centered on: the
+  // point every zone hangs off, and the point the link line above plugs
+  // into. Always drawn — when the circle follows the user it sits under the
+  // user dot and disappears into it, which is exactly the story (the zone
+  // IS centered on you), so there is no branch to fall out of sync.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!centerDotRef.current) {
+      centerDotRef.current = L.circleMarker([app.searchPos.lat, app.searchPos.lng], {
+        radius: 3,
+        color: '#3ddc84',
+        weight: 1,
+        opacity: 0.6,
+        fillColor: '#3ddc84',
+        fillOpacity: 0.4,
+        interactive: false,
+      }).addTo(map);
+    } else {
+      centerDotRef.current.setLatLng([app.searchPos.lat, app.searchPos.lng]);
+    }
+  }, [app.searchPos]);
 
   // ── Station pins: keyed diff so panning/refreshes never blink the markers ──
   // The map shows every loaded station passing the filters (the whole fetched
