@@ -36,8 +36,8 @@ test('an explicit choice re-colors in place and survives a reload', async ({ pag
     timeout: 15_000,
   })
 
-  // « Browser setting » drops the override — back to the browser's dark
-  await page.getByRole('button', { name: 'Browser setting', exact: true }).click()
+  // « Browser theme » drops the override — back to the browser's dark
+  await page.getByRole('button', { name: 'Browser theme', exact: true }).click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
 })
 

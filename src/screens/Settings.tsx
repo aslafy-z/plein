@@ -706,7 +706,7 @@ export default function Settings() {
             }}
           >
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {/* « Browser setting » is the absence of a choice, not a
+              {/* « Browser theme » is the absence of a choice, not a
                   theme: picking it drops the override so the browser's light or
                   dark preference applies again — live, dusk included. */}
               {[null, ...THEMES].map((t) => {

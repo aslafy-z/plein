@@ -465,7 +465,7 @@
   "settings_geo_enable": "Turn on",
   "settings_location_hint": "Without location the map opens on the last area you viewed (Toulouse by default). If the prompt no longer appears, allow location for this site in your browser settings.",
   "settings_appearance_section": "Appearance",
-  "settings_theme_auto": "Browser setting",
+  "settings_theme_auto": "Browser theme",
   "settings_theme_dark": "Dark",
   "settings_theme_light": "Light",
   "settings_theme_hint": "« {auto} » follows your browser's light or dark mode.",
