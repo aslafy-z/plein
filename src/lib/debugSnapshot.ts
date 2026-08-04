@@ -20,6 +20,7 @@ import {
   STALE_MS,
 } from '../data/stationsCache';
 import { consoleErrorsDebug, type RecordedError } from './debugMode';
+import { isForcedOffline } from './connectivity';
 import {
   lastAreaLoadDebug,
   tileLayerDebugSnapshot,
@@ -131,7 +132,7 @@ export interface DebugSnapshot {
     bypassed: boolean;
     updateWaiting: boolean;
   };
-  connectivity: { onLine: boolean };
+  connectivity: { onLine: boolean; forcedOffline: boolean };
   app: {
     screen: string;
     sourceId: DataSourceId;
@@ -262,7 +263,10 @@ export async function collectDebugSnapshot(app: AppDebugInput): Promise<DebugSna
     coordsRounded: true,
     build: { version: APP_VERSION, dev: IS_DEV },
     sw,
-    connectivity: { onLine: typeof navigator === 'undefined' || navigator.onLine !== false },
+    connectivity: {
+      onLine: typeof navigator === 'undefined' || navigator.onLine !== false,
+      forcedOffline: isForcedOffline(),
+    },
     app: {
       screen: app.screen,
       sourceId: app.sourceId,
