@@ -1,7 +1,7 @@
 // Locale wiring.
 //
 // Paraglide resolves the locale through the strategy list configured in
-// vite.config.ts: `custom-appSettings` first (an explicit choice in Réglages),
+// vite.config.ts: `custom-appSettings` first (an explicit choice in Settings),
 // then `preferredLanguage` (what the browser asks for), then `baseLocale`
 // (French). The custom strategy reads and writes the app's own settings blob,
 // so the language is a persisted setting like `fuel` or `mapsSite` — no second
@@ -41,7 +41,7 @@ defineCustomClientStrategy('custom-appSettings', {
 /** Every locale the app ships, base locale first */
 export const LOCALES: readonly Locale[] = locales;
 
-/** The explicit choice made in Réglages, or null while the browser decides */
+/** The explicit choice made in Settings, or null while the browser decides */
 export function explicitLocale(): Locale | null {
   const saved = loadPersisted().locale;
   return isLocale(saved) ? saved : null;

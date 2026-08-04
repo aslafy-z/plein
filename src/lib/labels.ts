@@ -139,7 +139,7 @@ export function serviceLabel(raw: string): string {
   return raw;
 }
 
-/** Chip label of a station's opening status, e.g. « Ouvert · ferme à 20 h 30 » */
+/** Chip label of a station's opening status, e.g. « Open · closes at 20h30 » */
 export function openStatusLabel(status: OpenStatus): string {
   switch (status.kind) {
     case 'open24h':
@@ -155,14 +155,14 @@ export function openStatusLabel(status: OpenStatus): string {
   }
 }
 
-/** One-word status for the inline « 2,3 km · ouvert · MàJ … » summaries */
+/** One-word status for the inline « 2.3 km · open · Upd. … » summaries */
 export function openStatusShort(status: OpenStatus): string {
   if (status.kind === 'open24h') return m.hours_short_open_24h();
   return status.open ? m.hours_short_open() : m.hours_short_closed();
 }
 
 /**
- * Title of a data source in Réglages — the country leads, then the domain
+ * Title of a data source in Settings — the country leads, then the domain
  * (« France · prix-carburants.gouv.fr »). The country name follows the
  * locale, the domain is a proper noun and stays as it is.
  */

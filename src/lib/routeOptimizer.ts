@@ -162,7 +162,7 @@ const PRICE_STOP_COST = REFUEL_STOP_MIN * VALUE_OF_TIME_CENTS_PER_MIN * 20;
  *
  * That matters for more than tidiness. A lexicographic primary/secondary split
  * (« minutes, then price ») made the secondary key unreachable: routed
- * durations tie to the tenth of a minute essentially never, so « détour min. »
+ * durations tie to the tenth of a minute essentially never, so « Least detour »
  * ignored price outright and would take a station 30 c/L dearer to save six
  * seconds. A tolerance band would fix the symptom and break the solver — a
  * comparator with a band is not transitive, and the DP's per-state pruning

@@ -117,7 +117,7 @@ describe('effectiveFuel', () => {
   })
 })
 
-// ── Comparison range (fiche : « le + bas », économie sur un plein) ────────────
+// ── Comparison range (fiche: « the lowest », saving on a fill-up) ────────────
 describe('fuelRange', () => {
   it('compares E10 on the Spanish SP95 prices instead of coming back empty', () => {
     const zone = [
@@ -190,7 +190,7 @@ describe('selectVisible', () => {
     const data = [
       station({ id: 'esp-1', ...north(1), prices: diesel(1.7), tags: ['adBlue', 'carWash'] }),
       station({ id: 'esp-2', ...north(1), prices: diesel(1.7), tags: ['adBlue'] }),
-      // Unknown for AdBlue, but « Lavage » is a tag every source can answer
+      // Unknown for AdBlue, but « Car wash » is a tag every source can answer
       station({ id: 'fra-1', ...north(1), prices: diesel(1.7), tags: ['carWash'] }),
       station({ id: 'fra-2', ...north(1), prices: diesel(1.7) }),
     ]
@@ -238,7 +238,7 @@ describe('selectVisible', () => {
       station({ id: 'i1', ...north(1), prices: diesel(1.7), tags: ['carWash'], brand: 'Intermarché' }),
       // Same brand, but sells no diesel → must not inflate the Intermarché row
       station({ id: 'i2', ...north(1), prices: { e85: { value: 0.9 } }, brand: 'Intermarché' }),
-      // Right fuel, no « Lavage » → drops out as soon as the service is asked
+      // Right fuel, no « Car wash » → drops out as soon as the service is asked
       station({ id: 'i3', ...north(2), prices: diesel(1.8), brand: 'Intermarché' }),
       station({ id: 's1', ...north(2), prices: diesel(1.9), tags: ['carWash'], brand: 'Shell' }),
       // Out of the radius → counted nowhere
@@ -367,7 +367,7 @@ describe('selectByPrice / selectRecommended', () => {
     expect(selectRecommended(a)?.id).toBe('near')
   })
 
-  it('crowns the best deal, not the best sticker price, once the détour is paid', () => {
+  it('crowns the best deal, not the best sticker price, once the detour is paid', () => {
     // 1,86 € at ~15.9 km vs 1,89 € at ~11.8 km (6,5 L/100 km, 50 L):
     // effective 1,940 vs 1,950 €/L → within the 1-ct tie margin → NEAREST wins
     const data = [
@@ -461,12 +461,12 @@ describe('selectSorted', () => {
   ]
   const stations = { status: 'ready', data, activeSource: 'demo', refreshing: false } as AppStore['stations']
 
-  it('« Recommandé » ranks on the effective price, not the sticker', () => {
+  it('« Recommended » ranks on the effective price, not the sticker', () => {
     // 1,85 € at ~15.6 road km vs 1,87 € at ~4.6 road km (6,5 L/100 km, 50 L):
     // effective ≈ 1,928 vs 1,892 €/L — the sticker order flips
     const a = app({ radius: 25, sort: 'recommended', stations })
     expect(selectSorted(a).map((s) => s.id)).toEqual(['near-deal', 'far-cheap', 'filler'])
-    // « Prix » and « Distance » keep their own orders
+    // « Price » and « Distance » keep their own orders
     expect(selectSorted(app({ ...a, sort: 'price' })).map((s) => s.id)).toEqual([
       'far-cheap',
       'near-deal',
@@ -644,7 +644,7 @@ describe('selectPriceStats / priceTier', () => {
       },
     })
 
-  it('widens the « bon plan » tier to the low-price cluster, tints the max tier', () => {
+  it('widens the « good deal » tier to the low-price cluster, tints the max tier', () => {
     const a = withData([1.6, 1.61, 1.62, 1.75, 1.76, 1.77, 1.78, 1.85, 1.85])
     const stats = selectPriceStats(a)!
     expect([1.6, 1.61, 1.62].map((p) => priceTier(p, stats))).toEqual(['deal', 'deal', 'deal'])
@@ -680,7 +680,7 @@ describe('selectPriceStats / priceTier', () => {
   it('selectDeals keeps the low-price cluster, and says nothing without a distribution', () => {
     const a = withData([1.6, 1.61, 1.75, 1.85])
     expect(selectDeals(a).map((s) => s.id)).toEqual(['s0', 's1'])
-    // No station on the map → no distribution → nothing is a « bon plan »
+    // No station on the map → no distribution → nothing is a « good deal »
     expect(selectPriceStats(app())).toBeNull()
     expect(selectDeals(app())).toEqual([])
   })
@@ -734,7 +734,7 @@ describe('selectZoneDelta', () => {
   })
 })
 
-// ── Favoris sorting ──────────────────────────────────────────────────────────
+// ── Favorites sorting────────────────────────────────────────────────────────
 describe('sortFavoriteRows', () => {
   const cfg = { consumption: 6.5, tank: 50 }
   const rows = [
@@ -743,7 +743,7 @@ describe('sortFavoriteRows', () => {
     { id: 'unloaded', price: null, distKm: 2 },
   ]
 
-  it('« Recommandé » counts the détour, « Prix » keeps the sticker order', () => {
+  it('« Recommended » counts the detour, « Price » keeps the sticker order', () => {
     expect(sortFavoriteRows(rows, 'recommended', cfg).map((r) => r.id)).toEqual([
       'near',
       'far-cheap',
@@ -937,11 +937,11 @@ describe('selectRouteAnalysis', () => {
         (s) => s.id,
       )
 
-    // « Prix » folds the fuel burnt reaching the pump into the per-litre price:
+    // « Price » folds the fuel burnt reaching the pump into the per-litre price:
     // 30 ct/L still pays for 13 km of access, so both bargains make the cut.
     expect(offered('price')).toContain('far-cheap-1')
     expect(offered('price')).toContain('far-cheap-2')
-    // « Détour min. » ranks on the minutes the halt adds — the same two
+    // « Least detour » ranks on the minutes the halt adds — the same two
     // bargains cost ~40 min each and lose every slot to the on-route pumps.
     expect(offered('detour')).toEqual(['onroute-a', 'onroute-b', 'onroute-c', 'onroute-d'])
   })

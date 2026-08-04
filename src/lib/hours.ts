@@ -1,7 +1,7 @@
 // Opening hours — shared model + "open now" computation.
 // The gouv flux exposes `horaires` per station; many stations only flag
 // 24/24 automats or list days without time ranges, so "unknown" is a
-// first-class outcome: the UI must not claim « Ouvert » without evidence.
+// first-class outcome: the UI must not claim « Open » without evidence.
 
 export interface HoursRange {
   /** Minutes from midnight, local time */

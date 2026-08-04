@@ -176,7 +176,7 @@ describe('strategies', () => {
   })
 
   it('detour: 4 minutes on a long trip do not cost 14 € of fuel', () => {
-    // The shape seen on Toulouse → Lille: the « Détour min. » plan arrived 4 min
+    // The shape seen on Toulouse → Lille: the « Least detour » plan arrived 4 min
     // earlier and 14,32 € dearer — 0,7 % of the duration for 12 % of the fuel
     // bill. Both stops are ON the road, so what the chip actually trades away is
     // a big discount, not a detour. This pins the value of time that allows it.
@@ -203,7 +203,7 @@ describe('strategies', () => {
 
   it('detour: minutes still dominate — a big discount does not buy a real detour', () => {
     // Same 40 ct/L discount, now behind a 12 km access hop (~31 min there and
-    // back). « Détour min. » must refuse it: the chip promises minutes.
+    // back). « Least detour » must refuse it: the chip promises minutes.
     const plan = planRoute(
       buildInput({
         routeKm: 300,

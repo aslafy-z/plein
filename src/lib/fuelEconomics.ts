@@ -50,7 +50,7 @@ const SPEED_UPLIFT_MAX = 0.25;
 
 /**
  * Consumption multiplier for a leg driven at `avgSpeedKmh`. The consumption
- * in Réglages is a MIXED average; a leg cruised at motorway pace burns
+ * in Settings is a MIXED average; a leg cruised at motorway pace burns
  * measurably more (drag grows with v²), so planning it at the mixed average
  * silently spends the safety reserve on a bias we can predict. The ramp is
  * deliberately simple and documented: ×1 up to 90 km/h, linear to ×1.25 at
@@ -65,7 +65,7 @@ export function speedConsumptionFactor(avgSpeedKmh: number): number {
 
 /**
  * How far `fuelLitres` safely takes the vehicle while honouring the reserve.
- * The explicit form of the legacy « limite d'autonomie » line.
+ * The explicit form of the legacy « range limit » line.
  */
 export function usableRangeKm(fuelLitres: number, consumptionLitresPer100Km: number): number {
   return (fuelLitres * (1 - RESERVE_FRACTION) * 100) / consumptionLitresPer100Km;
@@ -81,13 +81,13 @@ export function legIsFeasible(departureFuelLitres: number, fuelNeededLitres: num
 
 /**
  * Per-litre price with the trip to the pump folded in: you pay for a full
- * tank but the round trip (consumption & tank size from Réglages) burns part
+ * tank but the round trip (consumption & tank size from Settings) burns part
  * of it, so the litres you actually keep cost `price × tank / (tank − burnt)`
  * — what a full tank ACTUALLY costs per litre. A round trip the tank cannot
  * cover has no effective price at all (Infinity): no amount of sticker
  * discount makes a station worth more fuel than it sells you. Shared by the
- * map recommendation, the « Recommandé » sorts of the zone list and the
- * Favoris, and the route plan's alternatives ranking.
+ * map recommendation, the « Recommended » sorts of the zone list and the
+ * Favorites, and the route plan's alternatives ranking.
  */
 export function effectiveLiterPrice(
   cfg: { consumption: number; tank: number },

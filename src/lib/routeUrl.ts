@@ -6,7 +6,7 @@
 // link is user input, and a hand-edited one must never break the app.
 //
 // The setup form lives on `/route`, the computed ribbon on `/route/results` —
-// the path alone rebuilds the right screen, so a departure shared as « Ma
+// the path alone rebuilds the right screen, so a departure shared as « My
 // position » (whose link carries no coordinates on purpose) still reopens on
 // the ribbon.
 import type { GeoPoint } from './geo';
@@ -36,17 +36,17 @@ const MODES: RouteUrlMode[] = ['balanced', 'price', 'detour'];
 /** Long place labels make long URLs — cap them the way `MAX_BRANDS` caps the
  *  brand filter. Geocoder labels are far shorter; only a hand-edited link hits it. */
 const MAX_LABEL_LEN = 120;
-/** Sanity bounds — the union of what the Réglages sliders can set */
+/** Sanity bounds — the union of what the Settings sliders can set */
 const TANK_RANGE = { min: 5, max: 80 };
 const CONSUMPTION_RANGE = { min: 3, max: 12 };
 const START_TANK_RANGE = { min: 10, max: 100 };
 
 export interface RouteUrlView {
-  /** null while the departure means « Ma position » or is not yet resolved */
+  /** null while the departure means « My position » or is not yet resolved */
   fromPoint: GeoPoint | null;
-  /** Empty when the departure is « Ma position » (the flag below carries it) */
+  /** Empty when the departure is « My position » (the flag below carries it) */
   fromLabel: string;
-  /** Sharing a « Ma position » departure must not leak where the sender was:
+  /** Sharing a « My position » departure must not leak where the sender was:
    *  the link then carries neither coordinates nor label for the departure. */
   fromIsCurrentPosition: boolean;
   toPoint: GeoPoint | null;
@@ -194,7 +194,7 @@ export function routeUrlQuery(view: RouteUrlView): string {
   // ~1 m of precision is plenty, and keeps the link short
   const coord = (p: GeoPoint) => `${round(p.lat, 5)},${round(p.lng, 5)}`;
 
-  // « Ma position » writes NO departure at all — the flag would otherwise
+  // « My position » writes NO departure at all — the flag would otherwise
   // leak the sender's position into every shared trip
   if (hasFrom) {
     if (view.fromPoint) add(K.from, coord(view.fromPoint));

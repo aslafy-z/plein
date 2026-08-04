@@ -23,8 +23,8 @@ export const DESKTOP_MIN_WIDTH = 960;
 export const DESKTOP_QUERY = `(min-width: ${DESKTOP_MIN_WIDTH}px)`;
 
 /**
- * Comfortable reading width for the text screens (Réglages, Favoris,
- * itinéraire, onboarding). They are single columns of prose and form rows:
+ * Comfortable reading width for the text screens (Settings, Favorites,
+ * route, onboarding). They are single columns of prose and form rows:
  * full-bleed on a wide window would drag one sentence across the whole
  * screen, so they stay a centered column at every width above it.
  */

@@ -10,7 +10,7 @@ const staffed = (open: number, close: number, days: number[] = [1, 2, 3, 4, 5, 6
 })
 
 describe('openStatus', () => {
-  it('is unknown without data — never claims « Ouvert » without evidence', () => {
+  it('is unknown without data — never claims « Open » without evidence', () => {
     expect(openStatus(undefined, at(12))).toBeNull()
     // A day listed as open but without time ranges counts as unknown too
     expect(openStatus({ auto24: false, days: { 3: { closed: false, ranges: [] } } }, at(12))).toBeNull()
