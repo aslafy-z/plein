@@ -103,7 +103,7 @@ width, never pointer type: a window gets resized and the layout has to follow.
 | filters | bottom sheet | popover anchored under the chips |
 | place search | full screen over the map | dropdown attached under the field |
 | station fiche | full screen, mini-map header | stacked under the list, no mini-map |
-| route | map fills the stage; setup chips (avoids toggle in place, the tank chip opens the sheet) over it under the endpoint fields; form → timeline in a bottom sheet, CTA on its bottom edge | map fills the stage; form → timeline in the floating panel, endpoint fields in the overlay row |
+| route | map fills the stage; the two endpoint fields split ONE line over its top edge (departure left, destination right); setup chips (avoids toggle in place, the tank chip opens the sheet) under them; form → timeline in a bottom sheet, CTA on its bottom edge | map fills the stage; form → timeline in the floating panel, endpoint fields stacked in the overlay row |
 
 - **Presentation is shared, never forked.** `ZoneCard`, `ZoneList` and
   `ZoneEmpty` are what the phone sheet and the desktop panel both render; the

@@ -439,6 +439,10 @@ export default function PlaceField(props: PlaceFieldProps) {
           pointerEvents: 'auto',
         }}
       >
+        {/* Tight for a pill: the route stands its two triggers side by side on
+            half a phone line each, and every point of padding here comes off
+            the place name. The vertical padding is untouched — the box still
+            has to be a comfortable tap target. */}
         <button
           className="search-box-hit"
           onClick={() => app.setSearchOpen(props.target)}
@@ -446,10 +450,10 @@ export default function PlaceField(props: PlaceFieldProps) {
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 12,
+            gap: 10,
             flex: 1,
             minWidth: 0,
-            padding: '13px 6px 13px 16px',
+            padding: '13px 4px 13px 14px',
           }}
         >
           {props.icon}
@@ -480,7 +484,7 @@ export default function PlaceField(props: PlaceFieldProps) {
               color: C.mut,
               fontSize: 16,
               fontWeight: 700,
-              padding: '0 14px 0 6px',
+              padding: '0 12px 0 4px',
             }}
           >
             ✕
