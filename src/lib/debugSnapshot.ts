@@ -6,8 +6,8 @@
 // state (passed in by the overlay), the module getters added for it
 // (tiles.ts, stationsCache.ts, debugMode.ts, debugState.ts) and the browser
 // (service worker, Cache Storage, storage estimate). It never mutates
-// anything and never runs behind a closed chip — the overlay collects on
-// open and on its refresh button only.
+// anything and never runs behind a closed chip — the overlay collects on a
+// short tick only while its panel is open.
 //
 // Debug chrome is English-only by design (see CLAUDE.md, Language): the
 // snapshot is data pasted into issues, not UI copy, so nothing here goes
