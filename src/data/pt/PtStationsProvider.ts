@@ -23,7 +23,7 @@ import type {
 } from '../types';
 
 const ENDPOINT =
-  (IS_DEV ? '/proxy/prt' : 'https://precoscombustiveis.dgeg.gov.pt') +
+  (IS_DEV ? '/proxy/pt' : 'https://precoscombustiveis.dgeg.gov.pt') +
   '/api/PrecoComb/PesquisarPostos';
 
 const TIMEOUT_MS = 15000;
@@ -231,7 +231,7 @@ export function groupStations(rows: unknown[]): Station[] {
       : [];
 
     stations.push({
-      id: `prt-${id}`,
+      id: `pt-${id}`,
       name: acc.name,
       init: initialsOf(acc.name),
       brand: tidyBrand(toStr(acc.row.Marca)),
@@ -264,11 +264,11 @@ function districtsAlong(polyline: GeoPoint[], corridorKm: number): number[] {
 }
 
 /** Can the zone hold Portuguese stations at all? (drives the « auto » source) */
-export function prtCoversNear(center: GeoPoint, radiusKm: number): boolean {
+export function ptCoversNear(center: GeoPoint, radiusKm: number): boolean {
   return districtsNear(center, radiusKm).length > 0;
 }
 
-export function prtCoversAlong(polyline: GeoPoint[], corridorKm: number): boolean {
+export function ptCoversAlong(polyline: GeoPoint[], corridorKm: number): boolean {
   return districtsAlong(polyline, corridorKm).length > 0;
 }
 
@@ -303,18 +303,18 @@ async function loadDistrict(id: number, lowPriority: boolean): Promise<Station[]
     signal: AbortSignal.timeout(TIMEOUT_MS),
     priority: lowPriority ? 'low' : 'auto',
   });
-  if (!res.ok) throw new Error(`prt flux HTTP ${res.status}`);
+  if (!res.ok) throw new Error(`pt flux HTTP ${res.status}`);
   const json = (await res.json()) as PrtResponse;
   // The API reports failures inside a 200 response
   if (json.status !== true || !Array.isArray(json.resultado)) {
-    throw new Error('prt flux rejected the query');
+    throw new Error('pt flux rejected the query');
   }
   return groupStations(json.resultado);
 }
 
 // ── Provider ─────────────────────────────────────────────────────────────────
-export class PrtStationsProvider implements StationsProvider {
-  readonly id = 'prt' as const;
+export class PtStationsProvider implements StationsProvider {
+  readonly id = 'pt' as const;
   readonly capabilities: SourceCapabilities = {
     brands: true, // the flux carries the marca (banner) directly
   };

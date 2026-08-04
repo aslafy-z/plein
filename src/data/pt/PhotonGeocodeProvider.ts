@@ -87,7 +87,7 @@ function describe(p: PhotonProperties): Pick<GeocodeResult, 'label' | 'sublabel'
   // does in the BAN; the municipality stands in when a district names itself,
   // and whatever repeats the label carries no information at all.
   const context = [str(p.county), str(p.city)].find((v) => v && v !== label) ?? '';
-  return { label, sublabel: context, country: 'prt' };
+  return { label, sublabel: context, country: 'pt' };
 }
 
 export class PhotonGeocodeProvider implements GeocodeProvider {

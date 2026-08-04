@@ -10,17 +10,17 @@ import type { Page } from '@playwright/test'
 // (OFFSET_FAR_DECAY in MapCanvas): the invariant here is that ONE ordinary
 // drag brings the circle back around the center, not a sliver of the way.
 
-test.use({ seed: { sourceId: 'fra', onboarded: true } })
+test.use({ seed: { sourceId: 'fr', onboarded: true } })
 
 /**
- * Deterministic fra flux: a chain of stations marching north from the first
+ * Deterministic fr flux: a chain of stations marching north from the first
  * requested center every 3 km — however far the pin-hopping has carried the
  * view, the next pin is in sight. Anchored on the FIRST request so the
  * refetches fired while the circle drags never move the chain.
  */
 async function mockStationChain(page: Page) {
   let base: { lat: number; lng: number } | null = null
-  await page.route('**/proxy/fra/**', async (route) => {
+  await page.route('**/proxy/fr/**', async (route) => {
     const where = new URL(route.request().url()).searchParams.get('where') ?? ''
     const m = /POINT\(([-\d.]+) ([-\d.]+)\)/.exec(where)
     base ??= { lat: m ? parseFloat(m[2]) : 43.6, lng: m ? parseFloat(m[1]) : 1.44 }
@@ -33,7 +33,7 @@ async function mockStationChain(page: Page) {
     }))
     await route.fulfill({ json: { total_count: results.length, results } })
   })
-  await page.route('**/brands-fra.json', (route) =>
+  await page.route('**/brands-fr.json', (route) =>
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
   await page.goto('/')

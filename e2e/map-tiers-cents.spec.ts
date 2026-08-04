@@ -6,7 +6,7 @@ import { test, expect, gotoMap, openZoneList } from './fixtures'
 // one gray (1.904). Same displayed price must mean same tier, and the
 // displayed deltas must match the displayed prices too.
 
-test.use({ seed: { sourceId: 'fra', onboarded: true } })
+test.use({ seed: { sourceId: 'fr', onboarded: true } })
 
 // All within the default 5 km radius. mean = 1.9844 → dealMax ≈ 1.9001 ;
 // highMin ≈ 2.1086. The two « 1.90 » straddle the raw threshold.
@@ -19,7 +19,7 @@ const STATIONS = [
 ]
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/proxy/fra/**', async (route) => {
+  await page.route('**/proxy/fr/**', async (route) => {
     const where = new URL(route.request().url()).searchParams.get('where') ?? ''
     const m = /POINT\(([-\d.]+) ([-\d.]+)\)/.exec(where)
     const lng = m ? parseFloat(m[1]) : 1.44
@@ -33,7 +33,7 @@ test.beforeEach(async ({ page }) => {
     }))
     await route.fulfill({ json: { total_count: results.length, results } })
   })
-  await page.route('**/brands-fra.json', (route) =>
+  await page.route('**/brands-fr.json', (route) =>
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
   await gotoMap(page)

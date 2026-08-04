@@ -268,7 +268,7 @@ export const FAVORITE_FETCH_RADIUS_KM = 10;
  * Provider calls per refresh round. The scarce resource is bytes, not
  * requests: each call resolves through the favorite's own country provider,
  * whose fetches are partitioned and memoized (province / district / country
- * for esp / prt / and), so N favorites inside one partition cost one download
+ * for es / pt / ad), so N favorites inside one partition cost one download
  * however they are grouped here. The cap bounds the cold-start worst case;
  * favorites left over are picked up by the next round.
  */
@@ -282,7 +282,7 @@ export interface FavoriteRefreshTarget {
 
 export interface FavoriteRefreshGroup {
   /** Source the group resolves through — the favorite's OWN country, never
-      the selected map source: an esp favorite is priced by the esp flux
+      the selected map source: an es favorite is priced by the es flux
       whatever the map is showing. */
   country: StationCountry;
   /** Fetch circle for a geo-partitioned source; a by-id source ignores it */

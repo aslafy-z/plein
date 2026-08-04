@@ -16,7 +16,7 @@ const SHELL_CACHE = 'plein-shell-v1';
 const TILE_CACHE = 'plein-tiles-v1';
 // Build-time data the app enriches its stations with. Separate from the assets
 // because it is not content-hashed: it is revalidated, not immutable.
-const DATA_CACHE = 'plein-data-v1';
+const DATA_CACHE = 'plein-data-v2';
 
 // Tile hosts used by src/lib/tiles.ts (CARTO primary, OSM fallback)
 const TILE_HOSTS = ['basemaps.cartocdn.com', 'tile.openstreetmap.org'];
@@ -106,8 +106,8 @@ async function precacheShell() {
   // The brand index is not needed to boot — best effort, never fails install.
   await (async () => {
     const data = await caches.open(DATA_CACHE);
-    const brands = await fetch('/brands-fra.json');
-    if (brands.ok) await data.put('/brands-fra.json', brands);
+    const brands = await fetch('/brands-fr.json');
+    if (brands.ok) await data.put('/brands-fr.json', brands);
   })().catch(() => {});
 }
 
@@ -142,7 +142,7 @@ self.addEventListener('fetch', (event) => {
 
   if (url.origin !== self.location.origin) return; // other APIs: straight to network
 
-  if (url.pathname === '/brands-fra.json') {
+  if (url.pathname === '/brands-fr.json') {
     event.respondWith(brandIndexFromCache(event, req));
     return;
   }

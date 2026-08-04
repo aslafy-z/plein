@@ -18,12 +18,12 @@ describe('placeSublabel', () => {
   })
 
   it('names the country the Andorran flux leaves out', () => {
-    expect(placeSublabel(at({ label: 'el Pas de la Casa', sublabel: 'Encamp', country: 'and' })))
+    expect(placeSublabel(at({ label: 'el Pas de la Casa', sublabel: 'Encamp', country: 'ad' })))
       .toBe('Andorre · Encamp')
   })
 
   it('falls back to the country alone when the parish adds nothing', () => {
-    expect(placeSublabel(at({ label: 'Encamp', sublabel: '', country: 'and' }))).toBe('Andorre')
+    expect(placeSublabel(at({ label: 'Encamp', sublabel: '', country: 'ad' }))).toBe('Andorre')
   })
 })
 

@@ -22,7 +22,7 @@ import type {
 // In dev the call goes through the Vite proxy (see vite.config.ts) so the app
 // gets live data even when the browser has no direct internet access.
 const ENDPOINT =
-  (IS_DEV ? '/proxy/fra' : 'https://data.economie.gouv.fr') +
+  (IS_DEV ? '/proxy/fr' : 'https://data.economie.gouv.fr') +
   '/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records';
 
 const PAGE = 100;
@@ -307,7 +307,7 @@ function parseRecord(rec: Raw): Station | null {
   return {
     // Prefixed like the Spanish and Andorran ones — the « Automatic »
     // source mixes the three and reads the country off the id
-    id: `fra-${id}`,
+    id: `fr-${id}`,
     name: pretty ? `Station · ${pretty}` : 'Station',
     init: (ville.slice(0, 2) || 'ST').toUpperCase(),
     brand: undefined,
@@ -325,14 +325,14 @@ function parseRecord(rec: Raw): Station | null {
 }
 
 /**
- * Raw dataset id of a `fra-` station id, when it is the flux's own numeric
+ * Raw dataset id of a `fr-` station id, when it is the flux's own numeric
  * id. The flux types `id` as an int, so only these can go in an ODSQL
  * `id in (…)` list — the coordinate-fallback ids parseRecord mints for
- * records without one (`fra-43.60000,1.44000`) name no dataset row at all.
+ * records without one (`fr-43.60000,1.44000`) name no dataset row at all.
  * @internal exported for unit tests
  */
-export function fraDatasetId(id: string): number | null {
-  const m = /^fra-(\d+)$/.exec(id);
+export function frDatasetId(id: string): number | null {
+  const m = /^fr-(\d+)$/.exec(id);
   return m ? Number(m[1]) : null;
 }
 
@@ -359,8 +359,8 @@ async function fetchPage(url: string, lowPriority = false): Promise<unknown[]> {
   return Array.isArray(json.results) ? json.results : [];
 }
 
-export class FraStationsProvider implements StationsProvider {
-  readonly id = 'fra' as const;
+export class FrStationsProvider implements StationsProvider {
+  readonly id = 'fr' as const;
   readonly capabilities: SourceCapabilities = {
     brands: true, // enriched from OpenStreetMap by proximity
   };
@@ -399,7 +399,7 @@ export class FraStationsProvider implements StationsProvider {
     opts?: StationsFetchOptions,
   ): Promise<Station[]> {
     const numeric = ids
-      .map(fraDatasetId)
+      .map(frDatasetId)
       .filter((n): n is number => n != null);
     const stations: Station[] = [];
     for (let i = 0; i < numeric.length; i += PAGE) {

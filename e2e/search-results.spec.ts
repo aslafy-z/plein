@@ -9,7 +9,7 @@ import { test, expect, gotoMap, phoneOnly, desktopOnly } from './fixtures'
 // the bar on a window, the whole screen on a phone.
 
 test.use({
-  seed: { sourceId: 'fra', onboarded: true, lastPos: { lat: 43.6047, lng: 1.4442 } },
+  seed: { sourceId: 'fr', onboarded: true, lastPos: { lat: 43.6047, lng: 1.4442 } },
 })
 
 const feature = (label: string, type: string) => ({
@@ -25,7 +25,7 @@ const BAN_FEATURES = [
 ]
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/proxy/fra/**', (route) =>
+  await page.route('**/proxy/fr/**', (route) =>
     route.fulfill({
       json: {
         total_count: 1,
@@ -41,7 +41,7 @@ test.beforeEach(async ({ page }) => {
       },
     }),
   )
-  await page.route('**/brands-fra.json', (route) =>
+  await page.route('**/brands-fr.json', (route) =>
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
   await page.route('**/proxy/ban/**', (route) =>

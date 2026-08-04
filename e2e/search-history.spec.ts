@@ -5,7 +5,7 @@ import { test, expect, gotoMap } from './fixtures'
 // typing ranks the matching entries above the geocoder's own answers.
 
 const point = { lat: 43.6047, lng: 1.4442 }
-const SEED = { sourceId: 'fra', onboarded: true, lastPos: point }
+const SEED = { sourceId: 'fr', onboarded: true, lastPos: point }
 
 const remembered = (label: string, at: number) => ({
   label,
@@ -21,7 +21,7 @@ const feature = (label: string, type: string) => ({
 })
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/proxy/fra/**', (route) =>
+  await page.route('**/proxy/fr/**', (route) =>
     route.fulfill({
       json: {
         total_count: 1,
@@ -37,7 +37,7 @@ test.beforeEach(async ({ page }) => {
       },
     }),
   )
-  await page.route('**/brands-fra.json', (route) =>
+  await page.route('**/brands-fr.json', (route) =>
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
   await page.route('**/proxy/ban/**', (route) =>

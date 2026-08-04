@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { foldRecentsIntoSearchHistory } from './persist'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { foldRecentsIntoSearchHistory, loadPersisted } from './persist'
 import type { SearchedPlace } from './persist'
 
 // The route's own « Recent » store is gone — a blob written by an older build
@@ -52,5 +52,48 @@ describe('foldRecentsIntoSearchHistory', () => {
     const history = [searched('Annecy', 1)]
     expect(foldRecentsIntoSearchHistory(undefined, history)).toBe(history)
     expect(foldRecentsIntoSearchHistory('junk', history)).toBe(history)
+  })
+})
+
+// Country codes used to be ISO 3166-1 alpha-3 — a blob written by that
+// generation carries a 3-letter source choice and 3-letter geocoder country
+// tags on history entries, and both are persisted user state that must
+// survive the rename.
+describe('loadPersisted country-code migration', () => {
+  const stubBlob = (blob: unknown) =>
+    vi.stubGlobal('localStorage', {
+      getItem: () => JSON.stringify(blob),
+      setItem: () => {},
+      removeItem: () => {},
+    })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('maps a 3-letter source choice onto the 2-letter scheme', () => {
+    stubBlob({ sourceId: 'fra' })
+    expect(loadPersisted().sourceId).toBe('fr')
+    stubBlob({ sourceId: 'and' })
+    expect(loadPersisted().sourceId).toBe('ad')
+  })
+
+  it('leaves current and unknown source ids to the store validation', () => {
+    stubBlob({ sourceId: 'es' })
+    expect(loadPersisted().sourceId).toBe('es')
+    stubBlob({ sourceId: 'gouv' })
+    expect(loadPersisted().sourceId).toBe('gouv')
+  })
+
+  it('maps 3-letter geocoder countries in the search history', () => {
+    stubBlob({
+      searchHistory: [
+        { ...searched('Encamp', 5), country: 'and' },
+        { ...searched('Coimbra', 4), country: 'prt' },
+        searched('Annecy', 3),
+      ],
+    })
+    const history = loadPersisted().searchHistory ?? []
+    expect(history.map((p) => p.country)).toEqual(['ad', 'pt', undefined])
   })
 })

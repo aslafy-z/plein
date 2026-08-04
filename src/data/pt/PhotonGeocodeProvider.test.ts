@@ -60,9 +60,9 @@ describe('PhotonGeocodeProvider', () => {
     const out = await provider.search('qualquer')
     // A place naming its own district says nothing more than the country
     expect(out.map((r) => [r.label, r.sublabel, r.country])).toEqual([
-      ['Coimbra', '', 'prt'],
-      ['Amadora', 'Lisboa', 'prt'],
-      ['Rua Augusta', 'Lisboa', 'prt'],
+      ['Coimbra', '', 'pt'],
+      ['Amadora', 'Lisboa', 'pt'],
+      ['Rua Augusta', 'Lisboa', 'pt'],
     ])
   })
 

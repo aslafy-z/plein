@@ -224,7 +224,7 @@ describe('routeBusy', () => {
 
 // ── Matrix stage ─────────────────────────────────────────────────────────────
 describe('matrix stage', () => {
-  const MK = travelMatrixKey('fra', LYON, BORDEAUX, ['a', 'b'], {
+  const MK = travelMatrixKey('fr', LYON, BORDEAUX, ['a', 'b'], {
     avoidMotorway: false,
     avoidToll: false,
     vehicle: 'car',
@@ -233,10 +233,10 @@ describe('matrix stage', () => {
 
   it('keys on the candidate set and the routing options', () => {
     const opts = { avoidMotorway: false, avoidToll: false, vehicle: 'car' }
-    expect(travelMatrixKey('fra', LYON, BORDEAUX, ['a', 'b'], opts)).toBe(MK)
-    expect(travelMatrixKey('fra', LYON, BORDEAUX, ['a', 'c'], opts)).not.toBe(MK)
+    expect(travelMatrixKey('fr', LYON, BORDEAUX, ['a', 'b'], opts)).toBe(MK)
+    expect(travelMatrixKey('fr', LYON, BORDEAUX, ['a', 'c'], opts)).not.toBe(MK)
     expect(
-      travelMatrixKey('fra', LYON, BORDEAUX, ['a', 'b'], { ...opts, avoidToll: true }),
+      travelMatrixKey('fr', LYON, BORDEAUX, ['a', 'b'], { ...opts, avoidToll: true }),
     ).not.toBe(MK)
   })
 

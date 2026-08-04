@@ -77,9 +77,9 @@ export function brandGroupLabel(group: string): string {
  */
 export function placeSublabel(place: GeocodeResult): string {
   switch (place.country) {
-    case 'and':
+    case 'ad':
       return place.sublabel ? m.place_andorra_parish({ parish: place.sublabel }) : m.place_andorra();
-    case 'prt':
+    case 'pt':
       return place.sublabel
         ? m.place_portugal_district({ district: place.sublabel })
         : m.place_portugal();
@@ -170,14 +170,14 @@ export function sourceTitle(id: DataSourceId): string {
   switch (id) {
     case 'auto':
       return m.source_auto_title();
-    case 'fra':
-      return m.source_fra_title();
-    case 'esp':
-      return m.source_esp_title();
-    case 'and':
-      return m.source_and_title();
-    case 'prt':
-      return m.source_prt_title();
+    case 'fr':
+      return m.source_fr_title();
+    case 'es':
+      return m.source_es_title();
+    case 'ad':
+      return m.source_ad_title();
+    case 'pt':
+      return m.source_pt_title();
     case 'demo':
       return m.source_demo_title();
   }
@@ -187,14 +187,14 @@ export function sourceSublabel(id: DataSourceId): string {
   switch (id) {
     case 'auto':
       return m.source_auto_sub();
-    case 'fra':
-      return m.source_fra_sub();
-    case 'esp':
-      return m.source_esp_sub();
-    case 'and':
-      return m.source_and_sub();
-    case 'prt':
-      return m.source_prt_sub();
+    case 'fr':
+      return m.source_fr_sub();
+    case 'es':
+      return m.source_es_sub();
+    case 'ad':
+      return m.source_ad_sub();
+    case 'pt':
+      return m.source_pt_sub();
     case 'demo':
       return m.source_demo_sub();
   }

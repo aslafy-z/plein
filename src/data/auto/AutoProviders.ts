@@ -16,14 +16,14 @@ import type {
   StationsFetchOptions,
   StationsProvider,
 } from '../types';
-import { FraStationsProvider } from '../fra/FraStationsProvider';
-import { BanGeocodeProvider } from '../fra/BanGeocodeProvider';
-import { EspStationsProvider, espCoversAlong, espCoversNear } from '../esp/EspStationsProvider';
-import { CartoCiudadGeocodeProvider } from '../esp/CartoCiudadGeocodeProvider';
-import { AndStationsProvider, andCoversAlong, andCoversNear } from '../and/AndStationsProvider';
-import { AndGeocodeProvider } from '../and/AndGeocodeProvider';
-import { PrtStationsProvider, prtCoversAlong, prtCoversNear } from '../prt/PrtStationsProvider';
-import { PhotonGeocodeProvider } from '../prt/PhotonGeocodeProvider';
+import { FrStationsProvider } from '../fr/FrStationsProvider';
+import { BanGeocodeProvider } from '../fr/BanGeocodeProvider';
+import { EsStationsProvider, esCoversAlong, esCoversNear } from '../es/EsStationsProvider';
+import { CartoCiudadGeocodeProvider } from '../es/CartoCiudadGeocodeProvider';
+import { AdStationsProvider, adCoversAlong, adCoversNear } from '../ad/AdStationsProvider';
+import { AdGeocodeProvider } from '../ad/AdGeocodeProvider';
+import { PtStationsProvider, ptCoversAlong, ptCoversNear } from '../pt/PtStationsProvider';
+import { PhotonGeocodeProvider } from '../pt/PhotonGeocodeProvider';
 import { mergeByKind } from '../geocodeRank';
 
 // ── French flux coverage ─────────────────────────────────────────────────────
@@ -37,18 +37,18 @@ const FRA_COVERAGE: ReadonlyArray<readonly [number, number, number]> = [
   [-12.8, 45.15, 60], // Mayotte
 ];
 
-function fraCoversNear(center: GeoPoint, radiusKm: number): boolean {
+function frCoversNear(center: GeoPoint, radiusKm: number): boolean {
   return FRA_COVERAGE.some(([lat, lng, r]) => haversineKm(center, { lat, lng }) <= r + radiusKm);
 }
 
-function fraCoversAlong(polyline: GeoPoint[], corridorKm: number): boolean {
+function frCoversAlong(polyline: GeoPoint[], corridorKm: number): boolean {
   return FRA_COVERAGE.some(
     ([lat, lng, r]) => nearestOnPolyline({ lat, lng }, polyline).distKm <= r + corridorKm,
   );
 }
 
 // ── Stations ─────────────────────────────────────────────────────────────────
-// Every source caps its own near-query (300 in fra and esp), but the merge used
+// Every source caps its own near-query (300 in fr and es), but the merge used
 // to just concatenate them: a zone where two coverage areas overlap — Le
 // Perthus, Irún, the Pas de la Case, i.e. exactly what « auto » exists for —
 // returned up to ~660 stations where a single source returns 300. That payload
@@ -84,10 +84,10 @@ export class AutoStationsProvider implements StationsProvider {
     brands: true,
   };
 
-  private readonly fra = new FraStationsProvider();
-  private readonly esp = new EspStationsProvider();
-  private readonly and = new AndStationsProvider();
-  private readonly prt = new PrtStationsProvider();
+  private readonly fr = new FrStationsProvider();
+  private readonly es = new EsStationsProvider();
+  private readonly ad = new AdStationsProvider();
+  private readonly pt = new PtStationsProvider();
 
   async getStationsNear(
     center: GeoPoint,
@@ -95,10 +95,10 @@ export class AutoStationsProvider implements StationsProvider {
     opts?: StationsFetchOptions,
   ): Promise<Station[]> {
     const tasks: Promise<Station[]>[] = [];
-    if (fraCoversNear(center, radiusKm)) tasks.push(this.fra.getStationsNear(center, radiusKm, opts));
-    if (espCoversNear(center, radiusKm)) tasks.push(this.esp.getStationsNear(center, radiusKm, opts));
-    if (andCoversNear(center, radiusKm)) tasks.push(this.and.getStationsNear(center, radiusKm, opts));
-    if (prtCoversNear(center, radiusKm)) tasks.push(this.prt.getStationsNear(center, radiusKm, opts));
+    if (frCoversNear(center, radiusKm)) tasks.push(this.fr.getStationsNear(center, radiusKm, opts));
+    if (esCoversNear(center, radiusKm)) tasks.push(this.es.getStationsNear(center, radiusKm, opts));
+    if (adCoversNear(center, radiusKm)) tasks.push(this.ad.getStationsNear(center, radiusKm, opts));
+    if (ptCoversNear(center, radiusKm)) tasks.push(this.pt.getStationsNear(center, radiusKm, opts));
     return capNearest(await mergeSettled(tasks), center);
   }
 
@@ -106,15 +106,15 @@ export class AutoStationsProvider implements StationsProvider {
   // to rank against — the natural key (distance to the polyline) would thin the
   // widest part of the corridor rather than its far end, and a positional cut
   // would simply truncate the route. No single source caps its corridor either
-  // (fra bounds it per sample point, esp and and by the corridor itself), so
+  // (fr bounds it per sample point, es and ad by the corridor itself), so
   // « auto » would be the only source silently dropping stations off a long
   // route. The corridor is already narrow enough to keep the payload sane.
   async getStationsAlong(polyline: GeoPoint[], corridorKm: number): Promise<Station[]> {
     const tasks: Promise<Station[]>[] = [];
-    if (fraCoversAlong(polyline, corridorKm)) tasks.push(this.fra.getStationsAlong(polyline, corridorKm));
-    if (espCoversAlong(polyline, corridorKm)) tasks.push(this.esp.getStationsAlong(polyline, corridorKm));
-    if (andCoversAlong(polyline, corridorKm)) tasks.push(this.and.getStationsAlong(polyline, corridorKm));
-    if (prtCoversAlong(polyline, corridorKm)) tasks.push(this.prt.getStationsAlong(polyline, corridorKm));
+    if (frCoversAlong(polyline, corridorKm)) tasks.push(this.fr.getStationsAlong(polyline, corridorKm));
+    if (esCoversAlong(polyline, corridorKm)) tasks.push(this.es.getStationsAlong(polyline, corridorKm));
+    if (adCoversAlong(polyline, corridorKm)) tasks.push(this.ad.getStationsAlong(polyline, corridorKm));
+    if (ptCoversAlong(polyline, corridorKm)) tasks.push(this.pt.getStationsAlong(polyline, corridorKm));
     return mergeSettled(tasks);
   }
 }
@@ -170,7 +170,7 @@ export async function mergeAsTheyLand(
 export class AutoGeocodeProvider implements GeocodeProvider {
   private readonly ban = new BanGeocodeProvider();
   private readonly cartociudad = new CartoCiudadGeocodeProvider();
-  private readonly and = new AndGeocodeProvider();
+  private readonly ad = new AdGeocodeProvider();
   private readonly photon = new PhotonGeocodeProvider();
 
   search(query: string, opts?: GeocodeSearchOptions): Promise<GeocodeResult[]> {
@@ -178,7 +178,7 @@ export class AutoGeocodeProvider implements GeocodeProvider {
     // house numbers; inside one kind the sources interleave in the order given
     // here — France, Andorra, Portugal, Spain — so no country fills the visible
     // rows on its own.
-    const sources = [this.ban, this.and, this.photon, this.cartociudad];
+    const sources = [this.ban, this.ad, this.photon, this.cartociudad];
     return mergeAsTheyLand(
       sources.map((source) => source.search(query)),
       opts?.onPartial,

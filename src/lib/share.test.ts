@@ -4,8 +4,8 @@ import type { MapUrlView } from './mapUrl'
 
 describe('stationShareData', () => {
   it('links to the /station/:id deep link the app boots on', () => {
-    const d = stationShareData({ id: 'fra-31000001', name: 'Station U' }, 'https://plein.app')
-    expect(d.url).toBe('https://plein.app/station/fra-31000001')
+    const d = stationShareData({ id: 'fr-31000001', name: 'Station U' }, 'https://plein.app')
+    expect(d.url).toBe('https://plein.app/station/fr-31000001')
   })
 
   it('drops a trailing slash on the origin', () => {

@@ -20,7 +20,7 @@ import type {
 } from '../types';
 
 const ENDPOINT =
-  (IS_DEV ? '/proxy/and' : 'https://sig.govern.ad') +
+  (IS_DEV ? '/proxy/ad' : 'https://sig.govern.ad') +
   '/server/rest/services/CARBURANTS/CARBURANTS/FeatureServer/1/query';
 
 const TIMEOUT_MS = 15000;
@@ -36,11 +36,11 @@ const AND_CENTER: GeoPoint = { lat: 42.52, lng: 1.61 };
 const AND_RADIUS_KM = 22;
 
 /** Can the zone hold Andorran stations at all? (drives the « auto » source) */
-export function andCoversNear(center: GeoPoint, radiusKm: number): boolean {
+export function adCoversNear(center: GeoPoint, radiusKm: number): boolean {
   return haversineKm(center, AND_CENTER) <= AND_RADIUS_KM + radiusKm;
 }
 
-export function andCoversAlong(polyline: GeoPoint[], corridorKm: number): boolean {
+export function adCoversAlong(polyline: GeoPoint[], corridorKm: number): boolean {
   return nearestOnPolyline(AND_CENTER, polyline).distKm <= AND_RADIUS_KM + corridorKm;
 }
 
@@ -210,7 +210,7 @@ export function groupStations(features: unknown[]): Station[] {
     const extraPrices: Partial<Record<ExtraProductId, FuelPrice>> = {};
     for (const [, { id: product, price }] of acc.services) extraPrices[product] = price;
     stations.push({
-      id: `and-${id}`,
+      id: `ad-${id}`,
       name,
       init: initialsOf(name),
       brand: banner?.[1],
@@ -271,8 +271,8 @@ async function loadCountry(lowPriority: boolean): Promise<Station[]> {
 }
 
 // ── Provider ─────────────────────────────────────────────────────────────────
-export class AndStationsProvider implements StationsProvider {
-  readonly id = 'and' as const;
+export class AdStationsProvider implements StationsProvider {
+  readonly id = 'ad' as const;
   readonly capabilities: SourceCapabilities = {
     brands: true, // the station name carries the banner
   };
@@ -282,7 +282,7 @@ export class AndStationsProvider implements StationsProvider {
     radiusKm: number,
     opts?: StationsFetchOptions,
   ): Promise<Station[]> {
-    if (!andCoversNear(center, radiusKm)) return [];
+    if (!adCoversNear(center, radiusKm)) return [];
     const stations = await fetchCountry(opts?.lowPriority);
     return stations
       .filter((st) => haversineKm(center, { lat: st.lat, lng: st.lng }) <= radiusKm)
@@ -294,7 +294,7 @@ export class AndStationsProvider implements StationsProvider {
   }
 
   async getStationsAlong(polyline: GeoPoint[], corridorKm: number): Promise<Station[]> {
-    if (!andCoversAlong(polyline, corridorKm)) return [];
+    if (!adCoversAlong(polyline, corridorKm)) return [];
     const stations = await fetchCountry();
     return stations.filter(
       (st) => nearestOnPolyline({ lat: st.lat, lng: st.lng }, polyline).distKm <= corridorKm,

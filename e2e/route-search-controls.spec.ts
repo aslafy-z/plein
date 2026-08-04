@@ -7,11 +7,11 @@ import { test, expect, gotoMap, desktopOnly, phoneOnly } from './fixtures'
 // it fills. The shared close/ring/dropdown behaviour is search-close.spec.ts.
 
 test.use({
-  seed: { sourceId: 'fra', onboarded: true, lastPos: { lat: 43.6047, lng: 1.4442 } },
+  seed: { sourceId: 'fr', onboarded: true, lastPos: { lat: 43.6047, lng: 1.4442 } },
 })
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/proxy/fra/**', (route) =>
+  await page.route('**/proxy/fr/**', (route) =>
     route.fulfill({
       json: {
         total_count: 1,
@@ -27,7 +27,7 @@ test.beforeEach(async ({ page }) => {
       },
     }),
   )
-  await page.route('**/brands-fra.json', (route) =>
+  await page.route('**/brands-fr.json', (route) =>
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
   // A geocoder that takes its time — long enough for the spinner to be observable

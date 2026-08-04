@@ -40,7 +40,7 @@ const SECTION_LABEL: React.CSSProperties = {
 /** Credits links — dimmer than the body text, they sit in the footer */
 const CREDIT_LINK: React.CSSProperties = { color: C.ghost, textDecoration: 'underline' };
 
-const SOURCES: DataSourceId[] = ['auto', 'fra', 'esp', 'and', 'prt', 'demo'];
+const SOURCES: DataSourceId[] = ['auto', 'fr', 'es', 'ad', 'pt', 'demo'];
 
 const FEEDBACK_EMAIL = 'plein@zadkiel.fr';
 

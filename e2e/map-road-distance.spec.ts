@@ -15,7 +15,7 @@ import { test, expect, openZoneList } from './fixtures'
 // without it the zone hides them, which is not what this spec is about
 test.use({
   seed: {
-    sourceId: 'fra',
+    sourceId: 'fr',
     onboarded: true,
     radius: 25,
     lastPos: { lat: 43.6047, lng: 1.4442 },
@@ -23,7 +23,7 @@ test.use({
 })
 
 function stubStations(page: import('@playwright/test').Page) {
-  return page.route('**/proxy/fra/**', async (route) => {
+  return page.route('**/proxy/fr/**', async (route) => {
     const where = new URL(route.request().url()).searchParams.get('where') ?? ''
     const m = /POINT\(([-\d.]+) ([-\d.]+)\)/.exec(where)
     const lng = m ? parseFloat(m[1]) : 1.44
@@ -60,7 +60,7 @@ function stubStations(page: import('@playwright/test').Page) {
 
 test.beforeEach(async ({ page }) => {
   await stubStations(page)
-  await page.route('**/brands-fra.json', (route) =>
+  await page.route('**/brands-fr.json', (route) =>
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
 })

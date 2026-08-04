@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fluxDateToIso, parseOpeningHours, parseRecord } from './EspStationsProvider'
+import { fluxDateToIso, parseOpeningHours, parseRecord } from './EsStationsProvider'
 import type { GeoPoint } from '../../lib/geo'
 
 // Browser-typed project, Node-run tests — see src/lib/time.test.ts
@@ -203,8 +203,8 @@ function deferredFetch() {
 
 async function freshProvider() {
   vi.resetModules()
-  const mod = await import('./EspStationsProvider')
-  return new mod.EspStationsProvider()
+  const mod = await import('./EsStationsProvider')
+  return new mod.EsStationsProvider()
 }
 
 describe('province fetch memo', () => {

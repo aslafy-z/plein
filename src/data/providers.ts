@@ -1,15 +1,15 @@
 // Provider registry — resolves a DataSourceId to a memoized bundle of providers.
 import { withGeocodeMemo } from './geocodeMemo';
 import type { DataSourceId, ProviderBundle } from './types';
-import { FraStationsProvider } from './fra/FraStationsProvider';
-import { BanGeocodeProvider } from './fra/BanGeocodeProvider';
-import { RealRouteProvider } from './fra/OsrmRouteProvider';
-import { EspStationsProvider } from './esp/EspStationsProvider';
-import { CartoCiudadGeocodeProvider } from './esp/CartoCiudadGeocodeProvider';
-import { AndStationsProvider } from './and/AndStationsProvider';
-import { AndGeocodeProvider } from './and/AndGeocodeProvider';
-import { PrtStationsProvider } from './prt/PrtStationsProvider';
-import { PhotonGeocodeProvider } from './prt/PhotonGeocodeProvider';
+import { FrStationsProvider } from './fr/FrStationsProvider';
+import { BanGeocodeProvider } from './fr/BanGeocodeProvider';
+import { RealRouteProvider } from './fr/OsrmRouteProvider';
+import { EsStationsProvider } from './es/EsStationsProvider';
+import { CartoCiudadGeocodeProvider } from './es/CartoCiudadGeocodeProvider';
+import { AdStationsProvider } from './ad/AdStationsProvider';
+import { AdGeocodeProvider } from './ad/AdGeocodeProvider';
+import { PtStationsProvider } from './pt/PtStationsProvider';
+import { PhotonGeocodeProvider } from './pt/PhotonGeocodeProvider';
 import { AutoGeocodeProvider, AutoStationsProvider } from './auto/AutoProviders';
 import {
   DemoGeocodeProvider,
@@ -27,32 +27,32 @@ function createBundle(id: DataSourceId): ProviderBundle {
       route: new RealRouteProvider(),
     };
   }
-  if (id === 'fra') {
+  if (id === 'fr') {
     return {
-      stations: new FraStationsProvider(),
+      stations: new FrStationsProvider(),
       geocode: new BanGeocodeProvider(),
       route: new RealRouteProvider(),
     };
   }
-  if (id === 'esp') {
+  if (id === 'es') {
     return {
-      stations: new EspStationsProvider(),
+      stations: new EsStationsProvider(),
       geocode: new CartoCiudadGeocodeProvider(),
       // OSRM / Valhalla public servers cover Spain too
       route: new RealRouteProvider(),
     };
   }
-  if (id === 'and') {
+  if (id === 'ad') {
     return {
-      stations: new AndStationsProvider(),
-      geocode: new AndGeocodeProvider(),
+      stations: new AdStationsProvider(),
+      geocode: new AdGeocodeProvider(),
       // OSRM / Valhalla public servers cover Andorra too (OSM-based)
       route: new RealRouteProvider(),
     };
   }
-  if (id === 'prt') {
+  if (id === 'pt') {
     return {
-      stations: new PrtStationsProvider(),
+      stations: new PtStationsProvider(),
       geocode: new PhotonGeocodeProvider(),
       // OSRM / Valhalla public servers cover Portugal too
       route: new RealRouteProvider(),

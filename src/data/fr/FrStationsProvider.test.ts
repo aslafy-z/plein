@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  FraStationsProvider,
+  FrStationsProvider,
   deriveTags,
-  fraDatasetId,
+  frDatasetId,
   parseClock,
   parseCoords,
   parseOpeningHours,
   parsePrices,
   parsePriceField,
   parseServices,
-} from './FraStationsProvider';
+} from './FrStationsProvider';
 
 // The gouv flux is schema-loose: the same column arrives as a number, a
 // string, a JSON string or not at all, depending on the record. These pin the
@@ -385,15 +385,15 @@ describe('parseOpeningHours', () => {
   });
 });
 
-describe('fraDatasetId', () => {
+describe('frDatasetId', () => {
   it('reads the numeric dataset id off the prefixed form', () => {
-    expect(fraDatasetId('fra-80570001')).toBe(80570001);
+    expect(frDatasetId('fr-80570001')).toBe(80570001);
   });
 
   it('rejects coordinate-fallback ids and other countries', () => {
-    expect(fraDatasetId('fra-43.60000,1.44000')).toBeNull();
-    expect(fraDatasetId('esp-1234')).toBeNull();
-    expect(fraDatasetId('su')).toBeNull();
+    expect(frDatasetId('fr-43.60000,1.44000')).toBeNull();
+    expect(frDatasetId('es-1234')).toBeNull();
+    expect(frDatasetId('su')).toBeNull();
   });
 });
 
@@ -424,16 +424,16 @@ describe('getStationsByIds', () => {
       };
     });
 
-    const stations = await new FraStationsProvider().getStationsByIds([
-      'fra-80570001',
-      'fra-43.60000,1.44000', // names no dataset row — dropped from the list
-      'esp-1234', // another country's scheme — ignored
+    const stations = await new FrStationsProvider().getStationsByIds([
+      'fr-80570001',
+      'fr-43.60000,1.44000', // names no dataset row — dropped from the list
+      'es-1234', // another country's scheme — ignored
     ]);
 
     expect(calls).toHaveLength(1);
     const url = new URL(calls[0], 'http://localhost');
     expect(url.searchParams.get('where')).toBe('id in (80570001)');
-    expect(stations.map((s) => s.id)).toEqual(['fra-80570001']);
+    expect(stations.map((s) => s.id)).toEqual(['fr-80570001']);
     expect(stations[0].prices.diesel?.value).toBe(1.8);
   });
 
@@ -441,6 +441,6 @@ describe('getStationsByIds', () => {
     vi.stubGlobal('fetch', async () => {
       throw new Error('must not be called');
     });
-    expect(await new FraStationsProvider().getStationsByIds(['fra-1.0,2.0', 'and-7'])).toEqual([]);
+    expect(await new FrStationsProvider().getStationsByIds(['fr-1.0,2.0', 'ad-7'])).toEqual([]);
   });
 });

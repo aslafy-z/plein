@@ -152,7 +152,7 @@ const shellFetch =
     if (override === 'offline') throw new TypeError('Failed to fetch')
     if (override) return override.clone()
     if (url === `${ORIGIN}/`) return new Response(SHELL_HTML, { status: 200 })
-    if (SHELL_URLS.some((u) => url === ORIGIN + u) || url === `${ORIGIN}/brands-fra.json`)
+    if (SHELL_URLS.some((u) => url === ORIGIN + u) || url === `${ORIGIN}/brands-fr.json`)
       return new Response(url, { status: 200 })
     return new Response('nope', { status: 404 })
   }
@@ -167,7 +167,7 @@ describe('service worker — install precache', () => {
     for (const url of SHELL_URLS) {
       expect(assetCache(sw)?.entries.has(ORIGIN + url), `${url} must be precached`).toBe(true)
     }
-    expect(sw.caches.stores.get('plein-data-v1')?.entries.has(`${ORIGIN}/brands-fra.json`)).toBe(
+    expect(sw.caches.stores.get('plein-data-v2')?.entries.has(`${ORIGIN}/brands-fr.json`)).toBe(
       true,
     )
   })
@@ -204,12 +204,12 @@ describe('service worker — install precache', () => {
   })
 
   it('does not let the brand index block the install', async () => {
-    const sw = loadSw(shellFetch({ '/brands-fra.json': 'offline' }))
+    const sw = loadSw(shellFetch({ '/brands-fr.json': 'offline' }))
 
     await sw.install()
 
     expect(await shellCache(sw)?.entries.get(`${ORIGIN}/`)?.text()).toBe(SHELL_HTML)
-    expect(sw.caches.stores.get('plein-data-v1')?.entries.size ?? 0).toBe(0)
+    expect(sw.caches.stores.get('plein-data-v2')?.entries.size ?? 0).toBe(0)
   })
 })
 
@@ -316,16 +316,16 @@ describe('service worker — the offline brand identity', () => {
     })
 
     // Cold: nothing cached, so the network copy is what the page gets
-    const { res: cold } = await sw.fetchEvent(request('/brands-fra.json'))
+    const { res: cold } = await sw.fetchEvent(request('/brands-fr.json'))
     expect(await cold?.text()).toBe('index 1')
 
     // Warm: the cached copy answers, and the refresh lands behind it
-    const { res: warm, waitCount } = await sw.fetchEvent(request('/brands-fra.json'))
+    const { res: warm, waitCount } = await sw.fetchEvent(request('/brands-fr.json'))
     expect(await warm?.text()).toBe('index 1')
     expect(waitCount).toBe(1)
     expect(calls).toBe(2)
 
-    const { res: next } = await sw.fetchEvent(request('/brands-fra.json'))
+    const { res: next } = await sw.fetchEvent(request('/brands-fr.json'))
     expect(await next?.text()).toBe('index 2')
   })
 
@@ -336,9 +336,9 @@ describe('service worker — the offline brand identity', () => {
       return new Response('index', { status: 200 })
     })
 
-    await sw.fetchEvent(request('/brands-fra.json'))
+    await sw.fetchEvent(request('/brands-fr.json'))
     online = false
-    const { res } = await sw.fetchEvent(request('/brands-fra.json'))
+    const { res } = await sw.fetchEvent(request('/brands-fr.json'))
 
     // Without this an offline reload loses every enseigne name
     expect(await res?.text()).toBe('index')
@@ -348,13 +348,13 @@ describe('service worker — the offline brand identity', () => {
     let status = 200
     const sw = loadSw(async () => new Response(`index ${status}`, { status }))
 
-    await sw.fetchEvent(request('/brands-fra.json'))
+    await sw.fetchEvent(request('/brands-fr.json'))
     status = 500
-    await sw.fetchEvent(request('/brands-fra.json'))
-    await sw.fetchEvent(request('/brands-fra.json'))
+    await sw.fetchEvent(request('/brands-fr.json'))
+    await sw.fetchEvent(request('/brands-fr.json'))
 
-    const cached = sw.caches.stores.get('plein-data-v1')
-    expect(await cached?.entries.get(`${ORIGIN}/brands-fra.json`)?.text()).toBe('index 200')
+    const cached = sw.caches.stores.get('plein-data-v2')
+    expect(await cached?.entries.get(`${ORIGIN}/brands-fr.json`)?.text()).toBe('index 200')
   })
 
   it('caches the brand logos cache-first, next to the app assets', async () => {
@@ -392,7 +392,7 @@ describe('service worker — tiles and activation', () => {
     await sw.caches.open('plein-assets-v1')
     await sw.caches.open('plein-shell-v1')
     await sw.caches.open('plein-tiles-v1')
-    await sw.caches.open('plein-data-v1')
+    await sw.caches.open('plein-data-v2')
     await sw.caches.open('plein-assets-v0')
 
     await sw.activate()
@@ -401,7 +401,7 @@ describe('service worker — tiles and activation', () => {
       'plein-assets-v1',
       'plein-shell-v1',
       'plein-tiles-v1',
-      'plein-data-v1',
+      'plein-data-v2',
     ])
   })
 })

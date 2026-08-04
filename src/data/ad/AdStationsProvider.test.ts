@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { groupStations } from './AndStationsProvider'
+import { groupStations } from './AdStationsProvider'
 import type { GeoPoint } from '../../lib/geo'
 
 // The IPE flux returns one row per station × product; only some rows are
@@ -40,7 +40,7 @@ describe('groupStations', () => {
     ])
     expect(stations).toHaveLength(1)
     const st = stations[0]
-    expect(st.id).toBe('and-12')
+    expect(st.id).toBe('ad-12')
     expect(st.name).toBe('TotalEnergies · La Massana I')
     expect(st.brand).toBe('TotalEnergies')
     expect(st.prices.diesel?.value).toBe(1.5)
@@ -174,8 +174,8 @@ function deferredFetch() {
 
 async function freshProvider() {
   vi.resetModules()
-  const mod = await import('./AndStationsProvider')
-  return new mod.AndStationsProvider()
+  const mod = await import('./AdStationsProvider')
+  return new mod.AdStationsProvider()
 }
 
 describe('country fetch memo', () => {

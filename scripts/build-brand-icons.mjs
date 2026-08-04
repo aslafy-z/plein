@@ -34,7 +34,7 @@ const ICONS = [
   ['lidl', 'lidl.fr'],
   ['spar', 'spar.fr'],
   ['colruyt', 'colruyt.fr'],
-  // Enseignes espagnoles (source esp — geoportalgasolineras.es).
+  // Enseignes espagnoles (source es — geoportalgasolineras.es).
   // Pas de cepsa.es : il sert le favicon Moeve depuis le rebranding — les
   // stations encore siglées Cepsa gardent l'avatar à initiales.
   ['repsol', 'repsol.es'],

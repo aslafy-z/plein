@@ -219,7 +219,7 @@ Anything that does not fit one of them does not get cached.
 | durable, app-owned | settings, filters, favorites, `searchHistory`, `lastPos` | localStorage `plein.settings.v1` | none; shape migrations in `persist.ts` `migrate()` |
 | durable, app-owned | station arrays per fetched area | IndexedDB `plein.cache` (`src/data/cacheStore.ts`) | three tiers, below |
 | memory | province/district memos, `roadReach`, selector memos, brand POI index, geocode + route LRUs | JS maps | the session |
-| static, SW-owned | bundles, icons, fonts, shell, tiles, `/brands-fra.json`, `/brand-icons/*` | Cache Storage (`public/sw.js`) | cache-name version bump + FIFO caps |
+| static, SW-owned | bundles, icons, fonts, shell, tiles, `/brands-fr.json`, `/brand-icons/*` | Cache Storage (`public/sw.js`) | cache-name version bump + FIFO caps |
 
 - **Prices never go in the service worker.** `fetchedAt` per fetched area is
   the single source of truth about how old the numbers on screen are; an HTTP
@@ -272,8 +272,8 @@ npm run build       # tsc + vite build
   (`src/data/demo/demoData.ts`, centred on Toulouse) via the `seed` fixture
   in `e2e/fixtures.ts`, which installs the persisted settings blob before
   boot — seed `sourceId`, `favorites`, `lastPos`… instead of clicking
-  through setup. Tests needing the French flux mock `**/proxy/fra/**` and
-  `**/brands-fra.json` with `page.route`. The fixture fails any test whose
+  through setup. Tests needing the French flux mock `**/proxy/fr/**` and
+  `**/brands-fr.json` with `page.route`. The fixture fails any test whose
   page logs a console error. It also pins `locale: 'en'` into every seed —
   the assertions read the English catalog, and neither the runner's Chromium
   (asked for `en-US` in `playwright.config.ts`) nor the app's French fallback

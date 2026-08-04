@@ -9,7 +9,7 @@ import { IS_DEV } from '../../lib/env';
 import { rankByKind } from '../geocodeRank';
 import type { GeocodeProvider, GeocodeResult, PlaceKind } from '../types';
 
-const BASE = (IS_DEV ? '/proxy/and' : 'https://sig.govern.ad') + '/server/rest/services/IDE';
+const BASE = (IS_DEV ? '/proxy/ad' : 'https://sig.govern.ad') + '/server/rest/services/IDE';
 const TIMEOUT_MS = 6000;
 const MIN_QUERY = 3;
 /** Suggestions pulled per locator — place names first, streets as a bonus */
@@ -39,7 +39,7 @@ function splitLabel(text: string): Pick<GeocodeResult, 'label' | 'sublabel' | 'c
   const i = text.lastIndexOf(',');
   const label = (i > 0 ? text.slice(0, i) : text).trim();
   const parish = i > 0 ? text.slice(i + 1).trim() : '';
-  return { label, sublabel: parish !== label ? parish : '', country: 'and' };
+  return { label, sublabel: parish !== label ? parish : '', country: 'ad' };
 }
 
 async function suggest(
@@ -87,7 +87,7 @@ async function resolve(s: Suggestion): Promise<GeocodeResult | null> {
   }
 }
 
-export class AndGeocodeProvider implements GeocodeProvider {
+export class AdGeocodeProvider implements GeocodeProvider {
   async search(query: string): Promise<GeocodeResult[]> {
     const q = query.trim();
     if (q.length < MIN_QUERY) return [];

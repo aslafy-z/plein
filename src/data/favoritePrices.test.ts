@@ -60,47 +60,47 @@ describe('favoritePrices store', () => {
   it('records only starred stations, readable without waiting on the store', async () => {
     const { recordFavoritePrices, readFavoritePrices } = await freshModule(memoryStore());
 
-    recordFavoritePrices(new Set(['fra-1']), [station('fra-1'), station('fra-2')], 1_000);
+    recordFavoritePrices(new Set(['fr-1']), [station('fr-1'), station('fr-2')], 1_000);
 
-    const entries = await readFavoritePrices(['fra-1', 'fra-2']);
-    expect([...entries.keys()]).toEqual(['fra-1']);
-    expect(entries.get('fra-1')?.prices.diesel?.value).toBe(1.75);
-    expect(entries.get('fra-1')?.fetchedAt).toBe(1_000);
+    const entries = await readFavoritePrices(['fr-1', 'fr-2']);
+    expect([...entries.keys()]).toEqual(['fr-1']);
+    expect(entries.get('fr-1')?.prices.diesel?.value).toBe(1.75);
+    expect(entries.get('fr-1')?.fetchedAt).toBe(1_000);
   });
 
   it('flushes one record per favorite and survives a reload', async () => {
     const store = memoryStore();
     const first = await freshModule(store);
-    first.recordFavoritePrices(new Set(['esp-9']), [station('esp-9', 1.52)], 2_000);
+    first.recordFavoritePrices(new Set(['es-9']), [station('es-9', 1.52)], 2_000);
     await vi.runAllTimersAsync();
 
     expect(store.records.get('favoritePrices')?.size).toBe(1);
 
     const reloaded = await freshModule(store);
-    const entries = await reloaded.readFavoritePrices(['esp-9']);
-    expect(entries.get('esp-9')?.prices.diesel?.value).toBe(1.52);
-    expect(entries.get('esp-9')?.fetchedAt).toBe(2_000);
+    const entries = await reloaded.readFavoritePrices(['es-9']);
+    expect(entries.get('es-9')?.prices.diesel?.value).toBe(1.52);
+    expect(entries.get('es-9')?.fetchedAt).toBe(2_000);
   });
 
   it('never lets an older fetch overwrite a newer price', async () => {
     const { recordFavoritePrices, readFavoritePrices } = await freshModule(memoryStore());
 
-    recordFavoritePrices(new Set(['fra-1']), [station('fra-1', 1.8)], 5_000);
-    recordFavoritePrices(new Set(['fra-1']), [station('fra-1', 1.6)], 3_000);
+    recordFavoritePrices(new Set(['fr-1']), [station('fr-1', 1.8)], 5_000);
+    recordFavoritePrices(new Set(['fr-1']), [station('fr-1', 1.6)], 3_000);
 
-    const entries = await readFavoritePrices(['fra-1']);
-    expect(entries.get('fra-1')?.prices.diesel?.value).toBe(1.8);
-    expect(entries.get('fra-1')?.fetchedAt).toBe(5_000);
+    const entries = await readFavoritePrices(['fr-1']);
+    expect(entries.get('fr-1')?.prices.diesel?.value).toBe(1.8);
+    expect(entries.get('fr-1')?.fetchedAt).toBe(5_000);
   });
 
   it('drops an entry past the hard age ceiling instead of painting it', async () => {
     const mod = await freshModule(memoryStore());
     const { MAX_CACHE_AGE_MS } = await import('./stationsCache');
 
-    mod.recordFavoritePrices(new Set(['fra-1']), [station('fra-1')], 50_000);
+    mod.recordFavoritePrices(new Set(['fr-1']), [station('fr-1')], 50_000);
     vi.setSystemTime(50_000 + MAX_CACHE_AGE_MS + 1);
 
-    const entries = await mod.readFavoritePrices(['fra-1']);
+    const entries = await mod.readFavoritePrices(['fr-1']);
     expect(entries.size).toBe(0);
   });
 
@@ -108,24 +108,24 @@ describe('favoritePrices store', () => {
     const store = memoryStore();
     const mod = await freshModule(store);
 
-    mod.recordFavoritePrices(new Set(['fra-1', 'fra-2']), [station('fra-1'), station('fra-2')], 1_000);
-    mod.pruneFavoritePrices(new Set(['fra-2']));
+    mod.recordFavoritePrices(new Set(['fr-1', 'fr-2']), [station('fr-1'), station('fr-2')], 1_000);
+    mod.pruneFavoritePrices(new Set(['fr-2']));
     await vi.runAllTimersAsync();
 
-    const entries = await mod.readFavoritePrices(['fra-1', 'fra-2']);
-    expect([...entries.keys()]).toEqual(['fra-2']);
-    expect(store.records.get('favoritePrices')?.has('fra-1')).toBe(false);
+    const entries = await mod.readFavoritePrices(['fr-1', 'fr-2']);
+    expect([...entries.keys()]).toEqual(['fr-2']);
+    expect(store.records.get('favoritePrices')?.has('fr-1')).toBe(false);
   });
 
   it('clears everything, memory and records alike', async () => {
     const store = memoryStore();
     const mod = await freshModule(store);
 
-    mod.recordFavoritePrices(new Set(['fra-1']), [station('fra-1')], 1_000);
+    mod.recordFavoritePrices(new Set(['fr-1']), [station('fr-1')], 1_000);
     await vi.runAllTimersAsync();
     await mod.clearFavoritePrices();
 
-    expect((await mod.readFavoritePrices(['fra-1'])).size).toBe(0);
+    expect((await mod.readFavoritePrices(['fr-1'])).size).toBe(0);
     expect(store.records.get('favoritePrices')?.size ?? 0).toBe(0);
   });
 });
@@ -151,26 +151,26 @@ describe('planFavoriteRefresh', () => {
   it('issues nothing when every entry is fresh', async () => {
     const { planFavoriteRefresh, STALE_MS } = await plan();
     const now = STALE_MS * 10;
-    const entries = new Map([['fra-1', { fetchedAt: now - STALE_MS / 2 }]]);
-    expect(planFavoriteRefresh([fav('fra-1', 43.6, 1.44)], entries, { now })).toEqual([]);
+    const entries = new Map([['fr-1', { fetchedAt: now - STALE_MS / 2 }]]);
+    expect(planFavoriteRefresh([fav('fr-1', 43.6, 1.44)], entries, { now })).toEqual([]);
   });
 
   it('groups stale favorites by country, close ones sharing one fetch', async () => {
     const { planFavoriteRefresh } = await plan();
     const groups = planFavoriteRefresh(
       [
-        fav('fra-1', 43.6, 1.44),
-        fav('fra-2', 43.62, 1.45), // ~2 km from fra-1 — same group
-        fav('fra-3', 48.85, 2.35), // Paris — its own group
-        fav('esp-1', 43.61, 1.44), // same place as fra-1 but another source
+        fav('fr-1', 43.6, 1.44),
+        fav('fr-2', 43.62, 1.45), // ~2 km from fr-1 — same group
+        fav('fr-3', 48.85, 2.35), // Paris — its own group
+        fav('es-1', 43.61, 1.44), // same place as fr-1 but another source
       ],
       new Map(),
       { now: 100_000 },
     );
     expect(groups.map((g) => [g.country, [...g.ids].sort()])).toEqual([
-      ['fra', ['fra-1', 'fra-2']],
-      ['fra', ['fra-3']],
-      ['esp', ['esp-1']],
+      ['fr', ['fr-1', 'fr-2']],
+      ['fr', ['fr-3']],
+      ['es', ['es-1']],
     ]);
   });
 
@@ -178,18 +178,18 @@ describe('planFavoriteRefresh', () => {
     const { planFavoriteRefresh } = await plan();
     const groups = planFavoriteRefresh(
       [
-        fav('fra-1', 43.6, 1.44), // Toulouse
-        fav('fra-2', 48.85, 2.35), // Paris — same group anyway: fra answers by id
-        fav('esp-1', 41.4, 2.1), // Barcelona
-        fav('esp-2', 40.4, -3.7), // Madrid — its own circle, esp stays geographic
+        fav('fr-1', 43.6, 1.44), // Toulouse
+        fav('fr-2', 48.85, 2.35), // Paris — same group anyway: fr answers by id
+        fav('es-1', 41.4, 2.1), // Barcelona
+        fav('es-2', 40.4, -3.7), // Madrid — its own circle, es stays geographic
       ],
       new Map(),
-      { now: 100_000, byIdCountries: new Set(['fra' as const]) },
+      { now: 100_000, byIdCountries: new Set(['fr' as const]) },
     );
     expect(groups.map((g) => [g.country, [...g.ids].sort()])).toEqual([
-      ['fra', ['fra-1', 'fra-2']],
-      ['esp', ['esp-1']],
-      ['esp', ['esp-2']],
+      ['fr', ['fr-1', 'fr-2']],
+      ['es', ['es-1']],
+      ['es', ['es-2']],
     ]);
   });
 
@@ -201,21 +201,21 @@ describe('planFavoriteRefresh', () => {
   it('puts never-priced favorites ahead of merely stale ones', async () => {
     const { planFavoriteRefresh, STALE_MS } = await plan();
     const now = STALE_MS * 10;
-    const entries = new Map([['fra-old', { fetchedAt: now - STALE_MS * 2 }]]);
+    const entries = new Map([['fr-old', { fetchedAt: now - STALE_MS * 2 }]]);
     const groups = planFavoriteRefresh(
-      [fav('fra-old', 43.6, 1.44), fav('fra-new', 48.85, 2.35)],
+      [fav('fr-old', 43.6, 1.44), fav('fr-new', 48.85, 2.35)],
       entries,
       { now },
     );
-    expect(groups[0].ids).toEqual(['fra-new']);
-    expect(groups[1].ids).toEqual(['fra-old']);
+    expect(groups[0].ids).toEqual(['fr-new']);
+    expect(groups[1].ids).toEqual(['fr-old']);
   });
 
   it('caps the number of fetches per round', async () => {
     const { planFavoriteRefresh, MAX_REFRESH_FETCHES } = await plan();
     // Spread favorites ~110 km apart so none can share a group
     const favorites = Array.from({ length: MAX_REFRESH_FETCHES + 4 }, (_, i) =>
-      fav(`fra-${i}`, 42 + i, 1.44),
+      fav(`fr-${i}`, 42 + i, 1.44),
     );
     const groups = planFavoriteRefresh(favorites, new Map(), { now: 100_000 });
     expect(groups).toHaveLength(MAX_REFRESH_FETCHES);
@@ -225,14 +225,14 @@ describe('planFavoriteRefresh', () => {
     const { planFavoriteRefresh, STALE_MS } = await plan();
     const now = STALE_MS * 10;
     const attemptedAt = new Map([
-      ['fra-1', now - STALE_MS / 2],
-      ['fra-2', now - STALE_MS * 2],
+      ['fr-1', now - STALE_MS / 2],
+      ['fr-2', now - STALE_MS * 2],
     ]);
     const groups = planFavoriteRefresh(
-      [fav('fra-1', 43.6, 1.44), fav('fra-2', 48.85, 2.35)],
+      [fav('fr-1', 43.6, 1.44), fav('fr-2', 48.85, 2.35)],
       new Map(),
       { now, attemptedAt },
     );
-    expect(groups.flatMap((g) => g.ids)).toEqual(['fra-2']);
+    expect(groups.flatMap((g) => g.ids)).toEqual(['fr-2']);
   });
 });

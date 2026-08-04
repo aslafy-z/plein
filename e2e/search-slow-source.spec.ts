@@ -10,10 +10,10 @@ test.use({
 })
 
 test('suggestions do not wait for the slowest source', async ({ page }) => {
-  await page.route('**/proxy/fra/**', (route) =>
+  await page.route('**/proxy/fr/**', (route) =>
     route.fulfill({ json: { total_count: 0, results: [] } }),
   )
-  await page.route('**/brands-fra.json', (route) =>
+  await page.route('**/brands-fr.json', (route) =>
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
   await page.route('**/proxy/ban/**', (route) =>
@@ -29,7 +29,7 @@ test('suggestions do not wait for the slowest source', async ({ page }) => {
       },
     }),
   )
-  await page.route('**/proxy/and/**', (route) => route.fulfill({ json: { suggestions: [] } }))
+  await page.route('**/proxy/ad/**', (route) => route.fulfill({ json: { suggestions: [] } }))
   await page.route('**/proxy/photon/**', (route) =>
     route.fulfill({ json: { type: 'FeatureCollection', features: [] } }),
   )
