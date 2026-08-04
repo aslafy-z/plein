@@ -126,6 +126,24 @@ test.describe('phone', () => {
     ).toBeVisible()
   })
 
+  test('the route preferences ride the map overlay, at hand before any pick', async ({ page }) => {
+    await gotoMap(page)
+    await page.getByText('Route', { exact: true }).click()
+
+    // Picking a destination computes right away, so the avoid toggles must be
+    // reachable BEFORE the pick — over the map, no sheet expansion needed.
+    // (The sheet's form holds a second copy; scope to the overlay row.)
+    const chips = page.getByTestId('route-pref-chips')
+    const tolls = chips.getByRole('button', { name: 'Avoid tolls' })
+    await expect(tolls).toBeVisible()
+    await expect(chips.getByRole('button', { name: 'Avoid motorways' })).toBeVisible()
+
+    await tolls.click()
+    await expect(tolls).toContainText('✓')
+    await tolls.click()
+    await expect(tolls).not.toContainText('✓')
+  })
+
   test('picking a place fills the field it was opened for', async ({ page }) => {
     await gotoMap(page)
     await page.getByText('Route', { exact: true }).click()

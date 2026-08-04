@@ -107,6 +107,49 @@ function RouteFields() {
   );
 }
 
+/** The avoid-motorways / avoid-tolls toggles — one presentation, two homes.
+    They sit in the setup form (desktop panel, expanded phone sheet) and, on a
+    phone, ALSO ride the map overlay right under the endpoint fields: picking
+    a destination starts the comparison immediately, so the preferences must
+    be reachable before that pick, not buried behind a sheet expansion. The
+    `onMap` variant is the map tab's chip look — a transparent chip over map
+    tiles is unreadable. */
+function RoutePrefChips({ onMap = false }: { onMap?: boolean }) {
+  const app = useApp();
+  return (
+    <>
+      {(
+        [
+          [m.route_avoid_motorways(), app.avoidMotorway, app.setAvoidMotorway],
+          [m.route_avoid_tolls(), app.avoidToll, app.setAvoidToll],
+        ] as const
+      ).map(([label, on, set]) => (
+        <button
+          key={label}
+          onClick={() => set(!on)}
+          style={{
+            background: on ? C.accent : onMap ? C.surface2 : 'transparent',
+            color: on ? C.onAccent : C.body,
+            fontSize: onMap ? 13 : 12.5,
+            fontWeight: on ? 700 : onMap ? 500 : 700,
+            padding: '8px 14px',
+            borderRadius: onMap ? 18 : 16,
+            border: on
+              ? `1px solid ${C.accent}`
+              : `1px solid ${onMap ? C.border09 : C.border15}`,
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            pointerEvents: 'auto',
+          }}
+        >
+          {on ? '✓ ' : ''}
+          {label}
+        </button>
+      ))}
+    </>
+  );
+}
+
 /** The setup form minus the fields (those float over the map now): the
     preference chips, the departure tank and the settings recap. */
 function RouteForm({ withTitle }: { withTitle: boolean }) {
@@ -128,31 +171,7 @@ function RouteForm({ withTitle }: { withTitle: boolean }) {
 
       {/* Route preferences */}
       <div style={{ display: 'flex', gap: 8, marginTop: withTitle ? 18 : 8, flexWrap: 'wrap' }}>
-        {(
-          [
-            [m.route_avoid_motorways(), app.avoidMotorway, app.setAvoidMotorway],
-            [m.route_avoid_tolls(), app.avoidToll, app.setAvoidToll],
-          ] as const
-        ).map(([label, on, set]) => (
-          <button
-            key={label}
-            onClick={() => set(!on)}
-            style={{
-              background: on ? C.accent : 'transparent',
-              color: on ? C.onAccent : C.body,
-              fontSize: 12.5,
-              fontWeight: 700,
-              padding: '8px 14px',
-              borderRadius: 16,
-              border: on ? `1px solid ${C.accent}` : `1px solid ${C.border15}`,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {on ? '✓ ' : ''}
-            {label}
-          </button>
-        ))}
+        <RoutePrefChips />
       </div>
 
       {/* Departure tank level — drives the autonomy line on the timeline.
@@ -533,6 +552,21 @@ export default function RouteScreen() {
               }}
             >
               <RouteFields />
+
+              {/* The preference chips ride the overlay during setup — the
+                  sheet's copy of the form only shows once expanded, and
+                  picking a destination computes right away. Once a route
+                  stands they retreat into the form: toggling one here would
+                  not recompute the standing route, and a chip that silently
+                  stops matching the itinerary on screen is a lie. */}
+              {phase === 'form' && (
+                <div
+                  data-testid="route-pref-chips"
+                  style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}
+                >
+                  <RoutePrefChips onMap />
+                </div>
+              )}
             </div>
           )}
         </div>
