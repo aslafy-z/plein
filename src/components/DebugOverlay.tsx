@@ -29,7 +29,7 @@ import { selectVisible, useApp } from '../state/store';
 const Z_OVERLAY = 5000;
 /** Under this movement a pointer sequence is a tap, above it a drag */
 const DRAG_SLOP_PX = 6;
-const CHIP = 46;
+const CHIP = 40;
 /** Refresh cadence while the panel is open */
 const LIVE_REFRESH_MS = 2000;
 
@@ -392,6 +392,8 @@ export default function DebugOverlay() {
       aria-label="Open debug overlay"
       data-testid="debug-chip"
       data-sheet-no-drag=""
+      // The look of the map's floating controls (share, recenter): a small
+      // glass pill, not a solid disc shouting over the basemap
       style={{
         position: 'fixed',
         left: pos.x,
@@ -400,11 +402,18 @@ export default function DebugOverlay() {
         height: CHIP,
         zIndex: Z_OVERLAY,
         borderRadius: '50%',
-        background: C.surface2,
-        border: `1px solid ${C.accentBorder40}`,
+        padding: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: C.glassBgSoft,
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        border: `1px solid ${C.glassBorder}`,
         boxShadow: `0 6px 18px ${C.shadow45}`,
         color: C.accent,
-        font: `800 12px ${FONT.mono}`,
+        font: `700 10px ${FONT.mono}`,
+        letterSpacing: '.06em',
         cursor: 'grab',
         touchAction: 'none',
       }}
