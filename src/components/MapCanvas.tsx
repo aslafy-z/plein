@@ -163,16 +163,22 @@ export default function MapCanvas({
   const circleOffsetRef = useRef({ x: 0, y: 0 });
   const userDotRef = useRef<L.Marker | null>(null);
   const originLineRef = useRef<L.Polyline | null>(null);
-  /** Glue the link line's zone end to the DRAWN circle: mid-gesture the
-      glide handler owns the circle's position and the throttled searchPos
-      trails it — a line aimed at searchPos would visibly lag the drag.
-      Called wherever the circle's latlng is set outside its own effect. */
-  const syncOriginLine = () => {
-    const line = originLineRef.current;
+  const reticleRef = useRef<L.Marker | null>(null);
+  /** Glue the center attachments (link line's zone end, center reticle) to
+      the DRAWN circle: mid-gesture the glide handler owns the circle's
+      position and the throttled searchPos trails it — anything aimed at
+      searchPos would visibly lag the drag. Called wherever the circle's
+      latlng is set outside its own effect. */
+  const syncCircleAttachments = () => {
     const circle = circleRef.current;
-    if (!line || !circle) return;
-    const pts = line.getLatLngs() as L.LatLng[];
-    line.setLatLngs([pts[0], circle.getLatLng()]);
+    if (!circle) return;
+    const c = circle.getLatLng();
+    const line = originLineRef.current;
+    if (line) {
+      const pts = line.getLatLngs() as L.LatLng[];
+      line.setLatLngs([pts[0], c]);
+    }
+    reticleRef.current?.setLatLng(c);
   };
   const markersRef = useRef(new Map<string, { marker: L.Marker; sig: string }>());
   /** Set by setup — the keyboard gesture start needs it through the shell */
@@ -286,7 +292,7 @@ export default function MapCanvas({
         farGesture = false;
         circleOffsetRef.current = { x: 0, y: 0 };
         circleRef.current?.setLatLng(map.containerPointToLatLng(mid));
-        syncOriginLine();
+        syncCircleAttachments();
       }
     });
     // Results follow the circle LIVE while the finger drags (throttled):
@@ -332,7 +338,7 @@ export default function MapCanvas({
       const mid = gestureMid ?? sh.visibleCenterPoint(map);
       const c = map.containerPointToLatLng(L.point(mid.x + off.x, mid.y + off.y));
       circleRef.current?.setLatLng(c);
-      syncOriginLine();
+      syncCircleAttachments();
       const now = Date.now();
       if (now - lastLiveSearch < LIVE_SEARCH_MS) return;
       const cur = appRef.current;
@@ -387,6 +393,7 @@ export default function MapCanvas({
       circleOffsetRef.current = { x: 0, y: 0 };
       userDotRef.current = null;
       originLineRef.current = null;
+      reticleRef.current = null;
     };
   };
 
@@ -455,7 +462,7 @@ export default function MapCanvas({
       if (!userInteractedRef.current) {
         circleOffsetRef.current = { x: 0, y: 0 };
         circleRef.current.setLatLng([app.searchPos.lat, app.searchPos.lng]);
-        syncOriginLine();
+        syncCircleAttachments();
       }
       circleRef.current.setRadius(app.radius * 1000);
     }
@@ -497,7 +504,7 @@ export default function MapCanvas({
   // Out of reach it is not drawn — only an off-screen stub would show, and
   // the dashed circle already carries that state; without a known position
   // there is no origin to link from at all. The zone end follows the DRAWN
-  // circle (see syncOriginLine), so the line never trails a drag.
+  // circle (see syncCircleAttachments), so the line never trails a drag.
   // Deliberately styled nothing like the route polyline — this must never
   // read as an itinerary.
   const linkWanted = app.searchedAway && tripOrigin;
@@ -524,6 +531,35 @@ export default function MapCanvas({
       originLineRef.current.setLatLngs(pts);
     }
   }, [linkWanted, app.userPos, app.searchPos]);
+
+  // ── Center reticle — a fine fixed-size crosshair on the zone center ─────────
+  // Marks what the circle is centered on without competing with the pins:
+  // two hairlines, no fill, nothing a station pin or the user dot could be
+  // confused with. Permanent — when the zone follows the user it sits under
+  // the user dot and disappears into it. Glued to the DRAWN circle during
+  // gestures via syncCircleAttachments, exactly like the link line.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const pos =
+      circleRef.current?.getLatLng() ?? L.latLng(app.searchPos.lat, app.searchPos.lng);
+    if (!reticleRef.current) {
+      const bar = (r: string) =>
+        `<div style="position:absolute;${r};background:rgba(61,220,132,.55);border-radius:1px"></div>`;
+      const html =
+        `<div style="position:relative;width:14px;height:14px">` +
+        bar('left:6.25px;top:0;width:1.5px;height:14px') +
+        bar('left:0;top:6.25px;width:14px;height:1.5px') +
+        `</div>`;
+      reticleRef.current = L.marker([pos.lat, pos.lng], {
+        icon: L.divIcon({ className: '', html, iconSize: [14, 14], iconAnchor: [7, 7] }),
+        interactive: false,
+        keyboard: false,
+      }).addTo(map);
+    } else {
+      reticleRef.current.setLatLng(pos);
+    }
+  }, [app.searchPos]);
 
   // ── Station pins: keyed diff so panning/refreshes never blink the markers ──
   // The map shows every loaded station passing the filters (the whole fetched
