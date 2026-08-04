@@ -35,6 +35,11 @@ export interface TileLayerDebug {
   cartoUnreachable: boolean;
   tilesLoaded: number;
   tilesErrored: number;
+  /** Tiles « Force offline mode » declined to request (lib/tileGate.ts) */
+  tilesSkipped: number;
+  /** Tile URLs Cache Storage holds, as the gate last read them — null while
+   *  the mode is off and there is nothing to gate against */
+  tilesCached: number | null;
 }
 
 let tileDebugSource: (() => TileLayerDebug) | null = null;
@@ -50,6 +55,8 @@ export function tileLayerDebugSnapshot(): TileLayerDebug {
       cartoUnreachable: false,
       tilesLoaded: 0,
       tilesErrored: 0,
+      tilesSkipped: 0,
+      tilesCached: null,
     }
   );
 }

@@ -6,6 +6,7 @@
 // return to the foreground we compare the deployed version against our own and
 // offer a reload when they differ.
 import { IS_DEV } from './env';
+import { isOffline } from './connectivity';
 
 export const APP_VERSION: string = __APP_VERSION__;
 
@@ -47,6 +48,12 @@ export function watchForUpdate(onUpdate: () => void): () => void {
   const check = async () => {
     pending = undefined;
     if (stopped || document.visibilityState !== 'visible') return;
+    // The poll is a `no-store` request the app makes on its own on every
+    // return to the foreground, so it waits while « Force offline mode »
+    // holds — and while the browser is sure there is no network, where it
+    // could only fail. `lastCheck` deliberately stays put: the watch is still
+    // armed, and the next foreground checks as soon as it may.
+    if (isOffline()) return;
     lastCheck = Date.now();
 
     const live = await deployedVersion();

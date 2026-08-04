@@ -30,16 +30,7 @@ import {
 import { APP_VERSION } from './appUpdate';
 import { IS_DEV } from './env';
 import type { GeoPoint } from './geo';
-
-// The service worker's cache names and caps, mirrored from public/sw.js —
-// the page reads entry counts straight out of Cache Storage, and the caps
-// give the numbers their meaning (« 597/600 » is one pan away from eviction).
-const SW_CACHE_CAPS: Record<string, number | null> = {
-  'plein-assets-v1': 160,
-  'plein-shell-v1': null,
-  'plein-tiles-v1': 600,
-  'plein-data-v1': null,
-};
+import { SW_CACHE_CAPS } from './swCaches';
 
 /** The three-tier freshness ladder of stationsCache, plus `dropped` beyond it */
 export type CacheTier = 'fresh' | 'revalidate' | 'stale' | 'dropped';

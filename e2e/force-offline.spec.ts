@@ -94,5 +94,46 @@ test('the switch stops station fetches, and releasing it revalidates alone', asy
   await expect(page.getByText(FORCED)).toHaveCount(0)
   await expect.poll(() => requests, { timeout: 15_000 }).toBeGreaterThan(loaded)
   await page.getByRole('button', { name: 'Map' }).first().click()
+  // Recentre rather than assert wherever the drags left the map: the zone is
+  // 5 km wide and the mock answers around the center it was queried with, so
+  // a pan still settling would put the answer outside the zone it belongs to.
+  await page.getByRole('button', { name: 'Recentre on my position' }).click()
   await expect(page.getByText(/Testville/).first()).toBeVisible({ timeout: 15_000 })
+})
+
+test('the switch stops basemap tiles, which no store gate can reach', async ({ page }) => {
+  // Leaflet loads tiles with plain <img> requests — they pass through no
+  // provider, so the mode has to be enforced where the URL is handed out
+  // (lib/tileGate.ts). Both hosts are counted: the CDN and the dev-server
+  // proxy the fallback layer uses.
+  let tiles = 0
+  page.on('request', (req) => {
+    if (/basemaps\.cartocdn\.com|tile\.openstreetmap\.org|\/tiles\//.test(req.url())) tiles++
+  })
+  await page.route('**/proxy/fr/**', fulfillStations)
+  await gotoMap(page)
+  await expect.poll(() => tiles, { timeout: 15_000 }).toBeGreaterThan(0)
+
+  await page.getByRole('button', { name: 'Settings' }).click()
+  const toggle = page.getByTestId('force-offline-toggle')
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-checked', 'true')
+  await page.getByRole('button', { name: 'Map' }).first().click()
+
+  // Pan across several screens of fresh, never-fetched map: every tile the
+  // gate declines paints blank instead of reaching the network.
+  const gated = tiles
+  for (let i = 0; i < 4; i++) {
+    await drag(page, 300, 200)
+    await page.waitForTimeout(400)
+  }
+  await page.waitForTimeout(1000)
+  expect(tiles).toBe(gated)
+
+  // Released: the blanked tiles are fetched for real, without a reload
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-checked', 'false')
+  await page.getByRole('button', { name: 'Map' }).first().click()
+  await expect.poll(() => tiles, { timeout: 15_000 }).toBeGreaterThan(gated)
 })

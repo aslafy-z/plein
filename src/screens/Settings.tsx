@@ -12,6 +12,12 @@ import {
 import { setDebugEnabled, useDebugMode } from '../lib/debugMode';
 import { setForcedOffline, useForcedOffline } from '../lib/connectivity';
 import {
+  SW_ASSET_CACHE,
+  SW_DATA_CACHE,
+  SW_SHELL_CACHE,
+  SW_TILE_CACHE,
+} from '../lib/swCaches';
+import {
   cacheTier,
   collectSwCaches,
   fmtAgeMs,
@@ -87,10 +93,10 @@ function localeName(locale: Locale): string {
  */
 /** Friendly names for the sw.js cache buckets (debug chrome, English-only) */
 const SW_CACHE_NAMES: Record<string, string> = {
-  'plein-assets-v1': 'App assets',
-  'plein-shell-v1': 'App shell',
-  'plein-tiles-v1': 'Basemap tiles',
-  'plein-data-v1': 'Brand data',
+  [SW_ASSET_CACHE]: 'App assets',
+  [SW_SHELL_CACHE]: 'App shell',
+  [SW_TILE_CACHE]: 'Basemap tiles',
+  [SW_DATA_CACHE]: 'Brand data',
 };
 
 /** Chrome's non-standard estimate() breakdown, when it offers one */
