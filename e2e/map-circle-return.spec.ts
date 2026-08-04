@@ -37,7 +37,7 @@ async function mockStationChain(page: Page) {
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
   await page.goto('/')
-  await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('The cheapest near you')).toBeVisible({ timeout: 15_000 })
 }
 
 /**
@@ -59,7 +59,7 @@ async function circleCenter(page: Page) {
 /** Screen point of the chain's first pin — 0.5 km from the circle center */
 async function zonePin(page: Page) {
   const r = await page
-    .locator('.pin-bubble', { hasText: '1,70' })
+    .locator('.pin-bubble', { hasText: '1.70' })
     .evaluate((el) => el.getBoundingClientRect())
   return { x: r.x + r.width / 2, y: r.y + r.height / 2 }
 }
@@ -111,7 +111,7 @@ test('one drag brings the circle back after pin-hopping away from the zone', asy
     )
     expect(target, 'a pin to hop to must be in view').not.toBeNull()
     await page.mouse.click(target!.x, target!.y)
-    await expect(page.getByText('Station sélectionnée')).toBeVisible()
+    await expect(page.getByText('Selected station')).toBeVisible()
     await page.waitForTimeout(800) // the pan-to-station animation
   }
 
