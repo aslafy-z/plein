@@ -38,7 +38,7 @@ test.describe('a newcomer', () => {
     test.setTimeout(60_000)
     await watchHint(page)
     await page.goto('/')
-    await page.getByText('Continuer sans localisation').click()
+    await page.getByText('Continue without location').click()
 
     // The zone holds several stations → the collapsed sheet shows it pulls up
     await expect(played(page)).toHaveCount(1, { timeout: 15_000 })
@@ -48,7 +48,7 @@ test.describe('a newcomer', () => {
     // The hint is spent: a reload lands on the same map without it (the
     // observer flag is per-document, so the reload starts it back at unset)
     await page.reload()
-    await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('The cheapest near you')).toBeVisible({ timeout: 15_000 })
     await page.waitForTimeout(2000) // past the hint's delay + duration
     await expect(played(page)).toHaveCount(0)
   })
@@ -61,7 +61,7 @@ test.describe('a returning user', () => {
   test('never sees the hint', async ({ page }) => {
     await watchHint(page)
     await page.goto('/')
-    await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('The cheapest near you')).toBeVisible({ timeout: 15_000 })
     await page.waitForTimeout(2000)
     await expect(played(page)).toHaveCount(0)
   })

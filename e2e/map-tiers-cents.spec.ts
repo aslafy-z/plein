@@ -1,15 +1,15 @@
 import { test, expect, gotoMap, openZoneList } from './fixtures'
 
-// Tiers are judged at DISPLAYED precision (cents). The raw « bon plan »
-// threshold can fall inside a cent — here dealMax ≈ 1,9001 — and used to
-// split two stations both reading « 1,90 € » into one green (1,896) and
-// one gray (1,904). Same displayed price must mean same tier, and the
+// Tiers are judged at DISPLAYED precision (cents). The raw « good deal »
+// threshold can fall inside a cent — here dealMax ≈ 1.9001 — and used to
+// split two stations both reading « 1.90 € » into one green (1.896) and
+// one gray (1.904). Same displayed price must mean same tier, and the
 // displayed deltas must match the displayed prices too.
 
 test.use({ seed: { sourceId: 'fra', onboarded: true } })
 
-// All within the default 5 km radius. mean = 1,9844 → dealMax ≈ 1,9001 ;
-// highMin ≈ 2,1086. The two « 1,90 » straddle the raw threshold.
+// All within the default 5 km radius. mean = 1.9844 → dealMax ≈ 1.9001 ;
+// highMin ≈ 2.1086. The two « 1.90 » straddle the raw threshold.
 const STATIONS = [
   { id: 'e2e-min', ville: 'Minville', off: 0.01, prix: '1.872' },
   { id: 'e2e-sub', ville: 'Souscent', off: 0.03, prix: '1.896' },
@@ -40,13 +40,13 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('two stations reading the same price share the same tier', async ({ page }) => {
-  // Both « 1,90 » pins are bons plans — the raw threshold inside the cent
+  // Both « 1.90 » pins are good deals — the raw threshold inside the cent
   // must not color one green and leave the other gray
   await expect(page.locator('.pin-bubble--deal')).toHaveCount(3)
-  await expect(page.locator('.pin-bubble--deal', { hasText: '1,90' })).toHaveCount(2)
-  await expect(page.locator('.pin-bubble--high', { hasText: '2,15' })).toHaveCount(1)
+  await expect(page.locator('.pin-bubble--deal', { hasText: '1.90' })).toHaveCount(2)
+  await expect(page.locator('.pin-bubble--high', { hasText: '2.15' })).toHaveCount(1)
 
-  // And both rows carry the same displayed delta: 1,90 − 1,87 = +0,03
+  // And both rows carry the same displayed delta: 1.90 − 1.87 = +0.03
   await openZoneList(page)
-  await expect(page.getByText('bon plan · +0,03')).toHaveCount(2)
+  await expect(page.getByText('good deal · +0.03')).toHaveCount(2)
 })

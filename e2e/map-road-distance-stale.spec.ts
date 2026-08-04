@@ -4,9 +4,9 @@ import { test, expect } from './fixtures'
 // far from the loaded stations, none of them is worth a routing call any more
 // — and the numbers measured from the position they left must go with it,
 // otherwise the app keeps showing distances from a place the user has quit.
-// « Rivegauche » is a favorite: 2,2 km of straight line from Toulouse, 12 km
+// « Rivegauche » is a favorite: 2.2 km of straight line from Toulouse, 12 km
 // by road. Once the user is in Lyon it must read as the ~466 km estimate
-// (358 km of straight line × 1,3), never again as 12,0 km.
+// (358 km of straight line × 1.3), never again as 12.0 km.
 
 const TOULOUSE = { lat: 43.6047, lng: 1.4442 }
 const LYON = { lat: 45.764, lng: 4.8357 }
@@ -110,21 +110,21 @@ test.beforeEach(async ({ page }) => {
 test('moving away from the measured area drops its road distances', async ({ page }) => {
   await page.goto('/')
   // The matrix landed — the reco follows road distances, not crow-flies
-  await expect(page.getByText('Le meilleur choix près de vous')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('The best choice near you')).toBeVisible({ timeout: 15_000 })
 
-  const favRow = page.locator('button[aria-label="Voir Rivegauche sur la carte"]')
-  await page.getByText('Favoris', { exact: true }).click()
-  await expect(favRow).toContainText('12,0 km')
+  const favRow = page.locator('button[aria-label="Show Rivegauche on the map"]')
+  await page.getByText('Favorites', { exact: true }).click()
+  await expect(favRow).toContainText('12.0 km')
 
   // The user is now 358 km away: nothing loaded is worth a routing call
-  await page.getByText('Carte', { exact: true }).click()
+  await page.getByText('Map', { exact: true }).click()
   await page.evaluate((pos) => {
     window.__pos = pos
   }, LYON)
-  await page.getByRole('button', { name: 'Recentrer sur ma position' }).click()
+  await page.getByRole('button', { name: 'Recentre on my position' }).click()
 
   // …so the favorite falls back to the crow-flies estimate from Lyon instead
   // of keeping the 12 km measured from Toulouse
-  await page.getByText('Favoris', { exact: true }).click()
-  await expect(favRow).toContainText('465,8 km')
+  await page.getByText('Favorites', { exact: true }).click()
+  await expect(favRow).toContainText('465.8 km')
 })

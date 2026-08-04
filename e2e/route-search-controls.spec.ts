@@ -2,7 +2,7 @@ import { test, expect, gotoMap, desktopOnly, phoneOnly } from './fixtures'
 
 // The route's departure and arrival fields ARE the map's place search
 // (PlaceField): same debounce, same spinner, same ✕, same containers. This
-// covers the route-specific policy on top of it — « Ma position » as a value
+// covers the route-specific policy on top of it — « My position » as a value
 // the departure carries, and the phone's full-screen search naming the field
 // it fills. The shared close/ring/dropdown behaviour is search-close.spec.ts.
 
@@ -54,17 +54,17 @@ test.describe('window', () => {
 
   test('the route fields show the search in progress and clear themselves', async ({ page }) => {
     await gotoMap(page)
-    await page.getByText('Trajet', { exact: true }).click()
+    await page.getByText('Route', { exact: true }).click()
 
-    const spinner = page.getByRole('status', { name: 'Recherche en cours…' })
-    const departure = page.getByPlaceholder('Départ')
+    const spinner = page.getByRole('status', { name: 'Searching…' })
+    const departure = page.getByPlaceholder('From')
     const destination = page.getByPlaceholder('Destination')
-    const clearDestination = page.getByRole('button', { name: 'Effacer la destination' })
+    const clearDestination = page.getByRole('button', { name: 'Clear the destination' })
 
     await expect(spinner).toBeHidden()
     await expect(clearDestination).toBeHidden()
-    // « Ma position » is a value the departure field carries
-    await expect(departure).toHaveValue('Ma position')
+    // « My position » is a value the departure field carries
+    await expect(departure).toHaveValue('My position')
 
     // ── Destination: spinner while the geocoder answers, then the ✕ ──
     await destination.fill('Bordeaux')
@@ -79,18 +79,18 @@ test.describe('window', () => {
     // Clearing drops the pending search with the suggestions
     await expect(page.getByText('Bordeaux centre')).toBeHidden()
 
-    // ── Departure: it edits as EMPTY (« Ma position » is not text to fix),
+    // ── Departure: it edits as EMPTY (« My position » is not text to fix),
     // and an empty field means « wherever I am » again once it settles ──
     await departure.click()
     await expect(departure).toHaveValue('')
     await departure.fill('Bordeaux')
-    const clearDeparture = page.getByRole('button', { name: 'Effacer le départ' })
+    const clearDeparture = page.getByRole('button', { name: 'Clear the departure' })
     await expect(clearDeparture).toBeVisible()
     await clearDeparture.click()
     await expect(departure).toHaveValue('')
 
     await destination.click()
-    await expect(departure).toHaveValue('Ma position')
+    await expect(departure).toHaveValue('My position')
   })
 })
 
@@ -99,11 +99,11 @@ test.describe('phone', () => {
 
   test('a field opens the shared full-screen search, named after the field', async ({ page }) => {
     await gotoMap(page)
-    await page.getByText('Trajet', { exact: true }).click()
+    await page.getByText('Route', { exact: true }).click()
 
     // The two triggers float over the map
-    await expect(page.getByRole('button', { name: 'Départ', exact: true })).toContainText(
-      'Ma position',
+    await expect(page.getByRole('button', { name: 'Departure', exact: true })).toContainText(
+      'My position',
     )
     await page.getByRole('button', { name: 'Destination', exact: true }).click()
 
@@ -115,20 +115,20 @@ test.describe('phone', () => {
     const input = page.getByPlaceholder('Destination')
     await expect(input).toBeFocused()
     await input.fill('Bordeaux')
-    await expect(page.getByRole('status', { name: 'Recherche en cours…' })).toBeVisible()
+    await expect(page.getByRole('status', { name: 'Searching…' })).toBeVisible()
     await expect(page.getByText('Bordeaux centre')).toBeVisible({ timeout: 10_000 })
 
     // The system Back closes the search onto the route stage, not the app
     await page.goBack()
     await expect(panel).toHaveCount(0)
     await expect(
-      page.getByRole('button', { name: 'Comparer les stations sur le trajet' }),
+      page.getByRole('button', { name: 'Compare the stations along the route' }),
     ).toBeVisible()
   })
 
   test('picking a place fills the field it was opened for', async ({ page }) => {
     await gotoMap(page)
-    await page.getByText('Trajet', { exact: true }).click()
+    await page.getByText('Route', { exact: true }).click()
 
     await page.getByRole('button', { name: 'Destination', exact: true }).click()
     await page.getByPlaceholder('Destination').fill('Bordeaux')
@@ -142,8 +142,8 @@ test.describe('phone', () => {
       'Bordeaux centre',
     )
     // The departure was untouched
-    await expect(page.getByRole('button', { name: 'Départ', exact: true })).toContainText(
-      'Ma position',
+    await expect(page.getByRole('button', { name: 'Departure', exact: true })).toContainText(
+      'My position',
     )
   })
 })
