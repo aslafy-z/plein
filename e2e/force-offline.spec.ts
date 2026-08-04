@@ -8,7 +8,12 @@ import { test, expect, gotoMap } from './fixtures'
 // futile retry the failure banners carry), and releasing the switch
 // revalidates on its own, like connectivity returning.
 
-test.use({ seed: { sourceId: 'fr', onboarded: true } })
+// lastFix: the recentre control is this spec's exact way back to the loaded
+// area, and it only moves the zone for a user geolocation has actually placed
+// — without a fix the tap is nothing but a fresh ask.
+test.use({
+  seed: { sourceId: 'fr', onboarded: true, lastFix: { lat: 43.6047, lng: 1.4442 } },
+})
 
 const FORCED = 'Offline mode forced — the prices shown may be out of date.'
 

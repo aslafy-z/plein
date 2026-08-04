@@ -922,7 +922,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserPos(p);
         setGeoFixed(true);
-        if (!searchMovedRef.current) setSearchPos(p);
+        // Following the user → the zone lands on the fix, and the name of
+        // wherever it sat goes with it: a first fix can take over an area the
+        // recentre control armed while it was still out.
+        if (!searchMovedRef.current) {
+          setSearchPos(p);
+          setSearchLabel(null);
+        }
         setGeoStatus('granted');
         setGeoHold(false);
         endGeoRequest();
@@ -956,12 +962,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const resetSearchToUser = useCallback(() => {
+    // Arm the follow either way: whatever the zone shows right now, the fix
+    // takes it over the moment it lands (see requestGeolocation's success).
     searchMovedRef.current = false;
-    setSearchPos(userPos);
-    setSearchLabel(null);
     setFocusStationId(null);
+    // With no position yet, the tap is ONLY the ask. Moving the zone onto
+    // `userPos` would answer « take me to me » with « here is Toulouse »,
+    // yanking the user off the area they had panned to — and the real fix,
+    // landing seconds later, would move them a second time.
+    if (geoFixed) {
+      setSearchPos(userPos);
+      setSearchLabel(null);
+    }
     requestGeolocation();
-  }, [requestGeolocation, userPos]);
+  }, [geoFixed, requestGeolocation, userPos]);
 
   // Returning users skipped onboarding → ask for the real position on mount
   useEffect(() => {
