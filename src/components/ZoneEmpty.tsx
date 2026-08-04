@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { C } from '../theme';
 import { SERVICE_TAGS } from '../data/types';
+import { useIsDesktop } from '../lib/layout';
 import { useApp, selectZoneFuels, selectZoneLoading } from '../state/store';
 import { brandGroupLabel, fuelLabel, serviceTagLabel } from '../lib/labels';
 import { m } from '../paraglide/messages.js';
@@ -15,6 +16,11 @@ import { m } from '../paraglide/messages.js';
  * the miss, one way out) rather than as a stranded line: the phone sheet hugs
  * it, and on desktop MapScreen lets the floating panel hug it too — a
  * full-height pane of glass around a single muted sentence reads as broken.
+ *
+ * The two spaces differ, though: the desktop panel has room to spend, while
+ * the phone sheet sits OVER the map — collapsed with nothing to expand to
+ * (no list, no handle), so it must not stand taller than the station card it
+ * replaces. The phone variant drops the mark and tightens the spacing.
  */
 export default function ZoneEmpty() {
   const app = useApp();
@@ -112,6 +118,7 @@ function ActiveFilters() {
 }
 
 function Block({ title, children }: { title: string; children: ReactNode }) {
+  const isDesktop = useIsDesktop();
   return (
     <div
       style={{
@@ -119,11 +126,11 @@ function Block({ title, children }: { title: string; children: ReactNode }) {
         flexDirection: 'column',
         alignItems: 'center',
         textAlign: 'center',
-        gap: 14,
-        padding: '26px 22px 28px',
+        gap: isDesktop ? 14 : 10,
+        padding: isDesktop ? '26px 22px 28px' : '18px 20px 18px',
       }}
     >
-      <EmptyZoneMark />
+      {isDesktop && <EmptyZoneMark />}
       <div
         style={{
           color: C.ink,
