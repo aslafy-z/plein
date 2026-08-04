@@ -56,10 +56,10 @@ const CONTEXT_LOCALE = { en: 'en-US', fr: 'fr-FR', es: 'es-ES', ca: 'ca-ES', pt:
 // the French one): `center` seeds the position for the map and the fiche,
 // `from`/`to` is the trip — endpoints resolve through the auto source, which
 // merges all four countries' geocoders, so a trip may cross a border: the
-// Catalan one runs Andorra la Vella → Barcelona, the border fill-up the app
-// exists for. `startTankPct` keeps each trip longer than the departure tank's
-// range, or short runs would plan no stop at all and the route shot would
-// have nothing to show.
+// Catalan scene is Andorra's — map and fiche in Andorra la Vella, the trip
+// down to Barcelona, the border fill-up the app exists for. `startTankPct`
+// keeps each trip longer than the departure tank's range, or short runs
+// would plan no stop at all and the route shot would have nothing to show.
 //
 // `station` pins the fiche when that station is in the loaded area — the
 // fiche has to have something to show, and tapping whatever is cheapest today
@@ -71,7 +71,7 @@ const SCENES = {
   en: { center: { lat: 43.6047, lng: 1.4442 }, station: 'fra-31100010', from: 'Toulouse', to: 'Lille', startTankPct: 70 },
   fr: { center: { lat: 43.6047, lng: 1.4442 }, station: 'fra-31100010', from: 'Toulouse', to: 'Lille', startTankPct: 70 },
   es: { center: { lat: 40.4168, lng: -3.7038 }, from: 'Madrid', to: 'Barcelona', startTankPct: 40 },
-  ca: { center: { lat: 41.3874, lng: 2.1686 }, from: 'Andorra la Vella', to: 'Barcelona', startTankPct: 15 },
+  ca: { center: { lat: 42.5063, lng: 1.5218 }, from: 'Andorra la Vella', to: 'Barcelona', startTankPct: 15 },
   pt: { center: { lat: 38.7223, lng: -9.1393 }, from: 'Lisboa', to: 'Porto', startTankPct: 25 },
 };
 
@@ -90,11 +90,16 @@ const askedLocales = asked.filter((n) => LOCALES.includes(n));
 const wanted = (name) => askedShots.length === 0 || askedShots.includes(name);
 const locales = askedLocales.length === 0 ? LOCALES : askedLocales;
 
+const reEscape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 /** The catalog strings the selectors below rely on, out of messages/<locale>.json. */
 async function loadMessages(locale) {
   const catalog = JSON.parse(await readFile(join(ROOT, `messages/${locale}.json`), 'utf8'));
   const need = [
     'sheet_best_choice_nearby',
+    'sheet_best_choice_in_area',
+    'sheet_cheapest_nearby',
+    'sheet_cheapest_in_area',
     'detail_map_aria',
     'nav_route',
     'route_from_field_title',
@@ -223,9 +228,23 @@ async function shootLocale(browser, locale) {
 
     const page = await ctx.newPage();
 
+    // The zone card's headline depends on what has landed: « best choice »
+    // needs road distances, « cheapest » stands in before them, each with an
+    // in-area variant — any of the four means the zone is on screen.
+    const zoneLead = new RegExp(
+      [
+        msg.sheet_best_choice_nearby,
+        msg.sheet_best_choice_in_area,
+        msg.sheet_cheapest_nearby,
+        msg.sheet_cheapest_in_area,
+      ]
+        .map(reEscape)
+        .join('|'),
+    );
+
     // ── Map screen ──
     await page.goto(BASE);
-    await page.getByText(msg.sheet_best_choice_nearby).waitFor({ timeout: 60_000 });
+    await page.getByText(zoneLead).first().waitFor({ timeout: 60_000 });
     await page.waitForLoadState('networkidle').catch(() => {});
     // Leaflet keeps painting after the network settles: tiles fade in and the
     // price pins are laid out once their road distances land.
@@ -290,7 +309,7 @@ async function shootLocale(browser, locale) {
     // ── Route screen: the scene's domestic trip ──
     if (wanted('route')) {
       await page.goto(BASE);
-      await page.getByText(msg.sheet_best_choice_nearby).waitFor({ timeout: 60_000 });
+      await page.getByText(zoneLead).first().waitFor({ timeout: 60_000 });
       await page.getByText(msg.nav_route, { exact: true }).click();
       // Type the departure rather than leaving the implicit "My position", so
       // the ribbon header names both cities as the README caption does. Same
@@ -306,11 +325,19 @@ async function shootLocale(browser, locale) {
           await input.waitFor({ timeout: 10_000 });
         }
         await input.fill(text);
-        await page
+        const row = page
           .getByTestId('search-suggestions')
-          .getByText(new RegExp(`^${text}`))
-          .first()
-          .click({ timeout: 30_000 });
+          .getByText(new RegExp(`^${reEscape(text)}`))
+          .first();
+        try {
+          await row.click({ timeout: 45_000 });
+        } catch {
+          // CartoCiudad has spells where it only answers after its timeout —
+          // retype to fire a fresh request and give it one more window.
+          await input.fill('');
+          await input.fill(text);
+          await row.click({ timeout: 45_000 });
+        }
       };
       await pickPlace(msg.route_from_placeholder, msg.route_from_field_title, scene.from);
       await pickPlace(msg.route_to_placeholder, msg.route_to_field_title, scene.to);
@@ -318,7 +345,6 @@ async function shootLocale(browser, locale) {
       // (route.spec.ts leans on the same behavior). A one-stop plan headlines
       // « Recommended stop », a chained one « Stop 1/2 » — wait for either,
       // with the stop counter's regex built from its own catalog string.
-      const reEscape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const stopCounter = reEscape(msg.ribbon_plan_stop_index)
         .replaceAll('\\{index\\}', '\\d+')
         .replaceAll('\\{count\\}', '\\d+');
