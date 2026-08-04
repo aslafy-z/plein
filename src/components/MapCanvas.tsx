@@ -1000,6 +1000,22 @@ export default function MapCanvas({
     fontWeight: 600,
   };
 
+  // Asking for a fix can take seconds (cold GPS, permission prompt still up)
+  // and nothing else on the map moves meanwhile — so the control that asked
+  // says so, instead of leaving a tap that looks dead. Both arrangements swap
+  // the same picto; the store only reports a wait long enough to be seen, so
+  // a cached fix never makes this flash.
+  const locating = app.geoLocating;
+  const locateGlyph = locating ? (
+    <span className="spin" aria-hidden style={{ color: C.accent, fontSize: 16, lineHeight: 1 }}>
+      ↻
+    </span>
+  ) : (
+    <LocateIcon color={locateActive ? C.accent : C.ink} dot={!app.searchedAway} size={19} />
+  );
+  const locateAria = locating ? m.map_locating() : m.map_recenter_aria();
+  const locateTitle = locating ? m.map_locating() : m.map_my_position();
+
   return (
     <div
       style={{
@@ -1129,8 +1145,9 @@ export default function MapCanvas({
           <div style={{ height: 1, background: C.border09 }} />
           <button
             onClick={() => app.resetSearchToUser()}
-            aria-label={m.map_recenter_aria()}
-            title={m.map_my_position()}
+            aria-label={locateAria}
+            aria-busy={locating}
+            title={locateTitle}
             style={{
               ...clusterButton,
               // Green while the view is tied to the user's position (on it,
@@ -1140,11 +1157,7 @@ export default function MapCanvas({
               background: locateActive ? C.accentSoft15 : 'transparent',
             }}
           >
-            <LocateIcon
-              color={locateActive ? C.accent : C.ink}
-              dot={!app.searchedAway}
-              size={19}
-            />
+            {locateGlyph}
           </button>
         </div>
       ) : (
@@ -1183,8 +1196,9 @@ export default function MapCanvas({
               tie is gone. */}
           <button
             onClick={() => app.resetSearchToUser()}
-            aria-label={m.map_recenter_aria()}
-            title={m.map_my_position()}
+            aria-label={locateAria}
+            aria-busy={locating}
+            title={locateTitle}
             style={{
               position: 'absolute',
               right: 14,
@@ -1201,11 +1215,7 @@ export default function MapCanvas({
               zIndex: 1000,
             }}
           >
-            <LocateIcon
-              color={locateActive ? C.accent : C.ink}
-              dot={!app.searchedAway}
-              size={19}
-            />
+            {locateGlyph}
           </button>
         </>
       )}

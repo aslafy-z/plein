@@ -234,7 +234,11 @@ export default function MapScreen() {
                       textAlign: 'left',
                     }}
                   >
-                    {app.hasKnownPos ? m.map_geo_last_known() : m.map_geo_default_pos()}
+                    {app.geoLocating
+                      ? m.map_locating()
+                      : app.hasKnownPos
+                        ? m.map_geo_last_known()
+                        : m.map_geo_default_pos()}
                   </button>
                 </div>
               )}

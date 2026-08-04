@@ -25,11 +25,14 @@ import { m } from '../paraglide/messages.js';
 export default function ZoneEmpty() {
   const app = useApp();
 
-  // Transient by definition — a mark and a button would flash and leave
+  // Transient by definition — a mark and a button would flash and leave.
+  // Name the step actually under way: the first load waits on the GPS fix
+  // before it even knows which area to ask for (see `geoHold`), and
+  // « looking for stations » there would point at the wrong wait.
   if (selectZoneLoading(app)) {
     return (
       <div style={{ padding: '18px 20px', textAlign: 'center', color: C.mut, fontSize: 13.5 }}>
-        {m.sheet_loading()}
+        {app.geoLocating ? m.sheet_locating() : m.sheet_loading()}
       </div>
     );
   }

@@ -124,6 +124,7 @@
     }
   ],
   "map_loading_stations": "Recherche des stations…",
+  "map_locating": "Recherche de votre position…",
   "map_geo_last_known": "Dernière position connue — réactiver la localisation",
   "map_geo_default_pos": "Position par défaut : Toulouse — activer la localisation",
   "install_pitch": "Installez Plein. pour l'ouvrir d'un geste, même hors-ligne.",
@@ -166,6 +167,7 @@
   "sheet_go_there_no_eta": "Y aller",
   "sheet_per_litre": "{fuel} / L",
   "sheet_price_per_litre_delta": "{sign}{amount} €/L",
+  "sheet_locating": "Recherche de votre position…",
   "sheet_loading": "Recherche des stations autour de vous…",
   "sheet_fuel_not_sold": "Aucune station ne vend du {fuel} dans cette zone.",
   "sheet_sold_here": "Vendus ici :",
@@ -463,6 +465,7 @@
   "settings_geo_denied": "refusée pour ce site",
   "settings_geo_unavailable": "indisponible sur cet appareil",
   "settings_geo_pending": "non demandée",
+  "settings_geo_locating": "recherche en cours…",
   "settings_geo_enable": "Activer",
   "settings_location_hint": "Sans localisation, la carte s'ouvre sur la dernière zone consultée (par défaut : Toulouse). Si la demande n'apparaît plus, autorisez la localisation pour ce site dans les réglages du navigateur.",
   "settings_appearance_section": "Apparence",
