@@ -25,6 +25,11 @@ test('searching a place moves the zone, reset returns to my position', async ({ 
   await expect(page.getByText(/in this area/).first()).toBeVisible({ timeout: 15_000 })
   await expect(page.getByText('Marseille').first()).toBeVisible()
 
+  // The runner never answers a fix, so this also pins what the ✕ does with no
+  // position at all: clearing a NAMED place always lands somewhere, and the
+  // landing is the default area — the one the app opens on unlocated. (Its
+  // sibling rule, that the same control leaves a free PAN alone, is
+  // geolocation-unknown.spec.ts.)
   await page.getByRole('button', { name: 'Back to my position' }).click()
   await expect(page.getByText('The cheapest near you')).toBeVisible({ timeout: 15_000 })
 })

@@ -966,16 +966,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // takes it over the moment it lands (see requestGeolocation's success).
     searchMovedRef.current = false;
     setFocusStationId(null);
-    // With no position yet, the tap is ONLY the ask. Moving the zone onto
-    // `userPos` would answer « take me to me » with « here is Toulouse »,
-    // yanking the user off the area they had panned to — and the real fix,
-    // landing seconds later, would move them a second time.
-    if (geoFixed) {
+    // Leaving a NAMED place always lands somewhere: this is also the search
+    // pill's ✕, and staying on Marseille would make it a dead button. With no
+    // fix that landing is the default area — exactly where the app opens
+    // without a position, so « clear the search » still means something.
+    // A free pan has no name to clear, and there the tap is ONLY the ask:
+    // moving the zone onto `userPos` would answer « take me to me » with
+    // « here is Toulouse », yanking the user off the area they had panned to
+    // — and the real fix, landing seconds later, would move them again.
+    if (geoFixed || searchLabel != null) {
       setSearchPos(userPos);
       setSearchLabel(null);
     }
     requestGeolocation();
-  }, [geoFixed, requestGeolocation, userPos]);
+  }, [geoFixed, searchLabel, requestGeolocation, userPos]);
 
   // Returning users skipped onboarding → ask for the real position on mount
   useEffect(() => {
