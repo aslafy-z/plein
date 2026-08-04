@@ -2268,6 +2268,20 @@ export function searchOutOfReach(app: Pick<AppStore, 'userPos' | 'searchPos'>): 
 }
 
 /**
+ * Is there a real trip origin behind the figures on screen? False when the
+ * searched area is out of the user's reach, and equally when no position was
+ * ever actually known (geolocation refused on a first visit — userPos is
+ * only DEFAULT_POS standing in). Both cases render identically: no distance
+ * on the card or the rows, no ETA on « Y aller », « Distance » greyed out —
+ * the app never displays a trip measured from a point that is not the user.
+ */
+export function selectTripOriginKnown(
+  app: Pick<AppStore, 'userPos' | 'searchPos' | 'hasKnownPos'>,
+): boolean {
+  return app.hasKnownPos && !searchOutOfReach(app);
+}
+
+/**
  * Distance & drive time to a station, from where the trip to it would start:
  * the user's position (road-measured when the reach matrix covered it), or
  * the search center once the searched area is out of reach. One rule for
@@ -2442,6 +2456,18 @@ export const selectByPrice = cached((app: AppStore): NearbyStation[] => {
 });
 
 /**
+ * The sort the zone actually renders with. Without a trip origin the trip
+ * figures are area-internal estimates the UI no longer displays, so
+ * « Distance » is not an order the user can read: the chip greys out, and a
+ * persisted distance sort falls back to the default ranking instead of
+ * silently ordering the list on invisible numbers. The persisted `sort` is
+ * untouched — it comes back the moment the origin is known again.
+ */
+export function selectEffectiveSort(app: AppStore): SortMode {
+  return app.sort === 'distance' && !selectTripOriginKnown(app) ? 'recommended' : app.sort;
+}
+
+/**
  * Zone stations in the order the active sort chip asks for. « Recommandé »
  * (the default) ranks on the effective per-litre price — the comparator the
  * Favoris « Recommandé » sort uses (`sortFavoriteRows`), with the same
@@ -2452,8 +2478,9 @@ export const selectByPrice = cached((app: AppStore): NearbyStation[] => {
  * sit second, still wearing its « recommandée » flag.
  */
 export const selectSorted = cached((app: AppStore): NearbyStation[] => {
-  if (app.sort === 'price') return selectByPrice(app);
-  if (app.sort === 'distance')
+  const sort = selectEffectiveSort(app);
+  if (sort === 'price') return selectByPrice(app);
+  if (sort === 'distance')
     return [...selectVisible(app)].sort((a, b) => a.distKm - b.distKm);
   const f = app.fuel;
   const eff = (s: NearbyStation) =>

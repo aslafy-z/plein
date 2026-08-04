@@ -10,6 +10,7 @@ import {
   selectZoneLoading,
   effectiveFuel,
   effectivePrice,
+  selectTripOriginKnown,
 } from '../state/store';
 import { fmtPrice, distLabel, agoLabel, durationLabel } from '../lib/format';
 import { fuelLabel, openStatusShort } from '../lib/labels';
@@ -46,6 +47,12 @@ export default function ZoneCard({ handle }: { handle?: ReactNode }) {
   // « +1,67 €/L » against a nonexistent floor is just the price again
   const zoneDelta = selectZoneDelta(app, shown);
   const shownStatus = shown ? openStatus(shown.hours) : null;
+  // No trip origin — the searched area is beyond any drive from the user, or
+  // no position was ever known: no trip figure is honest, so the card shows
+  // none — no distance in the meta line, no ETA on « Y aller ». Their
+  // absence (with the greyed « Distance » chip in the list) IS the signal
+  // that the figures no longer start from the user.
+  const tripOrigin = selectTripOriginKnown(app);
 
   const cardHeading = recoIsCheapest
     ? app.searchedAway
@@ -139,7 +146,7 @@ export default function ZoneCard({ handle }: { handle?: ReactNode }) {
               <div style={{ color: C.ink, fontSize: 16, fontWeight: 600 }}>{shown.name}</div>
               <div style={{ color: C.mut, fontSize: 13, marginTop: 2 }}>
                 {[
-                  distLabel(shown.distKm),
+                  tripOrigin ? distLabel(shown.distKm) : undefined,
                   shownStatus ? openStatusShort(shownStatus) : undefined,
                   m.sheet_updated_ago({
                     ago: agoLabel(effectivePrice(shown, app.fuel)?.updatedAt),
@@ -174,7 +181,9 @@ export default function ZoneCard({ handle }: { handle?: ReactNode }) {
                 textAlign: 'center',
               }}
             >
-              {m.sheet_go_there({ duration: durationLabel(shown.driveMin) })}
+              {tripOrigin
+                ? m.sheet_go_there({ duration: durationLabel(shown.driveMin) })
+                : m.sheet_go_there_no_eta()}
             </button>
             {zoneDelta != null && (
               <div

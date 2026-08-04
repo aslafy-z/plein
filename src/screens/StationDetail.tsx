@@ -15,6 +15,7 @@ import {
   effectivePrice,
   fuelRange,
   priceCents,
+  selectTripOriginKnown,
   stationTrip,
 } from '../state/store';
 import { routeBusy } from '../state/routePipeline';
@@ -156,14 +157,16 @@ export default function StationDetail() {
 
   if (!s) return pending ? <StationDetailPending desktop={desktop} /> : null;
 
-  // Same trip origin as the zone the fiche was opened from — the search
-  // center when the area is out of the user's reach
+  // Same trip origin as the zone the fiche was opened from
   const { distKm, driveMin } = stationTrip(app, s);
   // Same figure the timeline card shows: the minutes on the plan's own legs
   // (routed when the matrix answered), the load-time estimate as fallback
   const routeDetourMin = isRoute
     ? (selectRouteAnalysis(app).detourMinById[routeSt!.id] ?? routeSt!.detourMin)
     : 0;
+  // No trip origin (area out of reach, or no position ever known): no chip
+  // at all rather than a distance that starts nowhere — same rule as the
+  // zone card and rows. The address above already places the station.
   const placeChip = isRoute
     ? m.detail_place_chip_route({
         km: Math.round(routeSt!.kmAlong),
@@ -172,10 +175,12 @@ export default function StationDetail() {
             ? m.ribbon_no_detour()
             : m.ribbon_detour({ minutes: routeDetourMin }),
       })
-    : m.detail_place_chip_nearby({
-        distance: distLabel(distKm),
-        duration: durationLabel(driveMin),
-      });
+    : selectTripOriginKnown(app)
+      ? m.detail_place_chip_nearby({
+          distance: distLabel(distKm),
+          duration: durationLabel(driveMin),
+        })
+      : null;
 
   // Fuels to display: any priced fuel + always the main fuels
   const shownFuels = ALL_FUELS.filter((f) => s.prices[f] != null || MAIN_FUELS.includes(f));
@@ -421,20 +426,22 @@ export default function StationDetail() {
                 {openStatusLabel(status)}
               </span>
             )}
-            <span
-              style={{
-                background: C.surface2,
-                color: C.body,
-                fontSize: 12,
-                fontWeight: 500,
-                padding: '5px 10px',
-                borderRadius: 14,
-                border: `1px solid ${C.border09}`,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {placeChip}
-            </span>
+            {placeChip && (
+              <span
+                style={{
+                  background: C.surface2,
+                  color: C.body,
+                  fontSize: 12,
+                  fontWeight: 500,
+                  padding: '5px 10px',
+                  borderRadius: 14,
+                  border: `1px solid ${C.border09}`,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {placeChip}
+              </span>
+            )}
             {thirdChip && (
               <span
                 style={{

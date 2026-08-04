@@ -12,6 +12,8 @@ import {
   effectivePrice,
   priceTier,
   priceCents,
+  selectEffectiveSort,
+  selectTripOriginKnown,
 } from '../state/store';
 import { fmtPrice, distLabel } from '../lib/format';
 import { openStatusShort } from '../lib/labels';
@@ -60,6 +62,13 @@ export default function ZoneList({
   const stats = selectPriceStats(app);
   const dealCount = selectDeals(app).length;
   const min = range?.min ?? 0;
+  // No trip origin (area out of reach, or no position ever known): rows show
+  // no distance — none would start from the user — and « Distance » greys
+  // out, since the numbers it would sort on are no longer displayed
+  // anywhere. The persisted sort survives untouched for when the origin is
+  // known again.
+  const tripOrigin = selectTripOriginKnown(app);
+  const effectiveSort = selectEffectiveSort(app);
 
   // The list follows the map: selecting a pin scrolls its row into view —
   // the sheet (phone) already hands us a scroller ref, so tee into it
@@ -157,11 +166,15 @@ export default function ZoneList({
             ['distance', m.sheet_sort_distance()],
           ] as const
         ).map(([k, label]) => {
-          const active = app.sort === k;
+          const active = effectiveSort === k;
+          const disabled = k === 'distance' && !tripOrigin;
           return (
             <button
               key={k}
-              onClick={() => app.setSort(k)}
+              onClick={disabled ? undefined : () => app.setSort(k)}
+              disabled={disabled}
+              aria-label={disabled ? m.sheet_sort_distance_unavailable_aria() : undefined}
+              title={disabled ? m.sheet_sort_distance_unavailable_aria() : undefined}
               style={{
                 fontSize: 12,
                 fontWeight: 700,
@@ -171,6 +184,7 @@ export default function ZoneList({
                 borderRadius: 14,
                 whiteSpace: 'nowrap',
                 flexShrink: 0,
+                ...(disabled ? { opacity: 0.4, cursor: 'default' } : null),
               }}
             >
               {label}
@@ -232,7 +246,10 @@ export default function ZoneList({
                   {s.name}
                 </div>
                 <div style={{ fontSize: 12, color: C.mut, marginTop: 1 }}>
-                  {[distLabel(s.distKm), rowStatus ? openStatusShort(rowStatus) : undefined]
+                  {[
+                    tripOrigin ? distLabel(s.distKm) : undefined,
+                    rowStatus ? openStatusShort(rowStatus) : undefined,
+                  ]
                     .filter(Boolean)
                     .join(' · ')}
                 </div>

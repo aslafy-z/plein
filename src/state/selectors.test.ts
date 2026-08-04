@@ -32,8 +32,10 @@ import {
   selectPlanCandidates,
   selectReachCandidates,
   selectRecommended,
+  selectEffectiveSort,
   selectRouteAnalysis,
   selectVisible,
+  selectTripOriginKnown,
   searchOutOfReach,
   stationTrip,
   travelMatrixKey,
@@ -78,6 +80,7 @@ function app(over: Partial<AppStore> = {}): AppStore {
     sort: 'price',
     userPos: BASE,
     searchPos: BASE,
+    hasKnownPos: true,
     focusStationId: null,
     stations: { status: 'ready', data: [], activeSource: 'demo', refreshing: false },
     roadReach: {},
@@ -593,6 +596,24 @@ describe('searchOutOfReach / stationTrip', () => {
       1 * CROW_ROAD_FACTOR,
       1,
     )
+  })
+
+  it('loses the trip origin out of reach — and equally without a known position', () => {
+    expect(selectTripOriginKnown(app())).toBe(true)
+    expect(selectTripOriginKnown(app({ searchPos: north(30) }))).toBe(false)
+    // Geolocation never granted, nothing persisted: userPos is only
+    // DEFAULT_POS standing in — same rendering as the faraway area
+    expect(selectTripOriginKnown(app({ hasKnownPos: false }))).toBe(false)
+  })
+
+  it('falls back to the default ranking when « Distance » has nothing readable to sort on', () => {
+    expect(selectEffectiveSort(app({ sort: 'distance' }))).toBe('distance')
+    expect(selectEffectiveSort(app({ sort: 'distance', searchPos: north(30) }))).toBe('recommended')
+    expect(selectEffectiveSort(app({ sort: 'distance', hasKnownPos: false }))).toBe('recommended')
+    // The other sorts read fine without an origin — they stay
+    expect(selectEffectiveSort(app({ sort: 'price', hasKnownPos: false }))).toBe('price')
+    const remote = remoteZone({ sort: 'distance' })
+    expect(selectSorted(remote).map((s) => s.id)).toEqual(['far-cheap', 'near-dear'])
   })
 
   it('keeps measuring from the user while the searched area stays within reach', () => {

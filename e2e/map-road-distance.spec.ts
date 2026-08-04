@@ -11,7 +11,16 @@ import { test, expect, openZoneList } from './fixtures'
 // When the matrix is unreachable, every station falls back to the same
 // crow-flies × CROW_ROAD_FACTOR estimate and Rivegauche wins.
 
-test.use({ seed: { sourceId: 'fra', onboarded: true, radius: 25 } })
+// lastPos: trip figures (distances, ETA) only show from a KNOWN origin —
+// without it the zone hides them, which is not what this spec is about
+test.use({
+  seed: {
+    sourceId: 'fra',
+    onboarded: true,
+    radius: 25,
+    lastPos: { lat: 43.6047, lng: 1.4442 },
+  },
+})
 
 function stubStations(page: import('@playwright/test').Page) {
   return page.route('**/proxy/fra/**', async (route) => {
