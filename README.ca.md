@@ -29,37 +29,20 @@ Portugal.
 
 ## ✨ Funcionalitats
 
-- 🗺️ **Mapa de preus en directe** — les benzineres al vostre voltant, preus
-  en xinxetes acolorides segons el preu: bones ofertes en verd, les més cares
-  en taronja. Moveu el mapa i la zona es carrega sola.
-- 🇫🇷🇪🇸🇦🇩🇵🇹 **Quatre països al mateix mapa** — la font «Automàtica» combina
-  els fluxos oficials de França, Espanya, Andorra i Portugal: els proveïments
-  fronterers es comparen d'un cop d'ull.
-- 📋 **Llista de la zona** — totes les estacions visibles, ordenades per
-  recomanació: el combustible cremat en l'anada i tornada es té en compte,
-  així que una estació més propera pot guanyar la més barata.
-- 🛣️ **Pla de proveïment del trajecte** — un pla al llarg del recorregut
-  segons 3 estratègies: on parar, quants litres a cada parada i a quin preu —
-  fins al combustible restant a l'arribada.
-- ⭐ **Preferits** — les vostres estacions i el seu preu del dia, a través de
-  zones i països.
-- ⛽ **Tots els combustibles, filtres de debò** — Dièsel, SP95/98, E10, E85,
-  GLP; radi, marques, serveis, AdBlue allà on la font ho publica.
-- 🕐 **Horaris reals** — «Obert 24 h», «Tancat · obre a les 6.30», calculats
-  des dels horaris oficials; frescor dels preus assenyalada.
-- 🏷️ **Marques reconegudes** — logotips i noms de les estacions des dels
-  fluxos oficials i OpenStreetMap.
-- 🧭 **«Com arribar-hi»** — obre l'estació a la vostra app de GPS.
-- 🔗 **Enllaços compartibles** — l'adreça segueix el mapa i el trajecte; un
-  enllaç reobre exactament la mateixa vista.
-- 🌗 **Tema clar i fosc** — segueix el navegador, modificable als Ajustos; el
-  mapa base el segueix.
-- 🌍 **Cinc llengües** — francès, anglès, espanyol, català i portuguès.
-- 🖥️ **Mòbil i pantalla gran** — mapa a pantalla completa amb plafó que
-  s'estira al mòbil; navegació lateral i plafons al costat del mapa a les
-  pantalles amples.
-- 📱 **PWA instal·lable** — funciona fora de línia amb les últimes zones i
-  tessel·les consultades.
+- 🗺️ **Mapa de preus en directe** — preus en xinxetes, bones ofertes en verd
+- 🇫🇷🇪🇸🇦🇩🇵🇹 **Quatre països** — els fluxos oficials combinats en un sol mapa
+- 📋 **Millor tria real** — el combustible del desviament es té en compte
+- 🛣️ **Pla de proveïment en ruta** — on parar, quants litres, a quin preu
+- ⭐ **Preferits** — els preus del dia d'un cop d'ull
+- ⛽ **Tots els combustibles** — Dièsel, SP95/98, E10, E85, GLP · filtres de marques, serveis, AdBlue
+- 🕐 **Horaris reals** — i frescor dels preus
+- 🏷️ **Marques reconegudes** — noms i logotips
+- 🧭 **«Com arribar-hi»** — obre la vostra app de GPS
+- 🔗 **Enllaços compartibles** — una vista del mapa o un viatge
+- 🌗 **Tema clar i fosc**
+- 🌍 **Cinc llengües** — FR · EN · ES · CA · PT
+- 🖥️ **Mòbil i escriptori**
+- 📱 **PWA instal·lable** — tolerant al mode fora de línia
 
 ## 🚀 Ús
 

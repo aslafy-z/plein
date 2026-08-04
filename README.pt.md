@@ -29,37 +29,20 @@ e Portugal.
 
 ## ✨ Funcionalidades
 
-- 🗺️ **Mapa de preços em direto** — os postos à sua volta, preços em
-  alfinetes coloridos consoante o preço: boas ofertas a verde, os mais caros
-  a laranja. Mova o mapa e a zona carrega-se sozinha.
-- 🇫🇷🇪🇸🇦🇩🇵🇹 **Quatro países no mesmo mapa** — a fonte «Automática» combina
-  os fluxos oficiais de França, Espanha, Andorra e Portugal: os
-  abastecimentos fronteiriços comparam-se num relance.
-- 📋 **Lista da zona** — todos os postos visíveis, ordenados por
-  recomendação: o combustível gasto na ida e volta é contabilizado, pelo que
-  um posto mais próximo pode bater o mais barato.
-- 🛣️ **Plano de abastecimento do trajeto** — um plano ao longo do percurso
-  segundo 3 estratégias: onde parar, quantos litros em cada paragem e a que
-  preço — até ao combustível restante à chegada.
-- ⭐ **Favoritos** — os seus postos e o preço do dia, através de zonas e
-  países.
-- ⛽ **Todos os combustíveis, filtros a sério** — Gasóleo, SP95/98, E10, E85,
-  GPL; raio, marcas, serviços, AdBlue onde a fonte o publica.
-- 🕐 **Horários reais** — «Aberto 24 h», «Fechado · abre às 6h30», calculados
-  a partir dos horários oficiais; frescura dos preços assinalada.
-- 🏷️ **Marcas reconhecidas** — logótipos e nomes dos postos a partir dos
-  fluxos oficiais e do OpenStreetMap.
-- 🧭 **«Direções»** — abre o posto na sua app de GPS.
-- 🔗 **Ligações partilháveis** — o endereço segue o mapa e o trajeto; uma
-  ligação reabre exatamente a mesma vista.
-- 🌗 **Tema claro e escuro** — segue o navegador, alterável nas Definições; o
-  mapa base acompanha.
-- 🌍 **Cinco línguas** — francês, inglês, espanhol, catalão e português.
-- 🖥️ **Telemóvel e ecrã grande** — mapa em ecrã inteiro com painel que se
-  puxa no telemóvel; navegação lateral e painéis ao lado do mapa nos ecrãs
-  largos.
-- 📱 **PWA instalável** — funciona offline com as últimas zonas e mosaicos
-  consultados.
+- 🗺️ **Mapa de preços em direto** — preços em alfinetes, boas ofertas a verde
+- 🇫🇷🇪🇸🇦🇩🇵🇹 **Quatro países** — os fluxos oficiais combinados num só mapa
+- 📋 **Melhor escolha real** — o combustível do desvio é contabilizado
+- 🛣️ **Plano de abastecimento na rota** — onde parar, quantos litros, a que preço
+- ⭐ **Favoritos** — os preços do dia num relance
+- ⛽ **Todos os combustíveis** — Gasóleo, SP95/98, E10, E85, GPL · filtros de marcas, serviços, AdBlue
+- 🕐 **Horários reais** — e frescura dos preços
+- 🏷️ **Marcas reconhecidas** — nomes e logótipos
+- 🧭 **«Direções»** — abre a sua app de GPS
+- 🔗 **Ligações partilháveis** — uma vista do mapa ou uma viagem
+- 🌗 **Tema claro e escuro**
+- 🌍 **Cinco línguas** — FR · EN · ES · CA · PT
+- 🖥️ **Telemóvel e computador**
+- 📱 **PWA instalável** — tolerante ao offline
 
 ## 🚀 Utilização
 

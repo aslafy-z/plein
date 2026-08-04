@@ -29,36 +29,20 @@ au Portugal.
 
 ## ✨ Fonctionnalités
 
-- 🗺️ **Carte des prix en direct** — les stations autour de vous, prix en pin
-  colorés selon le prix : bons plans en vert, les plus chères en orange.
-  Déplacez la carte, la zone se charge toute seule.
-- 🇫🇷🇪🇸🇦🇩🇵🇹 **Quatre pays sur la même carte** — la source « Automatique »
-  combine les flux officiels de la France, de l'Espagne, de l'Andorre et du
-  Portugal : les pleins frontaliers se comparent d'un coup d'œil.
-- 📋 **Liste de la zone** — toutes les stations visibles, triées par
-  recommandation : le carburant brûlé pour l'aller-retour est compté, donc
-  une station plus proche peut battre la moins chère.
-- 🛣️ **Plan carburant du trajet** — un plan de ravitaillement le long du
-  parcours selon 3 stratégies : où s'arrêter, combien de litres à chaque
-  arrêt, à quel prix — jusqu'au carburant restant à l'arrivée.
-- ⭐ **Favoris** — vos stations et leur prix du jour, à travers zones et pays.
-- ⛽ **Tous les carburants, vrais filtres** — Gazole, SP95/98, E10, E85,
-  GPLc ; rayon, enseignes, services, AdBlue là où la source le publie.
-- 🕐 **Horaires réels** — « Ouvert 24/24 », « Fermé · ouvre à 6 h 30 »,
-  calculés depuis les horaires officiels ; fraîcheur des prix signalée.
-- 🏷️ **Enseignes reconnues** — logos et noms des stations depuis les flux
-  officiels et OpenStreetMap.
-- 🧭 **« Y aller »** — ouvre la station dans votre app GPS.
-- 🔗 **Liens partageables** — l'adresse suit la carte et le trajet ; un lien
-  rouvre exactement la même vue.
-- 🌗 **Thème clair et sombre** — suit votre navigateur, modifiable dans les
-  Réglages ; le fond de carte suit.
-- 🌍 **Cinq langues** — français, anglais, espagnol, catalan et portugais.
-- 🖥️ **Téléphone et grand écran** — carte plein écran et volet à tirer sur
-  mobile ; navigation latérale et panneaux à côté de la carte sur grand
-  écran.
-- 📱 **PWA installable** — fonctionne hors-ligne avec les dernières zones et
-  tuiles consultées.
+- 🗺️ **Carte des prix en direct** — prix en pin autour de vous, bons plans en vert
+- 🇫🇷🇪🇸🇦🇩🇵🇹 **Quatre pays** — les flux officiels combinés sur une seule carte
+- 📋 **Meilleur choix réel** — le carburant du détour est compté
+- 🛣️ **Plan carburant du trajet** — où s'arrêter, combien de litres, à quel prix
+- ⭐ **Favoris** — les prix du jour d'un coup d'œil
+- ⛽ **Tous les carburants** — Gazole, SP95/98, E10, E85, GPLc · filtres enseignes, services, AdBlue
+- 🕐 **Horaires réels** — et fraîcheur des prix
+- 🏷️ **Enseignes reconnues** — noms et logos
+- 🧭 **« Y aller »** — ouvre votre app GPS
+- 🔗 **Liens partageables** — une vue de carte ou un trajet
+- 🌗 **Thème clair et sombre**
+- 🌍 **Cinq langues** — FR · EN · ES · CA · PT
+- 🖥️ **Téléphone et grand écran**
+- 📱 **PWA installable** — tolérante au hors-ligne
 
 ## 🚀 Utilisation
 

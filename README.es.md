@@ -29,37 +29,20 @@ Portugal.
 
 ## ✨ Funcionalidades
 
-- 🗺️ **Mapa de precios en directo** — las estaciones a tu alrededor, precios
-  en chinchetas coloreadas según el precio: chollos en verde, las más caras
-  en naranja. Mueve el mapa y la zona se carga sola.
-- 🇫🇷🇪🇸🇦🇩🇵🇹 **Cuatro países en el mismo mapa** — la fuente «Automática»
-  combina los flujos oficiales de Francia, España, Andorra y Portugal: los
-  repostajes fronterizos se comparan de un vistazo.
-- 📋 **Lista de la zona** — todas las estaciones visibles, ordenadas por
-  recomendación: el combustible quemado en la ida y vuelta se tiene en
-  cuenta, así que una estación más cercana puede ganar a la más barata.
-- 🛣️ **Plan de repostaje de la ruta** — un plan a lo largo del recorrido
-  según 3 estrategias: dónde parar, cuántos litros en cada parada y a qué
-  precio — hasta el combustible restante a la llegada.
-- ⭐ **Favoritos** — tus estaciones y su precio del día, a través de zonas y
-  países.
-- ⛽ **Todos los combustibles, filtros de verdad** — Diésel, SP95/98, E10,
-  E85, GLP; radio, rótulos, servicios, AdBlue donde la fuente lo publica.
-- 🕐 **Horarios reales** — «Abierto 24 h», «Cerrado · abre a las 6:30»,
-  calculados desde los horarios oficiales; frescura de los precios señalada.
-- 🏷️ **Marcas reconocidas** — logotipos y nombres de las estaciones desde
-  los flujos oficiales y OpenStreetMap.
-- 🧭 **«Cómo llegar»** — abre la estación en tu app de GPS.
-- 🔗 **Enlaces compartibles** — la dirección sigue al mapa y a la ruta; un
-  enlace reabre exactamente la misma vista.
-- 🌗 **Tema claro y oscuro** — sigue a tu navegador, modificable en los
-  Ajustes; el mapa base lo sigue.
-- 🌍 **Cinco idiomas** — francés, inglés, español, catalán y portugués.
-- 🖥️ **Móvil y pantalla grande** — mapa a pantalla completa con panel
-  deslizable en el móvil; navegación lateral y paneles junto al mapa en
-  pantallas anchas.
-- 📱 **PWA instalable** — funciona sin conexión con las últimas zonas y
-  teselas consultadas.
+- 🗺️ **Mapa de precios en directo** — precios en chinchetas, chollos en verde
+- 🇫🇷🇪🇸🇦🇩🇵🇹 **Cuatro países** — los flujos oficiales combinados en un solo mapa
+- 📋 **Mejor elección real** — el combustible del desvío se tiene en cuenta
+- 🛣️ **Plan de repostaje en ruta** — dónde parar, cuántos litros, a qué precio
+- ⭐ **Favoritos** — los precios del día de un vistazo
+- ⛽ **Todos los combustibles** — Diésel, SP95/98, E10, E85, GLP · filtros de rótulos, servicios, AdBlue
+- 🕐 **Horarios reales** — y frescura de los precios
+- 🏷️ **Marcas reconocidas** — nombres y logotipos
+- 🧭 **«Cómo llegar»** — abre tu app de GPS
+- 🔗 **Enlaces compartibles** — una vista del mapa o un viaje
+- 🌗 **Tema claro y oscuro**
+- 🌍 **Cinco idiomas** — FR · EN · ES · CA · PT
+- 🖥️ **Móvil y escritorio**
+- 📱 **PWA instalable** — tolerante al modo sin conexión
 
 ## 🚀 Uso
 

@@ -28,36 +28,20 @@ you and along your routes, in France, Spain, Andorra and Portugal.
 
 ## ✨ Features
 
-- 🗺️ **Live price map** — the stations around you, price pins colored by
-  price: good deals in green, the most expensive tinted orange. Pan the map,
-  the area loads by itself.
-- 🇫🇷🇪🇸🇦🇩🇵🇹 **Four countries on one map** — the "Automatic" source combines
-  the official feeds of France, Spain, Andorra and Portugal: cross-border
-  fill-ups compare at a glance.
-- 📋 **Area list** — every visible station, sorted by recommendation: the
-  fuel burned driving there and back is counted, so a closer station can beat
-  the cheapest one.
-- 🛣️ **Route fuel plan** — a refuelling plan along your trip under
-  3 strategies: where to stop, how many liters at each stop, at what cost —
-  down to the fuel left on arrival.
-- ⭐ **Favorites** — your stations and their price of the day, across areas
-  and countries.
-- ⛽ **All fuels, real filters** — Diesel, SP95/98, E10, E85, LPG; radius,
-  brands, services, AdBlue where the source publishes it.
-- 🕐 **Real opening hours** — "Open 24/7", "Closed · opens at 6:30 am",
-  computed from the official hours; price freshness flagged.
-- 🏷️ **Recognized brands** — station logos and names from the official feeds
-  and OpenStreetMap.
-- 🧭 **"Directions"** — opens the station in your GPS app.
-- 🔗 **Shareable links** — the URL follows the map and the route; a link
-  reopens exactly the same view.
-- 🌗 **Light and dark themes** — follows your browser, switchable in
-  Settings; the basemap follows.
-- 🌍 **Five languages** — French, English, Spanish, Catalan and Portuguese.
-- 🖥️ **Phone and wide screen** — full-screen map with a draggable sheet on
-  mobile; side navigation and panels docked next to the map on a wide screen.
-- 📱 **Installable PWA** — works offline with the last visited areas and map
-  tiles.
+- 🗺️ **Live price map** — price pins around you, best deals in green
+- 🇫🇷🇪🇸🇦🇩🇵🇹 **Four countries** — the official feeds combined on one map
+- 📋 **Real best choice** — the fuel of the detour is counted
+- 🛣️ **Route fuel plan** — where to stop, how many liters, at what cost
+- ⭐ **Favorites** — the day's prices at a glance
+- ⛽ **All fuels** — Diesel, SP95/98, E10, E85, LPG · brand, service and AdBlue filters
+- 🕐 **Real opening hours** — and price freshness
+- 🏷️ **Recognized brands** — names and logos
+- 🧭 **Directions** — opens your GPS app
+- 🔗 **Shareable links** — for a map view or a trip
+- 🌗 **Light and dark themes**
+- 🌍 **Five languages** — FR · EN · ES · CA · PT
+- 🖥️ **Phone and desktop**
+- 📱 **Installable PWA** — offline-tolerant
 
 ## 🚀 Usage
 
