@@ -43,6 +43,18 @@ const LIVE_SEARCH_MIN_KM = 0.1;
  * whole thing self-accelerated.
  */
 const OFFSET_ABSORB_RATE = 0.35;
+/**
+ * Extra per-frame decay of the gap, for a gesture that BEGINS with the
+ * circle's center outside the viewport. Hopping through station pins (every
+ * tap pans the map onto its station) can leave the zone a viewport or more
+ * behind, and at 35% of the pan the way back would cost ~3× that distance
+ * in dragging. The finger-speed cap protects an ON-screen circle from
+ * outrunning the gesture near a results boundary; a circle that starts the
+ * gesture off screen has no boundary to oscillate across, so its gap also
+ * decays 15% per move frame — the circle sweeps back over roughly half a
+ * second of panning whatever the distance, then settles under the cap.
+ */
+const OFFSET_FAR_DECAY = 0.15;
 
 /**
  * Leaflet sizes the SVG holding the vector layers to the viewport (+10%) and
@@ -195,6 +207,9 @@ export default function MapCanvas({
     // oscillate. The next gesture re-measures both, and the offset decay
     // absorbs whatever the sheet did in between.
     let gestureMid: L.Point | null = null;
+    /** The gesture began with the circle's center off screen (pin-hopping
+        panned the map away from the zone) — see OFFSET_FAR_DECAY */
+    let farGesture = false;
     /** Projected map center at the last glide frame — its per-frame delta is
         the pan distance the offset absorption is proportional to */
     let lastPanPt: L.Point | null = null;
@@ -205,6 +220,10 @@ export default function MapCanvas({
       const mid = sh.visibleCenterPoint(map);
       gestureMid = mid;
       circleOffsetRef.current = { x: p.x - mid.x, y: p.y - mid.y };
+      // Judged once per gesture: a gap that STARTS on screen keeps the pure
+      // finger-speed absorption below, however large it is
+      const size = map.getSize();
+      farGesture = p.x < 0 || p.y < 0 || p.x > size.x || p.y > size.y;
       lastPanZoom = map.getZoom();
       lastPanPt = map.project(map.getCenter(), lastPanZoom);
     };
@@ -251,6 +270,7 @@ export default function MapCanvas({
         // circle was just snapped onto
         const mid = sh.visibleCenterPoint(map);
         gestureMid = mid;
+        farGesture = false;
         circleOffsetRef.current = { x: 0, y: 0 };
         circleRef.current?.setLatLng(map.containerPointToLatLng(mid));
       }
@@ -286,7 +306,8 @@ export default function MapCanvas({
       const off = circleOffsetRef.current;
       const len = Math.hypot(off.x, off.y);
       if (len > 0) {
-        const absorb = Math.min(len, step * OFFSET_ABSORB_RATE);
+        const rate = step * OFFSET_ABSORB_RATE + (farGesture ? len * OFFSET_FAR_DECAY : 0);
+        const absorb = Math.min(len, rate);
         off.x -= (off.x / len) * absorb;
         off.y -= (off.y / len) * absorb;
         if (Math.hypot(off.x, off.y) < 0.5) {
