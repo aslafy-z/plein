@@ -36,6 +36,14 @@ it lives only in `messages/fr.json`.
   be pasted into bug reports, and none of it enters `messages/`. The normal
   Settings rows that lead there (section label, toggle title) are user UI and
   stay in the catalogs.
+- **The README is localized too, and by hand.** `README.md` is the English
+  source; `README.fr.md`, `README.es.md`, `README.ca.md` and `README.pt.md`
+  are full mirrors of it (one per app locale — the exception to « Markdown is
+  English »), each opening with the same language-switcher line. **Any edit
+  to one README lands in all five in the same commit** — a feature added, a
+  data-source row changed, a command renamed. They translate meaning, not
+  words: each version reads natively and uses that language's own UI names
+  (its `messages/<locale>.json` copy) when it points at a screen or button.
 
 ## Internationalization
 
@@ -68,7 +76,9 @@ skips those scripts sees `Cannot find module '../paraglide/messages.js'`.
   and written by the `custom-appSettings` strategy in `src/lib/locale.ts`.
   Resolution order: explicit choice → browser language → French.
 - Adding a locale: add it to `project.inlang/settings.json`, add
-  `messages/<locale>.json`, add its name to `localeName()` in `Settings.tsx`.
+  `messages/<locale>.json`, add its name to `localeName()` in `Settings.tsx`,
+  add `README.<locale>.md` and its entry in every README's language-switcher
+  line.
 
 ## Layout: one app, two arrangements
 

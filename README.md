@@ -1,181 +1,190 @@
 <div align="center">
 
-<img src="public/icons/icon.svg" width="96" alt="Logo Plein." />
+<img src="public/icons/icon.svg" width="96" alt="Plein. logo" />
 
 # Plein.
 
-**Le plein au juste prix** — trouvez les stations-service les moins chères
-autour de vous et le long de vos trajets, en France, en Espagne, en Andorre et
-au Portugal.
+**A full tank at the right price** — find the cheapest fuel stations around
+you and along your routes, in France, Spain, Andorra and Portugal.
 
-[![Ouvrir l'app](https://img.shields.io/badge/%E2%96%B6%EF%B8%8E%20Ouvrir%20l'app-plein.zadkiel.fr-3ddc84?style=for-the-badge&labelColor=0f1a14)](https://plein.zadkiel.fr)
+**English** · [Français](README.fr.md) · [Español](README.es.md) · [Català](README.ca.md) · [Português](README.pt.md)
 
-[![Licence MIT](https://img.shields.io/badge/licence-MIT-3ddc84?labelColor=0f1a14)](LICENSE)
-[![PWA](https://img.shields.io/badge/PWA-installable-3ddc84?labelColor=0f1a14)](#-utilisation)
-[![Données](https://img.shields.io/badge/donn%C3%A9es-%F0%9F%87%AB%F0%9F%87%B7%20France%20%C2%B7%20%F0%9F%87%AA%F0%9F%87%B8%20Espagne%20%C2%B7%20%F0%9F%87%A6%F0%9F%87%A9%20Andorre%20%C2%B7%20%F0%9F%87%B5%F0%9F%87%B9%20Portugal-blue?labelColor=0f1a14)](#-sources-de-données)
+[![Open the app](https://img.shields.io/badge/%E2%96%B6%EF%B8%8E%20Open%20the%20app-plein.zadkiel.fr-3ddc84?style=for-the-badge&labelColor=0f1a14)](https://plein.zadkiel.fr)
+
+[![MIT license](https://img.shields.io/badge/license-MIT-3ddc84?labelColor=0f1a14)](LICENSE)
+[![PWA](https://img.shields.io/badge/PWA-installable-3ddc84?labelColor=0f1a14)](#-usage)
+[![Data](https://img.shields.io/badge/data-%F0%9F%87%AB%F0%9F%87%B7%20France%20%C2%B7%20%F0%9F%87%AA%F0%9F%87%B8%20Spain%20%C2%B7%20%F0%9F%87%A6%F0%9F%87%A9%20Andorra%20%C2%B7%20%F0%9F%87%B5%F0%9F%87%B9%20Portugal-blue?labelColor=0f1a14)](#-data-sources)
 [![React 18](https://img.shields.io/badge/React-18-61dafb?labelColor=0f1a14&logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?labelColor=0f1a14&logo=typescript)](https://www.typescriptlang.org)
 [![Leaflet](https://img.shields.io/badge/Leaflet-1.9-199900?labelColor=0f1a14)](https://leafletjs.com)
 
 <br/>
 
-| Les prix autour de vous | La fiche d'une station | Sur votre trajet |
+| Prices around you | A station's page | Along your route |
 | :---: | :---: | :---: |
-| <img src="docs/screenshots/map.png" width="250" alt="Carte des prix autour de Toulouse" /> | <img src="docs/screenshots/station.png" width="250" alt="Fiche d'une station : prix par carburant, écart au moins cher, services et économie sur un plein" /> | <img src="docs/screenshots/route.png" width="250" alt="Comparaison des stations sur un trajet Toulouse → Nantes" /> |
+| <img src="docs/screenshots/map.png" width="250" alt="Price map around Toulouse" /> | <img src="docs/screenshots/station.png" width="250" alt="A station's page: price per fuel, gap to the cheapest, services and savings on a full tank" /> | <img src="docs/screenshots/route.png" width="250" alt="Station comparison on a Toulouse → Nantes route" /> |
 
 </div>
 
-## ✨ Fonctionnalités
+## ✨ Features
 
-- 🗺️ **Carte des prix en direct** — les stations autour de vous avec leur prix en
-  pin, colorés selon le prix : les « bons plans » (toutes les stations quasi au
-  meilleur prix, pas seulement la première) en vert, les plus chères teintées
-  orange ; déplacez la carte, les stations de la zone se chargent automatiquement,
-  et dans les zones denses seules les moins chères gardent leur bulle de prix.
-- 🇫🇷🇪🇸🇦🇩🇵🇹 **Quatre pays sur la même carte** — la source « Automatique »
-  combine les flux officiels de la France, de l'Espagne, de l'Andorre et du
-  Portugal selon la zone affichée : les pleins frontaliers (Le Perthus, Irún,
-  le Pas de la Case, Vilar Formoso…) se comparent d'un seul coup d'œil.
-- 📋 **Liste de la zone** — tirez le volet du bas : toutes les stations visibles,
-  triables par prix ou distance, les bons plans surlignés, synchronisées avec la
-  carte. La station mise en avant est le **meilleur choix réel** : le carburant
-  brûlé pour l'aller-retour (conso et réservoir des Réglages) est compté, donc
-  une station un peu plus chère mais bien plus proche peut battre la moins
-  chère affichée.
-- 🛣️ **Comparateur de trajet** — départ « Ma position » ou n'importe quelle
-  adresse, autocomplétion, carte du corridor et **arrêt conseillé** selon
-  3 stratégies (meilleur compromis · prix le plus bas · détour minimal), avec
-  limite d'autonomie du réservoir et coût carburant estimé du trajet.
-- ⭐ **Favoris** — épinglez vos stations, retrouvez leur prix du jour d'un coup d'œil.
-- ⛽ **Tous les carburants** — Gazole, SP95/98, E10, E85, GPLc ; filtres par
-  rayon, enseignes, type de distributeur et services (24/24, lavage, boutique,
-  gonflage, additifs). Le filtre **AdBlue** n'apparaît que là où la source
-  publie l'information : les flux espagnol et andorran déclarent les produits
-  en vente (et leur prix, affiché sur la fiche), les flux français et portugais
-  n'en disent rien, donc leurs stations restent listées plutôt que masquées à
-  tort. L'E10 n'existant quasi pas hors de France,
-  les stations espagnoles, andorranes et portugaises affichent leur SP95
-  (compatible E10) sur la carte E10 — libellé « SP95 / L » à l'appui.
-- 🕐 **Horaires réels** — « Ouvert 24/24 », « Fermé · ouvre à 6 h 30 »… calculés
-  depuis les horaires officiels ; fraîcheur des prix affichée (et signalée quand
-  ils datent).
-- 🏷️ **Enseignes reconnues** — logos et noms des stations (TotalEnergies,
-  E.Leclerc, Intermarché… et Repsol, Cepsa, Galp, Prio côté espagnol, andorran
-  et portugais) appariés depuis OpenStreetMap en France (positions recalées sur
-  les vraies coordonnées OSM), portés directement par les flux officiels
-  ailleurs.
-- 🧭 **« Y aller »** — ouvre la fiche du lieu dans votre app GPS : choix de
-  l'app sur Android (`geo:`), Plans sur iOS, Google Maps sur desktop ; tournée
-  multi-arrêts possible.
-- 🔗 **Lien partageable** — l'adresse de la page suit la carte (zone affichée,
-  zoom, carburant, rayon et filtres) : le bouton *Partager* envoie un lien qui
-  rouvre exactement la même vue chez qui le reçoit — pratique pour dire « le
-  plein est là ». Les fiches station gardent leur lien direct `/station/:id`.
-- 🖥️ **La même app sur téléphone et sur navigateur** — sur mobile, la carte en
-  plein écran et son volet qu'on tire ; sur un écran large, la navigation passe
-  sur le côté et la liste des stations se cale **à côté** de la carte au lieu de
-  la recouvrir, les filtres et les fiches deviennent des panneaux, et la souris
-  retrouve ce qui lui manquait (boutons de zoom, survols, Échap pour fermer).
-  Plus de cadre de téléphone posé au milieu de l'écran.
-- 📱 **PWA installable et tolérante au hors-ligne** — ajoutez-la à l'écran
-  d'accueil ; les dernières zones consultées et les tuiles de carte restent
-  disponibles sans réseau, avec indicateur d'ancienneté des prix.
+- 🗺️ **Live price map** — the stations around you with their price as a pin,
+  colored by price: the "good deals" (every station close to the best price,
+  not just the first one) in green, the most expensive tinted orange; pan the
+  map and the area's stations load automatically, and in dense areas only the
+  cheapest keep their price bubble.
+- 🇫🇷🇪🇸🇦🇩🇵🇹 **Four countries on one map** — the "Automatic" source combines
+  the official feeds of France, Spain, Andorra and Portugal according to the
+  visible area: cross-border fill-ups (Le Perthus, Irún, Pas de la Case,
+  Vilar Formoso…) compare at a glance.
+- 📋 **Area list** — pull the bottom sheet up: every visible station, sorted
+  by recommendation by default (price or distance a tap away), good deals
+  highlighted, in sync with the map. The featured station is the **real best
+  choice**: the fuel burned driving there and back (consumption and tank size
+  from the vehicle profile in Settings — car or motorcycle) is counted, so a
+  slightly pricier but much closer station can beat the cheapest one shown.
+- 🛣️ **Route fuel plan** — depart from "My position" or any address,
+  autocompletion, corridor map and a **refuelling plan** according to
+  3 strategies (best trade-off · lowest price · smallest detour): one stop or
+  several chained ones on long trips, each with the liters to buy, its cost
+  and the detour, from your tank level at departure to the fuel left on
+  arrival. Pin or remove stops to build your own run, avoid motorways or
+  tolls, and the results land progressively — the itinerary first, then the
+  stations, then the plan.
+- ⭐ **Favorites** — pin your stations, check their price of the day at a
+  glance; they stay priced even across areas and countries.
+- ⛽ **All fuels** — Diesel, SP95/98, E10, E85, LPG; filters by radius, brands,
+  distributor type and services (24/7, car wash, shop, tire inflation,
+  additives). The **AdBlue** filter only appears where the source publishes
+  the information: the Spanish and Andorran feeds declare the products on sale
+  (and their price, shown on the station page), the French and Portuguese
+  feeds say nothing about it, so their stations stay listed rather than
+  wrongly hidden. E10 being nearly nonexistent outside France, Spanish,
+  Andorran and Portuguese stations show their SP95 (E10-compatible) on the
+  E10 map — labeled "SP95 / L" to make it clear.
+- 🕐 **Real opening hours** — "Open 24/7", "Closed · opens at 6:30 am"…
+  computed from the official opening hours; price freshness shown (and
+  flagged when the prices are getting old).
+- 🏷️ **Recognized brands** — station logos and names (TotalEnergies,
+  E.Leclerc, Intermarché… and Repsol, Cepsa, Galp, Prio on the Spanish,
+  Andorran and Portuguese side) matched from OpenStreetMap in France
+  (positions snapped to the true OSM coordinates), carried directly by the
+  official feeds elsewhere.
+- 🧭 **"Directions"** — opens the place in your GPS app: app picker on Android
+  (`geo:`), Maps on iOS, Google Maps on desktop; multi-stop trips supported.
+- 🔗 **Shareable link** — the page URL follows the map (visible area, zoom,
+  fuel, radius and filters) and the route (endpoints and options): the *Share*
+  button sends a link that reopens exactly the same view — or the same trip —
+  for whoever receives it. Station pages keep their direct `/station/:id`
+  link.
+- 🌗 **Light and dark themes** — the app follows your browser's setting by
+  default and can be switched in Settings; the basemap follows the theme and
+  the switch cross-fades.
+- 🌍 **Five languages** — French, English, Spanish, Catalan and Portuguese;
+  the app follows your browser's language by default, switchable in Settings.
+- 🖥️ **The same app on phone and browser** — on mobile, the full-screen map
+  and its draggable sheet; on a wide screen, navigation moves to the side and
+  the station list docks **next to** the map instead of covering it, filters
+  and station pages become panels, and the mouse gets back what it was missing
+  (zoom buttons, hovers, Escape to close). No more phone frame sitting in the
+  middle of the screen.
+- 📱 **Installable, offline-tolerant PWA** — add it to your home screen; the
+  last visited areas and the map tiles stay available without network, with a
+  price-age indicator.
 
-## 🚀 Utilisation
+## 🚀 Usage
 
-1. Ouvrez **[plein.zadkiel.fr](https://plein.zadkiel.fr)** (le déploiement officiel).
-2. Autorisez la géolocalisation — ou continuez sans, et cherchez une ville, en
-   France, en Espagne, en Andorre ou au Portugal. La recherche retient les lieux
-   que vous y avez choisis : elle les propose dès son ouverture et les remonte
-   en tête des suggestions dès que vous tapez.
-3. Choisissez votre carburant en haut de la carte : le meilleur choix (prix ET
-   distance, détour compté) apparaît dans le volet du bas, **Y aller** lance le
-   guidage.
-4. Avant de partir loin, onglet **Trajet** : saisissez la destination et
-   comparez les stations le long du parcours.
-5. Sur mobile, installez l'app (bannière d'installation ou
-   *Réglages → Application*) pour l'avoir en icône, plein écran et hors-ligne.
+1. Open **[plein.zadkiel.fr](https://plein.zadkiel.fr)** (the official deployment).
+2. Allow geolocation — or continue without it, and search for a city in
+   France, Spain, Andorra or Portugal. The search remembers the places you
+   picked there: it offers them as soon as it opens and ranks them at the top
+   of the suggestions as soon as you type.
+3. Pick your fuel at the top of the map: the best choice (price AND distance,
+   detour counted) shows up in the bottom sheet, **Directions** starts the
+   guidance.
+4. Before a long trip, open the **Route** tab: enter the destination and
+   compare the stations along the way.
+5. On mobile, install the app (install banner or *Settings → Application*) to
+   get it as an icon, full screen and offline.
 
-Aucun compte, aucun tracker : vos favoris et réglages restent dans votre navigateur.
+No account, no tracker: your favorites and settings stay in your browser.
 
-## 📊 Sources de données
+## 📊 Data sources
 
-Chaque pays couvert a ses propres flux officiels — prix et géocodage — que
-l'app choisit selon la zone affichée (source *Automatique*). Le reste
-(itinéraires, fonds de carte) est commun aux quatre.
+Each covered country has its own official feeds — prices and geocoding —
+which the app picks according to the visible area (*Automatic* source). The
+rest (routing, basemaps) is shared by all four.
 
 ### 🇫🇷 France
 
-| Donnée | Source | Licence |
+| Data | Source | License |
 | --- | --- | --- |
-| Prix des carburants & horaires | [Prix des carburants — flux temps réel](https://data.economie.gouv.fr/explore/dataset/prix-des-carburants-en-france-flux-instantane-v2/) (data.economie.gouv.fr) | Licence Ouverte / Open Licence |
-| Enseignes des stations | [OpenStreetMap](https://www.openstreetmap.org/) (index statique généré, rapproché des stations par proximité) | ODbL |
-| Géocodage & autocomplétion | [Base Adresse Nationale](https://adresse.data.gouv.fr/) (api-adresse.data.gouv.fr) | Licence Ouverte / Open Licence |
+| Fuel prices & opening hours | [Prix des carburants — real-time feed](https://data.economie.gouv.fr/explore/dataset/prix-des-carburants-en-france-flux-instantane-v2/) (data.economie.gouv.fr) | Licence Ouverte / Open Licence |
+| Station brands | [OpenStreetMap](https://www.openstreetmap.org/) (generated static index, matched to stations by proximity) | ODbL |
+| Geocoding & autocompletion | [Base Adresse Nationale](https://adresse.data.gouv.fr/) (api-adresse.data.gouv.fr) | Licence Ouverte / Open Licence |
 
-### 🇪🇸 Espagne
+### 🇪🇸 Spain
 
-| Donnée | Source | Licence |
+| Data | Source | License |
 | --- | --- | --- |
-| Prix des carburants, horaires & enseignes | [Precios de carburantes](https://geoportalgasolineras.es) (sedeaplicaciones.minetur.gob.es, MITECO) — l'enseigne (*rótulo*) est portée par le flux | Datos abiertos |
-| Géocodage & autocomplétion | [CartoCiudad](https://www.cartociudad.es) (IGN) | CC BY 4.0 |
+| Fuel prices, hours & brands | [Precios de carburantes](https://geoportalgasolineras.es) (sedeaplicaciones.minetur.gob.es, MITECO) — the brand (*rótulo*) is carried by the feed | Datos abiertos |
+| Geocoding & autocompletion | [CartoCiudad](https://www.cartociudad.es) (IGN) | CC BY 4.0 |
 
-### 🇦🇩 Andorre
+### 🇦🇩 Andorra
 
-| Donnée | Source | Licence |
+| Data | Source | License |
 | --- | --- | --- |
-| Prix des carburants & enseignes | [Preus dels carburants](https://sig.govern.ad/IPE/PreusCarburants) (sig.govern.ad, Govern d'Andorra — Oficina de l'energia i del canvi climàtic) — l'enseigne est déduite du nom de la station ; le flux ne porte ni adresse ni horaires | © Govern d'Andorra |
-| Géocodage & autocomplétion | Nomenclàtor (gazetteer officiel) & LocatorIDE (sig.govern.ad, IDE Andorra) | © Govern d'Andorra |
+| Fuel prices & brands | [Preus dels carburants](https://sig.govern.ad/IPE/PreusCarburants) (sig.govern.ad, Govern d'Andorra — Oficina de l'energia i del canvi climàtic) — the brand is derived from the station name; the feed carries neither address nor opening hours | © Govern d'Andorra |
+| Geocoding & autocompletion | Nomenclàtor (official gazetteer) & LocatorIDE (sig.govern.ad, IDE Andorra) | © Govern d'Andorra |
 
 ### 🇵🇹 Portugal
 
-| Donnée | Source | Licence |
+| Data | Source | License |
 | --- | --- | --- |
-| Prix des carburants & enseignes | [Preços dos combustíveis](https://precoscombustiveis.dgeg.gov.pt) (DGEG — Direção-Geral de Energia e Geologia) — l'enseigne (*marca*) est portée par le flux, qui ne donne ni horaires ni E10 ; couverture continentale (les Açores et Madère ont leur propre régime) | Dados abertos |
-| Géocodage & autocomplétion | [Photon](https://photon.komoot.io) (instance publique Komoot, index OpenStreetMap), borné au Portugal continental — le pays ne publie pas de géocodeur d'adresses sans clé | ODbL |
+| Fuel prices & brands | [Preços dos combustíveis](https://precoscombustiveis.dgeg.gov.pt) (DGEG — Direção-Geral de Energia e Geologia) — the brand (*marca*) is carried by the feed, which gives neither opening hours nor E10; mainland coverage (the Azores and Madeira have their own regime) | Dados abertos |
+| Geocoding & autocompletion | [Photon](https://photon.komoot.io) (public Komoot instance, OpenStreetMap index), bounded to mainland Portugal — the country publishes no keyless address geocoder | ODbL |
 
-### Communs aux quatre pays
+### Shared by all four countries
 
-| Donnée | Source | Licence |
+| Data | Source | License |
 | --- | --- | --- |
-| Calcul d'itinéraires | [OSRM](https://project-osrm.org/) (serveur démo) · [Valhalla](https://valhalla.github.io/valhalla/) (serveur public FOSSGIS) pour « éviter autoroutes / péages » | Données © OpenStreetMap |
-| Fonds de carte | [CARTO](https://carto.com/attributions) dark · données © contributeurs [OpenStreetMap](https://www.openstreetmap.org/copyright) | — |
+| Routing | [OSRM](https://project-osrm.org/) (demo server) · [Valhalla](https://valhalla.github.io/valhalla/) (public FOSSGIS server) for "avoid motorways / tolls" | Data © OpenStreetMap |
+| Basemaps | [CARTO](https://carto.com/attributions) light / dark following the theme (OpenStreetMap tiles as offline-friendly fallback) · data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors | — |
 
-L'app n'a **aucun backend** : le navigateur interroge directement ces services
-publics. Les sources sont pluggables (`src/data/types.ts`). Hors connexion ou
-flux indisponible, l'app garde les dernières stations chargées (cache par
-zone) avec une bannière explicite et réessaie dès que la connexion revient ;
-un jeu de données de démonstration hors-ligne reste sélectionnable dans les
-réglages.
+The app has **no backend**: the browser queries these public services
+directly. Sources are pluggable (`src/data/types.ts`). Offline or when a feed
+is down, the app keeps the last loaded stations (per-area cache) with an
+explicit banner and retries as soon as the connection returns; an offline
+demo dataset stays selectable in the settings.
 
-## 🛠️ Développement
+## 🛠️ Development
 
-Stack : **Vite · React 18 · TypeScript strict · Leaflet**, sans autre dépendance
-runtime. Déployé sur Cloudflare Workers (`wrangler`).
+Stack: **Vite · React 18 · strict TypeScript · Leaflet**, no other runtime
+dependency. Deployed on Cloudflare Workers (`wrangler`).
 
 ```bash
 npm install
 npm run dev          # http://localhost:5173
-npm run build        # build de production (dist/)
-npm run e2e          # E2E Playwright : parcourt tous les écrans
-npm run verify:live  # vérifie les providers réels (France, Espagne, Andorre, Portugal, géocodeurs, OSRM) contre les vrais endpoints
+npm run build        # production build (dist/)
+npm run e2e          # Playwright E2E: walks through every screen
+npm run verify:live  # checks the real providers (France, Spain, Andorra, Portugal, geocoders, OSRM) against the live endpoints
 npm run deploy       # build + wrangler deploy
 ```
 
-Pour ajouter une source de données : implémenter les interfaces
-`StationsProvider` / `GeocodeProvider` / `RouteProvider` et l'enregistrer dans
-`src/data/providers.ts`.
+To add a data source: implement the `StationsProvider` / `GeocodeProvider` /
+`RouteProvider` interfaces and register it in `src/data/providers.ts`.
 
-En environnement sans accès internet direct (sandbox, proxy d'entreprise), le
-dev server Vite proxifie les APIs (`/proxy/*`) et les tuiles (`/tiles/*`) en
-respectant `HTTPS_PROXY` — voir `vite.config.ts`.
+In an environment without direct internet access (sandbox, corporate proxy),
+the Vite dev server proxies the APIs (`/proxy/*`) and the tiles (`/tiles/*`)
+honoring `HTTPS_PROXY` — see `vite.config.ts`.
 
-## 📄 Licence
+## 📄 License
 
-Code sous licence [MIT](LICENSE) © Zadkiel Aharonian.
-Les données affichées restent soumises aux licences de leurs producteurs
-respectifs (Licence Ouverte pour les données publiques françaises, datos
-abiertos du MITECO pour les prix espagnols, © Govern d'Andorra pour l'Andorre,
-dados abertos de la DGEG pour les prix portugais, ODbL pour OpenStreetMap).
-Les polices **Archivo** et **Spline Sans Mono**, embarquées dans
-`public/fonts/`, sont sous [SIL Open Font License 1.1](public/fonts/) (voir les
-fichiers `*-OFL.txt` du même dossier).
+Code under the [MIT](LICENSE) license © Zadkiel Aharonian.
+The displayed data remains subject to the licenses of its respective
+producers (Licence Ouverte for French public data, MITECO datos abiertos for
+Spanish prices, © Govern d'Andorra for Andorra, DGEG dados abertos for
+Portuguese prices, ODbL for OpenStreetMap).
+The **Archivo** and **Spline Sans Mono** fonts, embedded in `public/fonts/`,
+are under the [SIL Open Font License 1.1](public/fonts/) (see the `*-OFL.txt`
+files in the same folder).
