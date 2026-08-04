@@ -23,11 +23,15 @@
 // (390 or 430 CSS px) lands one level further out and packs the price bubbles
 // of a dense centre on top of each other. PNGs are re-encoded losslessly
 // afterwards — Chromium's own encoder leaves roughly 45% on the table.
-// Usage: npm run build:screenshots [map] [station] [route] [en] [fr] [es] [ca] [pt] [--headed]
+// Usage: npm run build:screenshots [map] [station] [route] [en] [fr] [es] [ca] [pt] [--headed] [--parallel]
 // Naming shots and/or locales regenerates only those — handy to refresh one
 // language's fiche without reshooting every map with the prices of another day.
 // --headed opens a visible browser window to watch the run navigate — the
 // captures are identical, it only helps to see where a selector goes wrong.
+// --parallel runs the locales concurrently, one browser context each. Shots
+// within a locale stay sequential (they walk one page through the screens).
+// It multiplies the concurrent load on the live feeds and the OSRM demo
+// server by the locale count — if a run turns flaky, drop back to sequential.
 import { spawn } from 'node:child_process';
 import { mkdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -58,7 +62,8 @@ const CONTEXT_LOCALE = { en: 'en-US', fr: 'fr-FR', es: 'es-ES', ca: 'ca-ES', pt:
 
 const argv = process.argv.slice(2);
 const headed = argv.includes('--headed');
-const asked = argv.filter((n) => n !== '--headed');
+const parallel = argv.includes('--parallel');
+const asked = argv.filter((n) => n !== '--headed' && n !== '--parallel');
 const unknown = asked.filter((n) => !SHOTS.includes(n) && !LOCALES.includes(n));
 if (unknown.length) {
   throw new Error(
@@ -338,8 +343,22 @@ const browser = await chromium.launch({
   headless: !headed,
 });
 try {
-  for (const locale of locales) {
-    await shootLocale(browser, locale);
+  if (parallel) {
+    // One failed locale must not kill the others mid-shot — settle them all,
+    // then report and fail the run if any went down.
+    const results = await Promise.allSettled(locales.map((locale) => shootLocale(browser, locale)));
+    let failures = 0;
+    for (const [i, result] of results.entries()) {
+      if (result.status === 'rejected') {
+        failures += 1;
+        console.error(`✗ ${locales[i]}: ${result.reason?.message ?? result.reason}`);
+      }
+    }
+    if (failures) process.exitCode = 1;
+  } else {
+    for (const locale of locales) {
+      await shootLocale(browser, locale);
+    }
   }
 } finally {
   await browser.close();
