@@ -10,10 +10,10 @@ import { test, expect } from './fixtures'
 // offline).
 async function expectUsableMap(page: import('@playwright/test').Page) {
   const usable = page
-    .getByText(/^(La moins chère|Le meilleur choix) (près de vous|dans cette zone)$/)
-    .or(page.getByText('Aucune station ne correspond'))
-    .or(page.getByText('Impossible de charger les stations pour cette zone.'))
-    .or(page.getByText('Hors ligne — aucune station en mémoire pour cette zone.'))
+    .getByText(/^The (cheapest|best choice) (near you|in this area)$/)
+    .or(page.getByText('No station matches'))
+    .or(page.getByText('The stations for this area could not be loaded.'))
+    .or(page.getByText('Offline — no stations stored for this area.'))
   await expect(usable.first()).toBeVisible({ timeout: 90_000 })
 }
 

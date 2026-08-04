@@ -49,7 +49,7 @@ function StationMiniMap({ station }: { station: Station }) {
     });
     map.setView([station.lat, station.lng], 15);
     addBasemap(map);
-    // The enseigne's logo on a white tile identifies the station far better
+    // The brand's logo on a white tile identifies the station far better
     // than its initials; brands we have no logo for keep the initials bubble.
     const iconSrc = brandIconSrc(station.brand ?? station.name);
     const bubble = iconSrc
@@ -139,11 +139,11 @@ export default function StationDetail() {
   // belongs to the loaded area: a route stop far from the zone must not
   // teleport the map. The selection is the fiche's own: closing it hands the
   // map back as it was, with the default card heading, not a leftover
-  // « station sélectionnée ».
+  // « Selected station ».
   const nearbyId = nearby?.id;
   const appRef = useRef(app);
   appRef.current = app;
-  // « Voir sur la carte » hands the selection over to the map screen — the
+  // « Show on the map » hands the selection over to the map screen — the
   // one exit where clearing it would undo the very thing the user asked for
   const keepFocusRef = useRef(false);
   useEffect(() => {
@@ -197,7 +197,7 @@ export default function StationDetail() {
 
   const maxForCurrentFuel = rangeFor(app.fuel)?.max ?? null;
 
-  // SP95 stands in for E10 in Spain/Andorra — same substitution as the map
+  // Unleaded 95 stands in for E10 in Spain/Andorra — same substitution as the map
   const cur = effectivePrice(s, app.fuel)?.value;
   const dSave = cur != null && maxForCurrentFuel != null ? (maxForCurrentFuel - cur) * app.tank : 0;
   const dSaveStr = dSave > 0 ? `−${fmtPrice(dSave)}` : '0,00';
@@ -303,7 +303,7 @@ export default function StationDetail() {
           >
             <ShareIcon color={C.ink} size={17} />
           </button>
-          {/* Pin to Favoris */}
+          {/* Pin to Favorites */}
           <button onClick={onToggleFavorite} aria-label={favoriteAria} style={headerButton}>
             <Star
               filled={app.isFavorite(s.id)}
@@ -375,7 +375,7 @@ export default function StationDetail() {
           >
             <ShareIcon color={C.ink} size={18} />
           </button>
-          {/* Pin to Favoris */}
+          {/* Pin to Favorites */}
           <button
             onClick={onToggleFavorite}
             aria-label={favoriteAria}

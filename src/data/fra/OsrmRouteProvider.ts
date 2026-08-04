@@ -1,6 +1,6 @@
 // Real routing.
 // – Default: OSRM public demo (fast, but its car profile has no exclusions).
-// – « Éviter autoroutes / péages » : Valhalla (FOSSGIS public server), whose
+// – « Avoid motorways / tolls »: Valhalla (FOSSGIS public server), whose
 //   costing options support use_highways / use_tolls.
 import { IS_DEV } from '../../lib/env';
 import type { GeoPoint } from '../../lib/geo';
@@ -234,8 +234,8 @@ async function valhallaTravelMatrix(
 
 // ── Provider ─────────────────────────────────────────────────────────────────
 // A route is a heavy answer (a full polyline) to a question the user asks
-// again and again: toggling « éviter les autoroutes » back and forth, coming
-// back to a trip after a détour through the map. The memo is module-level so
+// again and again: toggling « Avoid motorways » back and forth, coming
+// back to a trip after a detour through the map. The memo is module-level so
 // every bundle sharing this provider shares it; session-scoped, because a
 // route is only worth reusing as long as the traffic-free estimate behind it
 // still resembles reality. Ten trips is more than a session revisits.

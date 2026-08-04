@@ -55,7 +55,7 @@ export default function ZoneEmpty() {
     );
   }
 
-  // The network failed — say so. « Ajuster les filtres » would blame the
+  // The network failed — say so. « Adjust filters » would blame the
   // user's filters for a zone the app could not load.
   if (lastError != null) {
     return (
@@ -90,10 +90,10 @@ export default function ZoneEmpty() {
 }
 
 /**
- * What is narrowing the zone right now, so « Ajuster les filtres » has a
+ * What is narrowing the zone right now, so « Adjust filters » has a
  * target. The fuel is never listed: a fuel the zone doesn't sell has its own
  * branch above, so by the time this shows, the selection that matched nothing
- * is the radius, the enseignes and the services.
+ * is the radius, the brands and the services.
  */
 function ActiveFilters() {
   const app = useApp();

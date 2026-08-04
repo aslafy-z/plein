@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { foldRecentsIntoSearchHistory } from './persist'
 import type { SearchedPlace } from './persist'
 
-// The route's own « Récents » store is gone — a blob written by an older build
+// The route's own « Recent » store is gone — a blob written by an older build
 // folds its entries into the one search history on the way in, so nothing the
 // user remembered is lost.
 

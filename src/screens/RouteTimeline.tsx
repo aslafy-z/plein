@@ -390,7 +390,7 @@ export default function RouteTimeline() {
               <div style={{ font: mono(700, 22), color: C.accent, whiteSpace: 'nowrap' }}>
                 {fmtPrice(effectivePrice(st, fuel)?.value)} €
               </div>
-              {/* Fuel of the SHOWN price — SP95 when E10 fell back on it */}
+              {/* Fuel of the SHOWN price — Unleaded 95 when E10 fell back on it */}
               <div style={{ fontSize: 11, color: C.mut, whiteSpace: 'nowrap' }}>
                 {m.sheet_per_litre({ fuel: fuelLabel(effectiveFuel(st, fuel) ?? fuel) })}
               </div>

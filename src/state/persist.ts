@@ -10,7 +10,7 @@ import { SERVICE_TAGS } from '../data/types';
 
 const LS_KEY = 'plein.settings.v1';
 
-/** Web maps site used by « Y aller » on desktop (mobile opens the native GPS app) */
+/** Web maps site used by « Go there » on desktop (mobile opens the native GPS app) */
 export type MapsSiteId = 'google' | 'waze' | 'apple' | 'osm';
 
 export interface FavoriteStation {
@@ -112,7 +112,7 @@ function migrateServiceTags(raw: unknown): ServiceTag[] | null {
   return raw.filter((t): t is ServiceTag => SERVICE_TAGS.includes(t as ServiceTag));
 }
 
-/** One entry of the retired « Récents » trip history — folded into
+/** One entry of the retired « Recent » trip history — folded into
     `searchHistory` on the way in (a place driven to is a place looked up) */
 interface LegacyRecentPlace {
   label?: unknown;

@@ -6,8 +6,8 @@ import { test, expect, gotoMap } from './fixtures'
 // so every pin on screen within 1 ct of its price turned green — and a
 // small pan flipped the same stations between red and green.
 // In-zone stations keep one privilege: the circle's cheapest (± 1 ct) is
-// always a « bon plan » — its pin must agree with the green « la moins
-// chère dans cette zone » card — without repainting out-of-circle pins.
+// always a « good deal » — its pin must agree with the green « The cheapest
+// in this area » card — without repainting out-of-circle pins.
 
 test.use({ seed: { sourceId: 'fra', onboarded: true } })
 
@@ -51,24 +51,24 @@ test('a lone station in the circle does not turn the whole map green', async ({ 
   // Tiers judged on the whole map, PLUS the zone floor: the two area-wide
   // bargains and the circle's own cheapest — the card's station — are green
   await expect(page.locator('.pin-bubble--deal')).toHaveCount(3)
-  await expect(page.locator('.pin-bubble--deal', { hasText: '1,80' })).toHaveCount(1)
-  await expect(page.locator('.pin-bubble--deal', { hasText: '1,81' })).toHaveCount(1)
-  await expect(page.locator('.pin-bubble--deal', { hasText: '2,05' })).toHaveCount(1)
+  await expect(page.locator('.pin-bubble--deal', { hasText: '1.80' })).toHaveCount(1)
+  await expect(page.locator('.pin-bubble--deal', { hasText: '1.81' })).toHaveCount(1)
+  await expect(page.locator('.pin-bubble--deal', { hasText: '2.05' })).toHaveCount(1)
 
   // The out-of-circle mid pack must NOT inherit the lone station's scale
-  const farMid = page.locator('.pin-bubble', { hasText: '1,90' })
+  const farMid = page.locator('.pin-bubble', { hasText: '1.90' })
   await expect(farMid).toHaveCount(1)
   await expect(farMid).not.toHaveClass(/pin-bubble--deal/)
   await expect(farMid).not.toHaveClass(/pin-bubble--high/)
 
   // The area's priciest station keeps its orange tint
   await expect(page.locator('.pin-bubble--high')).toHaveCount(1)
-  await expect(page.locator('.pin-bubble--high', { hasText: '2,10' })).toHaveCount(1)
+  await expect(page.locator('.pin-bubble--high', { hasText: '2.10' })).toHaveCount(1)
 })
 
-test("the circle's cheapest pin is green like its « moins chère » card", async ({ page }) => {
+test("the circle's cheapest pin is green like its « The cheapest » card", async ({ page }) => {
   // The collapsed card crowns the in-circle station…
-  await expect(page.getByText('2,05 €').first()).toBeVisible()
+  await expect(page.getByText('2.05 €').first()).toBeVisible()
   // …and its pin wears the same green, even though the area holds cheaper
-  await expect(page.locator('.pin-bubble--deal', { hasText: '2,05' })).toHaveCount(1)
+  await expect(page.locator('.pin-bubble--deal', { hasText: '2.05' })).toHaveCount(1)
 })

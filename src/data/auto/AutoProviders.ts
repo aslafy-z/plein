@@ -1,4 +1,4 @@
-// « Automatique » — every real source rendered on the same map.
+// « Automatic » — every real source rendered on the same map.
 // Each source is queried only when its coverage area can intersect the
 // searched zone / route corridor, so a Toulouse map costs zero Spanish
 // requests and a Madrid one zero French requests, while the border shows

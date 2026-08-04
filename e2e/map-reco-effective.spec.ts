@@ -1,10 +1,10 @@
 import { test, expect, openZoneList } from './fixtures'
 
 // A cheaper pump farther away can cost as much as a closer one once the fuel
-// burnt to reach it is counted (consumption & tank size from Réglages). The card
-// crowns the best DEAL, not the best sticker price: 1,86 € at ~15.9 km vs
-// 1,89 € at ~11.8 km (defaults: 6,5 L/100 km, 50 L) → effective 1,937 vs
-// 1,948 €/L — within the 1-ct tie margin, and a tie goes to the NEAREST.
+// burnt to reach it is counted (consumption & tank size from Settings). The card
+// crowns the best DEAL, not the best sticker price: 1.86 € at ~15.9 km vs
+// 1.89 € at ~11.8 km (defaults: 6.5 L/100 km, 50 L) → effective 1.937 vs
+// 1.948 €/L — within the 1-ct tie margin, and a tie goes to the NEAREST.
 
 test.use({ seed: { sourceId: 'fra', onboarded: true, radius: 25 } })
 
@@ -23,7 +23,7 @@ test.beforeEach(async ({ page }) => {
         geom: { lat: lat + 0.143, lon: lng },
         gazole_prix: '1.860',
       },
-      // ~11.8 km away, 3 ct dearer — the better deal once the détour is paid
+      // ~11.8 km away, 3 ct dearer — the better deal once the detour is paid
       {
         id: 'e2e-near',
         ville: 'Proche',
@@ -50,21 +50,21 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/')
 })
 
-test('a closer station wins when the détour eats the savings', async ({ page }) => {
+test('a closer station wins when the detour eats the savings', async ({ page }) => {
   // The header owns up to it: this is the best choice, not the lowest price…
-  await expect(page.getByText('Le meilleur choix près de vous')).toBeVisible({ timeout: 15_000 })
-  // …and the card crowns the near 1,89 €, not the sticker-cheapest 1,86 €
+  await expect(page.getByText('The best choice near you')).toBeVisible({ timeout: 15_000 })
+  // …and the card crowns the near 1.89 €, not the sticker-cheapest 1.86 €
   await expect(page.getByText('Station · Proche').first()).toBeVisible()
-  await expect(page.getByText('1,89 €').first()).toBeVisible()
+  await expect(page.getByText('1.89 €').first()).toBeVisible()
 
-  // The list defaults to the « Recommandé » sort — a plain effective-price
-  // order without the card's tie margin, so Lointaine (1,937 €/L effective)
-  // still leads Proche (1,948) while the crown sits on the second row,
+  // The list defaults to the « Recommended » sort — a plain effective-price
+  // order without the card's tie margin, so Lointaine (1.937 €/L effective)
+  // still leads Proche (1.948) while the crown sits on the second row,
   // flagged as such
   await openZoneList(page)
   const rows = page.getByTestId('zone-row')
   await expect(rows.first()).toContainText('Lointaine')
-  await expect(rows.first()).toContainText('meilleur prix')
+  await expect(rows.first()).toContainText('best price')
   await expect(rows.nth(1)).toContainText('Proche')
-  await expect(rows.nth(1)).toContainText('recommandée · +0,03')
+  await expect(rows.nth(1)).toContainText('recommended · +0.03')
 })

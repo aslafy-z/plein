@@ -1,7 +1,7 @@
 import { test, expect, gotoMap, openZoneList } from './fixtures'
 
-// The French feed carries tenths of a cent (1,896 vs 1,904) while the app
-// displays cents — both read « 1,90 € ». The recommendation must not send
+// The French feed carries tenths of a cent (1.896 vs 1.904) while the app
+// displays cents — both read « 1.90 € ». The recommendation must not send
 // the user 3 km farther for a difference they cannot see: at the same
 // displayed cent, the NEAREST station wins.
 
@@ -14,7 +14,7 @@ test.beforeEach(async ({ page }) => {
     const lng = m ? parseFloat(m[1]) : 1.44
     const lat = m ? parseFloat(m[2]) : 43.6
     const results = [
-      // ~0.9 km away, 1,904 → displayed « 1,90 »
+      // ~0.9 km away, 1.904 → displayed « 1.90 »
       {
         id: 'e2e-near',
         ville: 'Proche',
@@ -22,7 +22,7 @@ test.beforeEach(async ({ page }) => {
         geom: { lat: lat + 0.008, lon: lng },
         gazole_prix: '1.904',
       },
-      // ~3.3 km away, 1,896 → also displayed « 1,90 », sub-cent cheaper
+      // ~3.3 km away, 1.896 → also displayed « 1.90 », sub-cent cheaper
       {
         id: 'e2e-far',
         ville: 'Lointaine',
@@ -50,22 +50,22 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('at the same displayed price the nearest station is recommended', async ({ page }) => {
-  // The card crowns the NEAREST of the two « 1,90 » stations…
+  // The card crowns the NEAREST of the two « 1.90 » stations…
   await expect(page.getByText('Station · Proche').first()).toBeVisible()
-  await expect(page.getByText('1,90 €').first()).toBeVisible()
+  await expect(page.getByText('1.90 €').first()).toBeVisible()
   // …not the sub-cent-cheaper one 3 km farther
   await expect(
     page.getByTestId('zone-row').filter({ hasText: 'Lointaine' }),
-  ).not.toContainText('meilleur prix')
+  ).not.toContainText('best price')
 
-  // …and the list keeps the sub-cent-cheaper one a bon plan without the
-  // silly « +0,00 » delta
+  // …and the list keeps the sub-cent-cheaper one a « good deal » without the
+  // silly « +0.00 » delta
   await openZoneList(page)
-  await expect(page.getByText('meilleur prix')).toHaveCount(1)
+  await expect(page.getByText('best price')).toHaveCount(1)
   const rows = page.getByTestId('zone-row')
   await expect(rows.first()).toContainText('Proche')
-  await expect(rows.first()).toContainText('meilleur prix')
+  await expect(rows.first()).toContainText('best price')
   await expect(rows.nth(1)).toContainText('Lointaine')
-  await expect(rows.nth(1)).toContainText('bon plan')
-  await expect(rows.nth(1)).not.toContainText('+0,00')
+  await expect(rows.nth(1)).toContainText('good deal')
+  await expect(rows.nth(1)).not.toContainText('+0.00')
 })

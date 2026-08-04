@@ -316,7 +316,7 @@ async function loadDistrict(id: number, lowPriority: boolean): Promise<Station[]
 export class PrtStationsProvider implements StationsProvider {
   readonly id = 'prt' as const;
   readonly capabilities: SourceCapabilities = {
-    brands: true, // the flux carries the marca (enseigne) directly
+    brands: true, // the flux carries the marca (banner) directly
   };
 
   async getStationsNear(

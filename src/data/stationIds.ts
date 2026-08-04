@@ -1,6 +1,6 @@
 // ── Station ids ──────────────────────────────────────────────────────────────
 // Every station id carries the country that issued it — `fra-31000009`,
-// `esp-1234`, `and-42`, `prt-67360` — so a mixed « Automatique » list stays
+// `esp-1234`, `and-42`, `prt-67360` — so a mixed « Automatic » list stays
 // attributable (source footer, SP95-for-E10 substitution) without asking the
 // provider. Demo ids ('su', 'r-a62'…) are deliberately outside that scheme.
 

@@ -93,7 +93,7 @@ export interface RouteInputs {
 /**
  * Signature of the inputs a route is computed for: both endpoints rounded to
  * ~11 m, plus the source and the routing options — the same endpoints under
- * « éviter les péages » are a different result.
+ * « Avoid tolls » are a different result.
  */
 export function routeKey(from: GeoPoint, to: GeoPoint, inputs: RouteInputs): string {
   const r = (n: number) => n.toFixed(4);

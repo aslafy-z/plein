@@ -9,9 +9,9 @@ test('route comparison: map-first shell, tour, station detail and history', asyn
   await gotoMap(page)
 
   // ── The route shows the map from the first frame, form floating over it ──
-  await page.getByText('Trajet', { exact: true }).click()
-  await expect(page.locator('[aria-label="Carte du trajet"]')).toBeVisible()
-  const cta = page.getByRole('button', { name: 'Comparer les stations sur le trajet' })
+  await page.getByText('Route', { exact: true }).click()
+  await expect(page.locator('[aria-label="Map of the route"]')).toBeVisible()
+  const cta = page.getByRole('button', { name: 'Compare the stations along the route' })
   await expect(cta).toBeVisible()
 
   // ── Compute a route: the default position IS Toulouse, so pick a real
@@ -19,37 +19,37 @@ test('route comparison: map-first shell, tour, station detail and history', asyn
   await pickRoutePlace(page, 'to', 'Bordeaux', 'Bordeaux centre')
 
   // ── Results in the same shell: planned stop, corridor map still up ──
-  await expect(page.getByText('Arrêt conseillé').first()).toBeVisible({ timeout: 30_000 })
-  await expect(page.locator('[aria-label="Carte du trajet"]')).toBeVisible()
+  await expect(page.getByText('Recommended stop').first()).toBeVisible({ timeout: 30_000 })
+  await expect(page.locator('[aria-label="Map of the route"]')).toBeVisible()
   await openRouteSheet(page)
-  await expect(page.getByText(/L à acheter/).first()).toBeVisible()
+  await expect(page.getByText(/L to buy/).first()).toBeVisible()
 
   // strategy switch → the plan recomputes (same single fill here)
-  await page.getByText('Prix le + bas').click()
-  await expect(page.getByText('Arrêt conseillé').first()).toBeVisible()
+  await page.getByText('Lowest price').click()
+  await expect(page.getByText('Recommended stop').first()).toBeVisible()
 
   // add the planned stop to the tour
-  await page.getByRole('button', { name: 'Ajouter à la tournée' }).first().click()
-  await expect(page.getByText('Lancer la tournée ›')).toBeVisible()
+  await page.getByRole('button', { name: 'Add to the run' }).first().click()
+  await expect(page.getByText('Start the run ›')).toBeVisible()
 
   // ── Station detail from the planned stop ──
-  await page.getByRole('button', { name: /Fiche de/ }).first().click()
+  await page.getByRole('button', { name: /Details for/ }).first().click()
   // « Services » is the fiche section both arrangements render — the desktop
   // fiche has no mini-map
   await expect(page.getByText('Services')).toBeVisible()
-  await expect(page.getByText(/MàJ il y a/).first()).toBeVisible()
+  await expect(page.getByText(/Upd\. .+ ago/).first()).toBeVisible()
   // Desktop: the fiche stacks INSIDE the route panel — the reader stays in
   // the route view, corridor map up (a phone shows the fiche full screen)
   if ((await page.getByTestId('route-panel').count()) > 0) {
-    await expect(page.locator('[aria-label="Carte du trajet"]')).toBeVisible()
+    await expect(page.locator('[aria-label="Map of the route"]')).toBeVisible()
   }
   await page.goBack()
 
   // ── One place history: the destination picked in the route search is
   // offered back by the MAP's search ──
-  await page.getByText('Carte', { exact: true }).click()
-  await page.getByLabel('Rechercher un lieu').click()
+  await page.getByText('Map', { exact: true }).click()
+  await page.getByLabel('Search for a place').click()
   const suggestions = page.getByTestId('search-suggestions')
-  await expect(suggestions.getByText('Récents')).toBeVisible()
+  await expect(suggestions.getByText('Recent')).toBeVisible()
   await expect(suggestions.getByText('Bordeaux centre')).toBeVisible()
 })

@@ -237,7 +237,7 @@ export function pruneFavoritePrices(keep: ReadonlySet<string>): void {
   });
 }
 
-/** Drops every entry, here and in the store (Settings « Données » clear) */
+/** Drops every entry, here and in the store (Settings « Data » clear) */
 export async function clearFavoritePrices(): Promise<void> {
   await ready();
   if (cancelQueued) {
@@ -292,7 +292,7 @@ export interface FavoriteRefreshGroup {
 }
 
 /**
- * Which fetches (if any) a Favoris refresh should issue. Pure — the caller
+ * Which fetches (if any) a Favorites refresh should issue. Pure — the caller
  * supplies the clock and the per-id last-attempt times, so every branch is
  * unit-testable:
  *   – fresh entries (under STALE_MS) cost nothing, ids attempted less than

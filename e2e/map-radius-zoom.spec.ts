@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
  * fit that follows from the view it starts from.
  */
 async function setRadius(page: import('@playwright/test').Page, km: string) {
-  await page.getByText(/^Filtres · \d+$/).click()
+  await page.getByText(/^Filters · \d+$/).click()
   const slider = page.locator('input[type=range]')
   // The anchor MUST be read before the slider moves: the radius commits on a
   // short debounce after the input event (FiltersSheet), and the button below
@@ -23,7 +23,7 @@ async function setRadius(page: import('@playwright/test').Page, km: string) {
   const before = await mapZoom(page)
   await slider.fill(km)
   await expect(slider).toHaveValue(km)
-  await page.getByText(/^Voir \d+ stations?$/).click()
+  await page.getByText(/^Show \d+ stations?$/).click()
   await expect(page.getByText(`< ${km} km`)).toBeVisible()
   return before
 }
@@ -62,9 +62,9 @@ test('the zoom follows the search radius', async ({ page }) => {
 test('searching a place lands on the radius, whatever the stations do there', async ({ page }) => {
   const home = await settled(page, await setRadius(page, '10'))
 
-  await page.getByText('Chercher un lieu ou un trajet…').click()
-  await page.locator('input[placeholder="Ville, adresse…"]').fill('Marseille')
-  await page.getByText(/voir les stations ici/).first().click()
+  await page.getByText('Search a place or a route…').click()
+  await page.locator('input[placeholder="Town, address…"]').fill('Marseille')
+  await page.getByText(/see the stations here/).first().click()
   await expect(page.getByText('Marseille').first()).toBeVisible({ timeout: 15_000 })
 
   // Same radius, same viewport → the searched place is framed as wide as home

@@ -98,7 +98,7 @@ async function stubTravelMatrix(page: Page) {
 
 /** Brand enrichment, the geocoder, the plan matrix and an instantly-empty
     boot zone — the zone must answer so the fallback banner (and its own
-    « Réessayer ») stays out of these specs' way. */
+    « Retry ») stays out of these specs' way. */
 async function stubStatics(page: Page) {
   await page.route('**/brands-fra.json', (r) =>
     r.fulfill({ json: { v: 1, labels: [], pois: [] } }),
@@ -152,9 +152,9 @@ async function stubCorridor(
 /** Straight to the route screen — these specs are about the pipeline, not the map */
 async function gotoRoute(page: Page) {
   await page.goto('/')
-  await page.getByText('Trajet', { exact: true }).click()
+  await page.getByText('Route', { exact: true }).click()
   await expect(
-    page.getByRole('button', { name: 'Comparer les stations sur le trajet' }),
+    page.getByRole('button', { name: 'Compare the stations along the route' }),
   ).toBeVisible()
 }
 
@@ -173,17 +173,17 @@ test('the itinerary and its map show before a single station is known', async ({
   // Geometry stage: distance, duration and the corridor map are on screen
   // while the stop list is still only placeholders.
   await expect(page.getByText(/243 km ·/).first()).toBeVisible({ timeout: 30_000 })
-  await expect(page.locator('[aria-label="Carte du trajet"]')).toBeVisible()
+  await expect(page.locator('[aria-label="Map of the route"]')).toBeVisible()
   await openRouteSheet(page)
   await expect(page.locator('.skeleton').first()).toBeVisible()
-  await expect(page.getByText('Aucun arrêt carburant nécessaire')).toHaveCount(0)
-  await expect(liveRegion(page)).toHaveText(/Itinéraire trouvé/)
+  await expect(page.getByText('No fuel stop needed')).toHaveCount(0)
+  await expect(liveRegion(page)).toHaveText(/Route found/)
 
   // Corridor stage: the placeholders give way to the plan (the stubbed tank
   // covers the stubbed trip, so it is the zero-stop card), and the header
   // that was already there does not move.
   corridor.release()
-  await expect(page.getByText('Aucun arrêt carburant nécessaire').first()).toBeVisible({
+  await expect(page.getByText('No fuel stop needed').first()).toBeVisible({
     timeout: 30_000,
   })
   await expect(page.locator('.skeleton')).toHaveCount(0)
@@ -221,15 +221,15 @@ test('a cold computation shows the trip it is waiting for, not a bare sentence',
   await submitTrip(page, 'Bordeaux')
 
   // No geometry yet — but the endpoints are the user's own input, so the wait
-  // is the timeline it is turning into rather than « Calcul de l'itinéraire… »
+  // is the timeline it is turning into rather than « Working out the route… »
   await openRouteSheet(page)
   await expect(page.locator('.skeleton').first()).toBeVisible()
-  await expect(page.getByText('Départ · Ma position')).toBeVisible()
-  await expect(page.getByText('Arrivée · Bordeaux')).toBeVisible()
+  await expect(page.getByText('From · My position')).toBeVisible()
+  await expect(page.getByText('Arrival · Bordeaux')).toBeVisible()
   await expect(page.getByText(/243 km ·/).first()).toBeHidden()
   // the sentence is still announced — through the live region, and only there
-  await expect(page.getByText("Calcul de l'itinéraire…")).toHaveCount(1)
-  await expect(liveRegion(page)).toHaveText("Calcul de l'itinéraire…")
+  await expect(page.getByText('Working out the route…')).toHaveCount(1)
+  await expect(liveRegion(page)).toHaveText('Working out the route…')
 
   routing.release()
   await expect(page.getByText(/243 km ·/).first()).toBeVisible({ timeout: 30_000 })
@@ -241,33 +241,33 @@ test('recomputing keeps the previous trip on screen, labelled', async ({ page })
   await gotoRoute(page)
   await stubCorridor(page)
   await submitTrip(page, 'Bordeaux')
-  await expect(page.getByText('Aucun arrêt carburant nécessaire').first()).toBeVisible({
+  await expect(page.getByText('No fuel stop needed').first()).toBeVisible({
     timeout: 30_000,
   })
 
   // Recompute another trip entirely, holding the new geometry open: the
   // previous one must stay drawn and say so, instead of the panel blanking
-  // back to « Calcul de l'itinéraire… »
+  // back to « Working out the route… »
   const routing2 = await stubRouting(page, { mode: 'hold', distanceM: 465_000 })
   await openRouteSheet(page)
-  await page.getByText('Modifier', { exact: true }).click()
+  await page.getByText('Edit', { exact: true }).click()
   await closeRouteSheet(page)
   // Picking the new destination starts the recompute on its own
   await pickRoutePlace(page, 'to', 'Nantes', 'Nantes')
 
   await openRouteSheet(page)
-  await expect(page.getByText(/Trajet précédent/).first()).toBeVisible()
+  await expect(page.getByText(/Previous trip/).first()).toBeVisible()
   // The stale distance keeps the destination it was computed for, never the
-  // one being requested — « Ma position → Nantes · 243 km » would be neither trip
+  // one being requested — « My position → Nantes · 243 km » would be neither trip
   await expect(page.getByText(/243 km ·/).first()).toBeVisible()
-  await expect(page.getByText('Ma position → Bordeaux').first()).toBeVisible()
-  await expect(page.getByText("Calcul de l'itinéraire…")).toHaveCount(0)
+  await expect(page.getByText('My position → Bordeaux').first()).toBeVisible()
+  await expect(page.getByText('Working out the route…')).toHaveCount(0)
 
   // …until the new one replaces it, notice gone.
   routing2.release()
   await expect(page.getByText(/465 km ·/).first()).toBeVisible({ timeout: 30_000 })
-  await expect(page.getByText(/Trajet précédent/)).toHaveCount(0)
-  await expect(page.getByText('Ma position → Nantes').first()).toBeVisible()
+  await expect(page.getByText(/Previous trip/)).toHaveCount(0)
+  await expect(page.getByText('My position → Nantes').first()).toBeVisible()
 })
 
 test('a corridor failure keeps the real itinerary and retries that stage alone', async ({
@@ -287,17 +287,17 @@ test('a corridor failure keeps the real itinerary and retries that stage alone',
 
   // The geometry is real and stays; only the stations stage failed.
   await expect(page.getByText(/243 km ·/).first()).toBeVisible({ timeout: 30_000 })
-  await expect(page.locator('[aria-label="Carte du trajet"]')).toBeVisible()
+  await expect(page.locator('[aria-label="Map of the route"]')).toBeVisible()
   await openRouteSheet(page)
-  await expect(page.getByText(/Stations du trajet indisponibles/).last()).toBeVisible()
+  await expect(page.getByText(/Stations along the route are unavailable/).last()).toBeVisible()
   // Never invented stops (or a plan over them) next to a real road
-  await expect(page.getByText('Aucun arrêt carburant nécessaire')).toHaveCount(0)
+  await expect(page.getByText('No fuel stop needed')).toHaveCount(0)
 
   // Retrying the stations does not recompute the itinerary underneath them
   const enginesBefore = engineRequests
   await stubCorridor(page)
-  await page.getByRole('button', { name: 'Réessayer' }).click()
-  await expect(page.getByText('Aucun arrêt carburant nécessaire').first()).toBeVisible({
+  await page.getByRole('button', { name: 'Try again' }).click()
+  await expect(page.getByText('No fuel stop needed').first()).toBeVisible({
     timeout: 30_000,
   })
   await expect(page.getByText(/243 km ·/).first()).toBeVisible()
@@ -312,17 +312,17 @@ test('a routing failure is reported, never replaced by a fabricated line', async
   await submitTrip(page, 'Bordeaux')
 
   await expect(
-    page.getByText('Itinéraire indisponible. Vérifiez votre connexion.').first(),
+    page.getByText('Route unavailable. Check your connection.').first(),
   ).toBeVisible({ timeout: 30_000 })
-  await expect(page.getByText('Aucun arrêt carburant nécessaire')).toHaveCount(0)
+  await expect(page.getByText('No fuel stop needed')).toHaveCount(0)
   await expect(page.getByText(/243 km ·/).first()).toBeHidden()
 
   // The retry re-runs the whole pipeline once the engine answers again
   await stubRouting(page)
   await openRouteSheet(page)
-  await page.getByRole('button', { name: 'Réessayer' }).click()
+  await page.getByRole('button', { name: 'Try again' }).click()
   await expect(page.getByText(/243 km ·/).first()).toBeVisible({ timeout: 30_000 })
-  await expect(page.getByText('Aucun arrêt carburant nécessaire').first()).toBeVisible({
+  await expect(page.getByText('No fuel stop needed').first()).toBeVisible({
     timeout: 30_000,
   })
 })

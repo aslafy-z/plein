@@ -1,11 +1,11 @@
 import { test, expect, gotoMap, openZoneList } from './fixtures'
 
-// Pin & dot colors follow the loaded area's price tiers: the « bon plan » tier
+// Pin & dot colors follow the loaded area's price tiers: the « good deal » tier
 // (within 1 ct of the cheapest, widened to a quarter of the cheapest→average
 // gap) is green — SEVERAL stations at near-identical low prices are all
 // highlighted, not just the first — and the priciest tier is tinted orange.
 // The collapsed sheet still preselects a single station; expanding the list
-// shows every bon plan highlighted with its own label.
+// shows every good deal highlighted with its own label.
 
 test.use({ seed: { sourceId: 'fra', onboarded: true } })
 
@@ -49,24 +49,24 @@ test('pin colors follow the price tiers of the zone', async ({ page }) => {
   // The green tier is the low-price cluster, the orange one hugs the max
   for (const p of PRICES.slice(0, DEALS)) {
     await expect(
-      page.locator('.pin-bubble--deal', { hasText: p.toFixed(2).replace('.', ',') }),
+      page.locator('.pin-bubble--deal', { hasText: p.toFixed(2) }),
     ).toHaveCount(PRICES.slice(0, DEALS).filter((x) => x === p).length)
   }
-  await expect(page.locator('.pin-bubble--high', { hasText: '1,85' })).toHaveCount(HIGHS)
+  await expect(page.locator('.pin-bubble--high', { hasText: '1.85' })).toHaveCount(HIGHS)
 })
 
-test('the sheet preselects one station, the expanded list highlights every bon plan', async ({
+test('the sheet preselects one station, the expanded list highlights every good deal', async ({
   page,
 }) => {
   // Collapsed: a single preselected card — the cheapest of the zone
-  await expect(page.getByText('La moins chère près de vous')).toBeVisible()
-  await expect(page.getByText('1,60 €').first()).toBeVisible()
+  await expect(page.getByText('The cheapest near you')).toBeVisible()
+  await expect(page.getByText('1.60 €').first()).toBeVisible()
 
   await openZoneList(page)
-  await expect(page.getByText(`${DEALS} bons plans`)).toBeVisible()
-  // The cheapest keeps its label; its near-equals are flagged as bons plans
-  await expect(page.getByText('meilleur prix')).toHaveCount(1)
-  await expect(page.getByText('bon plan · +0,01')).toBeVisible()
-  await expect(page.getByText('bon plan · +0,02')).toBeVisible()
-  await expect(page.getByText(/^bon plan/)).toHaveCount(DEALS - 1)
+  await expect(page.getByText(`${DEALS} good deals`)).toBeVisible()
+  // The cheapest keeps its label; its near-equals are flagged as good deals
+  await expect(page.getByText('best price')).toHaveCount(1)
+  await expect(page.getByText('good deal · +0.01')).toBeVisible()
+  await expect(page.getByText('good deal · +0.02')).toBeVisible()
+  await expect(page.getByText(/^good deal/)).toHaveCount(DEALS - 1)
 })

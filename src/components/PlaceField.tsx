@@ -3,7 +3,7 @@
 // between them again. It owns the debounce and its request guard, the
 // `onPartial` streaming, the spinner, the ✕, the `.search-box` focus ring,
 // the autofill opt-outs, Escape and outside-click close, Enter taking the
-// top-ranked row, the shared history rows (« Récents », ↺, ranked above the
+// top-ranked row, the shared history rows (« Recent », ↺, ranked above the
 // geocoder — src/state/searchHistory.ts) — and BOTH containers:
 //
 // - on a window, a dropdown attached under the field, floating over whatever
@@ -15,7 +15,7 @@
 //
 // What stays with each caller is policy: what picking a place does, what the
 // collapsed state looks like (the map's pill), the extra row action
-// (« Itinéraire › ») and the wording of the empty state.
+// (« Directions › ») and the wording of the empty state.
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { C } from '../theme';
@@ -55,14 +55,14 @@ export interface PlaceFieldProps {
   /** Committed value the field shows while not being edited */
   value: string;
   placeholder: string;
-  /** Phone panel header naming the field being filled (« Départ »…) */
+  /** Phone panel header naming the field being filled (« Departure »…) */
   title?: string;
   /** Leading glyph inside the box (the map's pin, the route's dot/square) */
   icon?: ReactNode;
   /** Live text edits write through — the CTA may geocode unpicked text */
   onChangeText?(text: string): void;
   /** Text the input holds when editing begins (defaults to `value`) — the
-      departure field edits as empty while it means « Ma position » */
+      departure field edits as empty while it means « My position » */
   editValue?: string;
   /** Picking a row. The field remembers the place and closes itself first. */
   onPick(r: GeocodeResult): void;
@@ -70,19 +70,19 @@ export interface PlaceFieldProps {
       `go()` stacks the route screen on top): the field must NOT pop the
       search's history entry — the pending `history.back()` would land AFTER
       the navigation and clobber it. `go()` closes the search plainly, and
-      Back returns into it — the « Itinéraire › » row's idiom. */
+      Back returns into it — the « Directions › » row's idiom. */
   pickNavigates?: boolean;
   /** Map only — the whole field is nav-open state: ✕, Escape and a click
       outside close it (the route fields are always on screen instead) */
   onClose?(): void;
-  /** ✕ on a non-empty committed value (route fields: back to empty / « Ma
+  /** ✕ on a non-empty committed value (route fields: back to empty / « My
       position ») — the map's open field gets the close ✕ via onClose */
   onClear?(): void;
   clearAria?: string;
   autoFocus?: boolean;
-  /** Extra action button per row (the map's « Itinéraire › ») */
+  /** Extra action button per row (the map's « Directions › ») */
   rowAction?: PlaceFieldRowAction;
-  /** Appended to each row's sublabel (map: « voir les stations ici ») */
+  /** Appended to each row's sublabel (map: « see the stations here ») */
   rowHint?: string;
   /** What an empty query should say under the phone's field */
   emptyHint: string;
@@ -116,7 +116,7 @@ export default function PlaceField(props: PlaceFieldProps) {
     setSearching(true);
     timer.current = setTimeout(() => {
       app
-        // « Automatique » queries several geocoders: show each country's hits
+        // « Automatic » queries several geocoders: show each country's hits
         // as they land, and keep spinning until the last one has answered.
         .searchPlaces(text, {
           onPartial: (res) => {
@@ -269,7 +269,7 @@ export default function PlaceField(props: PlaceFieldProps) {
         // standard attribute and needs its own.
         autoComplete="off"
         data-1p-ignore=""
-        // A phone keyboard offers « rechercher » rather than a line break,
+        // A phone keyboard offers « search » rather than a line break,
         // and a town name is not a sentence to correct.
         enterKeyHint="search"
         autoCorrect="off"

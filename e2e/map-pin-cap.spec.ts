@@ -54,17 +54,17 @@ test('a dense zone shows its 15 cheapest as price pins, the rest as dots', async
   // still get NO bubble — all 15 bubbles belong to in-zone stations, whose
   // cheapest (index FAR) is the highlighted best pin.
   for (let i = 0; i < FAR; i++) {
-    const price = (1.6 + i * 0.01).toFixed(2).replace('.', ',')
+    const price = (1.6 + i * 0.01).toFixed(2)
     await expect(page.locator('.pin-bubble', { hasText: price })).toHaveCount(0)
   }
-  const bestZonePrice = (1.6 + FAR * 0.01).toFixed(2).replace('.', ',')
+  const bestZonePrice = (1.6 + FAR * 0.01).toFixed(2)
   await expect(page.locator('.pin-bubble', { hasText: bestZonePrice })).toBeVisible()
 
   // The passive chip counts the ZONE (the circle), like every other count in
   // the app — the 4 far dots and the rest of the fetched area must not
   // inflate it: 18 in-zone stations → 15 bubbles + 3 dots.
   await expect(page.getByTestId('pin-cap-hint')).toContainText(
-    `Zone : les ${CAP} moins chères · ${NEAR - CAP} en points`,
+    `Zone: the ${CAP} cheapest · ${NEAR - CAP} as dots`,
   )
 
   // Tapping a dot selects the station and promotes it to a full price pin.
@@ -83,7 +83,7 @@ test('a dense zone shows its 15 cheapest as price pins, the rest as dots', async
     }
     throw new Error('every dot is covered by a bubble — none is tappable')
   }).toPass()
-  await expect(page.getByText('Station sélectionnée')).toBeVisible()
+  await expect(page.getByText('Selected station')).toBeVisible()
   await expect(bubbles).toHaveCount(CAP + 1)
   await expect(dots).toHaveCount(TOTAL - CAP - 1)
 })

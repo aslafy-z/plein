@@ -7,23 +7,23 @@ import { test, expect, gotoMap, desktopOnly } from './fixtures'
 
 async function openSearch(page: import('@playwright/test').Page) {
   await gotoMap(page)
-  await page.getByLabel('Rechercher un lieu').click()
-  await expect(page.getByPlaceholder('Ville, adresse…')).toBeFocused()
+  await page.getByLabel('Search for a place').click()
+  await expect(page.getByPlaceholder('Town, address…')).toBeFocused()
 }
 
 test('Escape closes the search', async ({ page }) => {
   await openSearch(page)
   await page.keyboard.press('Escape')
-  await expect(page.getByPlaceholder('Ville, adresse…')).toHaveCount(0)
-  await expect(page.getByLabel('Rechercher un lieu')).toBeVisible()
+  await expect(page.getByPlaceholder('Town, address…')).toHaveCount(0)
+  await expect(page.getByLabel('Search for a place')).toBeVisible()
 })
 
 // The ✕ of the desktop dropdown, the ← of the phone's full-screen search
 test('the close button closes the search', async ({ page }) => {
   await openSearch(page)
-  await page.getByRole('button', { name: 'Fermer la recherche' }).click()
-  await expect(page.getByPlaceholder('Ville, adresse…')).toHaveCount(0)
-  await expect(page.getByLabel('Rechercher un lieu')).toBeVisible()
+  await page.getByRole('button', { name: 'Close the search' }).click()
+  await expect(page.getByPlaceholder('Town, address…')).toHaveCount(0)
+  await expect(page.getByLabel('Search for a place')).toBeVisible()
 })
 
 // Opening the search stacks a history entry: on a phone it is a screen of its
@@ -32,8 +32,8 @@ test('the close button closes the search', async ({ page }) => {
 test('the system back button closes the search', async ({ page }) => {
   await openSearch(page)
   await page.goBack()
-  await expect(page.getByPlaceholder('Ville, adresse…')).toHaveCount(0)
-  await expect(page.getByText('La moins chère près de vous')).toBeVisible()
+  await expect(page.getByPlaceholder('Town, address…')).toHaveCount(0)
+  await expect(page.getByText('The cheapest near you')).toBeVisible()
 })
 
 test.describe('window', () => {
@@ -41,15 +41,15 @@ test.describe('window', () => {
 
   test('a click outside closes the search', async ({ page }) => {
     await openSearch(page)
-    // exact: the desktop rail's logo is « Plein. — revenir à la carte »
-    await page.getByRole('button', { name: 'Revenir à la carte', exact: true }).click()
-    await expect(page.getByPlaceholder('Ville, adresse…')).toHaveCount(0)
+    // exact: the desktop rail's logo is « Plein. — back to the map »
+    await page.getByRole('button', { name: 'Back to the map', exact: true }).click()
+    await expect(page.getByPlaceholder('Town, address…')).toHaveCount(0)
   })
 })
 
 test('the focus ring wraps the box, and password managers stay away', async ({ page }) => {
   await openSearch(page)
-  const input = page.getByPlaceholder('Ville, adresse…')
+  const input = page.getByPlaceholder('Town, address…')
 
   // A focused text input always matches :focus-visible — the ring must land
   // on the rounded box around it, never on the bare input.

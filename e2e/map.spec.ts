@@ -4,44 +4,44 @@ test.beforeEach(async ({ page }) => {
   await gotoMap(page)
 })
 
-test('fuel chip cycles through all six fuels back to Gazole', async ({ page }) => {
-  await page.getByText('Gazole ↻').click()
-  await expect(page.getByText('SP95-E10 ↻')).toBeVisible()
-  for (const fuel of ['SP95-E10', 'SP98', 'SP95', 'E85', 'GPLc']) {
+test('fuel chip cycles through all six fuels back to Diesel', async ({ page }) => {
+  await page.getByText('Diesel ↻').click()
+  await expect(page.getByText('E10 ↻')).toBeVisible()
+  for (const fuel of ['E10', 'Unleaded 98', 'Unleaded 95', 'E85', 'LPG']) {
     await page.getByText(`${fuel} ↻`).click()
   }
-  await expect(page.getByText('Gazole ↻')).toBeVisible()
+  await expect(page.getByText('Diesel ↻')).toBeVisible()
 })
 
 test('searching a place moves the zone, reset returns to my position', async ({ page }) => {
-  await page.getByText('Chercher un lieu ou un trajet…').click()
-  await page.locator('input[placeholder="Ville, adresse…"]').fill('Marseille')
-  await page.getByText(/voir les stations ici/).first().click()
+  await page.getByText('Search a place or a route…').click()
+  await page.locator('input[placeholder="Town, address…"]').fill('Marseille')
+  await page.getByText(/see the stations here/).first().click()
 
-  // The heading names the reco (« La moins chère » / « Le meilleur choix »),
+  // The heading names the reco (« The cheapest » / « The best choice »),
   // which is the scoring's business — this spec only asserts the zone MOVED.
   // Since 1fb3ad6 a zone out of the tank's round-trip range crowns its
-  // nearest station, so Marseille seen from Toulouse is a « meilleur choix ».
-  await expect(page.getByText(/dans cette zone/).first()).toBeVisible({ timeout: 15_000 })
+  // nearest station, so Marseille seen from Toulouse is a « best choice ».
+  await expect(page.getByText(/in this area/).first()).toBeVisible({ timeout: 15_000 })
   await expect(page.getByText('Marseille').first()).toBeVisible()
 
-  await page.getByRole('button', { name: 'Revenir à ma position' }).click()
-  await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
+  await page.getByRole('button', { name: 'Back to my position' }).click()
+  await expect(page.getByText('The cheapest near you')).toBeVisible({ timeout: 15_000 })
 })
 
 test('filters sheet opens and applies', async ({ page }) => {
-  await page.getByText(/^Filtres · \d+$/).click()
-  await expect(page.getByText('Rayon de recherche')).toBeVisible()
-  await page.getByText(/^Voir \d+ stations?$/).click()
-  await expect(page.getByText('La moins chère près de vous')).toBeVisible()
+  await page.getByText(/^Filters · \d+$/).click()
+  await expect(page.getByText('Search radius')).toBeVisible()
+  await page.getByText(/^Show \d+ stations?$/).click()
+  await expect(page.getByText('The cheapest near you')).toBeVisible()
 })
 
 test('selecting favorite brands keeps only their stations', async ({ page }) => {
-  await page.getByText(/^Filtres · \d+$/).click()
+  await page.getByText(/^Filters · \d+$/).click()
   // The brand list is collapsed behind an accordion — expand it first.
-  await page.getByRole('button', { name: /^Distributeurs/ }).click()
+  await page.getByRole('button', { name: /^Brands/ }).click()
   await page.getByText('Intermarché', { exact: true }).click()
-  await page.getByText(/^Voir \d+ stations?$/).click()
+  await page.getByText(/^Show \d+ stations?$/).click()
 
   await openZoneList(page)
   await expect(page.getByText('Intermarché · Les Vignes').first()).toBeVisible()
@@ -50,12 +50,12 @@ test('selecting favorite brands keeps only their stations', async ({ page }) => 
   // The selection survives a reload (persisted with the settings) and shows
   // in the collapsed accordion header…
   await page.reload()
-  await expect(page.getByText(/^Filtres · \d+$/)).toBeVisible({ timeout: 15_000 })
-  await page.getByText(/^Filtres · \d+$/).click()
-  await expect(page.getByRole('button', { name: /Distributeurs Intermarché/ })).toBeVisible()
+  await expect(page.getByText(/^Filters · \d+$/)).toBeVisible({ timeout: 15_000 })
+  await page.getByText(/^Filters · \d+$/).click()
+  await expect(page.getByRole('button', { name: /Brands Intermarché/ })).toBeVisible()
   // …and clears with the filters
-  await page.getByText('Réinitialiser').click()
-  await expect(page.getByRole('button', { name: /Distributeurs Tous/ })).toBeVisible()
+  await page.getByText('Reset').click()
+  await expect(page.getByRole('button', { name: /Brands All/ })).toBeVisible()
 })
 
 // ── Sheet gestures ─────────────────────────────────────────────────────────
@@ -67,7 +67,7 @@ test.describe('the bottom sheet', () => {
   phoneOnly()
 
   test('pull-up sheet lists the zone stations, a row selects on the map', async ({ page }) => {
-    const handle = page.getByRole('button', { name: /liste des stations/ })
+    const handle = page.getByRole('button', { name: /list of stations/ })
     const before = (await handle.boundingBox())?.y ?? 0
     await handle.click()
     // The sheet must expand upwards AND settle: a row tapped while the open
@@ -80,15 +80,15 @@ test.describe('the bottom sheet', () => {
       expect(settled, 'the sheet must expand upwards and settle').toBe(true)
     }).toPass()
 
-    await page.locator('button[aria-label^="Voir "][aria-label$="sur la carte"]').nth(1).click()
-    await expect(page.getByText('Station sélectionnée')).toBeVisible()
+    await page.locator('button[aria-label^="Show "][aria-label$="on the map"]').nth(1).click()
+    await expect(page.getByText('Selected station')).toBeVisible()
 
-    await page.getByRole('button', { name: 'Désélectionner la station' }).click()
-    await expect(page.getByText(/La moins chère/).first()).toBeVisible()
+    await page.getByRole('button', { name: 'Deselect the station' }).click()
+    await expect(page.getByText(/The cheapest/).first()).toBeVisible()
   })
 
   test('swiping the list down from its top closes the sheet', async ({ page }) => {
-    const handle = page.getByRole('button', { name: /liste des stations/ })
+    const handle = page.getByRole('button', { name: /list of stations/ })
     await handle.click()
     await expect(handle).toHaveAttribute('aria-expanded', 'true')
     await page.waitForTimeout(400) // open animation
@@ -104,8 +104,8 @@ test.describe('the bottom sheet', () => {
   })
 
   test('a quick upward flick on the station card opens the list', async ({ page }) => {
-    const handle = page.getByRole('button', { name: /liste des stations/ })
-    const box = await page.getByText('La moins chère près de vous').boundingBox()
+    const handle = page.getByRole('button', { name: /list of stations/ })
+    const box = await page.getByText('The cheapest near you').boundingBox()
     if (!box) throw new Error('station card not visible')
 
     // Short (way under half the travel) but fast → the fling rule must open
@@ -119,7 +119,7 @@ test.describe('the bottom sheet', () => {
   })
 
   test('swiping down a scrolled list scrolls it instead of closing the sheet', async ({ page }) => {
-    const handle = page.getByRole('button', { name: /liste des stations/ })
+    const handle = page.getByRole('button', { name: /list of stations/ })
     await handle.click()
     await page.waitForTimeout(400)
 
@@ -141,32 +141,32 @@ test.describe('the bottom sheet', () => {
   })
 
   test('tapping the dimmed map closes the list', async ({ page }) => {
-    const handle = page.getByRole('button', { name: /liste des stations/ })
+    const handle = page.getByRole('button', { name: /list of stations/ })
     await handle.click()
     // The scrim spans the whole stage but the expanded sheet (above it) covers
     // its center — Playwright's default click point. Tap near the top, on the
     // strip of dimmed map the sheet never reaches (≥ 64px stays free).
     await page
-      .getByRole('button', { name: 'Fermer la liste' })
+      .getByRole('button', { name: 'Close the list' })
       .click({ position: { x: 40, y: 30 } })
     await expect(handle).toHaveAttribute('aria-expanded', 'false')
   })
 })
 
-// « Voir sur la carte » is the phone's bridge from the full-screen fiche back
+// « Show on the map › » is the phone's bridge from the full-screen fiche back
 // to the map — the desktop fiche sits NEXT to the live map, which is already
 // showing the station, so the button (and this flow) doesn't exist there
 test.describe('fiche → map bridge', () => {
-  phoneOnly('the desktop fiche has no « view on map » — the live map is beside it')
+  phoneOnly('the desktop fiche has no « Show on the map » — the live map is beside it')
 
   test('station detail opens from the sheet and jumps back with the station selected', async ({ page }) => {
-    await page.getByText(/MàJ /).first().click()
+    await page.getByText(/Upd\. /).first().click()
 
-    await expect(page.getByText('Voir sur la carte ›')).toBeVisible()
-    await expect(page.getByText(/Ouvert|Fermé/).first()).toBeVisible()
+    await expect(page.getByText('Show on the map ›')).toBeVisible()
+    await expect(page.getByText(/Open|Closed/).first()).toBeVisible()
 
-    await page.getByText('Voir sur la carte ›').click()
-    await expect(page.getByText('Station sélectionnée')).toBeVisible({ timeout: 15_000 })
+    await page.getByText('Show on the map ›').click()
+    await expect(page.getByText('Selected station')).toBeVisible({ timeout: 15_000 })
   })
 })
 
@@ -190,7 +190,7 @@ test('the user zoom survives a detail round-trip via the back button', async ({ 
 
   // Detail round-trip with the (Android) back button — « Services » is the
   // fiche section both arrangements render
-  await page.getByText(/MàJ /).first().click()
+  await page.getByText(/Upd\. /).first().click()
   await expect(page.getByText('Services')).toBeVisible()
   await page.goBack()
 
@@ -198,7 +198,7 @@ test('the user zoom survives a detail round-trip via the back button', async ({ 
   // landed (the cheapest station of the zone is not always the recommended
   // one), and which of the two shows is not what this test is about
   await expect(
-    page.getByText(/La moins chère|Le meilleur choix/).first(),
+    page.getByText(/The cheapest|The best choice/).first(),
   ).toBeVisible({ timeout: 15_000 })
   await expect(async () => {
     expect(await zoom()).toBe(zoomed)
@@ -212,8 +212,8 @@ test('panning the map auto-loads stations of the new area', async ({ page }) => 
   // Zone mode reached: either the zone sheet, or — when the pan left the demo
   // dataset's coverage — the empty bar. Both prove stations reloaded there.
   const zone = page
-    .getByText('La moins chère dans cette zone')
-    .or(page.getByText('Aucune station ne correspond'))
+    .getByText('The cheapest in this area')
+    .or(page.getByText('No station matches'))
 
   // How far one drag pans depends on the auto-fit zoom, so drag until the
   // app leaves « near you » mode instead of a fixed number of times.

@@ -49,8 +49,8 @@ test('a slight pan re-uses the fetched area instead of refetching', async ({ pag
   // refetch, and nothing left to prove. ~130 px ≈ 10 km keeps the moved zone
   // (drift + radius) inside the fresh 25 km area, so zero new requests.
   const zone = page
-    .getByText('La moins chère dans cette zone')
-    .or(page.getByText('Aucune station ne correspond'))
+    .getByText('The cheapest in this area')
+    .or(page.getByText('No station matches'))
   const box = await page.locator('.leaflet-container').first().boundingBox()
   if (!box) throw new Error('map container not found')
   const cx = box.x + box.width / 2
@@ -126,7 +126,7 @@ test('a drag over a revalidating area leaves its single fetch alone', async ({ p
   ])
   await page.reload()
 
-  await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('The cheapest near you')).toBeVisible({ timeout: 15_000 })
   // The cached paint dispatches and the revalidation goes out in the same
   // load. StrictMode's second mount re-runs it, so the boot count is not
   // exactly one — what matters is that the DRAG adds nothing to it.
@@ -196,12 +196,12 @@ test('a reload paints the fetched area even with the source cut', async ({ page 
   // The zone card is what says the stations are on screen — the sheet handle
   // only exists once they are, so waiting on it first is what keeps
   // `openZoneList` from deciding against a page that has not painted yet.
-  await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('The cheapest near you')).toBeVisible({ timeout: 15_000 })
   await openZoneList(page)
   await expect(page.getByText('Cacheville').first()).toBeVisible()
 })
 
-// Past the revalidation window the chip must stop saying « il y a N j » and
+// Past the revalidation window the chip must stop saying « N days ago » and
 // name the day the prices were read — an age nothing but a seeded area can
 // produce, since the app can only ever write `Date.now()`.
 test('an area older than the revalidation window is dated, not merely aged', async ({ page }) => {
@@ -236,9 +236,9 @@ test('an area older than the revalidation window is dated, not merely aged', asy
   ])
   await page.reload()
 
-  await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
-  // « Prix du 28 juil. », not « il y a 2 j »
-  await expect(page.getByRole('button', { name: 'Recharger les prix' })).toContainText(/Prix du/)
+  await expect(page.getByText('The cheapest near you')).toBeVisible({ timeout: 15_000 })
+  // « Prices from Jul 28 », not « 2 days ago »
+  await expect(page.getByRole('button', { name: 'Reload the prices' })).toContainText(/Prices from/)
   await openZoneList(page)
   await expect(page.getByText('Vieilleville').first()).toBeVisible()
 })

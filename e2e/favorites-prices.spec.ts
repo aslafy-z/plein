@@ -2,7 +2,7 @@ import { test, expect, seedStationsCache } from './fixtures'
 
 // Issue #133: a favorite keeps its price outside the loaded zone. One favorite
 // sits in the live demo area (Toulouse), the other in a Paris area that only
-// exists in the durable station cache — the Favoris tab must show both prices
+// exists in the durable station cache — the « Favorites » tab must show both prices
 // side by side, without visiting either zone, and without any network fetch
 // (the seeded price is fresh, so the bounded refresh has nothing to do).
 
@@ -48,10 +48,10 @@ test('favorites in two areas show both prices at once', async ({ page }) => {
   await page.goto('/favorites')
 
   // The live demo price and the cached out-of-zone price, side by side
-  await expect(page.getByText('1,67 €')).toBeVisible()
-  await expect(page.getByText('1,61 €')).toBeVisible()
+  await expect(page.getByText('1.67 €')).toBeVisible()
+  await expect(page.getByText('1.61 €')).toBeVisible()
   // The out-of-zone row voices the age of its price instead of a dash
-  const parisRow = page.getByRole('button', { name: 'Voir Station · Paris sur la carte' })
-  await expect(parisRow).toContainText(/MàJ/)
+  const parisRow = page.getByRole('button', { name: 'Show Station · Paris on the map' })
+  await expect(parisRow).toContainText(/Upd\./)
   await expect(parisRow).not.toContainText('—')
 })

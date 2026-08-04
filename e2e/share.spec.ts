@@ -59,14 +59,14 @@ test('the share button hands the fiche deep link to the native sheet', async ({ 
   await stubSharing(page)
   await openFiche(page)
 
-  await page.getByRole('button', { name: 'Partager la station' }).click()
+  await page.getByRole('button', { name: 'Share the station' }).click()
 
   const sheet = await shared(page)
   expect(sheet).toHaveLength(1)
   const data = sheet[0] as { title: string; text: string; url: string }
   expect(data.url).toBe(`${new URL(page.url()).origin}/station/su`)
   expect(data.title).toBe('Plein. — Station U · Croix-Blanche')
-  expect(data.text).toContain('Gazole à 1,67 €/L')
+  expect(data.text).toContain('Diesel à 1.67 €/L')
   // The sheet carries the link; nothing is copied behind the user's back
   expect(await copied(page)).toEqual([])
 })
@@ -80,10 +80,10 @@ test('a dismissed share sheet leaves the fiche alone', async ({ page }) => {
   })
   await openFiche(page)
 
-  await page.getByRole('button', { name: 'Partager la station' }).click()
+  await page.getByRole('button', { name: 'Share the station' }).click()
 
   // No toast, no navigation: the user simply changed their mind
-  await expect(page.getByText('Lien copié')).toHaveCount(0)
+  await expect(page.getByText('Link copied')).toHaveCount(0)
   await expect(page.getByText('Station U · Croix-Blanche').first()).toBeVisible()
 })
 
@@ -95,10 +95,10 @@ test('without the Web Share API the link goes to the clipboard', async ({ page }
   })
   await openFiche(page)
 
-  await page.getByRole('button', { name: 'Partager la station' }).click()
+  await page.getByRole('button', { name: 'Share the station' }).click()
 
   // The toast is the only feedback there is — it must clear the fiche overlay
-  await expectToastOnTop(page, 'Lien copié')
+  await expectToastOnTop(page, 'Link copied')
   expect(await copied(page)).toEqual([`${new URL(page.url()).origin}/station/su`])
 })
 
@@ -109,9 +109,9 @@ test('with neither API the button says so instead of failing silently', async ({
   })
   await openFiche(page)
 
-  await page.getByRole('button', { name: 'Partager la station' }).click()
+  await page.getByRole('button', { name: 'Share the station' }).click()
 
-  await expectToastOnTop(page, 'Partage indisponible sur cet appareil')
+  await expectToastOnTop(page, 'Sharing is not available on this device')
 })
 
 test('the map share button hands the current view to the native sheet', async ({ page }) => {
@@ -119,7 +119,7 @@ test('the map share button hands the current view to the native sheet', async ({
   await gotoMap(page)
   await page.waitForTimeout(700) // let the throttled URL write settle
 
-  await page.getByRole('button', { name: 'Partager cette vue' }).click()
+  await page.getByRole('button', { name: 'Share this view' }).click()
 
   const sheet = await shared(page)
   expect(sheet).toHaveLength(1)
@@ -127,7 +127,7 @@ test('the map share button hands the current view to the native sheet', async ({
   // The link is the very one the address bar carries
   expect(data.url).toBe(page.url())
   expect(data.url).toContain('f=diesel')
-  expect(data.title).toBe('Plein. — Gazole dans cette zone')
+  expect(data.title).toBe('Plein. — Diesel dans cette zone')
   expect(await copied(page)).toEqual([])
 })
 
@@ -139,8 +139,8 @@ test('without the Web Share API the map link goes to the clipboard', async ({ pa
   await gotoMap(page)
   await page.waitForTimeout(700) // let the throttled URL write settle
 
-  await page.getByRole('button', { name: 'Partager cette vue' }).click()
+  await page.getByRole('button', { name: 'Share this view' }).click()
 
-  await expect(page.getByRole('status').filter({ hasText: 'Lien copié' })).toBeVisible()
+  await expect(page.getByRole('status').filter({ hasText: 'Link copied' })).toBeVisible()
   expect(await copied(page)).toEqual([page.url()])
 })

@@ -2,11 +2,11 @@ import { test, expect, openZoneList } from './fixtures'
 
 // Distances shown (and fed into the effective-price ranking) come from a real
 // road matrix (OSRM /table), not crow-flies. Two stations north of the user:
-// « Rivegauche » looks close as the crow flies (~2,2 km) and has the best
+// « Rivegauche » looks close as the crow flies (~2.2 km) and has the best
 // sticker price, but the only bridge makes it 12 km by road; « Rivedroite »
-// is 3,5 km by road. Defaults (6,5 L/100 km, 50 L):
-//   effective Rivegauche 1,850 × (1 + 24×6,5/100/50)  ≈ 1,908 €/L
-//   effective Rivedroite 1,870 × (1 +  7×6,5/100/50)  ≈ 1,887 €/L
+// is 3.5 km by road. Defaults (6.5 L/100 km, 50 L):
+//   effective Rivegauche 1.850 × (1 + 24×6.5/100/50)  ≈ 1.908 €/L
+//   effective Rivedroite 1.870 × (1 +  7×6.5/100/50)  ≈ 1.887 €/L
 // → the road-aware reco is Rivedroite, 2 ct beyond the 1-ct tie margin.
 // When the matrix is unreachable, every station falls back to the same
 // crow-flies × CROW_ROAD_FACTOR estimate and Rivegauche wins.
@@ -29,7 +29,7 @@ function stubStations(page: import('@playwright/test').Page) {
     const lng = m ? parseFloat(m[1]) : 1.44
     const lat = m ? parseFloat(m[2]) : 43.6
     const results = [
-      // ~2,2 km crow-flies, sticker-cheapest — but 12 km by road
+      // ~2.2 km crow-flies, sticker-cheapest — but 12 km by road
       {
         id: 'e2e-bridge',
         ville: 'Rivegauche',
@@ -37,7 +37,7 @@ function stubStations(page: import('@playwright/test').Page) {
         geom: { lat: lat + 0.02, lon: lng },
         gazole_prix: '1.850',
       },
-      // ~3,3 km crow-flies, 2 ct dearer — 3,5 km by road
+      // ~3.3 km crow-flies, 2 ct dearer — 3.5 km by road
       {
         id: 'e2e-direct',
         ville: 'Rivedroite',
@@ -68,7 +68,7 @@ test.beforeEach(async ({ page }) => {
 test('the reco and distances follow the road matrix, not crow-flies', async ({ page }) => {
   await page.route('**/proxy/osrm/table/**', (route) => {
     // Row 0 = from the origin to [origin, …targets]; targets are requested
-    // nearest-crow-flies first: Fillerville (~1,1 km), Rivegauche, Rivedroite
+    // nearest-crow-flies first: Fillerville (~1.1 km), Rivegauche, Rivedroite
     void route.fulfill({
       json: {
         code: 'Ok',
@@ -80,26 +80,26 @@ test('the reco and distances follow the road matrix, not crow-flies', async ({ p
   await page.goto('/')
 
   // The card crowns Rivedroite — dearer at the pump, far cheaper to reach —
-  // with its road distance and matrix drive time, not ~3,3 km / ~7 min
-  await expect(page.getByText('Le meilleur choix près de vous')).toBeVisible({ timeout: 15_000 })
+  // with its road distance and matrix drive time, not ~3.3 km / ~7 min
+  await expect(page.getByText('The best choice near you')).toBeVisible({ timeout: 15_000 })
   await expect(page.getByText('Station · Rivedroite').first()).toBeVisible()
-  await expect(page.getByText('3,5 km').first()).toBeVisible()
-  await expect(page.getByRole('button', { name: /Y aller · 6 min/ })).toBeVisible()
+  await expect(page.getByText('3.5 km').first()).toBeVisible()
+  await expect(page.getByRole('button', { name: /Go there · 6 min/ })).toBeVisible()
 
-  // The list defaults to the « Recommandé » sort, so it leads with the same
+  // The list defaults to the « Recommended » sort, so it leads with the same
   // road-aware pick as the card; crow-flies-close Rivegauche stays the
-  // « meilleur prix » but shows its real 12 km
+  // « best price » but shows its real 12 km
   await openZoneList(page)
   const rows = page.getByTestId('zone-row')
   await expect(rows.first()).toContainText('Rivedroite')
-  await expect(rows.first()).toContainText('recommandée · +0,02')
-  await expect(rows.first()).toContainText('3,5 km')
+  await expect(rows.first()).toContainText('recommended · +0.02')
+  await expect(rows.first()).toContainText('3.5 km')
   await expect(rows.nth(1)).toContainText('Rivegauche')
-  await expect(rows.nth(1)).toContainText('meilleur prix')
-  await expect(rows.nth(1)).toContainText('12,0 km')
+  await expect(rows.nth(1)).toContainText('best price')
+  await expect(rows.nth(1)).toContainText('12.0 km')
 
-  // The « Prix » chip flips back to sticker order
-  await page.getByText('Prix', { exact: true }).click()
+  // The « Price » chip flips back to sticker order
+  await page.getByText('Price', { exact: true }).click()
   await expect(rows.first()).toContainText('Rivegauche')
   await expect(rows.nth(1)).toContainText('Rivedroite')
 })
@@ -126,10 +126,10 @@ test('the emphasized pin follows a matrix landing after the map settled', async 
 
   // Crow-flies phase: Rivegauche is both sticker-cheapest and recommended, so
   // it wears the only green bubble
-  await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('The cheapest near you')).toBeVisible({ timeout: 15_000 })
   const deals = page.locator('.pin-bubble--deal')
   await expect(deals).toHaveCount(1)
-  await expect(deals).toHaveText('1,85')
+  await expect(deals).toHaveText('1.85')
   // Let the load auto-fit finish: a pan/zoom of its own would rebuild the pins
   // and mask a missing dependency
   await page.waitForTimeout(1000)
@@ -139,8 +139,8 @@ test('the emphasized pin follows a matrix landing after the map settled', async 
   // No pan, no filter, no fuel switch: the pins must follow the matrix on
   // their own. Rivegauche keeps the green of the cheapest sticker price,
   // Rivedroite takes the recommendation green.
-  await expect(page.getByText('Le meilleur choix près de vous')).toBeVisible()
-  await expect(page.locator('.pin-bubble--deal', { hasText: '1,87' })).toHaveCount(1)
+  await expect(page.getByText('The best choice near you')).toBeVisible()
+  await expect(page.locator('.pin-bubble--deal', { hasText: '1.87' })).toHaveCount(1)
   await expect(deals).toHaveCount(2)
 })
 
@@ -149,9 +149,9 @@ test('crow-flies fallback when the road matrix is unreachable', async ({ page })
   await page.goto('/')
 
   // Without road knowledge Rivegauche is closest AND sticker-cheapest. Its
-  // 2,2 km of straight line are shown as the ~2,9 km they really cost to
+  // 2.2 km of straight line are shown as the ~2.9 km they really cost to
   // drive — the same scale the matrix would have returned.
-  await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('The cheapest near you')).toBeVisible({ timeout: 15_000 })
   await expect(page.getByText('Station · Rivegauche').first()).toBeVisible()
-  await expect(page.getByText('2,9 km').first()).toBeVisible()
+  await expect(page.getByText('2.9 km').first()).toBeVisible()
 })

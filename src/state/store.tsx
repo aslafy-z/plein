@@ -21,7 +21,7 @@ import {
   type Locale,
 } from '../lib/locale';
 // Applies the pre-paint theme attribute's live half: browser-preference
-// changes and the choice made in Réglages.
+// changes and the choice made in Settings.
 import {
   applyTheme,
   currentTheme,
@@ -139,7 +139,7 @@ import {
 /** Toulouse Capitole — default position when geolocation is unavailable */
 export const DEFAULT_POS: GeoPoint = { lat: 43.6047, lng: 1.4442 };
 export const MAX_RADIUS_KM = 25;
-/** Vehicle profile presets (tank L, consumption L/100 km, default fuel) — adjustable in Réglages */
+/** Vehicle profile presets (tank L, consumption L/100 km, default fuel) — adjustable in Settings */
 export const VEHICLE_PRESETS: Record<
   VehicleId,
   { tank: number; consumption: number; fuel: FuelId }
@@ -194,9 +194,9 @@ export type Screen =
 export type RouteMode = 'balanced' | 'price' | 'detour';
 
 /**
- * Zone list order. « Recommandé » (the default, like the Favoris) ranks on
- * the effective per-litre price — see `effectiveLiterPrice`; « Prix » on the
- * sticker; « Distance » on the road distance.
+ * Zone list order. « Recommended » (the default, like the Favorites) ranks
+ * on the effective per-litre price — see `effectiveLiterPrice`; « Price » on
+ * the sticker; « Distance » on the road distance.
  */
 export type SortMode = 'recommended' | 'price' | 'distance';
 
@@ -209,7 +209,7 @@ export type SortMode = 'recommended' | 'price' | 'distance';
 export type SearchTarget = 'area' | 'routeFrom' | 'routeTo';
 
 export type { MapsSiteId, FavoriteStation, SearchedPlace };
-/** Web maps sites offered by « Y aller » on desktop, in display order */
+/** Web maps sites offered by « Go there » on desktop, in display order */
 export const MAPS_SITE_IDS: MapsSiteId[] = ['google', 'waze', 'apple', 'osm'];
 
 /** Display name of a maps site — only Apple's differs across locales */
@@ -453,12 +453,12 @@ export interface AppStore {
       map fall back to crow-flies distances everywhere they're displayed */
   roadReach: Record<string, ReachInfo>;
 
-  // favorites (Favoris tab)
+  // favorites (Favorites tab)
   favorites: FavoriteStation[];
   isFavorite(id: string): boolean;
   toggleFavorite(s: FavoriteStation): void;
   /** Last known prices per favorite id, from the compact favorite-price
-      store — what the Favoris rows fall back to when the live area doesn't
+      store — what the Favorites rows fall back to when the live area doesn't
       cover them. Refreshed when the tab opens. */
   favoritePrices: Record<string, FavoritePriceEntry>;
 
@@ -514,7 +514,7 @@ export interface AppStore {
   setConsumption(v: number): void;
   sourceId: DataSourceId;
   setSourceId(s: DataSourceId): void;
-  /** Maps website opened by « Y aller » on desktop */
+  /** Maps website opened by « Go there » on desktop */
   mapsSite: MapsSiteId;
   setMapsSite(s: MapsSiteId): void;
   /** Active language — null while the app follows the browser */
@@ -561,7 +561,7 @@ function pathFor(screen: Screen, detailId: string | null): string {
     case 'routeSetup':
       return '/route';
     // The ribbon owns its own path, so the URL alone can rebuild the right
-    // screen — a « Ma position » trip carries no departure in its query, and
+    // screen — a « My position » trip carries no departure in its query, and
     // the query's completeness could not tell the two screens apart.
     case 'route':
       return '/route/results';
@@ -575,7 +575,7 @@ function pathFor(screen: Screen, detailId: string | null): string {
 }
 
 function navFromPath(path: string): { screen: Screen; detailId: string | null } {
-  // /list is the pre-Favoris URL — keep old bookmarks working
+  // /list is the pre-Favorites URL — keep old bookmarks working
   if (path.startsWith('/favorites') || path.startsWith('/list'))
     return { screen: 'favs', detailId: null };
   if (path.startsWith('/route')) {
@@ -741,7 +741,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     initialRoute.consumption ?? persisted.consumption ?? DEFAULT_CONSUMPTION,
   );
   // A link that names a trip decides the avoids too — `x` absent means OFF,
-  // or the reader's own « éviter les péages » would silently reroute the
+  // or the reader's own « Avoid tolls » would silently reroute the
   // shared trip.
   const linkNamesTrip = initialRoute.toPoint != null || initialRoute.toLabel != null;
   const [avoidMotorway, setAvoidMotorwayState] = useState<boolean>(
@@ -753,7 +753,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [startTankPct, setStartTankPctState] = useState<number>(
     initialRoute.startTankPct ?? persisted.startTankPct ?? DEFAULT_START_TANK_PCT,
   );
-  // Forced migration to « Automatique » : legacy persisted ids ('gouv' before
+  // Forced migration to « Automatic »: legacy persisted ids ('gouv' before
   // the country rename) and new installs land on 'auto'; only explicit choices
   // of the current scheme survive.
   const [sourceId, setSourceIdState] = useState<DataSourceId>(() => {
@@ -768,7 +768,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(() => currentLocale());
   const [localeIsExplicit, setLocaleIsExplicit] = useState(() => explicitLocale() != null);
   // Mirror of the document theme. The CSS variables re-color on their own;
-  // holding it in state re-renders what branches on it (Réglages, the maps).
+  // holding it in state re-renders what branches on it (Settings, the maps).
   const [theme, setThemeState] = useState<Theme>(() => currentTheme());
   const [themeIsExplicit, setThemeIsExplicit] = useState(() => explicitTheme() != null);
   const [toast, setToast] = useState<string | null>(null);
@@ -815,7 +815,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [favorites]);
   const [favoritePrices, setFavoritePrices] = useState<Record<string, FavoritePriceEntry>>({});
   const favPricesReq = useRef(0);
-  /** When each favorite was last refreshed by the Favoris tab this session —
+  /** When each favorite was last refreshed by the Favorites tab this session —
       a station absent from its own zone must not be re-fetched in a loop */
   const favRefreshAttempted = useRef(new Map<string, number>());
   // Pull-up hint on the map sheet: armed when onboarding ends, spent as soon
@@ -828,7 +828,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // The one place history of the app — the map's search and the two route
   // fields all feed and read it (persist.ts folds the retired trip
-  // « Récents » into it on the way in).
+  // « Recent » into it on the way in).
   const [searchHistory, setSearchHistory] = useState<SearchedPlace[]>(
     persisted.searchHistory ?? [],
   );
@@ -1167,7 +1167,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (reqId !== stationsReq.current) return;
         const fetchedAt = Date.now();
         writeStationsCache(sourceId, searchPos, MAX_RADIUS_KM, data, fetchedAt);
-        // A favorite seen in any fetch keeps its price for the Favoris tab
+        // A favorite seen in any fetch keeps its price for the Favorites tab
         recordFavoritePrices(favoriteIds.current, data, fetchedAt);
         loadedArea.current = { source: sourceId, center: searchPos, radiusKm: MAX_RADIUS_KM, fetchedAt };
         failedArea.current = null;
@@ -1289,7 +1289,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [loadStations]);
 
-  // ── Favorite prices (Favoris tab) ──────────────────────────────────────────
+  // ── Favorite prices (Favorites tab)────────────────────────────────────────
   // Three tiers, cheapest first, run when the tab opens (never on boot, never
   // behind the map):
   //   1. the compact store — prices captured from past fetches, durable;
@@ -1398,7 +1398,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const raw = await getProviders(sourceId).stations.getStationsAlong(route.polyline, 5);
         if (reqId !== routeReq.current) return;
         // The route corridor is the same shape of problem as the map area: a
-        // favorite it crosses keeps its price for the Favoris tab
+        // favorite it crosses keeps its price for the Favorites tab
         recordFavoritePrices(favoriteIds.current, raw, Date.now());
         markRoute('route:stations');
         setRouteState((s) => commitCorridor(s, key, placeAlongRoute(raw, route)));
@@ -1743,7 +1743,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       // An endpoint typed but never picked geocodes here — and a place the
       // user looked up joins the search history like a picked one would.
-      // « Ma position » is not a place, so a current-position departure
+      // « My position » is not a place, so a current-position departure
       // remembers nothing. Both endpoints resolve together: one round trip
       // instead of two, and the form stays on screen, busy, for the whole
       // of it.
@@ -1850,8 +1850,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const openInMaps = useCallback(
     (target: Station) => {
       // Android: geo: URI → the native maps-app chooser (Google Maps, Waze,
-      // Organic Maps…). iOS/iPadOS: Apple Plans universal link. Elsewhere:
-      // the web maps site chosen in Réglages.
+      // Organic Maps…). iOS/iPadOS: Apple Maps universal link. Elsewhere:
+      // the web maps site chosen in Settings.
       // A brand-matched station exists as a mapped POI: hand the maps app a
       // text search (anchored on our coordinates) so it opens its own place
       // card instead of a bare coordinate pin, which it never links to the
@@ -1876,7 +1876,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         window.location.href = `https://maps.apple.com/?daddr=${target.lat},${target.lng}&dirflg=d`;
         return;
       }
-      // Desktop: the site is a Réglages choice (Google Maps by default).
+      // Desktop: the site is a Settings choice (Google Maps by default).
       // Unlike geo:, the Google dir URL carries no coordinate anchor for a
       // text search — only use it when a street address can disambiguate.
       const site = MAPS_SITE_IDS.includes(mapsSite) ? mapsSite : MAPS_SITE_IDS[0];
@@ -2137,7 +2137,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 }
 
 /**
- * Departure shown in the route UI. « Ma position » is copy, not a value: the
+ * Departure shown in the route UI. « My position » is copy, not a value: the
  * store carries a flag and the label is produced here, so translating it can
  * never change what the route actually departs from.
  */
@@ -2230,7 +2230,7 @@ export function effectivePrice(
 
 /**
  * Cheapest and dearest price for a fuel across a comparison set — what the
- * fiche's « le + bas » note and its savings figure are measured against.
+ * fiche's « the lowest » note and its savings figure are measured against.
  * Read through effectivePrice so the set holds the same stations the map and
  * the list show: an E10 comparison in Spain or Andorra is made of SP95
  * prices, and reading the raw `prices.e10` would leave it empty — no max, no
@@ -2311,7 +2311,7 @@ export function searchOutOfReach(app: Pick<AppStore, 'userPos' | 'searchPos'>): 
  * searched area is out of the user's reach, and equally when no position was
  * ever actually known (geolocation refused on a first visit — userPos is
  * only DEFAULT_POS standing in). Both cases render identically: no distance
- * on the card or the rows, no ETA on « Y aller », « Distance » greyed out —
+ * on the card or the rows, no ETA on « Go there », « Distance » greyed out —
  * the app never displays a trip measured from a point that is not the user.
  */
 export function selectTripOriginKnown(
@@ -2378,7 +2378,7 @@ export function answersAdBlue(s: Station): boolean {
 /**
  * Does the loaded population contain anything the AdBlue filter could bite on?
  * Gates the chip in the filters, exactly as `capabilities.brands` gates the
- * « Distributeurs » list: offering a filter no loaded station can answer would
+ * « Brands » list: offering a filter no loaded station can answer would
  * be a promise the data cannot keep.
  */
 export const selectAdBlueAnswerable = cached((app: AppStore): boolean =>
@@ -2414,7 +2414,7 @@ function passesBrand(app: AppStore, s: NearbyStation): boolean {
 
 /**
  * Zone stations with the brand selection IGNORED — the population the
- * « Distributeurs » counts are grouped from, and the shared base of the
+ * « Brands » counts are grouped from, and the shared base of the
  * brand-filtered zone.
  */
 const selectZoneAllBrands = cached((app: AppStore): NearbyStation[] =>
@@ -2437,7 +2437,7 @@ export function selectVisible(app: AppStore): NearbyStation[] {
 }
 
 /**
- * Station count per brand group inside the zone, for the « Distributeurs »
+ * Station count per brand group inside the zone, for the « Brands »
  * rows. Counted with `brandSel` ignored — so the list doesn't collapse as
  * brands are picked — but WITH the fuel and service filters applied: a row
  * promising « 3 » must deliver 3 stations once selected, never an empty map.
@@ -2507,14 +2507,14 @@ export function selectEffectiveSort(app: AppStore): SortMode {
 }
 
 /**
- * Zone stations in the order the active sort chip asks for. « Recommandé »
+ * Zone stations in the order the active sort chip asks for. « Recommended »
  * (the default) ranks on the effective per-litre price — the comparator the
- * Favoris « Recommandé » sort uses (`sortFavoriteRows`), with the same
+ * Favorites « Recommended » sort uses (`sortFavoriteRows`), with the same
  * rules: equal effective prices fall back to distance, and a station whose
  * round trip exceeds the tank (effective price Infinity) sinks to the
  * bottom. It is a plain ordering of `effectiveLiterPrice`, without
  * `selectRecommended`'s tie margin — inside that margin the crowned row may
- * sit second, still wearing its « recommandée » flag.
+ * sit second, still wearing its « recommended » flag.
  */
 export const selectSorted = cached((app: AppStore): NearbyStation[] => {
   const sort = selectEffectiveSort(app);
@@ -2532,7 +2532,7 @@ export const selectSorted = cached((app: AppStore): NearbyStation[] => {
   });
 });
 
-/** Cheapest STICKER price of the zone — labels (« meilleur prix ») and deltas */
+/** Cheapest STICKER price of the zone — labels (« best price ») and deltas */
 export function selectCheapest(app: AppStore): NearbyStation | null {
   return selectByPrice(app)[0] ?? null;
 }
@@ -2541,13 +2541,13 @@ export function selectCheapest(app: AppStore): NearbyStation | null {
 // the trip to the pump folded in — shared with the route optimizer's economics
 // module so the map view and the route plan value a detour the same way.
 
-// ── Favoris sorting ──────────────────────────────────────────────────────────
+// ── Favorites sorting────────────────────────────────────────────────────────
 export type FavSort = 'recommended' | 'price' | 'distance';
 
 /**
- * Order the Favoris rows. « Recommandé » ranks on the effective per-litre
+ * Order the Favorites rows. « Recommended » ranks on the effective per-litre
  * price (fuel burnt to get there included — same notion as the map card);
- * « Prix » keeps the raw sticker order; rows without any known price (never
+ * « Price » keeps the raw sticker order; rows without any known price (never
  * seen in an area or route fetch yet) and rows out of a full tank's round
  * trip (no effective price) sink to the bottom, sorted by distance.
  */
@@ -2632,7 +2632,7 @@ export function selectZoneLoading(app: AppStore): boolean {
   return app.stations.status === 'idle' || app.stations.status === 'loading';
 }
 
-// ── Price tiers: « bons plans » vs stations chères ───────────────────────────
+// ── Price tiers: « good deals » vs expensive stations ────────────────────────
 /**
  * The feeds carry tenths of a cent but the UI displays cents — every price
  * comparison shown to the user (ranking, tiers, deltas) works on this
@@ -2653,12 +2653,12 @@ export interface PriceStats {
   min: number;
   max: number;
   mean: number;
-  /** Upper price bound of the « bon plan » tier */
+  /** Upper price bound of the « good deal » tier */
   dealMax: number;
   /** Lower price bound of the expensive tier */
   highMin: number;
   /**
-   * « Bon plan » floor for stations INSIDE the circle: the zone's cheapest
+   * « Good deal » floor for stations INSIDE the circle: the zone's cheapest
    * and its near-identical peers (± 1 ct) stay green even when the wider
    * loaded area hides a cheaper pump elsewhere. Null when the circle is
    * empty. Only in-zone stations use it, so a sparse circle still can't
@@ -2678,7 +2678,7 @@ export interface PriceStats {
  * circle degenerate the bounds (one lone station in the circle → everything
  * on screen ≤ its price + 1 ct turned green), so a small pan flipped pins
  * between red and green a few centimeters apart.
- * The tier bounds adapt to the spread: a station is a « bon plan » when its
+ * The tier bounds adapt to the spread: a station is a « good deal » when its
  * price sits within 1 ct of the cheapest — widened to a quarter of the
  * cheapest→average gap when prices are spread out — so SEVERAL stations at
  * near-identical low prices are all highlighted, not just the first one.
@@ -2716,7 +2716,7 @@ export const selectPriceStats = cached((app: AppStore): PriceStats | null => {
 /**
  * Tier of a price against the area distribution — colors pins, dots and rows.
  * `inZone` (station inside the search circle) unlocks the zone floor: the
- * circle's cheapest and its ± 1 ct peers are « bons plans » even when the
+ * circle's cheapest and its ± 1 ct peers are « good deals » even when the
  * wider loaded area is cheaper somewhere else.
  */
 export function priceTier(price: number, stats: PriceStats | null, inZone = false): PriceTier {
@@ -2726,13 +2726,13 @@ export function priceTier(price: number, stats: PriceStats | null, inZone = fals
   // Tier at DISPLAYED precision: a raw threshold falling inside a cent must
   // not split two stations both reading « 1,90 € » into green and gray
   if (priceCents(price) <= priceCents(dealMax)) return 'deal';
-  // A tight area can make the two bounds overlap — being a bon plan wins
+  // A tight area can make the two bounds overlap — being a good deal wins
   if (priceCents(price) >= priceCents(stats.highMin) && stats.highMin > stats.dealMax)
     return 'high';
   return 'mid';
 }
 
-/** Zone stations in the « bon plan » tier, cheapest first */
+/** Zone stations in the « good deal » tier, cheapest first */
 export const selectDeals = cached((app: AppStore): NearbyStation[] => {
   // The distribution is shared with whoever already asked for it this render
   const stats = selectPriceStats(app);
@@ -2918,7 +2918,7 @@ export interface RouteAnalysis {
    * display: `detourMin` is the load-time crow-flies estimate, and showing it
    * next to a plan optimized on real road legs makes the solver look wrong
    * (a motorway aire measures 0 m off the polyline yet can cost +13 min of
-   * access; the plan rightly avoids it, the stale label says « sans détour »).
+   * access; the plan rightly avoids it, the stale label says « no detour »).
    */
   detourMinById: Record<string, number>;
   /** Σ litres to buy across the plan */
@@ -2955,10 +2955,10 @@ function alternativeDetour(legs: PlanLegs, i: number): { km: number; min: number
  * Alternatives ranked the way the SELECTED STRATEGY ranks the plan — the chips
  * have to act on the whole ribbon, not only on the stops the solver kept. Price
  * folds the fuel burnt reaching the pump into the per-litre price (the same
- * effectiveLiterPrice the map recommendation uses), « détour min. » ranks on the
- * minutes the halt adds, « compromis » values those minutes in money. Ranking a
- * « détour min. » list by raw price offered the cheapest bargains 20 km off the
- * road under a chip that promises the opposite.
+ * effectiveLiterPrice the map recommendation uses), « Least detour » ranks on
+ * the minutes the halt adds, « Best trade-off » values those minutes in money.
+ * Ranking a « Least detour » list by raw price offered the cheapest bargains
+ * 20 km off the road under a chip that promises the opposite.
  */
 function alternativeScore(
   app: Pick<AppStore, 'consumption' | 'tank' | 'routeMode'>,
@@ -3004,7 +3004,7 @@ export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
         // the list with whatever sits in the first 120 km — two pumps 20 min
         // off the road beat an on-corridor bargain further on — and an
         // alternative is something to swap INTO the plan, reached after the
-        // stops that precede it. The timeline's « limite d'autonomie » marker
+        // stops that precede it. The timeline's « range limit » marker
         // is what says where the dry point falls.
         .sort((a, b) => a.score - b.score || (a.station.id < b.station.id ? -1 : 1))
         .slice(0, MAX_ALTERNATIVES)

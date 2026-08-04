@@ -1,5 +1,5 @@
 // Brand — concept « 2a Goutte-repère » (Claude Design, Explorations §2):
-// a fuel drop punched like a map pin — « le carburant, localisé ».
+// a fuel drop punched like a map pin — « fuel, pinpointed ».
 import { C } from '../theme';
 
 /** The drop-pin glyph path (viewBox 0 0 64 64, fill-rule evenodd) */
@@ -22,7 +22,7 @@ export function LogoGlyph({ size = 24, color = C.accent }: { size?: number; colo
 
 /**
  * Glyph + « Plein. » wordmark. `tagline` stacks a line under the wordmark and
- * `glow` haloes the glyph in accent light — the hero variant (Réglages
+ * `glow` haloes the glyph in accent light — the hero variant (Settings
  * header); chrome (SideNav, Onboarding) passes neither. `tile` keeps naming
  * the box the glyph centers in, so the lockup's geometry is unchanged.
  */

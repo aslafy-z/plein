@@ -63,7 +63,7 @@ export function mapViewShareData(
  * endpoints, the fuel and vehicle assumptions and the strategy, and the
  * `/route/results` path says the link opens on the computed ribbon — so
  * following it recomputes and shows the very same trip. `ctx` names the
- * endpoints as displayed (« Ma position » included), for the wording only.
+ * endpoints as displayed (« My position » included), for the wording only.
  */
 export function routeShareData(
   view: RouteUrlView,

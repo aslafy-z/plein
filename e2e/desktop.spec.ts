@@ -37,22 +37,22 @@ test('navigation is a side rail, not a bottom tab bar', async ({ page }) => {
   // Top-left, where a desktop user looks for it — not on the bottom edge
   expect(rail.y).toBeLessThan(shell.height / 3)
 
-  for (const tab of ['Carte', 'Trajet', 'Favoris', 'Réglages']) {
+  for (const tab of ['Map', 'Route', 'Favorites', 'Settings']) {
     await expect(page.getByRole('button', { name: tab, exact: true })).toBeVisible()
   }
-  await expect(page.getByRole('button', { name: 'Carte', exact: true })).toHaveAttribute(
+  await expect(page.getByRole('button', { name: 'Map', exact: true })).toHaveAttribute(
     'aria-current',
     'page',
   )
 
   // Nothing to pull up: the sheet and its handle only exist on a phone
-  await expect(page.getByRole('button', { name: /liste des stations/ })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /list of stations/ })).toHaveCount(0)
 
   // The wordmark navigates home
-  await page.getByRole('button', { name: 'Réglages', exact: true }).click()
-  await expect(page.getByText('Carburant par défaut')).toBeVisible()
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await expect(page.getByText('Default fuel')).toBeVisible()
   await home.click()
-  await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('The cheapest near you')).toBeVisible({ timeout: 15_000 })
 })
 
 test('the zone list floats over the map, and a row selects on it', async ({ page }) => {
@@ -71,20 +71,20 @@ test('the zone list floats over the map, and a row selects on it', async ({ page
 
   // One click on a row: its fiche opens under the list, which stays put —
   // and closing it hands the zone card back
-  await page.locator('button[aria-label^="Ouvrir la fiche"]').nth(1).click()
+  await page.locator('button[aria-label^="Open the "][aria-label$=" sheet"]').nth(1).click()
   await expect(page.getByText('Services')).toBeVisible()
   await expect(list).toBeVisible()
 
-  await page.getByRole('button', { name: 'Fermer la fiche' }).click()
-  await expect(page.getByText(/La moins chère/).first()).toBeVisible()
+  await page.getByRole('button', { name: 'Close the station page' }).click()
+  await expect(page.getByText(/The cheapest/).first()).toBeVisible()
 })
 
 test('the filters are a popover: Escape and a click outside both close it', async ({ page }) => {
   const dialog = page.getByRole('dialog')
 
-  await page.getByText(/^Filtres · \d+$/).click()
+  await page.getByText(/^Filters · \d+$/).click()
   await expect(dialog).toBeVisible()
-  await expect(dialog.getByText('Rayon de recherche')).toBeVisible()
+  await expect(dialog.getByText('Search radius')).toBeVisible()
   // The service chips are the same in both arrangements, AdBlue included —
   // the popover is a frame around the shared body, never a second copy of it
   const adBlue = dialog.getByRole('button', { name: 'AdBlue', exact: true })
@@ -92,7 +92,7 @@ test('the filters are a popover: Escape and a click outside both close it', asyn
   await adBlue.click()
   await expect(adBlue).toHaveAttribute('aria-pressed', 'true')
   await expect(
-    dialog.getByText(/Les stations françaises et portugaises restent affichées/),
+    dialog.getByText(/French and Portuguese stations stay listed/),
   ).toBeVisible()
   await adBlue.click()
 
@@ -100,23 +100,23 @@ test('the filters are a popover: Escape and a click outside both close it', asyn
   await expect(dialog).toHaveCount(0)
 
   // …and a click outside, the other thing a window offers that a sheet doesn't
-  await page.getByText(/^Filtres · \d+$/).click()
+  await page.getByText(/^Filters · \d+$/).click()
   await expect(dialog).toBeVisible()
-  await page.getByRole('button', { name: 'Fermer les filtres' }).click({ position: { x: 20, y: 20 } })
+  await page.getByRole('button', { name: 'Close the filters' }).click({ position: { x: 20, y: 20 } })
   await expect(dialog).toHaveCount(0)
-  await expect(page.getByText('La moins chère près de vous')).toBeVisible()
+  await expect(page.getByText('The cheapest near you')).toBeVisible()
 })
 
 test('a station fiche stacks under the list, with the rail still up', async ({ page }) => {
-  await page.getByText(/MàJ /).first().click()
+  await page.getByText(/Upd\. /).first().click()
 
   await expect(page.getByText('12 route de la Croix-Blanche · 31000 Toulouse')).toBeVisible()
   // No mini-map here: the live map right of the panel already shows the pin
-  await expect(page.locator('[aria-label="Carte de la station"]')).toHaveCount(0)
+  await expect(page.locator('[aria-label="Map of the station"]')).toHaveCount(0)
   // Still oriented: the list stays up above the fiche, the navigation did
   // not disappear under a full-screen page, the live map is still there
   await expect(page.getByTestId('zone-list')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Réglages', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible()
   await expect(page.locator('.leaflet-container').first()).toBeVisible()
 
   // A narrow document stays narrow — it must not stretch across the region
@@ -125,12 +125,12 @@ test('a station fiche stacks under the list, with the rail still up', async ({ p
   if (!card || !shell) throw new Error('layout not measurable')
   expect(card.width).toBeLessThan(shell.width * 0.6)
 
-  await page.getByRole('button', { name: 'Fermer la fiche' }).click()
-  await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
+  await page.getByRole('button', { name: 'Close the station page' }).click()
+  await expect(page.getByText('The cheapest near you')).toBeVisible({ timeout: 15_000 })
 })
 
 test('comparing stations leaves one fiche to close, not a pile', async ({ page }) => {
-  const rows = page.locator('button[aria-label^="Ouvrir la fiche"]')
+  const rows = page.locator('button[aria-label^="Open the "][aria-label$=" sheet"]')
   const depth = await page.evaluate(() => history.length)
 
   await rows.nth(0).click()
@@ -146,13 +146,13 @@ test('comparing stations leaves one fiche to close, not a pile', async ({ page }
   expect(await page.evaluate(() => history.length)).toBe(depth + 1)
 
   // One ✕ — not one per station compared
-  await page.getByRole('button', { name: 'Fermer la fiche' }).click()
-  await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
+  await page.getByRole('button', { name: 'Close the station page' }).click()
+  await expect(page.getByText('The cheapest near you')).toBeVisible({ timeout: 15_000 })
   expect(new URL(page.url()).pathname).toBe('/')
 })
 
 test('browser back leaves the fiche instead of replaying the stations read', async ({ page }) => {
-  const rows = page.locator('button[aria-label^="Ouvrir la fiche"]')
+  const rows = page.locator('button[aria-label^="Open the "][aria-label$=" sheet"]')
 
   await rows.nth(0).click()
   await expect(page.getByText('Services')).toBeVisible()
@@ -161,7 +161,7 @@ test('browser back leaves the fiche instead of replaying the stations read', asy
   await expect(page).not.toHaveURL(new RegExp(`${first}$`))
 
   await page.goBack()
-  await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('The cheapest near you')).toBeVisible({ timeout: 15_000 })
   expect(new URL(page.url()).pathname).toBe('/')
 })
 
@@ -171,17 +171,17 @@ test('an empty zone hugs the panel instead of filling it with void', async ({ pa
 
   // Carrefour's only station in the demo zone is not open 24/7, so the two
   // filters together leave nothing — no card, and therefore no list
-  await page.getByText(/^Filtres · \d+$/).click()
-  await page.getByRole('button', { name: /^Distributeurs/ }).click()
+  await page.getByText(/^Filters · \d+$/).click()
+  await page.getByRole('button', { name: /^Brands/ }).click()
   await page.getByRole('button', { name: 'Carrefour 1' }).click()
-  await page.getByRole('button', { name: 'Ouvert 24/24', exact: true }).click()
-  await page.getByText('Voir 0 station', { exact: true }).click()
+  await page.getByRole('button', { name: 'Open 24/7', exact: true }).click()
+  await page.getByText('Show 0 stations', { exact: true }).click()
 
   // The empty state names the miss, what caused it, and the way out
-  await expect(page.getByText('Aucune station ne correspond à vos filtres.')).toBeVisible()
-  await expect(page.getByText('Filtres actifs :')).toBeVisible()
+  await expect(page.getByText('No station matches your filters.')).toBeVisible()
+  await expect(page.getByText('Active filters:')).toBeVisible()
   await expect(page.getByText('Carrefour', { exact: true })).toBeVisible()
-  await expect(page.getByText('Ouvert 24/24', { exact: true })).toBeVisible()
+  await expect(page.getByText('Open 24/7', { exact: true })).toBeVisible()
 
   // …and the panel is that block, not a full-height pane of glass around it:
   // the map keeps most of its left edge
@@ -190,16 +190,16 @@ test('an empty zone hugs the panel instead of filling it with void', async ({ pa
   expect(panel.height).toBeLessThan(stage.height / 2)
 
   // The button is a real one and leads back to the filters
-  await page.getByRole('button', { name: 'Ajuster les filtres' }).click()
+  await page.getByRole('button', { name: 'Adjust filters' }).click()
   await expect(page.getByRole('dialog')).toBeVisible()
 })
 
 test('the map has zoom buttons, which a mouse has no other way to reach', async ({ page }) => {
   const start = await mapZoom(page)
 
-  await page.getByRole('button', { name: 'Zoomer', exact: true }).click()
+  await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
   await expect(async () => expect(await mapZoom(page)).toBe(start + 1)).toPass()
 
-  await page.getByRole('button', { name: 'Dézoomer', exact: true }).click()
+  await page.getByRole('button', { name: 'Zoom out', exact: true }).click()
   await expect(async () => expect(await mapZoom(page)).toBe(start)).toPass()
 })

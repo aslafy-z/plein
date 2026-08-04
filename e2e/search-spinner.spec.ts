@@ -8,7 +8,7 @@ test.use({
   seed: { sourceId: 'fra', onboarded: true, lastPos: { lat: 43.6047, lng: 1.4442 } },
 })
 
-test('un indicateur de chargement tourne pendant la recherche de lieu', async ({ page }) => {
+test('a loading indicator spins while the place search runs', async ({ page }) => {
   await page.route('**/proxy/fra/**', (route) =>
     route.fulfill({
       json: {
@@ -47,14 +47,14 @@ test('un indicateur de chargement tourne pendant la recherche de lieu', async ({
   })
 
   await gotoMap(page)
-  await page.getByLabel('Rechercher un lieu').click()
+  await page.getByLabel('Search for a place').click()
 
-  const spinner = page.getByRole('status', { name: 'Recherche en cours…' })
+  const spinner = page.getByRole('status', { name: 'Searching…' })
   await expect(spinner).toBeHidden()
 
-  await page.getByPlaceholder('Ville, adresse…').fill('Toulouse')
+  await page.getByPlaceholder('Town, address…').fill('Toulouse')
   await expect(spinner).toBeVisible()
 
-  await expect(page.getByText('voir les stations ici').first()).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByText('see the stations here').first()).toBeVisible({ timeout: 10_000 })
   await expect(spinner).toBeHidden()
 })

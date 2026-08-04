@@ -46,7 +46,7 @@ describe('routeUrlQuery', () => {
     ).toBe('');
   });
 
-  it('never writes the departure of a « Ma position » trip', () => {
+  it('never writes the departure of a « My position » trip', () => {
     const q = routeUrlQuery({
       ...VIEW,
       fromIsCurrentPosition: true,
@@ -193,7 +193,7 @@ describe('routeScreenFromUrl', () => {
   it('lands /route on the ribbon only when the query spells the whole trip', () => {
     expect(routeScreenFromUrl(false, parseRouteUrl('?a=43.6,1.4&d=44.8,-0.5'))).toBe('route');
     // A destination and no departure opens the form, pre-filled — the
-    // departure defaults to « Ma position », never to an error
+    // departure defaults to « My position », never to an error
     expect(routeScreenFromUrl(false, parseRouteUrl('?d=44.8,-0.5'))).toBe('routeSetup');
     expect(routeScreenFromUrl(false, parseRouteUrl(''))).toBe('routeSetup');
   });

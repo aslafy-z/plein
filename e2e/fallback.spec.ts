@@ -7,8 +7,8 @@ import { test, expect, gotoMap } from './fixtures'
 
 test.use({ seed: { sourceId: 'fra', onboarded: true } })
 
-const SOURCE_DOWN = 'Source temps réel indisponible — les prix affichés peuvent dater.'
-const OFFLINE = 'Hors ligne — les prix affichés peuvent dater.'
+const SOURCE_DOWN = 'Live source unavailable — the prices shown may be out of date.'
+const OFFLINE = 'Offline — the prices shown may be out of date.'
 
 // Deterministic gouv flux: echo one station near the queried center.
 function fulfillStations(route: import('@playwright/test').Route) {
@@ -56,21 +56,21 @@ test('a dead gouv source shows the source-down state, never demo data', async ({
 
   // The banner owns up and offers a retry
   await expect(page.getByText(SOURCE_DOWN)).toBeVisible({ timeout: 30_000 })
-  await expect(page.getByRole('button', { name: 'Réessayer' }).first()).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Retry' }).first()).toBeVisible()
 
   // The zone card explains the empty zone without blaming the filters
-  await expect(page.getByText('Impossible de charger les stations pour cette zone.')).toBeVisible()
-  await expect(page.getByText('Aucune station ne correspond')).toHaveCount(0)
+  await expect(page.getByText('The stations for this area could not be loaded.')).toBeVisible()
+  await expect(page.getByText('No station matches')).toHaveCount(0)
 
   // The demo dataset stays out of it
   await expect(page.getByText('Station U · Croix-Blanche')).toHaveCount(0)
-  await expect(page.getByText('1,67 €')).toHaveCount(0)
+  await expect(page.getByText('1.67 €')).toHaveCount(0)
 
-  // Réglages repeats the notice and offers the demo dataset as an explicit
+  // « Settings » repeats the notice and offers the demo dataset as an explicit
   // choice — a row hidden while the real source is healthy
-  await page.getByText('Réglages', { exact: true }).click()
-  await expect(page.getByText(/indisponible actuellement/)).toBeVisible()
-  await expect(page.getByRole('button', { name: /Données de démonstration/ })).toBeVisible()
+  await page.getByText('Settings', { exact: true }).click()
+  await expect(page.getByText(/unavailable right now/)).toBeVisible()
+  await expect(page.getByRole('button', { name: /Demo data/ })).toBeVisible()
 })
 
 test('retry loads the real source once it answers again', async ({ page }) => {
@@ -80,9 +80,9 @@ test('retry loads the real source once it answers again', async ({ page }) => {
   await expect(page.getByText(SOURCE_DOWN)).toBeVisible({ timeout: 30_000 })
 
   dead = false
-  await page.getByRole('button', { name: 'Réessayer' }).first().click()
+  await page.getByRole('button', { name: 'Retry' }).first().click()
 
-  await expect(page.getByText(/La moins chère|Le meilleur choix/)).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText(/The cheapest|The best choice/)).toBeVisible({ timeout: 15_000 })
   await expect(page.getByText(/Testville/).first()).toBeVisible()
   await expect(page.getByText(SOURCE_DOWN)).toHaveCount(0)
 })
@@ -106,12 +106,12 @@ test('going offline keeps the loaded stations and never resets the card', async 
   await expect(banner).toBeVisible()
 
   // Nothing reset: no loading state took over, no demo station appeared
-  await expect(page.getByText(/Recherche des stations/)).toHaveCount(0)
+  await expect(page.getByText(/Searching for stations|Looking for stations/)).toHaveCount(0)
   await expect(page.getByText('Station U · Croix-Blanche')).toHaveCount(0)
 
   // Returning to the original zone re-paints it from cache — no network, no
   // flicker (recentre is exact where a reverse drag would fight inertia)
-  await page.getByRole('button', { name: 'Recentrer sur ma position' }).click()
+  await page.getByRole('button', { name: 'Recentre on my position' }).click()
   await expect(page.getByText(/Testville/).first()).toBeVisible()
   await expect(banner).toBeVisible()
 

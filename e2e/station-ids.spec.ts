@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures'
 
 // French station ids carry a `fra-` prefix, like `esp-`/`and-`, so the mixed
-// « Automatique » list stays attributable. Links and favorites created before
+// « Automatic » list stays attributable. Links and favorites created before
 // that prefix hold a bare id — both must keep working.
 
 test.use({ seed: { sourceId: 'fra', onboarded: true } })
@@ -40,7 +40,7 @@ test('a French station is reachable under its prefixed id', async ({ page }) => 
   await page.goto('/station/fra-31000009')
 
   await expect(page.getByText('Station · Prefixville').first()).toBeVisible({ timeout: 15_000 })
-  await expect(page.getByText('source : prix-carburants.gouv.fr')).toBeVisible()
+  await expect(page.getByText('source: prix-carburants.gouv.fr')).toBeVisible()
 })
 
 test('a link made before the prefix still opens the fiche', async ({ page }) => {
@@ -53,7 +53,7 @@ test('a favorite pinned before the prefix is still recognised', async ({ page })
   await page.goto('/station/fra-31000009')
   await expect(page.getByText('Station · Prefixville').first()).toBeVisible({ timeout: 15_000 })
   // Nothing migrated yet: the star reflects an empty favorites list
-  await expect(page.getByRole('button', { name: 'Ajouter aux favoris' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Add to favorites' })).toBeVisible()
 
   // Re-seed with a favorite holding the OLD, bare id and reload
   await page.evaluate(() => {
@@ -67,5 +67,5 @@ test('a favorite pinned before the prefix is still recognised', async ({ page })
   await page.reload()
 
   await expect(page.getByText('Station · Prefixville').first()).toBeVisible({ timeout: 15_000 })
-  await expect(page.getByRole('button', { name: 'Retirer des favoris' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Remove from favorites' })).toBeVisible()
 })

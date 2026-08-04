@@ -3,7 +3,7 @@ import { test, expect, gotoMap } from './fixtures'
 // The ordering math is unit-tested (sortFavoriteRows) — this checks the
 // screen WIRING: live prices resolved from the loaded area, the sort chips
 // actually reordering, and unpinning persisting across a reload. Seeded:
-// E.Leclerc · Labège (1,65 € but ~7 km out) vs Station U (1,67 €, <1 km).
+// E.Leclerc · Labège (1.65 € but ~7 km out) vs Station U (1.67 €, <1 km).
 
 test.use({
   seed: {
@@ -17,25 +17,25 @@ test.use({
 })
 
 const rows = (page: import('@playwright/test').Page) =>
-  page.locator('button[aria-label^="Voir "][aria-label$="sur la carte"]')
+  page.locator('button[aria-label^="Show "][aria-label$="on the map"]')
 
 test('live prices, sort chips, and a persistent unpin', async ({ page }) => {
   await gotoMap(page)
-  await page.getByText('Favoris', { exact: true }).click()
+  await page.getByText('Favorites', { exact: true }).click()
   await expect(page.getByText('2 stations')).toBeVisible()
 
   // Both live prices resolved from the loaded area
-  await expect(page.getByText('1,65 €')).toBeVisible()
-  await expect(page.getByText('1,67 €')).toBeVisible()
+  await expect(page.getByText('1.65 €')).toBeVisible()
+  await expect(page.getByText('1.67 €')).toBeVisible()
 
-  // Default « Recommandé »: the near station beats the sticker-cheapest;
-  // « Prix » flips back to the raw order
+  // Default « Recommended »: the near station beats the sticker-cheapest;
+  // « Price » flips back to the raw order
   await expect(rows(page).first()).toContainText('Station U · Croix-Blanche')
-  await page.getByText('Prix', { exact: true }).click()
+  await page.getByText('Price', { exact: true }).click()
   await expect(rows(page).first()).toContainText('E.Leclerc · Labège')
 
   // Unpinning removes the row, and the removal survives a reload
-  await page.getByRole('button', { name: 'Retirer E.Leclerc · Labège des favoris' }).click()
+  await page.getByRole('button', { name: 'Remove E.Leclerc · Labège from favorites' }).click()
   await expect(page.getByText('1 station', { exact: true })).toBeVisible()
   await expect(page.getByText('E.Leclerc · Labège')).toHaveCount(0)
 

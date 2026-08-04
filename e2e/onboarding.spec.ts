@@ -4,12 +4,12 @@ test.use({ seed: { sourceId: 'demo' } })
 
 test('onboarding leads to a live map without location', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByText('Payez votre plein au juste prix.')).toBeVisible()
+  await expect(page.getByText('Pay a fair price at the pump.')).toBeVisible()
 
-  await page.getByText('Continuer sans localisation').click()
+  await page.getByText('Continue without location').click()
 
-  await expect(page.getByText('Chercher un lieu ou un trajet…')).toBeVisible()
-  await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('Search a place or a route…')).toBeVisible()
+  await expect(page.getByText('The cheapest near you')).toBeVisible({ timeout: 15_000 })
 })
 
 test.describe('with geolocation granted', () => {
@@ -17,14 +17,14 @@ test.describe('with geolocation granted', () => {
   // translates around the user, proving the fix actually drives the map.
   test.use({ geolocation: { latitude: 45.764, longitude: 4.8357 }, permissions: ['geolocation'] })
 
-  test('« Commencer » follows the device position to a live map', async ({ page }) => {
+  test('« Get started » follows the device position to a live map', async ({ page }) => {
     await page.goto('/')
-    await page.getByText('Commencer', { exact: true }).click()
+    await page.getByText('Get started', { exact: true }).click()
 
-    await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('The cheapest near you')).toBeVisible({ timeout: 15_000 })
 
-    // Réglages reflects the granted permission
-    await page.getByText('Réglages', { exact: true }).click()
-    await expect(page.getByText('activée — la carte suit votre position')).toBeVisible()
+    // Settings reflects the granted permission
+    await page.getByText('Settings', { exact: true }).click()
+    await expect(page.getByText('on — the map follows your position')).toBeVisible()
   })
 })
