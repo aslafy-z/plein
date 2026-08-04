@@ -79,6 +79,9 @@ const SCENES = {
     from: { text: 'Madrid', pick: '^Madrid\\s*Madrid' },
     to: { text: 'Barcelona', pick: '^Barcelona\\s*Barcelona' },
     startTankPct: 40,
+    // The Spanish feed is one whole-country payload from minetur, and both
+    // it and CartoCiudad have slow days — give every wait twice the room.
+    slowFactor: 2,
   },
   ca: {
     center: { lat: 42.5063, lng: 1.5218 },
@@ -213,6 +216,8 @@ async function shoot(page, locale, name) {
 async function shootLocale(browser, locale) {
   const msg = await loadMessages(locale);
   const scene = SCENES[locale];
+  // Stretches every wait for scenes whose sources have slow days
+  const T = (ms) => ms * (scene.slowFactor ?? 1);
   await mkdir(join(OUT, locale), { recursive: true });
   const ctx = await browser.newContext({
     viewport: VIEWPORT,
@@ -258,7 +263,7 @@ async function shootLocale(browser, locale) {
 
     // ── Map screen ──
     await page.goto(BASE);
-    await page.getByText(zoneLead).first().waitFor({ timeout: 60_000 });
+    await page.getByText(zoneLead).first().waitFor({ timeout: T(60_000) });
     await page.waitForLoadState('networkidle').catch(() => {});
     // Leaflet keeps painting after the network settles: tiles fade in and the
     // price pins are laid out once their road distances land.
@@ -314,7 +319,7 @@ async function shootLocale(browser, locale) {
       }
 
       await page.goto(`${BASE}/station/${target}`);
-      await page.locator(`[aria-label="${msg.detail_map_aria}"]`).waitFor({ timeout: 30_000 });
+      await page.locator(`[aria-label="${msg.detail_map_aria}"]`).waitFor({ timeout: T(30_000) });
       await page.waitForLoadState('networkidle').catch(() => {});
       await page.waitForTimeout(3000);
       await shoot(page, locale, 'station');
@@ -323,7 +328,7 @@ async function shootLocale(browser, locale) {
     // ── Route screen: the scene's domestic trip ──
     if (wanted('route')) {
       await page.goto(BASE);
-      await page.getByText(zoneLead).first().waitFor({ timeout: 60_000 });
+      await page.getByText(zoneLead).first().waitFor({ timeout: T(60_000) });
       await page.getByText(msg.nav_route, { exact: true }).click();
       // Type the departure rather than leaving the implicit "My position", so
       // the ribbon header names both cities as the README caption does. Same
@@ -341,7 +346,7 @@ async function shootLocale(browser, locale) {
         const input = page.getByPlaceholder(placeholder);
         if ((await input.count()) === 0) {
           await page.getByRole('button', { name: trigger, exact: true }).click();
-          await input.waitFor({ timeout: 10_000 });
+          await input.waitFor({ timeout: T(10_000) });
         }
         await input.fill(text);
         const row = page
@@ -350,13 +355,13 @@ async function shootLocale(browser, locale) {
           .filter({ hasText: rowRe })
           .first();
         try {
-          await row.click({ timeout: 45_000 });
+          await row.click({ timeout: T(45_000) });
         } catch {
           // CartoCiudad has spells where it only answers after its timeout —
           // retype to fire a fresh request and give it one more window.
           await input.fill('');
           await input.fill(text);
-          await row.click({ timeout: 45_000 });
+          await row.click({ timeout: T(45_000) });
         }
       };
       await pickPlace(msg.route_from_placeholder, msg.route_from_field_title, scene.from);
@@ -369,7 +374,7 @@ async function shootLocale(browser, locale) {
         .replaceAll('\\{index\\}', '\\d+')
         .replaceAll('\\{count\\}', '\\d+');
       const planLabel = new RegExp(`${reEscape(msg.ribbon_recommended_stop)}|${stopCounter}`);
-      await page.getByText(planLabel).first().waitFor({ timeout: 60_000 });
+      await page.getByText(planLabel).first().waitFor({ timeout: T(60_000) });
       // Expand the sheet so the shot shows the plan's timeline rather than
       // one collapsed row (openRouteSheet in e2e/fixtures.ts, same handle)
       const expand = page.locator(`[aria-label="${msg.route_sheet_expand_aria}"]`);
@@ -386,7 +391,7 @@ async function shootLocale(browser, locale) {
           (aria) =>
             (document.querySelector(`[aria-label="${aria}"]`)?.querySelectorAll('.pin-bubble').length ?? 0) > 0,
           msg.map_route_aria,
-          { timeout: 60_000 },
+          { timeout: T(60_000) },
         )
         .catch(() => {});
       await page.waitForLoadState('networkidle').catch(() => {});
