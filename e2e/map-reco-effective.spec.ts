@@ -23,7 +23,7 @@ test.beforeEach(async ({ page }) => {
         geom: { lat: lat + 0.143, lon: lng },
         gazole_prix: '1.860',
       },
-      // ~11.8 km away, 3 ct dearer — the better deal once the détour is paid
+      // ~11.8 km away, 3 ct dearer — the better deal once the detour is paid
       {
         id: 'e2e-near',
         ville: 'Proche',
@@ -50,7 +50,7 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/')
 })
 
-test('a closer station wins when the détour eats the savings', async ({ page }) => {
+test('a closer station wins when the detour eats the savings', async ({ page }) => {
   // The header owns up to it: this is the best choice, not the lowest price…
   await expect(page.getByText('The best choice near you')).toBeVisible({ timeout: 15_000 })
   // …and the card crowns the near 1.89 €, not the sticker-cheapest 1.86 €

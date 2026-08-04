@@ -21,7 +21,7 @@ import {
   type Locale,
 } from '../lib/locale';
 // Applies the pre-paint theme attribute's live half: browser-preference
-// changes and the choice made in Réglages.
+// changes and the choice made in Settings.
 import {
   applyTheme,
   currentTheme,
@@ -768,7 +768,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(() => currentLocale());
   const [localeIsExplicit, setLocaleIsExplicit] = useState(() => explicitLocale() != null);
   // Mirror of the document theme. The CSS variables re-color on their own;
-  // holding it in state re-renders what branches on it (Réglages, the maps).
+  // holding it in state re-renders what branches on it (Settings, the maps).
   const [theme, setThemeState] = useState<Theme>(() => currentTheme());
   const [themeIsExplicit, setThemeIsExplicit] = useState(() => explicitTheme() != null);
   const [toast, setToast] = useState<string | null>(null);
