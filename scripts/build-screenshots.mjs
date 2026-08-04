@@ -82,6 +82,7 @@ async function loadMessages(locale) {
     'route_from_placeholder',
     'route_to_placeholder',
     'ribbon_recommended_stop',
+    'map_route_aria',
   ];
   const msg = {};
   for (const key of need) {
@@ -292,6 +293,17 @@ async function shootLocale(browser, locale) {
       // Picking the destination submits the trip by itself — no CTA click
       // (route.spec.ts leans on the same behavior)
       await page.getByText(msg.ribbon_recommended_stop).first().waitFor({ timeout: 60_000 });
+      // The plan lands before the corridor's priced pins are drawn on the
+      // route map — wait for at least one price bubble inside it, or the
+      // shot shows a bare line between two endpoint dots.
+      await page
+        .waitForFunction(
+          (aria) =>
+            (document.querySelector(`[aria-label="${aria}"]`)?.querySelectorAll('.pin-bubble').length ?? 0) > 0,
+          msg.map_route_aria,
+          { timeout: 60_000 },
+        )
+        .catch(() => {});
       await page.waitForLoadState('networkidle').catch(() => {});
       await page.waitForTimeout(4000);
       await shoot(page, locale, 'route');
