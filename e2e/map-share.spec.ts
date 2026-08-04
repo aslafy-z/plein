@@ -40,6 +40,21 @@ test('a shared link opens on its area, fuel and radius', async ({ page }) => {
   expect(params(page).get('z')).toBe('14')
 })
 
+test('a shared link area survives the container resizing right after load', async ({ page }) => {
+  await page.goto('/?ll=43.615,1.455&z=14&f=diesel&r=5')
+  await expect(page.getByText('dans cette zone')).toBeVisible({ timeout: 15_000 })
+
+  // The mobile URL bar collapsing (or a window resize) grows the map container.
+  // The center-keeping pan of invalidateSize must stay programmatic: read as a
+  // user pan, it committed the visible-center offset into the search area and
+  // `ll` walked away from the link by half a sheet on every reload.
+  const size = page.viewportSize()!
+  await page.setViewportSize({ width: size.width, height: size.height + 56 })
+  await page.waitForTimeout(1200)
+  expect(params(page).get('ll')).toBe('43.615,1.455')
+  expect(params(page).get('z')).toBe('14')
+})
+
 test('a shared link carries the filters it was shared with', async ({ page }) => {
   // 4 of the 6 stations in the default demo zone are open 24/24 (filters.spec)
   await page.goto('/?ll=43.6047,1.4442&z=13&f=diesel&r=5&s=open24h')
