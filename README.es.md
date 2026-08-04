@@ -29,20 +29,33 @@ Portugal.
 
 ## ✨ Funcionalidades
 
-- 🗺️ **Mapa de precios en directo** — precios en chinchetas, chollos en verde
-- 🇫🇷🇪🇸🇦🇩🇵🇹 **Cuatro países** — los flujos oficiales combinados en un solo mapa
-- 📋 **Mejor elección real** — el combustible del desvío se tiene en cuenta
-- 🛣️ **Plan de repostaje en ruta** — dónde parar, cuántos litros, a qué precio
-- ⭐ **Favoritos** — los precios del día de un vistazo
-- ⛽ **Todos los combustibles** — Diésel, SP95/98, E10, E85, GLP · filtros de rótulos, servicios, AdBlue
-- 🕐 **Horarios reales** — y frescura de los precios
-- 🏷️ **Marcas reconocidas** — nombres y logotipos
-- 🧭 **«Cómo llegar»** — abre tu app de GPS
-- 🔗 **Enlaces compartibles** — una vista del mapa o un viaje
-- 🌗 **Tema claro y oscuro**
-- 🌍 **Cinco idiomas** — FR · EN · ES · CA · PT
-- 🖥️ **Móvil y escritorio**
-- 📱 **PWA instalable** — tolerante al modo sin conexión
+- 🗺️ **Mapa de precios en directo** — las estaciones a tu alrededor, precios
+  en chinchetas coloreadas según el precio: chollos en verde, las más caras
+  en naranja.
+- 🇫🇷🇪🇸🇦🇩🇵🇹 **Cuatro países en un mapa** — los flujos oficiales de Francia,
+  España, Andorra y Portugal combinados; los repostajes fronterizos se
+  comparan de un vistazo.
+- 📋 **Mejor elección real** — el combustible quemado en el desvío se tiene
+  en cuenta: una estación más cercana puede ganar a la más barata.
+- 🛣️ **Plan de repostaje en ruta** — dónde parar a lo largo del viaje,
+  cuántos litros en cada parada y a qué precio, según 3 estrategias.
+- ⭐ **Favoritos** — tus estaciones y su precio del día, a través de zonas y
+  países.
+- ⛽ **Todos los combustibles** — Diésel, SP95/98, E10, E85, GLP; filtros por
+  radio, rótulos, servicios y AdBlue.
+- 🕐 **Horarios reales** — «Abierto 24 h», «Cerrado · abre a las 6:30» — con
+  la frescura de los precios señalada.
+- 🏷️ **Marcas reconocidas** — nombres y logotipos de las estaciones desde los
+  flujos oficiales y OpenStreetMap.
+- 🧭 **«Cómo llegar»** — abre la estación en tu app de GPS.
+- 🔗 **Enlaces compartibles** — la dirección sigue al mapa y a la ruta; un
+  enlace reabre la misma vista.
+- 🌗 **Tema claro y oscuro** — sigue a tu navegador, modificable en los
+  Ajustes.
+- 🌍 **Cinco idiomas** — francés, inglés, español, catalán y portugués.
+- 🖥️ **Móvil y escritorio** — mapa a pantalla completa y panel en el móvil,
+  paneles laterales en pantalla grande.
+- 📱 **PWA instalable** — las últimas zonas y teselas funcionan sin conexión.
 
 ## 🚀 Uso
 

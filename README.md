@@ -28,20 +28,30 @@ you and along your routes, in France, Spain, Andorra and Portugal.
 
 ## ✨ Features
 
-- 🗺️ **Live price map** — price pins around you, best deals in green
-- 🇫🇷🇪🇸🇦🇩🇵🇹 **Four countries** — the official feeds combined on one map
-- 📋 **Real best choice** — the fuel of the detour is counted
-- 🛣️ **Route fuel plan** — where to stop, how many liters, at what cost
-- ⭐ **Favorites** — the day's prices at a glance
-- ⛽ **All fuels** — Diesel, SP95/98, E10, E85, LPG · brand, service and AdBlue filters
-- 🕐 **Real opening hours** — and price freshness
-- 🏷️ **Recognized brands** — names and logos
-- 🧭 **Directions** — opens your GPS app
-- 🔗 **Shareable links** — for a map view or a trip
-- 🌗 **Light and dark themes**
-- 🌍 **Five languages** — FR · EN · ES · CA · PT
-- 🖥️ **Phone and desktop**
-- 📱 **Installable PWA** — offline-tolerant
+- 🗺️ **Live price map** — stations around you, price pins colored by price:
+  good deals in green, the priciest in orange.
+- 🇫🇷🇪🇸🇦🇩🇵🇹 **Four countries on one map** — the official feeds of France,
+  Spain, Andorra and Portugal combined; border fill-ups compare at a glance.
+- 📋 **Real best choice** — the fuel burned for the detour is counted, so a
+  closer station can beat the cheapest one.
+- 🛣️ **Route fuel plan** — where to stop along your trip, how many liters at
+  each stop and at what cost, under 3 strategies.
+- ⭐ **Favorites** — your stations and their day's price, across areas and
+  countries.
+- ⛽ **All fuels** — Diesel, SP95/98, E10, E85, LPG; filters by radius,
+  brands, services and AdBlue.
+- 🕐 **Real opening hours** — "Open 24/7", "Closed · opens at 6:30 am" — with
+  price freshness flagged.
+- 🏷️ **Recognized brands** — station names and logos from the official feeds
+  and OpenStreetMap.
+- 🧭 **Directions** — opens the station in your GPS app.
+- 🔗 **Shareable links** — the URL follows the map and the route; a link
+  reopens the same view.
+- 🌗 **Light and dark themes** — follows your browser, switchable in Settings.
+- 🌍 **Five languages** — French, English, Spanish, Catalan and Portuguese.
+- 🖥️ **Phone and desktop** — full-screen map and sheet on mobile, side panels
+  on a wide screen.
+- 📱 **Installable PWA** — the last areas and tiles work offline.
 
 ## 🚀 Usage
 

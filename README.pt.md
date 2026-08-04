@@ -29,20 +29,32 @@ e Portugal.
 
 ## ✨ Funcionalidades
 
-- 🗺️ **Mapa de preços em direto** — preços em alfinetes, boas ofertas a verde
-- 🇫🇷🇪🇸🇦🇩🇵🇹 **Quatro países** — os fluxos oficiais combinados num só mapa
-- 📋 **Melhor escolha real** — o combustível do desvio é contabilizado
-- 🛣️ **Plano de abastecimento na rota** — onde parar, quantos litros, a que preço
-- ⭐ **Favoritos** — os preços do dia num relance
-- ⛽ **Todos os combustíveis** — Gasóleo, SP95/98, E10, E85, GPL · filtros de marcas, serviços, AdBlue
-- 🕐 **Horários reais** — e frescura dos preços
-- 🏷️ **Marcas reconhecidas** — nomes e logótipos
-- 🧭 **«Direções»** — abre a sua app de GPS
-- 🔗 **Ligações partilháveis** — uma vista do mapa ou uma viagem
-- 🌗 **Tema claro e escuro**
-- 🌍 **Cinco línguas** — FR · EN · ES · CA · PT
-- 🖥️ **Telemóvel e computador**
-- 📱 **PWA instalável** — tolerante ao offline
+- 🗺️ **Mapa de preços em direto** — os postos à sua volta, preços em
+  alfinetes coloridos consoante o preço: boas ofertas a verde, os mais caros
+  a laranja.
+- 🇫🇷🇪🇸🇦🇩🇵🇹 **Quatro países num mapa** — os fluxos oficiais de França,
+  Espanha, Andorra e Portugal combinados; os abastecimentos fronteiriços
+  comparam-se num relance.
+- 📋 **Melhor escolha real** — o combustível gasto no desvio é contabilizado:
+  um posto mais próximo pode bater o mais barato.
+- 🛣️ **Plano de abastecimento na rota** — onde parar ao longo da viagem,
+  quantos litros em cada paragem e a que preço, segundo 3 estratégias.
+- ⭐ **Favoritos** — os seus postos e o preço do dia, através de zonas e
+  países.
+- ⛽ **Todos os combustíveis** — Gasóleo, SP95/98, E10, E85, GPL; filtros por
+  raio, marcas, serviços e AdBlue.
+- 🕐 **Horários reais** — «Aberto 24 h», «Fechado · abre às 6h30» — com a
+  frescura dos preços assinalada.
+- 🏷️ **Marcas reconhecidas** — nomes e logótipos dos postos a partir dos
+  fluxos oficiais e do OpenStreetMap.
+- 🧭 **«Direções»** — abre o posto na sua app de GPS.
+- 🔗 **Ligações partilháveis** — o endereço segue o mapa e o trajeto; uma
+  ligação reabre a mesma vista.
+- 🌗 **Tema claro e escuro** — segue o navegador, alterável nas Definições.
+- 🌍 **Cinco línguas** — francês, inglês, espanhol, catalão e português.
+- 🖥️ **Telemóvel e computador** — mapa em ecrã inteiro e painel no telemóvel,
+  painéis laterais no ecrã grande.
+- 📱 **PWA instalável** — as últimas zonas e mosaicos funcionam offline.
 
 ## 🚀 Utilização
 
