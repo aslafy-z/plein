@@ -256,6 +256,22 @@ npm run e2e         # Playwright (starts the Vite dev server itself) — see
 npm run build       # tsc + vite build
 ```
 
+## Push first: CI runs the tests inline
+
+- **Commit and open a pull request as soon as the change is testable** —
+  compiles and carries the tests or behavior that would prove it — rather
+  than polishing a local stack first. CI (`.github/workflows/tests.yml`)
+  runs typecheck, unit tests and the Playwright suite on every PR (a branch
+  push alone triggers nothing), so pushing early gets the full verification
+  running inline with the rest of the work instead of at the end.
+- Running things locally stays welcome as fast validation while iterating —
+  `npm run typecheck` and `npm test` are cheap everywhere, and a
+  narrowly-targeted Playwright spec can pin down a specific failure (see
+  « Where to run the e2e suite »). But local runs complement the push, they
+  never gate it: push first, keep committing and pushing fixes to the same
+  PR as the work progresses, and treat the green CI run as the verification
+  step.
+
 ## Testing conventions
 
 - **Unit tests (Vitest)** live next to the code (`src/**/*.test.ts`) and use
