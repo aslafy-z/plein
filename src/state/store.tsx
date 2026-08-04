@@ -20,6 +20,16 @@ import {
   syncDocumentLocale,
   type Locale,
 } from '../lib/locale';
+// Applies the pre-paint theme attribute's live half: browser-preference
+// changes and the choice made in Réglages.
+import {
+  applyTheme,
+  currentTheme,
+  explicitTheme,
+  followBrowserTheme,
+  onThemeChange,
+  type Theme,
+} from '../lib/colorScheme';
 import { IS_ANDROID, IS_IOS } from '../lib/env';
 import type { GeoPoint } from '../lib/geo';
 import { m } from '../paraglide/messages.js';
@@ -511,6 +521,10 @@ export interface AppStore {
   locale: Locale;
   localeIsExplicit: boolean;
   setLocale(l: Locale | null): void;
+  /** Active theme — the resolved one, whoever decided it */
+  theme: Theme;
+  themeIsExplicit: boolean;
+  setTheme(t: Theme | null): void;
 
   // detail
   detailId: string | null;
@@ -753,6 +767,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // holding it in state is what re-renders the tree when the language changes.
   const [locale, setLocaleState] = useState<Locale>(() => currentLocale());
   const [localeIsExplicit, setLocaleIsExplicit] = useState(() => explicitLocale() != null);
+  // Mirror of the document theme. The CSS variables re-color on their own;
+  // holding it in state re-renders what branches on it (Réglages, the maps).
+  const [theme, setThemeState] = useState<Theme>(() => currentTheme());
+  const [themeIsExplicit, setThemeIsExplicit] = useState(() => explicitTheme() != null);
   const [toast, setToast] = useState<string | null>(null);
   // Start from the last known position so the per-area cache hits instantly
   const initialPos = persisted.lastPos ?? DEFAULT_POS;
@@ -1653,6 +1671,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     syncDocumentLocale(m.app_title());
   }, [locale]);
 
+  /** Pick a theme, or `null` to follow the browser again. colorScheme owns
+      the resolution, the persistence and the document attribute; the state
+      mirror is what re-renders the tree. */
+  const setTheme = useCallback((next: Theme | null) => {
+    if (next) {
+      applyTheme(next);
+      setThemeIsExplicit(true);
+    } else {
+      followBrowserTheme();
+      setThemeIsExplicit(false);
+    }
+    setThemeState(currentTheme());
+  }, []);
+
+  // While « auto », the browser preference can flip at dusk — follow it live
+  useEffect(() => onThemeChange(() => setThemeState(currentTheme())), []);
+
   const toggleBrand = useCallback((label: string) => {
     setBrandSelState((sel) => toggleBrandIn(sel, label));
   }, []);
@@ -2054,6 +2089,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       locale,
       localeIsExplicit,
       setLocale,
+      theme,
+      themeIsExplicit,
+      setTheme,
       detailId,
       installReady: canInstall && !isStandalone(),
       installBannerVisible: canInstall && !isStandalone() && !installDismissed,
@@ -2087,7 +2125,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       consumption, setConsumption,
       avoidMotorway, avoidToll, setAvoidMotorway, setAvoidToll, startTankPct, setStartTankPct,
       setFiltersOpenNav, sourceId, setSourceId, mapsSite, setMapsSite,
-      locale, localeIsExplicit, setLocale, detailId, toast, showToast,
+      locale, localeIsExplicit, setLocale, theme, themeIsExplicit, setTheme,
+      detailId, toast, showToast,
       canInstall, installDismissed, promptInstall, dismissInstallBanner, persisted.lastPos,
       openInMaps, openPlannedStopsInMaps, shareStation, shareMapView, shareRoute,
       finishOnboarding, sheetHint, consumeSheetHint,

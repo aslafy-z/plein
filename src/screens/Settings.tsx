@@ -9,7 +9,8 @@ import {
 } from '../data/stationsCache';
 import { clearFavoritePrices } from '../data/favoritePrices';
 import { agoLabelFrom, fmtDecimal, sizeLabel } from '../lib/format';
-import { fuelLabel, sourceSublabel, sourceTitle, vehicleLabel } from '../lib/labels';
+import { fuelLabel, sourceSublabel, sourceTitle, themeLabel, vehicleLabel } from '../lib/labels';
+import { THEMES } from '../lib/colorScheme';
 import { CONTENT_MAX_WIDTH, useIsDesktop } from '../lib/layout';
 import { LOCALES, type Locale } from '../lib/locale';
 import { m } from '../paraglide/messages.js';
@@ -377,6 +378,50 @@ export default function Settings() {
           </button>
           <div style={{ fontSize: 11.5, color: C.faint, padding: '10px 16px', lineHeight: 1.5 }}>
             {m.settings_location_hint()}
+          </div>
+        </div>
+      </div>
+
+      {/* Appearance */}
+      <div style={{ marginTop: 18 }}>
+        <div style={SECTION_LABEL}>{m.settings_appearance_section()}</div>
+        <div
+          style={{
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            borderRadius: 16,
+            padding: 16,
+          }}
+        >
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {/* « Réglage du navigateur » is the absence of a choice, not a
+                theme: picking it drops the override so the browser's light or
+                dark preference applies again — live, dusk included. */}
+            {[null, ...THEMES].map((t) => {
+              const active = t == null ? !app.themeIsExplicit : app.themeIsExplicit && app.theme === t;
+              return (
+                <button
+                  key={t ?? 'auto'}
+                  onClick={() => app.setTheme(t)}
+                  style={{
+                    background: active ? C.accent : 'transparent',
+                    color: active ? C.onAccent : C.body,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    padding: '8px 14px',
+                    borderRadius: 16,
+                    border: active ? `1px solid ${C.accent}` : `1px solid ${C.border12}`,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {t == null ? m.settings_theme_auto() : themeLabel(t)}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: 11.5, color: C.faint, marginTop: 10 }}>
+            {m.settings_theme_hint({ auto: m.settings_theme_auto() })}
           </div>
         </div>
       </div>
