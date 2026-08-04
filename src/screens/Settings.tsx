@@ -5,8 +5,18 @@ import { useApp, MAPS_SITE_IDS, mapsSiteLabel, VEHICLE_PRESETS } from '../state/
 import {
   cacheStats,
   clearStationsCache,
+  stationsCacheDebug,
+  type StationsCacheDebug,
   type StationsCacheStats,
 } from '../data/stationsCache';
+import { setDebugEnabled, useDebugMode } from '../lib/debugMode';
+import {
+  cacheTier,
+  collectSwCaches,
+  fmtAgeMs,
+  roundCoord,
+  type DebugSnapshot,
+} from '../lib/debugSnapshot';
 import { clearFavoritePrices } from '../data/favoritePrices';
 import { agoLabelFrom, fmtDecimal, sizeLabel } from '../lib/format';
 import { fuelLabel, sourceSublabel, sourceTitle, themeLabel, vehicleLabel } from '../lib/labels';
@@ -74,10 +84,117 @@ function localeName(locale: Locale): string {
  * whether any of it survives a reload) — there is nothing else to look at,
  * since instrumentation here has to be data rather than console logs.
  */
+/**
+ * Extended diagnostics under the cache summary: the raw per-area records,
+ * the service-worker cache counts against their sw.js caps, and a JSON copy
+ * button. Assembled in English on purpose — data for a bug report, not copy
+ * (the diagnostics block in the feedback mail sets the precedent), and the
+ * same exemption the debug overlay lives under (CLAUDE.md, Language).
+ * Coordinates are rounded to ~1 km so a screenshot of this screen cannot
+ * leak the tester's exact position.
+ */
+function CacheDetails() {
+  const [cache, setCache] = useState<StationsCacheDebug | null>(null);
+  const [swCaches, setSwCaches] = useState<DebugSnapshot['storage']['swCaches']>([]);
+  const [estimate, setEstimate] = useState<{ usage: number | null; quota: number | null }>({
+    usage: null,
+    quota: null,
+  });
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    setCache(stationsCacheDebug());
+    void collectSwCaches().then((next) => {
+      if (live) setSwCaches(next);
+    });
+    void navigator.storage
+      ?.estimate?.()
+      .then((est) => {
+        if (live) setEstimate({ usage: est?.usage ?? null, quota: est?.quota ?? null });
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  const copy = async () => {
+    const payload = { areaCache: cache, swCaches, storageEstimate: estimate };
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard denied — the numbers stay readable on screen */
+    }
+  };
+
+  const line: React.CSSProperties = {
+    font: mono(500, 11),
+    color: C.mut,
+    lineHeight: 1.7,
+    wordBreak: 'break-all',
+  };
+
+  return (
+    <div
+      data-testid="cache-details"
+      style={{ padding: '10px 16px', borderBottom: `1px solid ${C.divider}` }}
+    >
+      {cache != null && (
+        <>
+          <div style={line}>
+            store: {cache.durable ? 'durable (IndexedDB)' : 'in-memory fallback'} ·{' '}
+            {cache.hydrated ? 'hydrated' : 'hydrating'} · pending {cache.pendingPuts}+
+            {cache.pendingDeletes}
+          </div>
+          {cache.areas.map((a) => (
+            <div key={a.key} style={line}>
+              {a.source} · {roundCoord(a.center.lat)},{roundCoord(a.center.lng)} · r
+              {a.fetchRadiusKm} km · {a.stationCount} stations · {sizeLabel(a.bytes)} ·{' '}
+              {fmtAgeMs(Date.now() - a.fetchedAt)} ago ({cacheTier(a.fetchedAt)})
+              {a.payloadInMemory ? ' · in memory' : ''}
+            </div>
+          ))}
+        </>
+      )}
+      {swCaches.map((c) => (
+        <div key={c.name} style={line}>
+          {c.name}: {c.entries}
+          {c.cap != null ? `/${c.cap}` : ''} entries
+        </div>
+      ))}
+      {estimate.usage != null && (
+        <div style={line}>
+          origin storage: {sizeLabel(estimate.usage)}
+          {estimate.quota != null ? ` of ${sizeLabel(estimate.quota)}` : ''}
+        </div>
+      )}
+      <button
+        onClick={() => void copy()}
+        style={{
+          marginTop: 8,
+          font: mono(600, 11),
+          color: C.body,
+          background: C.surface2,
+          border: `1px solid ${C.border12}`,
+          borderRadius: 10,
+          padding: '5px 10px',
+          cursor: 'pointer',
+        }}
+      >
+        {copied ? 'Copied ✓' : 'Copy JSON'}
+      </button>
+    </div>
+  );
+}
+
 function CachedData({ onCleared }: { onCleared: () => void }) {
   const [stats, setStats] = useState<StationsCacheStats | null>(null);
   const [round, setRound] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   useEffect(() => {
     let live = true;
     void cacheStats().then((next) => {
@@ -99,28 +216,53 @@ function CachedData({ onCleared }: { onCleared: () => void }) {
 
   return (
     <>
-      <div
+      {/* The summary row expands into the raw diagnostics on tap */}
+      <button
+        onClick={() => setDetailsOpen((v) => !v)}
+        aria-expanded={detailsOpen}
+        aria-label={m.settings_cache_details_toggle()}
+        title={m.settings_cache_details_toggle()}
         style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
           padding: '12px 16px',
           borderBottom: `1px solid ${C.divider}`,
           fontSize: 12,
           lineHeight: 1.55,
           color: C.mut,
+          cursor: 'pointer',
+          width: '100%',
+          textAlign: 'left',
         }}
       >
-        <div data-testid="cache-stats">
-          {stats == null || stats.areas === 0
-            ? m.settings_cache_empty()
-            : m.settings_cache_summary({
-                count: stats.areas,
-                size: sizeLabel(stats.bytes),
-                age: stats.oldestFetchedAt != null ? agoLabelFrom(stats.oldestFetchedAt) : '',
-              })}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div data-testid="cache-stats">
+            {stats == null || stats.areas === 0
+              ? m.settings_cache_empty()
+              : m.settings_cache_summary({
+                  count: stats.areas,
+                  size: sizeLabel(stats.bytes),
+                  age: stats.oldestFetchedAt != null ? agoLabelFrom(stats.oldestFetchedAt) : '',
+                })}
+          </div>
+          {stats != null && !stats.durable && (
+            <div style={{ color: C.warn, marginTop: 2 }}>{m.settings_cache_volatile()}</div>
+          )}
         </div>
-        {stats != null && !stats.durable && (
-          <div style={{ color: C.warn, marginTop: 2 }}>{m.settings_cache_volatile()}</div>
-        )}
-      </div>
+        <span
+          aria-hidden="true"
+          style={{
+            color: C.faint,
+            transform: detailsOpen ? 'rotate(90deg)' : 'none',
+            transition: 'transform .15s',
+            flexShrink: 0,
+          }}
+        >
+          ›
+        </span>
+      </button>
+      {detailsOpen && <CacheDetails key={round} />}
       <button
         onClick={() => void clear()}
         disabled={busy || stats == null || stats.areas === 0}
@@ -147,6 +289,7 @@ function CachedData({ onCleared }: { onCleared: () => void }) {
 export default function Settings() {
   const app = useApp();
   const desktop = useIsDesktop();
+  const debugOn = useDebugMode();
   const { fuel, vehicle, tank, consumption, sourceId, geoStatus, mapsSite } = app;
   // Slider ranges follow the profile (a motorcycle tank is far smaller than a car's)
   const tankRange =
@@ -711,6 +854,72 @@ export default function Settings() {
           </div>
         </div>
       )}
+
+      {/* Developer — the debug overlay switch. Session-scoped on purpose
+          (sessionStorage, never the persisted blob): closing the tab turns
+          it back off. */}
+      <div style={{ marginTop: 18 }}>
+        <div style={SECTION_LABEL}>{m.settings_debug_section()}</div>
+        <div
+          style={{
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            borderRadius: 16,
+            overflow: 'hidden',
+          }}
+        >
+          <button
+            role="switch"
+            aria-checked={debugOn}
+            onClick={() => setDebugEnabled(!debugOn)}
+            data-testid="debug-toggle"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '14px 16px',
+              cursor: 'pointer',
+              width: '100%',
+              textAlign: 'left',
+            }}
+          >
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>
+                {m.settings_debug_overlay_title()}
+              </div>
+              <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>
+                {m.settings_debug_overlay_sub()}
+              </div>
+            </div>
+            <span
+              aria-hidden="true"
+              style={{
+                width: 40,
+                height: 24,
+                borderRadius: 12,
+                background: debugOn ? C.accent : C.toggleOff,
+                position: 'relative',
+                flexShrink: 0,
+                transition: 'background .15s',
+              }}
+            >
+              <span
+                style={{
+                  position: 'absolute',
+                  top: 3,
+                  left: debugOn ? 19 : 3,
+                  width: 18,
+                  height: 18,
+                  borderRadius: '50%',
+                  background: C.surface,
+                  boxShadow: `0 1px 3px ${C.shadow40}`,
+                  transition: 'left .15s',
+                }}
+              />
+            </span>
+          </button>
+        </div>
+      </div>
 
       {/* Footer — credits, kept compact */}
       <div

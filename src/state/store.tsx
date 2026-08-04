@@ -31,6 +31,7 @@ import {
   type Theme,
 } from '../lib/colorScheme';
 import { IS_ANDROID, IS_IOS } from '../lib/env';
+import { reportAreaLoad } from '../lib/debugState';
 import type { GeoPoint } from '../lib/geo';
 import { m } from '../paraglide/messages.js';
 import { haversineKm } from '../lib/geo';
@@ -1102,6 +1103,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         Date.now() - area.fetchedAt < STALE_MS &&
         haversineKm(area.center, searchPos) + radius <= area.radiusKm
       ) {
+        reportAreaLoad('memory');
         return;
       }
       const reqId = ++stationsReq.current;
@@ -1125,6 +1127,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           fetchedAt: cached.fetchedAt,
           revalidating: false,
         });
+        reportAreaLoad('cache');
         return;
       }
       const failed = failedArea.current;
@@ -1155,6 +1158,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           fetchedAt: cached.fetchedAt,
           revalidating: true,
         });
+        reportAreaLoad('cache-revalidate');
       } else {
         dispatchStations({ kind: 'request', offlineHint: navigator.onLine === false });
       }
@@ -1172,6 +1176,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         loadedArea.current = { source: sourceId, center: searchPos, radiusKm: MAX_RADIUS_KM, fetchedAt };
         failedArea.current = null;
         dispatchStations({ kind: 'success', data, source: sourceId, fetchedAt });
+        reportAreaLoad('network');
       } catch {
         if (reqId !== stationsReq.current) return;
         // Failed loads must not shadow future retries behind the fast path
@@ -1182,6 +1187,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           source: sourceId,
           error: navigator.onLine === false ? 'offline' : 'source',
         });
+        reportAreaLoad('error');
       }
     },
     [sourceId, searchPos, radius, dispatchStations],

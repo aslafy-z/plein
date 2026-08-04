@@ -7,6 +7,9 @@ import { haversineKm, radiusBounds, type GeoPoint } from '../lib/geo';
 import { useIsDesktop } from '../lib/layout';
 import { useLeafletMap, type LeafletShell } from '../lib/leafletMap';
 import { pricePinDotHtml, pricePinHtml } from '../lib/pricePin';
+import { useDebugMode } from '../lib/debugMode';
+import { fmtAgeMs } from '../lib/debugSnapshot';
+import { readAllCachedAreas } from '../data/stationsCache';
 import ShareIcon from './ShareIcon';
 import LocateIcon from './LocateIcon';
 import {
@@ -56,6 +59,14 @@ const OFFSET_ABSORB_RATE = 0.35;
  * second of panning whatever the distance, then settles under the cap.
  */
 const OFFSET_FAR_DECAY = 0.15;
+
+/**
+ * Debug layer color — a literal, not a C token: Leaflet writes vector colors
+ * as SVG/canvas values where a var() cannot resolve, and debug chrome keeps
+ * one look in both themes. Violet on purpose: nothing else on the map wears
+ * it, so cached ghosts can never pass for live data.
+ */
+const DEBUG_CACHE_COLOR = '#8b5cf6';
 
 /**
  * Leaflet sizes the SVG holding the vector layers to the viewport (+10%) and
@@ -135,6 +146,7 @@ export default function MapCanvas({
 }) {
   const app = useApp();
   const desktop = useIsDesktop();
+  const debugMode = useDebugMode();
   // The pan-to-station math reads the panel inset at run time
   const leftInsetRef = useRef(leftInset);
   leftInsetRef.current = leftInset;
@@ -657,6 +669,65 @@ export default function MapCanvas({
     // card — a plain render — already showed the road-aware one.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [app.stations.data, app.fuel, app.radius, app.brandSel, app.serviceTags, app.userPos, app.searchPos, app.focusStationId, app.roadReach, app.consumption, app.tank, viewTick]);
+
+  // ── Debug mode: EVERY cached area drawn as it sits in the store ───────────
+  // The whole point is honesty about the cache: each stored area shows its
+  // dashed violet outline and its stations as ghost dots — loaded zone or
+  // not — so « the data is there in cache » is visible on the map instead of
+  // deduced. Explicitly cache data (violet, dashed, labelled), never mistakable
+  // for live pins; redrawn when a fetch commits a new area. Dots ride one
+  // canvas renderer: up to MAX_AREAS × a few hundred stations is too many
+  // SVG nodes, and none of them need DOM interactivity.
+  const debugLayerRef = useRef<L.LayerGroup | null>(null);
+  useEffect(() => {
+    const map = mapRef.current;
+    debugLayerRef.current?.remove();
+    debugLayerRef.current = null;
+    if (!map || !debugMode) return;
+    let live = true;
+    const layer = L.layerGroup().addTo(map);
+    debugLayerRef.current = layer;
+    void readAllCachedAreas().then((areas) => {
+      if (!live) return;
+      const canvas = L.canvas({ padding: 0.3 });
+      for (const area of areas) {
+        L.circle([area.center.lat, area.center.lng], {
+          radius: area.fetchRadiusKm * 1000,
+          color: DEBUG_CACHE_COLOR,
+          weight: 1.5,
+          dashArray: '6 8',
+          fill: false,
+          opacity: 0.7,
+          interactive: true,
+        })
+          // Debug chrome is English-only data — see CLAUDE.md, Language
+          .bindTooltip(
+            `cache · ${area.source} · ${area.stations.length} stations · fetched ${fmtAgeMs(
+              Date.now() - area.fetchedAt,
+            )} ago`,
+            { sticky: true },
+          )
+          .addTo(layer);
+        for (const s of area.stations) {
+          L.circleMarker([s.lat, s.lng], {
+            renderer: canvas,
+            radius: 3,
+            color: DEBUG_CACHE_COLOR,
+            weight: 1,
+            opacity: 0.55,
+            fillColor: DEBUG_CACHE_COLOR,
+            fillOpacity: 0.25,
+            interactive: false,
+          }).addTo(layer);
+        }
+      }
+    });
+    return () => {
+      live = false;
+      layer.remove();
+      if (debugLayerRef.current === layer) debugLayerRef.current = null;
+    };
+  }, [debugMode, app.stations.fetchedAt]);
 
   // ── Auto-fit on the SEARCH CIRCLE itself until the user takes over — and
   // never while a station is selected (don't yank the view). Framing the

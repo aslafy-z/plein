@@ -19,6 +19,29 @@ const GIVE_UP_MS = 6000;
 
 let cartoUnreachable = false;
 
+// Session totals across every mounted map and both layers — the debug
+// overlay's tile section. Counters only: no behavior hangs off them.
+let tilesLoaded = 0;
+let tilesErrored = 0;
+
+export interface TileLayerDebug {
+  /** Layer new maps get right now (the session-wide fallback decision) */
+  active: 'carto' | 'fallback';
+  cartoUnreachable: boolean;
+  tilesLoaded: number;
+  tilesErrored: number;
+}
+
+/** Read-only window for the debug overlay — see src/lib/debugSnapshot.ts */
+export function tileLayerDebug(): TileLayerDebug {
+  return {
+    active: cartoUnreachable ? 'fallback' : 'carto',
+    cartoUnreachable,
+    tilesLoaded,
+    tilesErrored,
+  };
+}
+
 // Small pans shouldn't refetch tiles: keep a wide ring of off-screen tiles
 // alive instead of Leaflet's default 2-tile buffer, and load new tiles while
 // the finger is still dragging rather than waiting for the pan to settle.
@@ -72,14 +95,17 @@ const bufferedTileLayer = (url: string, opts: L.TileLayerOptions): L.TileLayer =
   new BufferedTileLayer(url, opts);
 
 function addFallback(map: L.Map): void {
-  bufferedTileLayer(FALLBACK_URL, {
+  const layer = bufferedTileLayer(FALLBACK_URL, {
     ...TILE_RETENTION,
     attribution: '© OpenStreetMap · © CARTO',
     maxZoom: 19,
     // The dev proxy serves CARTO (already dark); the prod fallback is raw OSM
     // and needs the darkening filter.
     className: IS_DEV ? 'tiles-carto' : 'tiles-dark',
-  }).addTo(map);
+  });
+  layer.on('tileload', () => tilesLoaded++);
+  layer.on('tileerror', () => tilesErrored++);
+  layer.addTo(map);
 }
 
 export function addBasemap(map: L.Map): void {
@@ -116,10 +142,12 @@ export function addBasemap(map: L.Map): void {
 
   carto.on('tileload', () => {
     loaded++;
+    tilesLoaded++;
     clearTimeout(giveUp);
   });
   carto.on('tileerror', () => {
     errored++;
+    tilesErrored++;
     if (loaded === 0 && errored >= 2) swap();
   });
 
