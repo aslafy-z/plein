@@ -68,6 +68,95 @@ test('a slight pan re-uses the fetched area instead of refetching', async ({ pag
   expect(gouvCalls, 'zone inside the fresh 25 km area → no refetch').toBe(initialCalls)
 })
 
+// A stale-but-usable area paints instantly and revalidates behind
+// (refreshing: true). While that background fetch is in flight, a drag must
+// not keep re-firing setSearchArea: each call bumps the request generation
+// and discards the revalidation when it lands, so a long drag would burn one
+// full fetch per throttle tick and never commit any of them. The live-pan
+// guard bails on `refreshing` exactly like on `status === 'loading'`.
+test('a drag over a revalidating area leaves its single fetch alone', async ({ page }) => {
+  let gouvCalls = 0
+  await page.route('**/proxy/fra/**', async (route) => {
+    gouvCalls++
+    // Held open long enough that the drag below runs while the revalidation
+    // is still in flight — the churn only ever happened during that window.
+    await new Promise((r) => setTimeout(r, 2500))
+    await route.fulfill({
+      json: {
+        total_count: 1,
+        results: [
+          {
+            id: 'e2e-reval',
+            ville: 'Fraicheville',
+            adresse: '1 rue Revalidée',
+            geom: { lat: 43.6047, lon: 1.4442 },
+            gazole_prix: '1.799',
+          },
+        ],
+      },
+    })
+  })
+  await page.route('**/brands-fra.json', (route) =>
+    route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
+  )
+
+  // Past STALE_MS, well under MAX_CACHE_AGE_MS: paints from cache, refetches behind
+  await seedStationsCache(page, [
+    {
+      source: 'fra',
+      center: { lat: 43.6047, lng: 1.4442 },
+      fetchRadiusKm: 25,
+      ageMs: 30 * 60_000,
+      stations: [
+        {
+          id: 'fra-reval-seeded',
+          name: 'Station · Cacheville',
+          init: 'SC',
+          lat: 43.6047,
+          lng: 1.4442,
+          address: '2 rue du Cache',
+          city: 'Cacheville',
+          prices: { diesel: { value: 1.899 } },
+          tags: [],
+          services: [],
+          highway: false,
+        },
+      ],
+    },
+  ])
+  await page.reload()
+
+  await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
+  // The cached paint dispatches and the revalidation goes out in the same
+  // load. StrictMode's second mount re-runs it, so the boot count is not
+  // exactly one — what matters is that the DRAG adds nothing to it.
+  await expect.poll(() => gouvCalls).toBeGreaterThan(0)
+  await page.waitForTimeout(600) // let the boot's own requests all go out
+  const initialCalls = gouvCalls
+
+  // Drag continuously for ~2.5 s, oscillating so every throttle tick sees
+  // fresh movement but the map ends near where it started. At the boot zoom
+  // each 90 px leg is ~5 km — far beyond LIVE_SEARCH_MIN_KM, comfortably
+  // inside the fetched 25 km area.
+  const box = await page.locator('.leaflet-container').first().boundingBox()
+  if (!box) throw new Error('map container not found')
+  const cx = box.x + box.width / 2
+  const cy = box.y + box.height / 2
+  await page.mouse.move(cx, cy)
+  await page.mouse.down()
+  for (let i = 0; i < 12; i++) {
+    const dx = (i % 2 === 0 ? 90 : -90)
+    await page.mouse.move(cx + dx, cy + 30, { steps: 5 })
+    await page.waitForTimeout(180)
+  }
+  await page.mouse.move(cx, cy, { steps: 5 })
+  await page.mouse.up()
+
+  // moveend settle debounce (350 ms) + the window any would-be refetch uses
+  await page.waitForTimeout(1500)
+  expect(gouvCalls, 'the in-flight revalidation must land, not be re-fired').toBe(initialCalls)
+})
+
 // Reloading must not depend on the source being reachable: the fetched area
 // lives in IndexedDB, so a cold boot paints it before anything is requested.
 // The unit suite covers the cache's own rules against a substitute store; what

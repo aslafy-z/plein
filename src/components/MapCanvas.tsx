@@ -321,8 +321,12 @@ export default function MapCanvas({
       const now = Date.now();
       if (now - lastLiveSearch < LIVE_SEARCH_MS) return;
       const cur = appRef.current;
-      // A fetch is already running for a previous live position — let it land
-      if (cur.stations.status === 'loading') return;
+      // A fetch is already running for a previous live position — let it land.
+      // Background revalidations count too: re-firing setSearchArea would bump
+      // the generation counter and discard them, so a long drag over a cached
+      // area would keep burning full fetches without ever committing one. The
+      // moveend settle pass closes the residual drift once the drag ends.
+      if (cur.stations.status === 'loading' || cur.stations.refreshing) return;
       if (haversineKm({ lat: c.lat, lng: c.lng }, cur.searchPos) < LIVE_SEARCH_MIN_KM) return;
       lastLiveSearch = now;
       keepViewRef.current = true; // live tracking must never re-trigger auto-fit
