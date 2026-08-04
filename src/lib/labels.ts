@@ -161,19 +161,23 @@ export function openStatusShort(status: OpenStatus): string {
   return status.open ? m.hours_short_open() : m.hours_short_closed();
 }
 
-/** Title of a data source in Réglages — domain names stay as they are */
+/**
+ * Title of a data source in Réglages — the country leads, then the domain
+ * (« France · prix-carburants.gouv.fr »). The country name follows the
+ * locale, the domain is a proper noun and stays as it is.
+ */
 export function sourceTitle(id: DataSourceId): string {
   switch (id) {
     case 'auto':
       return m.source_auto_title();
     case 'fra':
-      return 'prix-carburants.gouv.fr';
+      return m.source_fra_title();
     case 'esp':
-      return 'geoportalgasolineras.es';
+      return m.source_esp_title();
     case 'and':
-      return 'sig.govern.ad';
+      return m.source_and_title();
     case 'prt':
-      return 'precoscombustiveis.dgeg.gov.pt';
+      return m.source_prt_title();
     case 'demo':
       return m.source_demo_title();
   }
