@@ -505,7 +505,6 @@
   "settings_cache_volatile": "Armazenamento persistente indisponível — a cache perde-se ao recarregar",
   "settings_cache_clear": "Apagar os dados offline",
   "settings_cache_details_toggle": "Detalhes técnicos",
-  "settings_debug_section": "Programador",
   "settings_debug_overlay_title": "Sobreposição de depuração",
   "settings_debug_overlay_sub": "Painel de diagnóstico sobre a aplicação, apenas durante esta sessão",
   "settings_app_section": "Aplicação",

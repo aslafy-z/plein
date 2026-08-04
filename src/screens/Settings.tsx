@@ -119,27 +119,34 @@ function CacheDetails() {
   });
   const [copied, setCopied] = useState(false);
 
+  // Fresh on open, and kept fresh while open — a background revalidation or
+  // an eviction landing under the reader's eyes must show up.
   useEffect(() => {
     let live = true;
-    setCache(stationsCacheDebug());
-    void collectSwCaches().then((next) => {
-      if (live) setSwCaches(next);
-    });
-    void navigator.storage
-      ?.estimate?.()
-      .then((est) => {
-        if (!live) return;
-        const details = (est as { usageDetails?: Record<string, number> }).usageDetails;
-        setEstimate({
-          usage: est?.usage ?? null,
-          quota: est?.quota ?? null,
-          caches: details?.caches ?? null,
-          indexedDB: details?.indexedDB ?? null,
-        });
-      })
-      .catch(() => {});
+    const load = () => {
+      setCache(stationsCacheDebug());
+      void collectSwCaches().then((next) => {
+        if (live) setSwCaches(next);
+      });
+      void navigator.storage
+        ?.estimate?.()
+        .then((est) => {
+          if (!live) return;
+          const details = (est as { usageDetails?: Record<string, number> }).usageDetails;
+          setEstimate({
+            usage: est?.usage ?? null,
+            quota: est?.quota ?? null,
+            caches: details?.caches ?? null,
+            indexedDB: details?.indexedDB ?? null,
+          });
+        })
+        .catch(() => {});
+    };
+    load();
+    const timer = setInterval(load, 2000);
     return () => {
       live = false;
+      clearInterval(timer);
     };
   }, []);
 
@@ -281,13 +288,19 @@ function CachedData({ onCleared }: { onCleared: () => void }) {
   const [round, setRound] = useState(0);
   const [busy, setBusy] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  // Loaded on every open (the screen remounts) and refreshed while the
+  // reader stays — the summary must follow a clear or a background fetch.
   useEffect(() => {
     let live = true;
-    void cacheStats().then((next) => {
-      if (live) setStats(next);
-    });
+    const load = () =>
+      void cacheStats().then((next) => {
+        if (live) setStats(next);
+      });
+    load();
+    const timer = setInterval(load, 2000);
     return () => {
       live = false;
+      clearInterval(timer);
     };
   }, [round]);
 
@@ -837,7 +850,9 @@ export default function Settings() {
       </div>
 
       {/* Offline cache — cache-class data, not a source choice, so its own
-          section rather than a tail on the source picker */}
+          section rather than a tail on the source picker. The debug overlay
+          switch lives at its bottom: developer tooling reads the same cache,
+          and a section of its own gave one row a whole card. */}
       <div style={{ marginTop: 18 }}>
         <div style={SECTION_LABEL}>{m.settings_cache_section()}</div>
         <div
@@ -849,6 +864,59 @@ export default function Settings() {
           }}
         >
           <CachedData onCleared={() => app.notify(m.toast_cache_cleared())} />
+          {/* Session-scoped on purpose (sessionStorage, never the persisted
+              blob): closing the tab turns the overlay back off. */}
+          <button
+            role="switch"
+            aria-checked={debugOn}
+            onClick={() => setDebugEnabled(!debugOn)}
+            data-testid="debug-toggle"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '14px 16px',
+              borderTop: `1px solid ${C.divider}`,
+              cursor: 'pointer',
+              width: '100%',
+              textAlign: 'left',
+            }}
+          >
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>
+                {m.settings_debug_overlay_title()}
+              </div>
+              <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>
+                {m.settings_debug_overlay_sub()}
+              </div>
+            </div>
+            <span
+              aria-hidden="true"
+              style={{
+                width: 40,
+                height: 24,
+                borderRadius: 12,
+                background: debugOn ? C.accent : C.toggleOff,
+                position: 'relative',
+                flexShrink: 0,
+                transition: 'background .15s',
+              }}
+            >
+              <span
+                style={{
+                  position: 'absolute',
+                  top: 3,
+                  left: debugOn ? 19 : 3,
+                  width: 18,
+                  height: 18,
+                  borderRadius: '50%',
+                  background: C.surface,
+                  boxShadow: `0 1px 3px ${C.shadow40}`,
+                  transition: 'left .15s',
+                }}
+              />
+            </span>
+          </button>
         </div>
       </div>
 
@@ -940,72 +1008,6 @@ export default function Settings() {
           </div>
         </div>
       )}
-
-      {/* Developer — the debug overlay switch. Session-scoped on purpose
-          (sessionStorage, never the persisted blob): closing the tab turns
-          it back off. */}
-      <div style={{ marginTop: 18 }}>
-        <div style={SECTION_LABEL}>{m.settings_debug_section()}</div>
-        <div
-          style={{
-            background: C.surface,
-            border: `1px solid ${C.border}`,
-            borderRadius: 16,
-            overflow: 'hidden',
-          }}
-        >
-          <button
-            role="switch"
-            aria-checked={debugOn}
-            onClick={() => setDebugEnabled(!debugOn)}
-            data-testid="debug-toggle"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              padding: '14px 16px',
-              cursor: 'pointer',
-              width: '100%',
-              textAlign: 'left',
-            }}
-          >
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>
-                {m.settings_debug_overlay_title()}
-              </div>
-              <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>
-                {m.settings_debug_overlay_sub()}
-              </div>
-            </div>
-            <span
-              aria-hidden="true"
-              style={{
-                width: 40,
-                height: 24,
-                borderRadius: 12,
-                background: debugOn ? C.accent : C.toggleOff,
-                position: 'relative',
-                flexShrink: 0,
-                transition: 'background .15s',
-              }}
-            >
-              <span
-                style={{
-                  position: 'absolute',
-                  top: 3,
-                  left: debugOn ? 19 : 3,
-                  width: 18,
-                  height: 18,
-                  borderRadius: '50%',
-                  background: C.surface,
-                  boxShadow: `0 1px 3px ${C.shadow40}`,
-                  transition: 'left .15s',
-                }}
-              />
-            </span>
-          </button>
-        </div>
-      </div>
 
       {/* Footer — credits, kept compact */}
       <div

@@ -512,7 +512,6 @@
   "settings_cache_volatile": "Stockage persistant indisponible — le cache est perdu au rechargement",
   "settings_cache_clear": "Effacer les données hors ligne",
   "settings_cache_details_toggle": "Détails techniques",
-  "settings_debug_section": "Développeur",
   "settings_debug_overlay_title": "Overlay de débogage",
   "settings_debug_overlay_sub": "Panneau de diagnostic par-dessus l'application, pour cette session uniquement",
   "settings_app_section": "Application",
