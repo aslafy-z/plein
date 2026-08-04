@@ -84,21 +84,38 @@ function localeName(locale: Locale): string {
  * whether any of it survives a reload) — there is nothing else to look at,
  * since instrumentation here has to be data rather than console logs.
  */
+/** Friendly names for the sw.js cache buckets (debug chrome, English-only) */
+const SW_CACHE_NAMES: Record<string, string> = {
+  'plein-assets-v1': 'App assets',
+  'plein-shell-v1': 'App shell',
+  'plein-tiles-v1': 'Basemap tiles',
+  'plein-data-v1': 'Brand data',
+};
+
+/** Chrome's non-standard estimate() breakdown, when it offers one */
+interface EstimateDetails {
+  usage: number | null;
+  quota: number | null;
+  caches: number | null;
+  indexedDB: number | null;
+}
+
 /**
- * Extended diagnostics under the cache summary: the raw per-area records,
- * the service-worker cache counts against their sw.js caps, and a JSON copy
- * button. Assembled in English on purpose — data for a bug report, not copy
- * (the diagnostics block in the feedback mail sets the precedent), and the
- * same exemption the debug overlay lives under (CLAUDE.md, Language).
- * Coordinates are rounded to ~1 km so a screenshot of this screen cannot
- * leak the tester's exact position.
+ * Extended diagnostics under the cache summary: per-area rows, the
+ * service-worker cache counts against their sw.js caps, the origin storage
+ * estimate, and a JSON copy button. English on purpose — data for a bug
+ * report, under the debug-chrome exemption (CLAUDE.md, Language) — but laid
+ * out as proper rows, not a raw dump. Coordinates ride the ~1 km grid so a
+ * screenshot cannot leak the tester's exact position.
  */
 function CacheDetails() {
   const [cache, setCache] = useState<StationsCacheDebug | null>(null);
   const [swCaches, setSwCaches] = useState<DebugSnapshot['storage']['swCaches']>([]);
-  const [estimate, setEstimate] = useState<{ usage: number | null; quota: number | null }>({
+  const [estimate, setEstimate] = useState<EstimateDetails>({
     usage: null,
     quota: null,
+    caches: null,
+    indexedDB: null,
   });
   const [copied, setCopied] = useState(false);
 
@@ -111,7 +128,14 @@ function CacheDetails() {
     void navigator.storage
       ?.estimate?.()
       .then((est) => {
-        if (live) setEstimate({ usage: est?.usage ?? null, quota: est?.quota ?? null });
+        if (!live) return;
+        const details = (est as { usageDetails?: Record<string, number> }).usageDetails;
+        setEstimate({
+          usage: est?.usage ?? null,
+          quota: est?.quota ?? null,
+          caches: details?.caches ?? null,
+          indexedDB: details?.indexedDB ?? null,
+        });
       })
       .catch(() => {});
     return () => {
@@ -130,60 +154,119 @@ function CacheDetails() {
     }
   };
 
-  const line: React.CSSProperties = {
-    font: mono(500, 11),
-    color: C.mut,
-    lineHeight: 1.7,
-    wordBreak: 'break-all',
+  const caption: React.CSSProperties = {
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: '.08em',
+    textTransform: 'uppercase',
+    color: C.faint,
+    margin: '12px 0 4px',
   };
+  const row: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: 12,
+    padding: '5px 0',
+  };
+  const tierColor = (tier: string) => (tier === 'fresh' ? C.faint : tier === 'revalidate' ? C.mut : C.warn);
 
   return (
     <div
       data-testid="cache-details"
-      style={{ padding: '10px 16px', borderBottom: `1px solid ${C.divider}` }}
+      style={{ padding: '2px 16px 12px', borderBottom: `1px solid ${C.divider}`, fontSize: 12.5 }}
     >
-      {cache != null && (
-        <>
-          <div style={line}>
-            store: {cache.durable ? 'durable (IndexedDB)' : 'in-memory fallback'} ·{' '}
-            {cache.hydrated ? 'hydrated' : 'hydrating'} · pending {cache.pendingPuts}+
-            {cache.pendingDeletes}
-          </div>
-          {cache.areas.map((a) => (
-            <div key={a.key} style={line}>
-              {a.source} · {roundCoord(a.center.lat)},{roundCoord(a.center.lng)} · r
-              {a.fetchRadiusKm} km · {a.stationCount} stations · {sizeLabel(a.bytes)} ·{' '}
-              {fmtAgeMs(Date.now() - a.fetchedAt)} ago ({cacheTier(a.fetchedAt)})
+      <div style={caption}>Cached areas</div>
+      {cache != null && cache.areas.length === 0 && (
+        <div style={{ color: C.faint, padding: '4px 0' }}>None</div>
+      )}
+      {cache?.areas.map((a) => (
+        <div key={a.key} style={row}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ color: C.ink, fontWeight: 600 }}>
+              {a.source} · {roundCoord(a.center.lat)}, {roundCoord(a.center.lng)}
+            </div>
+            <div style={{ color: C.faint, fontSize: 11.5, marginTop: 1 }}>
+              {a.stationCount} stations · {a.fetchRadiusKm} km radius
               {a.payloadInMemory ? ' · in memory' : ''}
+            </div>
+          </div>
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+            <div style={{ font: mono(600, 12), color: C.body }}>{sizeLabel(a.bytes)}</div>
+            <div style={{ fontSize: 11.5, marginTop: 1, color: tierColor(cacheTier(a.fetchedAt)) }}>
+              {fmtAgeMs(Date.now() - a.fetchedAt)} ago · {cacheTier(a.fetchedAt)}
+            </div>
+          </div>
+        </div>
+      ))}
+      {cache != null && (
+        <div style={{ color: C.faint, fontSize: 11.5, padding: '2px 0' }}>
+          {cache.durable ? 'Durable (IndexedDB)' : 'In-memory only'} ·{' '}
+          {cache.hydrated ? 'hydrated' : 'hydrating'}
+          {cache.pendingPuts + cache.pendingDeletes > 0
+            ? ` · ${cache.pendingPuts + cache.pendingDeletes} pending writes`
+            : ''}
+        </div>
+      )}
+
+      {swCaches.length > 0 && (
+        <>
+          <div style={caption}>Service worker caches</div>
+          {swCaches.map((c) => (
+            <div key={c.name} style={row}>
+              <span style={{ color: C.body }}>{SW_CACHE_NAMES[c.name] ?? c.name}</span>
+              <span style={{ font: mono(600, 12), color: C.body }}>
+                {c.entries}
+                {c.cap != null && <span style={{ color: C.faint }}> / {c.cap}</span>}
+              </span>
             </div>
           ))}
         </>
       )}
-      {swCaches.map((c) => (
-        <div key={c.name} style={line}>
-          {c.name}: {c.entries}
-          {c.cap != null ? `/${c.cap}` : ''} entries
-        </div>
-      ))}
+
       {estimate.usage != null && (
-        // navigator.storage.estimate(): the whole origin across every storage
-        // API (IndexedDB, the SW caches, tiles…), so it dwarfs the stations
-        // summary above; the quota is what the browser WOULD grant, not usage
-        <div style={line}>
-          whole origin (browser estimate): {sizeLabel(estimate.usage)} used
-          {estimate.quota != null ? ` · quota ${sizeLabel(estimate.quota)}` : ''}
-        </div>
+        <>
+          <div style={caption}>Origin storage (browser estimate)</div>
+          <div style={row}>
+            <span style={{ color: C.body }}>Used</span>
+            <span style={{ font: mono(600, 12), color: C.body }}>{sizeLabel(estimate.usage)}</span>
+          </div>
+          {estimate.quota != null && (
+            <div style={row}>
+              <span style={{ color: C.body }}>Quota</span>
+              <span style={{ font: mono(600, 12), color: C.body }}>
+                {sizeLabel(estimate.quota)}
+              </span>
+            </div>
+          )}
+          {(estimate.caches != null || estimate.indexedDB != null) && (
+            <div style={{ color: C.faint, fontSize: 11.5, padding: '2px 0' }}>
+              {estimate.caches != null ? `Cache Storage ${sizeLabel(estimate.caches)}` : ''}
+              {estimate.caches != null && estimate.indexedDB != null ? ' · ' : ''}
+              {estimate.indexedDB != null ? `IndexedDB ${sizeLabel(estimate.indexedDB)}` : ''}
+            </div>
+          )}
+          {/* Opaque padding: the tiles are cached as no-cors (opaque)
+              responses, and Chromium charges each one ~7 MB against the
+              quota to keep cross-origin sizes unguessable — the « used »
+              figure balloons by gigabytes while the disk barely notices. */}
+          <div style={{ color: C.faint, fontSize: 11.5, lineHeight: 1.5, padding: '2px 0' }}>
+            Includes ~7 MB of browser padding per cached map tile (opaque responses) — actual
+            disk use is far smaller.
+          </div>
+        </>
       )}
+
       <button
         onClick={() => void copy()}
         style={{
-          marginTop: 8,
+          marginTop: 10,
           font: mono(600, 11),
           color: C.body,
           background: C.surface2,
           border: `1px solid ${C.border12}`,
           borderRadius: 10,
-          padding: '5px 10px',
+          padding: '6px 12px',
           cursor: 'pointer',
         }}
       >
