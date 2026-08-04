@@ -30,12 +30,15 @@ it lives only in `messages/fr.json`.
   invents (the gouv flux's free-text services) and proper nouns (enseignes,
   domain names, `Haute-Garonne`).
 - **Debug chrome is exempt from the catalog rule.** The debug overlay
-  (`src/components/DebugOverlay.tsx` — Settings › Developer, or `?debug=1`)
-  and the expanded cache diagnostics under Settings › Offline data are
-  developer tooling: their labels and payloads are English-only data meant to
-  be pasted into bug reports, and none of it enters `messages/`. The normal
-  Settings rows that lead there (section label, toggle title) are user UI and
-  stay in the catalogs.
+  (`src/components/DebugOverlay.tsx` — Settings › Offline data › Debug
+  overlay, or `?debug=1`) and the expanded cache diagnostics in the same
+  section are developer tooling: their labels and payloads are English-only
+  data meant to be pasted into bug reports, and none of it enters `messages/`.
+  The normal Settings rows that lead there (section label, toggle title) are
+  user UI and stay in the catalogs. Its « Report » button and the Settings
+  « Contact » row both open the bug form in `.github/ISSUE_TEMPLATE/`, whose
+  wording asks for that snapshot — the three move together
+  (`src/lib/issueReport.ts`).
 - **The README is localized too, and by hand.** `README.md` is the English
   source; `README.fr.md`, `README.es.md`, `README.ca.md` and `README.pt.md`
   are full mirrors of it (one per app locale — the exception to « Markdown is

@@ -117,26 +117,19 @@ directly. Sources are pluggable (`src/data/types.ts`). Offline or when a feed
 is down, the app keeps the last loaded stations (per-area cache) with an
 explicit banner and retries as soon as the connection returns.
 
-## 🛠️ Development
+## 🛠️ Built with
 
-Stack: **Vite · React 18 · strict TypeScript · Leaflet**, no other runtime
-dependency. Deployed on Cloudflare Workers (`wrangler`).
+**Vite · React 18 · strict TypeScript · Leaflet**, no other runtime
+dependency. The production build is static assets, served by a Cloudflare
+Worker.
 
-```bash
-npm install
-npm run dev          # http://localhost:5173
-npm run build        # production build (dist/)
-npm run e2e          # Playwright E2E: walks through every screen
-npm run verify:live  # checks the real providers (France, Spain, Andorra, Portugal, geocoders, OSRM) against the live endpoints
-npm run deploy       # build + wrangler deploy
-```
+## 🤝 Contributing
 
-To add a data source: implement the `StationsProvider` / `GeocodeProvider` /
-`RouteProvider` interfaces and register it in `src/data/providers.ts`.
-
-In an environment without direct internet access (sandbox, corporate proxy),
-the Vite dev server proxies the APIs (`/proxy/*`) and the tiles (`/tiles/*`)
-honoring `HTTPS_PROXY` — see `vite.config.ts`.
+Bug reports, translations and pull requests are welcome —
+[CONTRIBUTING.md](CONTRIBUTING.md) covers the setup, the commands, the house
+rules and the tests. When reporting a bug, paste the debug snapshot: Settings
+› Offline data › Debug overlay, then the floating **DBG** chip → **Report**,
+which copies it and opens the form.
 
 ## 📄 License
 

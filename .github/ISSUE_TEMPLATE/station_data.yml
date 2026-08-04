@@ -1,0 +1,67 @@
+name: Wrong station data
+description: A price, a station or an opening time that does not match reality
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Plein. does not set prices: it reads the official open-data flux of each country (prix-carburants.gouv.fr, geoportalgasolineras.es, sig.govern.ad, precoscombustiveis.dgeg.gov.pt) and shows what stations declare there. So a wrong number is one of two very different bugs, and this form is here to tell them apart:
+
+        - **the flux is wrong** — the station declared a stale price, or never declared one. Nothing in this repo can fix that; the fix is upstream, with the station or the ministry running the flux;
+        - **we read it wrong** — the flux is right and the app shows something else, or drops the station, or misreads its services or its opening hours. That one is ours.
+
+        Checking the source yourself is welcome but not required — describe what you saw and we will look.
+
+  - type: input
+    id: station
+    attributes:
+      label: Which station
+      description: Its name and town, and its id if you have it (the last part of the URL when its details are open, e.g. `/station/fr-31000001`).
+      placeholder: Total Access, Toulouse Matabiau — fr-31000001
+    validations:
+      required: true
+
+  - type: textarea
+    id: mismatch
+    attributes:
+      label: What the app shows, and what is true
+      description: The fuel type and both values, or what is missing. If you know when it stopped matching, say so.
+      placeholder: |
+        The app shows Diesel at 1.729 €/L, dated yesterday. The pump says 1.799 €/L today.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What is wrong
+      options:
+        - A price
+        - Opening hours, or open/closed
+        - Services (AdBlue, car wash…)
+        - The station is missing entirely
+        - The station does not exist, or has closed down
+        - Its name, brand or position
+        - Something else
+    validations:
+      required: false
+
+  - type: textarea
+    id: debug
+    attributes:
+      label: Debug overlay snapshot
+      description: |
+        **Please paste it** — for a data report it says which source answered, how old the numbers on screen are, and whether they came off the network or out of the cache. That is usually the whole diagnosis.
+
+        In the app: **Settings › Offline data › Debug overlay** (or add `?debug=1` to the URL), tap the floating **DBG** chip, then **Copy JSON** in the panel header. Coordinates in it are rounded to a ~1 km grid.
+      render: json
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues and this is not a duplicate
+          required: true

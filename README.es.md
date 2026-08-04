@@ -123,27 +123,20 @@ conexión o con un flujo caído, la app conserva las últimas estaciones
 cargadas (caché por zona) con un banner explícito y reintenta en cuanto
 vuelve la conexión.
 
-## 🛠️ Desarrollo
+## 🛠️ Construido con
 
-Stack: **Vite · React 18 · TypeScript estricto · Leaflet**, sin otra
-dependencia de runtime. Desplegado en Cloudflare Workers (`wrangler`).
+**Vite · React 18 · TypeScript estricto · Leaflet**, sin otra dependencia de
+runtime. La compilación de producción son solo recursos estáticos, servidos por
+un Cloudflare Worker.
 
-```bash
-npm install
-npm run dev          # http://localhost:5173
-npm run build        # compilación de producción (dist/)
-npm run e2e          # E2E Playwright: recorre todas las pantallas
-npm run verify:live  # comprueba los proveedores reales (Francia, España, Andorra, Portugal, geocodificadores, OSRM) contra los endpoints reales
-npm run deploy       # build + wrangler deploy
-```
+## 🤝 Contribuir
 
-Para añadir una fuente de datos: implementar las interfaces
-`StationsProvider` / `GeocodeProvider` / `RouteProvider` y registrarla en
-`src/data/providers.ts`.
-
-En entornos sin acceso directo a internet (sandbox, proxy corporativo), el
-servidor de desarrollo de Vite hace de proxy para las APIs (`/proxy/*`) y las
-teselas (`/tiles/*`) respetando `HTTPS_PROXY` — ver `vite.config.ts`.
+Informes de errores, traducciones y pull requests son bienvenidos —
+[CONTRIBUTING.md](CONTRIBUTING.md) (en inglés) explica la instalación, los
+comandos, las reglas de la casa y las pruebas. Para informar de un error, pega
+la instantánea de depuración: Ajustes › Datos sin conexión › Superposición de
+depuración, y luego la pastilla flotante **DBG** → **Report**, que la copia y
+abre el formulario.
 
 ## 📄 Licencia
 

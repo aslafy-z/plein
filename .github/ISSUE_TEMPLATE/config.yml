@@ -1,0 +1,8 @@
+# Blank issues stay on: the app's own « Report an issue on GitHub » row in
+# older, already-deployed builds links to /issues/new with a prefilled body,
+# and disabling them would bounce those users to the chooser empty-handed.
+blank_issues_enabled: true
+contact_links:
+  - name: Write to us by email
+    url: mailto:plein@zadkiel.fr
+    about: No GitHub account, or nothing to file — the same address as Settings › Contact.

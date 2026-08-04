@@ -124,28 +124,20 @@ connexió o amb un flux caigut, l'app conserva les últimes estacions
 carregades (memòria cau per zona) amb un bàner explícit i ho torna a provar
 així que torna la connexió.
 
-## 🛠️ Desenvolupament
+## 🛠️ Construït amb
 
-Stack: **Vite · React 18 · TypeScript estricte · Leaflet**, sense cap altra
-dependència de runtime. Desplegat a Cloudflare Workers (`wrangler`).
+**Vite · React 18 · TypeScript estricte · Leaflet**, sense cap altra
+dependència de runtime. La compilació de producció només són recursos estàtics,
+servits per un Cloudflare Worker.
 
-```bash
-npm install
-npm run dev          # http://localhost:5173
-npm run build        # compilació de producció (dist/)
-npm run e2e          # E2E Playwright: recorre totes les pantalles
-npm run verify:live  # comprova els proveïdors reals (França, Espanya, Andorra, Portugal, geocodificadors, OSRM) contra els endpoints reals
-npm run deploy       # build + wrangler deploy
-```
+## 🤝 Contribuir
 
-Per afegir una font de dades: implementeu les interfícies
-`StationsProvider` / `GeocodeProvider` / `RouteProvider` i registreu-la a
-`src/data/providers.ts`.
-
-En entorns sense accés directe a internet (sandbox, proxy corporatiu), el
-servidor de desenvolupament de Vite fa de proxy per a les APIs (`/proxy/*`) i
-les tessel·les (`/tiles/*`) respectant `HTTPS_PROXY` — vegeu
-`vite.config.ts`.
+Els informes d'errors, les traduccions i les pull requests són benvinguts —
+[CONTRIBUTING.md](CONTRIBUTING.md) (en anglès) explica la instal·lació, les
+ordres, les regles de la casa i les proves. Per informar d'un error, enganxeu
+la instantània de depuració: Configuració › Dades sense connexió ›
+Superposició de depuració, i després la pastilla flotant **DBG** → **Report**,
+que la copia i obre el formulari.
 
 ## 📄 Llicència
 

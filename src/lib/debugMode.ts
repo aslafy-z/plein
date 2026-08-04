@@ -3,7 +3,7 @@
 // The flag lives in sessionStorage, NOT in the persisted settings blob: a
 // tester turning it on must not carry it into their normal sessions, and the
 // persisted schema must not grow a field only developer chrome reads. It can
-// be raised three ways — the Settings « Developer » toggle, `?debug=1` in the
+// be raised three ways — the Settings « Offline data » toggle, `?debug=1` in the
 // URL (adopted into sessionStorage so the flag survives in-app navigation,
 // which rewrites the query), or an existing sessionStorage flag from earlier
 // in the session.
