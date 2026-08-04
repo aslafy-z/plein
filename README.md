@@ -95,7 +95,7 @@ rest (routing, basemaps) is shared by all four.
 
 | Data | Source | License |
 | --- | --- | --- |
-| Fuel prices & brands | [Preus dels carburants](https://sig.govern.ad/IPE/PreusCarburants) (sig.govern.ad, Govern d'Andorra — Oficina de l'energia i del canvi climàtic) — the brand is derived from the station name; the feed carries neither address nor opening hours | © Govern d'Andorra |
+| Fuel prices & brands | [Preus dels carburants](https://sig.govern.ad/IPE/PreusCarburants) (sig.govern.ad, Govern d'Andorra — Oficina de l'Energia i del Canvi Climàtic) — the brand is derived from the station name; the feed carries neither address nor opening hours | © Govern d'Andorra |
 | Geocoding & autocompletion | Nomenclàtor (official gazetteer) & LocatorIDE (sig.govern.ad, IDE Andorra) | © Govern d'Andorra |
 
 ### 🇵🇹 Portugal
@@ -109,8 +109,8 @@ rest (routing, basemaps) is shared by all four.
 
 | Data | Source | License |
 | --- | --- | --- |
-| Routing | [OSRM](https://project-osrm.org/) (demo server) · [Valhalla](https://valhalla.github.io/valhalla/) (public FOSSGIS server) for "avoid motorways / tolls" | Data © OpenStreetMap |
-| Basemaps | [CARTO](https://carto.com/attributions) light / dark following the theme (OpenStreetMap tiles as offline-friendly fallback) | Data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors |
+| Routing | [OSRM](https://project-osrm.org/) (demo server) · [Valhalla](https://valhalla.github.io/valhalla/) (public FOSSGIS server) for "avoid motorways / tolls" | © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors |
+| Basemaps | [CARTO](https://carto.com/attributions) light / dark following the theme (OpenStreetMap tiles as offline-friendly fallback) | © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors |
 
 The app has **no backend**: the browser queries these public services
 directly. Sources are pluggable (`src/data/types.ts`). Offline or when a feed

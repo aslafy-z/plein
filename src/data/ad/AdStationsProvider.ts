@@ -1,5 +1,5 @@
 // Real Andorran government open data — official fuel prices from the Govern
-// d'Andorra (Oficina de l'energia i del canvi climàtic, sig.govern.ad/IPE),
+// d'Andorra (Oficina de l'Energia i del Canvi Climàtic, sig.govern.ad/IPE),
 // served by the SIG's public ArcGIS layer « Preu dels carburants actuals ».
 // The whole country is ~60 stations, so one request fetches everything
 // (memoized) and queries filter client-side. Rows arrive as station × product;
