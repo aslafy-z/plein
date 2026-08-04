@@ -51,17 +51,17 @@ test.beforeEach(async ({ page }) => {
 })
 
 /**
- * Labels of the panel rows, in order — each row's « Itinéraire vers X »
+ * Labels of the panel rows, in order — each row's « Directions to X »
  * shortcut names it. The expected count is awaited first: the geocoder answers
  * after the remembered places are already on screen.
  */
 async function rowLabels(page: import('@playwright/test').Page, count: number) {
   const rows = page.getByTestId('search-suggestions').getByRole('button', {
-    name: /Itinéraire vers/,
+    name: /Directions to/,
   })
   await expect(rows).toHaveCount(count, { timeout: 10_000 })
   return rows.evaluateAll((els) =>
-    els.map((el) => el.getAttribute('aria-label')?.replace('Itinéraire vers ', '') ?? ''),
+    els.map((el) => el.getAttribute('aria-label')?.replace('Directions to ', '') ?? ''),
   )
 }
 
@@ -78,22 +78,22 @@ test.describe('with places already searched', () => {
 
   test('an empty query offers the remembered places, most recent first', async ({ page }) => {
     await gotoMap(page)
-    await page.getByLabel('Rechercher un lieu').click()
+    await page.getByLabel('Search for a place').click()
 
     const list = page.getByTestId('search-suggestions')
     await expect(list).toBeVisible()
-    await expect(list.getByText('Récents')).toBeVisible()
+    await expect(list.getByText('Recent')).toBeVisible()
     expect(await rowLabels(page, 2)).toEqual(['Bordeaux centre', 'Annecy'])
 
     // Told apart from a geocoder hit. How much room the panel takes is the
     // arrangement's business — search-results.spec.ts holds it.
-    await expect(list.getByRole('img', { name: 'Lieu déjà recherché' })).toHaveCount(2)
+    await expect(list.getByRole('img', { name: 'Previously searched place' })).toHaveCount(2)
   })
 
   test('a matching remembered place outranks the geocoder answers', async ({ page }) => {
     await gotoMap(page)
-    await page.getByLabel('Rechercher un lieu').click()
-    await page.getByPlaceholder('Ville, adresse…').fill('Bord')
+    await page.getByLabel('Search for a place').click()
+    await page.getByPlaceholder('Town, address…').fill('Bord')
 
     // The history first, then what the geocoder found — Annecy matches nothing.
     expect(await rowLabels(page, 3)).toEqual([
@@ -105,10 +105,10 @@ test.describe('with places already searched', () => {
 
   test('picking a remembered place moves the search circle there', async ({ page }) => {
     await gotoMap(page)
-    await page.getByLabel('Rechercher un lieu').click()
+    await page.getByLabel('Search for a place').click()
     await page.getByTestId('search-suggestions').getByText('Bordeaux centre').click()
 
-    await expect(page.getByLabel('Rechercher un lieu')).toContainText('Bordeaux centre')
+    await expect(page.getByLabel('Search for a place')).toContainText('Bordeaux centre')
   })
 })
 
@@ -117,24 +117,24 @@ test.describe('with nothing searched yet', () => {
 
   test('an empty query shows no panel at all', async ({ page }) => {
     await gotoMap(page)
-    await page.getByLabel('Rechercher un lieu').click()
-    await expect(page.getByPlaceholder('Ville, adresse…')).toBeFocused()
+    await page.getByLabel('Search for a place').click()
+    await expect(page.getByPlaceholder('Town, address…')).toBeFocused()
     await expect(page.getByTestId('search-suggestions')).toHaveCount(0)
   })
 
   test('a picked place survives a reload and comes back on the next search', async ({ page }) => {
     await gotoMap(page)
-    await page.getByLabel('Rechercher un lieu').click()
-    await page.getByPlaceholder('Ville, adresse…').fill('Bord')
+    await page.getByLabel('Search for a place').click()
+    await page.getByPlaceholder('Town, address…').fill('Bord')
     expect(await rowLabels(page, 2)).toEqual(['Bordères', 'Rue de Bordeaux'])
 
     await page.getByTestId('search-suggestions').getByText('Bordères').click()
-    await expect(page.getByLabel('Rechercher un lieu')).toContainText('Bordères')
+    await expect(page.getByLabel('Search for a place')).toContainText('Bordères')
 
     // Persisted with the other settings, so it is still there after a reload
     await gotoMap(page)
-    await page.getByLabel('Rechercher un lieu').click()
-    await expect(page.getByTestId('search-suggestions').getByText('Récents')).toBeVisible()
+    await page.getByLabel('Search for a place').click()
+    await expect(page.getByTestId('search-suggestions').getByText('Recent')).toBeVisible()
     expect(await rowLabels(page, 1)).toEqual(['Bordères'])
   })
 })

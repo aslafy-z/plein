@@ -54,13 +54,13 @@ test.describe('window', () => {
 
   test('the suggestion list floats over the chips instead of pushing them', async ({ page }) => {
     await gotoMap(page)
-    await page.getByLabel('Rechercher un lieu').click()
-    const chip = page.getByRole('button', { name: /Filtres/ })
+    await page.getByLabel('Search for a place').click()
+    const chip = page.getByRole('button', { name: /Filters/ })
     const before = await chip.boundingBox()
 
-    await page.getByPlaceholder('Ville, adresse…').fill('Bayonne')
+    await page.getByPlaceholder('Town, address…').fill('Bayonne')
     const list = page.getByTestId('search-suggestions')
-    await expect(list.getByRole('button', { name: /Itinéraire vers/ }).first()).toBeVisible({
+    await expect(list.getByRole('button', { name: /Directions to/ }).first()).toBeVisible({
       timeout: 10_000,
     })
 
@@ -70,11 +70,11 @@ test.describe('window', () => {
 
   test('the dropdown is capped and scrolls instead of covering the map', async ({ page }) => {
     await gotoMap(page)
-    await page.getByLabel('Rechercher un lieu').click()
-    await page.getByPlaceholder('Ville, adresse…').fill('Bayonne')
+    await page.getByLabel('Search for a place').click()
+    await page.getByPlaceholder('Town, address…').fill('Bayonne')
 
     const list = page.getByTestId('search-suggestions')
-    await expect(list.getByRole('button', { name: /Itinéraire vers/ }).first()).toBeVisible({
+    await expect(list.getByRole('button', { name: /Directions to/ }).first()).toBeVisible({
       timeout: 10_000,
     })
     const metrics = await list.evaluate((el) => ({
@@ -94,11 +94,11 @@ test.describe('phone', () => {
   // could use anyway. The phone gives the search the whole screen instead.
   test('the search takes the screen and the list fills it', async ({ page, viewport }) => {
     await gotoMap(page)
-    await page.getByLabel('Rechercher un lieu').click()
-    await page.getByPlaceholder('Ville, adresse…').fill('Bayonne')
+    await page.getByLabel('Search for a place').click()
+    await page.getByPlaceholder('Town, address…').fill('Bayonne')
 
     const list = page.getByTestId('search-suggestions')
-    await expect(list.getByRole('button', { name: /Itinéraire vers/ }).first()).toBeVisible({
+    await expect(list.getByRole('button', { name: /Directions to/ }).first()).toBeVisible({
       timeout: 10_000,
     })
 
@@ -120,52 +120,52 @@ test.describe('phone', () => {
       route.fulfill({ json: { type: 'FeatureCollection', features: [] } }),
     )
     await gotoMap(page)
-    await page.getByLabel('Rechercher un lieu').click()
+    await page.getByLabel('Search for a place').click()
 
     // Nothing typed, nothing remembered: what the field is for
-    await expect(page.getByText('Cherchez une ville ou une adresse')).toBeVisible()
+    await expect(page.getByText('Search a town or an address')).toBeVisible()
 
-    await page.getByPlaceholder('Ville, adresse…').fill('Zzzzzz')
-    await expect(page.getByText('Aucun lieu ne correspond')).toBeVisible({ timeout: 10_000 })
+    await page.getByPlaceholder('Town, address…').fill('Zzzzzz')
+    await expect(page.getByText('No place matches')).toBeVisible({ timeout: 10_000 })
   })
 })
 
-// « Itinéraire › » leaves the search on its own history entry rather than
+// « Directions › » leaves the search on its own history entry rather than
 // popping it: the route setup stacks on top, so Back returns to where the
 // destination was picked instead of dropping straight onto the map.
 test('back out of the route setup returns to the search', async ({ page }) => {
   await gotoMap(page)
-  await page.getByLabel('Rechercher un lieu').click()
-  await page.getByPlaceholder('Ville, adresse…').fill('Bayonne')
+  await page.getByLabel('Search for a place').click()
+  await page.getByPlaceholder('Town, address…').fill('Bayonne')
   await page
-    .getByRole('button', { name: 'Itinéraire vers Bayonne' })
+    .getByRole('button', { name: 'Directions to Bayonne' })
     .click({ timeout: 10_000 })
-  await expect(page.getByPlaceholder('Ville, adresse…')).toHaveCount(0)
+  await expect(page.getByPlaceholder('Town, address…')).toHaveCount(0)
 
   await page.goBack()
-  await expect(page.getByPlaceholder('Ville, adresse…')).toBeVisible()
+  await expect(page.getByPlaceholder('Town, address…')).toBeVisible()
 })
 
-test('la liste de suggestions place les localités en tête', async ({ page }) => {
+test('the suggestion list ranks localities first', async ({ page }) => {
   await gotoMap(page)
-  await page.getByLabel('Rechercher un lieu').click()
-  await page.getByPlaceholder('Ville, adresse…').fill('Bayonne')
+  await page.getByLabel('Search for a place').click()
+  await page.getByPlaceholder('Town, address…').fill('Bayonne')
 
   const list = page.getByTestId('search-suggestions')
-  const rows = list.getByRole('button', { name: /Itinéraire vers/ })
+  const rows = list.getByRole('button', { name: /Directions to/ })
   await expect(rows.first()).toBeVisible({ timeout: 10_000 })
 
-  // Toutes les suggestions sont rendues — plus que les 5 d'avant.
+  // Every suggestion is rendered — more than the previous cap of 5.
   await expect(rows).toHaveCount(BAN_FEATURES.length)
 
-  // La commune passe devant la rue, qui passe devant les numéros.
+  // The town ranks above the street, which ranks above the house numbers.
   const labels = await rows.evaluateAll((els) =>
-    els.map((el) => el.getAttribute('aria-label')?.replace('Itinéraire vers ', '') ?? ''),
+    els.map((el) => el.getAttribute('aria-label')?.replace('Directions to ', '') ?? ''),
   )
   expect(labels[0]).toBe('Bayonne')
   expect(labels[1]).toBe('Rue de Bayonne')
   expect(labels[2]).toBe('1 rue de Bayonne')
 
-  // La liste défile : elle garde toutes les réponses, quelle que soit la place.
+  // The list scrolls: it keeps every answer, however little room there is.
   expect(await list.evaluate((el) => getComputedStyle(el).overflowY)).toBe('auto')
 })
