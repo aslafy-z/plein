@@ -130,7 +130,6 @@ export interface DebugSnapshot {
     /** registered but not controlling this page — the « bypassed » case */
     bypassed: boolean;
     updateWaiting: boolean;
-    scriptUrl: string | null;
   };
   connectivity: { onLine: boolean };
   app: {
@@ -191,7 +190,6 @@ async function collectSw(): Promise<DebugSnapshot['sw']> {
       controlling: false,
       bypassed: false,
       updateWaiting: false,
-      scriptUrl: null,
     };
   }
   let registration: ServiceWorkerRegistration | undefined;
@@ -209,7 +207,6 @@ async function collectSw(): Promise<DebugSnapshot['sw']> {
     // half of « the cache doesn't work » reports in one boolean.
     bypassed: registration != null && controller == null,
     updateWaiting: registration?.waiting != null,
-    scriptUrl: controller?.scriptURL ?? registration?.active?.scriptURL ?? null,
   };
 }
 
