@@ -500,6 +500,24 @@ button {
   filter: grayscale(0.35) saturate(0.6) brightness(1.02) contrast(0.95);
 }
 
+/* Lite-effects mode (Gecko — lib/fx.ts): a CSS filter on the tile pane is
+   re-rasterized on every frame of a pan/zoom animation there, which is the
+   other half of what made opening the panels stutter on Firefox. The blend
+   filters go: the basemap already swaps dark/light per theme (lib/tiles.ts),
+   so the map only loses its fine-toning. The OSM fallback keeps the shortest
+   filter that stays CORRECT per theme — inverted to dark under the dark
+   theme (daylight tiles under a dark UI would be glare, and the fallback is
+   the rare path), bare daylight in light. */
+:root[data-fx='lite'] .tiles-carto {
+  filter: none;
+}
+:root[data-fx='lite'] .tiles-dark {
+  filter: invert(1) hue-rotate(180deg);
+}
+:root[data-fx='lite'][data-theme='light'] .tiles-dark {
+  filter: none;
+}
+
 /* Leaflet writes vector colors as SVG presentation attributes, where a var()
    cannot resolve — so the themed vectors carry a class instead and the
    palette applies here (CSS wins over presentation attributes). */

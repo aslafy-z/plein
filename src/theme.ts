@@ -15,6 +15,7 @@
 // other theme's look.
 
 import type { CSSProperties } from 'react';
+import { LITE_FX } from './lib/fx';
 import { PANEL_GAP, PANEL_WIDTH } from './lib/layout';
 
 export const C = {
@@ -93,16 +94,30 @@ export const mono = (weight: number, sizePx: number) =>
   `${weight} ${sizePx}px ${FONT.mono}`;
 
 /**
+ * Backdrop blur, everywhere a glass surface asks for one — skipped wholesale
+ * in lite-effects mode (Gecko, see lib/fx.ts): re-blurring the backdrop on
+ * every frame a Leaflet animation dirties it is one of the two effects that
+ * made opening the panels stutter on Firefox.
+ */
+export const glassBlur = (radiusPx: number): CSSProperties =>
+  LITE_FX
+    ? {}
+    : {
+        backdropFilter: `blur(${radiusPx}px)`,
+        WebkitBackdropFilter: `blur(${radiusPx}px)`,
+      };
+
+/**
  * « Glass » surface — the language of everything floating over the map on
  * desktop: the zone panel, the route timeline, the fiche, control clusters
  * and pills. The background stays near-opaque ON PURPOSE: a browser without
- * backdrop-filter simply skips the blur, and the content has to stay readable
- * over a busy map with nothing but this rgba behind it.
+ * backdrop-filter — and lite-effects mode, where `glassBlur` yields none —
+ * simply skips the blur, and the content has to stay readable over a busy
+ * map with nothing but this rgba behind it.
  */
 export const glass: CSSProperties = {
   background: C.glassBg,
-  backdropFilter: 'blur(16px)',
-  WebkitBackdropFilter: 'blur(16px)',
+  ...glassBlur(16),
   border: `1px solid ${C.glassBorder}`,
   boxShadow: `0 18px 50px ${C.shadow45}`,
 };

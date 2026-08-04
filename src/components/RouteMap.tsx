@@ -9,7 +9,7 @@
 // for the phone sheet — insets move the framing, never the rendering.
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
-import { C } from '../theme';
+import { C, glassBlur } from '../theme';
 import { m } from '../paraglide/messages.js';
 import { fmtPrice } from '../lib/format';
 import { cumulativeKm, radiusBounds, type GeoPoint } from '../lib/geo';
@@ -381,8 +381,7 @@ export default function RouteMap({
           height: 44,
           borderRadius: '50%',
           background: C.glassBgSoft,
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
+          ...glassBlur(12),
           border: `1px solid ${userView.onScreen ? C.accentBorderStrong : C.glassBorder}`,
           boxShadow: `0 6px 18px ${C.shadow45}`,
           display: 'flex',
