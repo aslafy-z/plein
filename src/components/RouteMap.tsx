@@ -15,6 +15,7 @@ import { fmtPrice } from '../lib/format';
 import { cumulativeKm, radiusBounds, type GeoPoint } from '../lib/geo';
 import { useLeafletMap } from '../lib/leafletMap';
 import { pricePinHtml } from '../lib/pricePin';
+import { USER_DOT_SIZE, userDotHtml } from '../lib/userDot';
 import { useApp, selectRouteAnalysis, effectivePrice } from '../state/store';
 
 /** Vertex at a given km along the polyline (vertex precision is plenty here) */
@@ -73,6 +74,7 @@ export default function RouteMap({
   ].join(',');
 
   const layerRef = useRef<L.LayerGroup | null>(null);
+  const userDotRef = useRef<L.Marker | null>(null);
   const fittedRouteRef = useRef<unknown>(null);
   /** Bounds currently framed (corridor / endpoints / search area) — the shell
       re-frames them when the stage is resized, until the user takes over */
@@ -107,6 +109,8 @@ export default function RouteMap({
           routeKey: appRef.current.routeState.key,
         };
         layerRef.current = null;
+        // refs survive StrictMode remounts — drop what belonged to the dead map
+        userDotRef.current = null;
         frameBoundsRef.current = null;
         fittedRouteRef.current = null;
       };
@@ -114,6 +118,34 @@ export default function RouteMap({
     refitBounds: () => frameBoundsRef.current,
   });
   const { mapRef, containerRef, userInteractedRef } = shell;
+
+  // ── « You are here » — the same dot the zone map draws (lib/userDot) ───────
+  // The stage is one map across the tabs, so the user's position is marked the
+  // same way on both. Its own marker straight on the map, NOT in `layer`: both
+  // draw effects clear that group whole, and the position has nothing to do
+  // with the corridor being redrawn. Under everything else (negative z) — a
+  // trip departing from the user puts the departure marker right on it, and
+  // the halo has to read as its surround, not as something covering it.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!userDotRef.current) {
+      userDotRef.current = L.marker([app.userPos.lat, app.userPos.lng], {
+        icon: L.divIcon({
+          className: '',
+          html: userDotHtml(),
+          iconSize: [USER_DOT_SIZE, USER_DOT_SIZE],
+          iconAnchor: [USER_DOT_SIZE / 2, USER_DOT_SIZE / 2],
+        }),
+        interactive: false,
+        keyboard: false,
+        zIndexOffset: -1000,
+      }).addTo(map);
+    } else {
+      userDotRef.current.setLatLng([app.userPos.lat, app.userPos.lng]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [app.userPos]);
 
   // ── Before the route: departure/arrival pins over the search-area framing ──
   useEffect(() => {
