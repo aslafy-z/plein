@@ -6,12 +6,24 @@
 // the map swaps to OpenStreetMap tiles (through the dev-server proxy in dev),
 // re-toned per theme with the `.tiles-dark` CSS filter so the app keeps its
 // look. The first map that discovers the CDN is unreachable remembers it for
-// the session, so the map, route and station views all switch together.
+// the session, so the map, route and station views all switch together — and
+// a reachability probe (the browser's `online` event, plus every new map)
+// swaps them all back the moment the CDN answers again, instead of pinning
+// the session on OSM after one blip.
+//
+// The service worker caches every tile the map loads (sw.js, cache-first),
+// but only at the zooms actually visited: offline, zooming used to fall off
+// the cached slice onto a blank background within a level or two. So after
+// each settled move the prefetcher warms the ~4 tiles per OTHER zoom that
+// cover the visible center (src/lib/tilePyramid.ts) — a whole pyramid, world
+// view to street level, costs less than one screenful of panning.
 import L from 'leaflet';
 import { IS_DEV } from './env';
 import { currentTheme, onThemeChange } from './colorScheme';
 import { registerTileDebugSource, type TileLayerDebug } from './debugState';
-import { isForcedOffline, onConnectivityChange } from './connectivity';
+import { isForcedOffline, isOffline, onConnectivityChange } from './connectivity';
+import { pyramidTiles, tileUrl } from './tilePyramid';
+import { cachedTileUrls } from './tileCache';
 import {
   dropTileSnapshot,
   ensureTileSnapshot,
@@ -22,6 +34,7 @@ import {
 
 const cartoUrl = () =>
   `https://{s}.basemaps.cartocdn.com/${currentTheme() === 'light' ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png`;
+const CARTO_SUBDOMAINS = 'abcd';
 const FALLBACK_URL = IS_DEV ? '/tiles/{z}/{x}/{y}.png' : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 /** No CARTO tile managed to load within this window → assume unreachable */
 const GIVE_UP_MS = 6000;
@@ -143,7 +156,25 @@ onConnectivityChange(() => {
   }
 });
 
-function addFallback(map: L.Map): void {
+
+// ── The live basemaps, one handle per map ────────────────────────────────────
+// The recovery probe needs to find every map currently sitting on the
+// fallback to swap it back, the theme listener needs the CURRENT carto layer
+// across those swaps, and the prefetcher needs the map's visible center; a
+// handle registers on mount, leaves on unload.
+
+interface BasemapHandle {
+  map: L.Map;
+  layer: L.TileLayer | null;
+  onFallback: boolean;
+  /** Center the pyramid warms around — the VISIBLE center when overlays
+      cover part of the stage, the raw map center otherwise */
+  center: () => L.LatLng;
+}
+
+const handles = new Set<BasemapHandle>();
+
+function mountFallback(handle: BasemapHandle): void {
   const layer = bufferedTileLayer(FALLBACK_URL, {
     ...TILE_RETENTION,
     attribution: '© OpenStreetMap · © CARTO',
@@ -157,33 +188,43 @@ function addFallback(map: L.Map): void {
   });
   layer.on('tileerror', () => tilesErrored++);
   track(layer);
-  layer.addTo(map);
+  layer.addTo(handle.map);
+  handle.layer = layer;
+  handle.onFallback = true;
 }
 
-export function addBasemap(map: L.Map): void {
-  if (cartoUnreachable) {
-    addFallback(map);
-    return;
-  }
-
+function mountCarto(handle: BasemapHandle): void {
+  // When swapping back from the fallback, keep it underneath until the first
+  // CARTO tile actually lands — a recovery that turns out premature (captive
+  // portal, half-restored network) must not flash a blank map.
+  const previous = handle.onFallback ? handle.layer : null;
   const carto = bufferedTileLayer(cartoUrl(), {
     ...TILE_RETENTION,
     attribution: '© OpenStreetMap · © CARTO',
-    subdomains: 'abcd',
+    subdomains: CARTO_SUBDOMAINS,
     maxZoom: 19,
     className: 'tiles-carto',
   });
+  handle.layer = carto;
+  handle.onFallback = false;
 
   let loaded = 0;
   let errored = 0;
-  let swapped = false;
+  let settled = false;
 
   const swap = () => {
-    if (swapped) return;
-    swapped = true;
+    if (settled) return;
+    settled = true;
     cartoUnreachable = true;
-    map.removeLayer(carto);
-    addFallback(map);
+    handle.map.removeLayer(carto);
+    if (previous) {
+      // the fallback never left — hand the handle back to it
+      handle.layer = previous;
+      handle.onFallback = true;
+    } else {
+      mountFallback(handle);
+    }
+    armRecovery();
   };
 
   // Zoom changes abort pending tiles without firing tileerror, so a count
@@ -200,23 +241,201 @@ export function addBasemap(map: L.Map): void {
     loaded++;
     tilesLoaded++;
     clearTimeout(giveUp);
+    if (!settled) {
+      settled = true;
+      if (previous) handle.map.removeLayer(previous);
+    }
   });
   carto.on('tileerror', () => {
     errored++;
     tilesErrored++;
     if (loaded === 0 && errored >= 2 && !isForcedOffline()) swap();
   });
-
-  // Follow a theme switch in place — the tile filters in styles.css flip on
-  // their own; only the tile set itself has to be refetched.
-  const offTheme = onThemeChange(() => {
-    if (!swapped) carto.setUrl(cartoUrl());
-  });
-  map.on('unload', () => {
-    clearTimeout(giveUp);
-    offTheme();
-  });
+  handle.map.on('unload', () => clearTimeout(giveUp));
 
   track(carto);
-  carto.addTo(map);
+  carto.addTo(handle.map);
+}
+
+export function addBasemap(map: L.Map, visibleCenter?: () => L.LatLng): void {
+  const handle: BasemapHandle = {
+    map,
+    layer: null,
+    onFallback: false,
+    center: visibleCenter ?? (() => map.getCenter()),
+  };
+  handles.add(handle);
+  // Follow a theme switch in place — the tile filters in styles.css flip on
+  // their own; only the tile set itself has to be refetched. The handle is
+  // read live, so the listener survives a fallback swap and a recovery: it
+  // always retunes whatever carto layer currently stands.
+  const offTheme = onThemeChange(() => {
+    if (!handle.onFallback) handle.layer?.setUrl(cartoUrl());
+  });
+  map.on('unload', () => {
+    offTheme();
+    handles.delete(handle);
+  });
+  installPyramidPrefetch(handle);
+
+  if (cartoUnreachable) {
+    mountFallback(handle);
+    // A new view is a natural moment to re-check the CDN — it covers networks
+    // where no `online` event ever fires (a firewall rule lifted, a VPN up).
+    void attemptRecovery();
+    return;
+  }
+  mountCarto(handle);
+}
+
+// ── Recovery: swap back to CARTO when it answers again ───────────────────────
+
+/** One fixed low-zoom CARTO tile the reachability probe fetches (the palette
+    doesn't matter — reachability is per host, not per style) */
+const PROBE_URL = 'https://a.basemaps.cartocdn.com/dark_all/3/4/2.png';
+/** Two probes never run closer together than this */
+const PROBE_MIN_INTERVAL_MS = 30_000;
+
+let recoveryArmed = false;
+let probing = false;
+let lastProbeAt = 0;
+
+function armRecovery(): void {
+  if (recoveryArmed) return;
+  recoveryArmed = true;
+  window.addEventListener('online', onOnline);
+}
+
+function onOnline(): void {
+  void attemptRecovery();
+}
+
+async function attemptRecovery(): Promise<void> {
+  if (!cartoUnreachable || probing) return;
+  // The probe is a request like any other: « Force offline mode » forbids it,
+  // and the browser knowing it has no network makes it pointless.
+  if (isOffline()) return;
+  const now = Date.now();
+  if (now - lastProbeAt < PROBE_MIN_INTERVAL_MS) return;
+  lastProbeAt = now;
+  probing = true;
+  try {
+    // The unique query bypasses the service worker's tile cache (sw.js only
+    // intercepts query-less tile URLs) and, with no-store, the HTTP cache —
+    // a cached tile answering the probe would say nothing about the network.
+    await fetch(`${PROBE_URL}?probe=${now}`, { mode: 'no-cors', cache: 'no-store' });
+  } catch {
+    return; // still unreachable — the next online event or new map retries
+  } finally {
+    probing = false;
+  }
+  cartoUnreachable = false;
+  recoveryArmed = false;
+  window.removeEventListener('online', onOnline);
+  // Every live fallback map swaps back; each re-runs the reachability check,
+  // so a probe fooled by a captive portal just lands back on the fallback.
+  for (const handle of [...handles]) {
+    if (handle.onFallback) mountCarto(handle);
+  }
+}
+
+// ── Offline zoom pyramid ─────────────────────────────────────────────────────
+// After each settled move, warm the service-worker tile cache with the ~4
+// tiles per OTHER zoom that cover the map center — down to the world view so
+// zooming out never falls off the cached slice, and up to the layers' max so
+// zooming in on the center keeps drawing too. The fetches take the exact
+// URLs Leaflet would request (subdomain rule, retina suffix — tilePyramid.ts)
+// and the same no-cors mode as its <img> loads, so sw.js caches them on its
+// normal lazy path.
+//
+// Each run plans against the cache itself (one key enumeration) rather than
+// against a session memory of what was fetched before: what the LRU cap
+// evicted is re-downloaded, so the pyramid self-repairs — and what is still
+// held costs nothing at all, where a blind re-issue would push ~60 requests
+// through the worker per settled move and re-write every one of them to
+// refresh its recency.
+
+/** Below this zoom the whole world is a handful of tiles — nothing to warm */
+const PREFETCH_MIN_ZOOM = 5;
+/** The layers' maxZoom — the deepest a zoom-in gesture can go */
+const PREFETCH_MAX_ZOOM = 19;
+/** A pan mid-gesture fires moveend repeatedly; only the settled view counts */
+const PREFETCH_DEBOUNCE_MS = 2000;
+/** An idle slot is a preference, not a precondition: on a busy mobile page
+    (map compositing, animations) requestIdleCallback can starve until the
+    tab goes to background, so without the timeout the warm-up would fire
+    almost only there. The view already settled through the debounce; this
+    bounds the extra politeness wait. */
+const IDLE_TIMEOUT_MS = 2000;
+
+/** Every other level, nearest first — the first tiles to land are the ones a
+    small zoom gesture (either direction) hits. The visited level itself is
+    already cached by the normal tile loads. */
+function prefetchZooms(current: number): number[] {
+  const zooms: number[] = [];
+  for (let d = 1; current - d >= PREFETCH_MIN_ZOOM || current + d <= PREFETCH_MAX_ZOOM; d += 1) {
+    if (current - d >= PREFETCH_MIN_ZOOM) zooms.push(current - d);
+    if (current + d <= PREFETCH_MAX_ZOOM) zooms.push(current + d);
+  }
+  return zooms;
+}
+
+/** The prefetch must never compete with visible tiles for the connection */
+const runWhenIdle = (fn: () => void): void => {
+  if (typeof requestIdleCallback === 'function') {
+    requestIdleCallback(() => fn(), { timeout: IDLE_TIMEOUT_MS });
+  } else {
+    setTimeout(fn, 250); // Safari has no requestIdleCallback
+  }
+};
+
+function installPyramidPrefetch(handle: BasemapHandle): void {
+  let timer: number | undefined;
+  const schedule = () => {
+    clearTimeout(timer);
+    timer = window.setTimeout(
+      () => runWhenIdle(() => void prefetchPyramid(handle)),
+      PREFETCH_DEBOUNCE_MS,
+    );
+  };
+  handle.map.on('moveend zoomend', schedule);
+  // A theme switch refetches the visible tiles in the other palette; re-warm
+  // the pyramid too, or the offline coverage silently stays in the old one.
+  const offTheme = onThemeChange(schedule);
+  handle.map.on('unload', () => {
+    clearTimeout(timer);
+    offTheme();
+  });
+}
+
+async function prefetchPyramid(handle: BasemapHandle): Promise<void> {
+  if (!handles.has(handle)) return; // the map went away while we idled
+  // Offline is when the cache is SPENT, not fed — and « Force offline mode »
+  // means no request at all: these fetches are raw, so the tile layer's own
+  // gate (getTileUrl) never sees them and cannot decline them for us.
+  if (isOffline()) return;
+  // The VISIBLE center, not the raw one: the floating panel (desktop) and the
+  // bottom sheet (phone) cover part of the stage, and every fit centers its
+  // content in what remains — a pyramid on the raw center would sit half a
+  // panel off what the user is actually looking at.
+  const center = handle.center();
+  const zooms = prefetchZooms(Math.round(handle.map.getZoom()));
+  // The theme-matching template, resolved at fetch time: each palette caches
+  // under its own URLs, so a switch just warms the other set.
+  const template = handle.onFallback ? FALLBACK_URL : cartoUrl();
+  const held = await cachedTileUrls();
+  if (!handles.has(handle) || isOffline()) return; // both can change during the read
+  for (const tile of pyramidTiles(center.lat, center.lng, zooms)) {
+    const url = tileUrl(template, tile, {
+      subdomains: CARTO_SUBDOMAINS,
+      retina: L.Browser.retina,
+    });
+    // The cache keys are absolute; the dev proxy's template is not.
+    if (held.has(new URL(url, location.href).href)) continue;
+    // Best effort: a failed warm-up changes nothing on screen, and the next
+    // settled move simply tries again. priority:'low' keeps the burst behind
+    // anything the page needs even when the idle timeout forced the run
+    // (browsers without the Fetch Priority API ignore the field).
+    fetch(url, { mode: 'no-cors', priority: 'low' }).catch(() => {});
+  }
 }

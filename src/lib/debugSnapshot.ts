@@ -27,6 +27,7 @@ import {
   type AreaLoadPath,
   type TileLayerDebug,
 } from './debugState';
+import { readCachedTiles, summarizeCachedTiles, type TileCacheDebug } from './tileCache';
 import { APP_VERSION } from './appUpdate';
 import { IS_DEV } from './env';
 import type { GeoPoint } from './geo';
@@ -159,7 +160,7 @@ export interface DebugSnapshot {
     refreshing: boolean;
     lastError: string | null;
   };
-  tiles: TileLayerDebug;
+  tiles: TileLayerDebug & { cache: TileCacheDebug };
   position: {
     geoStatus: string;
     hasKnownPos: boolean;
@@ -240,10 +241,11 @@ export async function collectDebugSnapshot(app: AppDebugInput): Promise<DebugSna
   const now = Date.now();
   const point = roundPoint;
 
-  const [sw, swCaches, estimate] = await Promise.all([
+  const [sw, swCaches, estimate, cachedTiles] = await Promise.all([
     collectSw(),
     collectSwCaches(),
     collectStorageEstimate(),
+    readCachedTiles(),
   ]);
 
   const cache = stationsCacheDebug();
@@ -306,7 +308,7 @@ export async function collectDebugSnapshot(app: AppDebugInput): Promise<DebugSna
       refreshing: app.stations.refreshing,
       lastError: app.stations.lastError ?? null,
     },
-    tiles: tileLayerDebugSnapshot(),
+    tiles: { ...tileLayerDebugSnapshot(), cache: summarizeCachedTiles(cachedTiles) },
     position: {
       geoStatus: app.geoStatus,
       hasKnownPos: app.hasKnownPos,
