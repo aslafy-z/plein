@@ -58,6 +58,163 @@
     U+2C60-2C7F, U+A720-A7FF;
 }
 
+/* ── Palette ──────────────────────────────────────────────────────────────
+   THE home of every color the app paints (src/theme.ts only names these as
+   var() references). Two blocks, same tokens: `:root` is the dark palette —
+   the default, so the app looks exactly as before until something says
+   otherwise — and `[data-theme='light']` overrides every token. index.html
+   sets the attribute before first paint from the persisted choice (or the
+   browser's own preference), and src/lib/colorScheme.ts keeps it live.
+   A token added to one block MUST be added to the other. */
+:root {
+  --c-page-bg: #0d0f11;
+  --c-bg: #101214;
+  --c-bg-0: rgba(16, 18, 20, 0); /* --c-bg, fully transparent (gradients) */
+  --c-surface: #1a1d20;
+  --c-surface-2: #1d2226;
+  --c-surface-3: #22282c;
+  --c-nav-bg: #15181b;
+  --c-map-bg: #14181a;
+  --c-accent: #3ddc84;
+  --c-accent-hover: #7ce9ac;
+  --c-on-accent: #08120c;
+  --c-ink: #e8eaed;
+  --c-body: #cfd6da;
+  --c-body-2: #aab2b7;
+  --c-mut: #8a949a;
+  --c-faint: #5c666c;
+  --c-ghost: #3a4147;
+  --c-warn: #e07a5f;
+  --c-border: rgba(255, 255, 255, 0.07);
+  --c-border-08: rgba(255, 255, 255, 0.08);
+  --c-border-09: rgba(255, 255, 255, 0.09);
+  --c-border-12: rgba(255, 255, 255, 0.12);
+  --c-border-15: rgba(255, 255, 255, 0.15);
+  --c-border-18: rgba(255, 255, 255, 0.18);
+  --c-border-20: rgba(255, 255, 255, 0.2);
+  --c-border-25: rgba(255, 255, 255, 0.25);
+  --c-divider: rgba(255, 255, 255, 0.06);
+  --c-accent-border: rgba(61, 220, 132, 0.25);
+  --c-accent-border-strong: rgba(61, 220, 132, 0.35);
+  --c-accent-border-30: rgba(61, 220, 132, 0.3);
+  --c-accent-border-40: rgba(61, 220, 132, 0.4);
+  --c-accent-soft: rgba(61, 220, 132, 0.12);
+  --c-accent-soft-05: rgba(61, 220, 132, 0.05);
+  --c-accent-soft-09: rgba(61, 220, 132, 0.09);
+  --c-accent-soft-10: rgba(61, 220, 132, 0.1);
+  --c-accent-soft-14: rgba(61, 220, 132, 0.14);
+  --c-accent-soft-15: rgba(61, 220, 132, 0.15);
+  --c-accent-pale: #eafff3;
+  --c-accent-deep: #0c2116;
+  --c-accent-glow-25: rgba(61, 220, 132, 0.25);
+  --c-accent-glow-28: rgba(61, 220, 132, 0.28);
+  --c-accent-glow-35: rgba(61, 220, 132, 0.35);
+  --c-accent-glow-55: rgba(61, 220, 132, 0.55);
+  --c-warn-soft: rgba(224, 122, 95, 0.12);
+  --c-warn-soft-14: rgba(224, 122, 95, 0.14);
+  --c-warn-border-30: rgba(224, 122, 95, 0.3);
+  --c-warn-border-35: rgba(224, 122, 95, 0.35);
+  --c-warn-deep: #2a130c;
+  --c-warn-text: #e8b3a4;
+  --c-toggle-off: #2a3136;
+  --c-overlay: rgba(16, 18, 20, 0.85);
+  --c-scrim: rgba(0, 0, 0, 0.55);
+  --c-scrim-soft: rgba(6, 9, 11, 0.35);
+  --c-glass-bg: rgba(16, 18, 20, 0.86);
+  --c-glass-bg-soft: rgba(16, 18, 20, 0.82);
+  --c-glass-bg-strong: rgba(16, 18, 20, 0.94);
+  --c-glass-border: rgba(255, 255, 255, 0.1);
+  --c-shadow-35: rgba(0, 0, 0, 0.35);
+  --c-shadow-40: rgba(0, 0, 0, 0.4);
+  --c-shadow-45: rgba(0, 0, 0, 0.45);
+  --c-shadow-50: rgba(0, 0, 0, 0.5);
+  --c-shadow-55: rgba(0, 0, 0, 0.55);
+  --c-skeleton: #272d33;
+  --c-skeleton-sweep: rgba(255, 255, 255, 0.07);
+  --c-attribution-bg: rgba(16, 18, 20, 0.75);
+  --c-pin-dot-bg: #2a3136;
+  --c-pin-dot-border: rgba(255, 255, 255, 0.35);
+  --c-pin-dot-deal-border: rgba(8, 18, 12, 0.55);
+  --c-pin-dot-high-bg: #3a2b27;
+  --c-pin-dot-high-border: rgba(224, 122, 95, 0.6);
+}
+
+/* « Cap jour » — same hue family, flipped: paper surfaces, the brand green
+   deepened so it holds its contrast as text on white, warm orange darkened
+   the same way. Borders and dividers turn black-alpha, shadows soften. */
+:root[data-theme='light'] {
+  --c-page-bg: #eaeeec;
+  --c-bg: #f2f5f3;
+  --c-bg-0: rgba(242, 245, 243, 0);
+  --c-surface: #ffffff;
+  --c-surface-2: #e9eeeb;
+  --c-surface-3: #dfe6e2;
+  --c-nav-bg: #f8faf9;
+  --c-map-bg: #dfe5e1;
+  --c-accent: #0d8f4f;
+  --c-accent-hover: #0a6e3d;
+  --c-on-accent: #ffffff;
+  --c-ink: #14181b;
+  --c-body: #3d474d;
+  --c-body-2: #4d585e;
+  --c-mut: #5f6b71;
+  --c-faint: #8a9499;
+  --c-ghost: #a8b1b5;
+  --c-warn: #c14f2e;
+  --c-border: rgba(16, 24, 20, 0.1);
+  --c-border-08: rgba(16, 24, 20, 0.11);
+  --c-border-09: rgba(16, 24, 20, 0.12);
+  --c-border-12: rgba(16, 24, 20, 0.16);
+  --c-border-15: rgba(16, 24, 20, 0.19);
+  --c-border-18: rgba(16, 24, 20, 0.22);
+  --c-border-20: rgba(16, 24, 20, 0.24);
+  --c-border-25: rgba(16, 24, 20, 0.3);
+  --c-divider: rgba(16, 24, 20, 0.08);
+  --c-accent-border: rgba(13, 143, 79, 0.3);
+  --c-accent-border-strong: rgba(13, 143, 79, 0.45);
+  --c-accent-border-30: rgba(13, 143, 79, 0.35);
+  --c-accent-border-40: rgba(13, 143, 79, 0.5);
+  --c-accent-soft: rgba(13, 143, 79, 0.1);
+  --c-accent-soft-05: rgba(13, 143, 79, 0.06);
+  --c-accent-soft-09: rgba(13, 143, 79, 0.08);
+  --c-accent-soft-10: rgba(13, 143, 79, 0.09);
+  --c-accent-soft-14: rgba(13, 143, 79, 0.12);
+  --c-accent-soft-15: rgba(13, 143, 79, 0.13);
+  --c-accent-pale: #063d20;
+  --c-accent-deep: #ffffff;
+  --c-accent-glow-25: rgba(13, 143, 79, 0.18);
+  --c-accent-glow-28: rgba(13, 143, 79, 0.2);
+  --c-accent-glow-35: rgba(13, 143, 79, 0.25);
+  --c-accent-glow-55: rgba(13, 143, 79, 0.35);
+  --c-warn-soft: rgba(193, 79, 46, 0.1);
+  --c-warn-soft-14: rgba(193, 79, 46, 0.12);
+  --c-warn-border-30: rgba(193, 79, 46, 0.35);
+  --c-warn-border-35: rgba(193, 79, 46, 0.4);
+  --c-warn-deep: #ffffff;
+  --c-warn-text: #963a1d;
+  --c-toggle-off: #cfd8d3;
+  --c-overlay: rgba(242, 245, 243, 0.85);
+  --c-scrim: rgba(20, 28, 24, 0.4);
+  --c-scrim-soft: rgba(20, 28, 24, 0.22);
+  --c-glass-bg: rgba(250, 252, 251, 0.88);
+  --c-glass-bg-soft: rgba(250, 252, 251, 0.84);
+  --c-glass-bg-strong: rgba(250, 252, 251, 0.96);
+  --c-glass-border: rgba(16, 24, 20, 0.1);
+  --c-shadow-35: rgba(22, 32, 27, 0.12);
+  --c-shadow-40: rgba(22, 32, 27, 0.14);
+  --c-shadow-45: rgba(22, 32, 27, 0.16);
+  --c-shadow-50: rgba(22, 32, 27, 0.18);
+  --c-shadow-55: rgba(22, 32, 27, 0.2);
+  --c-skeleton: #dde3e0;
+  --c-skeleton-sweep: rgba(255, 255, 255, 0.55);
+  --c-attribution-bg: rgba(250, 252, 251, 0.8);
+  --c-pin-dot-bg: #ffffff;
+  --c-pin-dot-border: rgba(16, 24, 20, 0.35);
+  --c-pin-dot-deal-border: rgba(255, 255, 255, 0.75);
+  --c-pin-dot-high-bg: #f7ded4;
+  --c-pin-dot-high-border: rgba(193, 79, 46, 0.7);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -71,29 +228,29 @@ body,
 
 body {
   margin: 0;
-  background: #0d0f11;
-  color: #e8eaed;
+  background: var(--c-page-bg);
+  color: var(--c-ink);
   font-family: Archivo, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
 }
 
 a {
-  color: #3ddc84;
+  color: var(--c-accent);
 }
 a:hover {
-  color: #7ce9ac;
+  color: var(--c-accent-hover);
 }
 
 input[type='range'] {
-  accent-color: #3ddc84;
+  accent-color: var(--c-accent);
 }
 input[type='text'],
 input[type='search'] {
   outline: none;
 }
 input::placeholder {
-  color: #5c666c;
+  color: var(--c-faint);
 }
 
 button {
@@ -172,7 +329,7 @@ button {
   height: 8px;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--c-border-12);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-track {
@@ -201,7 +358,7 @@ button {
   position: relative;
   width: 100%;
   height: 100%;
-  background: #101214;
+  background: var(--c-bg);
   display: flex;
   /* flex-direction comes from React: `column` under the tab bar, `row`
      next to the side navigation (src/App.tsx) */
@@ -239,7 +396,7 @@ button {
 
 /* A click leaves no ring, a Tab does — the map keeps its own inset ring below */
 .app-shell :is(button, a, input, select, [role='button'], [tabindex]):focus-visible {
-  outline: 2px solid #3ddc84;
+  outline: 2px solid var(--c-accent);
   outline-offset: 2px;
 }
 
@@ -252,13 +409,13 @@ button {
   outline: none;
 }
 .app-shell .search-box:has(input:focus-visible, .search-box-hit:focus-visible) {
-  outline: 2px solid #3ddc84;
+  outline: 2px solid var(--c-accent);
   outline-offset: 2px;
 }
 
-/* Leaflet map must inherit the dark look */
+/* Leaflet map must inherit the app look */
 .leaflet-container {
-  background: #14181a;
+  background: var(--c-map-bg);
   font-family: Archivo, system-ui, sans-serif;
 }
 /* The map is focusable (arrows/± drive it, see lib/mapKeyboard) — a click
@@ -267,7 +424,7 @@ button {
   outline: none;
 }
 .leaflet-container:focus-visible {
-  outline: 2px solid #3ddc84;
+  outline: 2px solid var(--c-accent);
   outline-offset: -2px;
 }
 /* The map keeps the full stage size and the bottom sheet overlays it —
@@ -277,22 +434,42 @@ button {
   transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .leaflet-control-attribution {
-  background: rgba(16, 18, 20, 0.75) !important;
-  color: #5c666c !important;
+  background: var(--c-attribution-bg) !important;
+  color: var(--c-faint) !important;
   font-size: 9px !important;
 }
 .leaflet-control-attribution a {
-  color: #8a949a !important;
+  color: var(--c-mut) !important;
 }
 /* Tiles are re-toned to the app palette (neutral cool grays, no loud hues):
-   readable in daylight, blending with the #101214 surfaces */
+   readable in daylight, blending with the app surfaces. The basemap itself
+   swaps between CARTO dark_all and light_all with the theme (lib/tiles.ts);
+   these filters only finish the blend, per theme. */
 .tiles-carto {
   filter: grayscale(0.55) saturate(0.55) brightness(1.5) contrast(0.9);
+}
+[data-theme='light'] .tiles-carto {
+  filter: grayscale(0.2) saturate(0.75) contrast(0.98);
 }
 /* OSM fallback (inverted to dark), same neutral treatment */
 .tiles-dark {
   filter: invert(1) hue-rotate(180deg) grayscale(0.45) saturate(0.45) brightness(0.95)
     contrast(0.88);
+}
+/* In light the OSM fallback keeps its daylight look, only calmed down */
+[data-theme='light'] .tiles-dark {
+  filter: grayscale(0.35) saturate(0.6) brightness(1.02) contrast(0.95);
+}
+
+/* Leaflet writes vector colors as SVG presentation attributes, where a var()
+   cannot resolve — so the themed vectors carry a class instead and the
+   palette applies here (CSS wins over presentation attributes). */
+.zone-circle {
+  stroke: var(--c-accent);
+  fill: var(--c-accent);
+}
+.route-line {
+  stroke: var(--c-accent);
 }
 
 /* Background-refresh indicator */
@@ -322,7 +499,7 @@ button {
    The base colour carries the whole meaning, so a bar that never sweeps still
    reads as "content is coming" rather than as an empty box. */
 .skeleton {
-  background-color: #272d33;
+  background-color: var(--c-skeleton);
 }
 
 /* The sweep is decoration, and it is only added where it is free.
@@ -352,9 +529,9 @@ button {
   inset: 0;
   background: linear-gradient(
     100deg,
-    rgba(255, 255, 255, 0) 35%,
-    rgba(255, 255, 255, 0.07) 50%,
-    rgba(255, 255, 255, 0) 65%
+    transparent 35%,
+    var(--c-skeleton-sweep) 50%,
+    transparent 65%
   );
   transform: translateX(-100%);
   animation: skeleton-sweep 1.5s linear infinite;
@@ -383,21 +560,21 @@ button {
   width: 11px;
   height: 11px;
   border-radius: 50%;
-  background: #2a3136;
-  border: 1.5px solid rgba(255, 255, 255, 0.35);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  background: var(--c-pin-dot-bg);
+  border: 1.5px solid var(--c-pin-dot-border);
+  box-shadow: 0 1px 4px var(--c-shadow-50);
   cursor: pointer;
   box-sizing: border-box;
 }
 /* Price tiers: « bons plans » glow green, the priciest tier warns in orange */
 .pin-dot--deal {
-  background: #3ddc84;
-  border-color: rgba(8, 18, 12, 0.55);
-  box-shadow: 0 0 6px rgba(61, 220, 132, 0.55);
+  background: var(--c-accent);
+  border-color: var(--c-pin-dot-deal-border);
+  box-shadow: 0 0 6px var(--c-accent-glow-55);
 }
 .pin-dot--high {
-  background: #3a2b27;
-  border-color: rgba(224, 122, 95, 0.6);
+  background: var(--c-pin-dot-high-bg);
+  border-color: var(--c-pin-dot-high-border);
 }
 
 /* Simple fade/slide for sheets and toast */
