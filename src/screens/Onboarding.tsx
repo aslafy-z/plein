@@ -32,7 +32,9 @@ export default function Onboarding() {
               margin: '0 auto',
               padding: '40px 26px',
             }
-          : { padding: '26px 26px 22px' }),
+          : // The phone CTA block sits on the bottom edge, so the gesture bar
+            // must be padded out like every other bottom-edge chrome
+            { padding: '26px 26px calc(22px + env(safe-area-inset-bottom, 0px))' }),
       }}
     >
       {/* Logo row — « 2a Goutte-repère » */}
@@ -91,12 +93,12 @@ export default function Onboarding() {
           paddingTop: 24,
         }}
       >
+        {/* Plain row on purpose: with both actions below now drawn as pills,
+            a third boxed rectangle here made the bottom stack read as three
+            competing controls — the box language belongs to the buttons */}
         <div
           style={{
-            background: C.surface,
-            border: `1px solid ${C.border08}`,
-            borderRadius: 14,
-            padding: '13px 16px',
+            padding: '0 4px',
             display: 'flex',
             alignItems: 'center',
             gap: 12,
@@ -133,11 +135,18 @@ export default function Onboarding() {
         <button
           onClick={() => app.finishOnboarding(false)}
           style={{
+            // Secondary pill mirroring the CTA's geometry: it must READ as a
+            // button (a bare text link here was missed), while the surface2 +
+            // hairline look keeps it clearly second to the green CTA
+            width: '100%',
             textAlign: 'center',
-            fontSize: 13,
-            fontWeight: 600,
-            color: C.mut,
-            padding: 4,
+            fontSize: 14,
+            fontWeight: 700,
+            color: C.body,
+            background: C.surface2,
+            border: `1px solid ${C.border12}`,
+            borderRadius: 26,
+            padding: '14px 0',
           }}
         >
           {m.onboarding_skip_location()}
