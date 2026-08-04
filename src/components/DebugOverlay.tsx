@@ -33,6 +33,21 @@ const CHIP = 40;
 /** Refresh cadence while the panel is open */
 const LIVE_REFRESH_MS = 2000;
 
+/**
+ * Two tabs, ordered by how much a debugging eye needs them: « Live » is what
+ * MOVES while reproducing a bug — errors first, then the data on screen and
+ * where it came from; « Env » is the session's standing facts (build, SW,
+ * storage), worth one look and then noise next to the live numbers.
+ */
+const TABS: { id: 'live' | 'env'; label: string; sections: (keyof DebugSnapshot)[] }[] = [
+  {
+    id: 'live',
+    label: 'Live',
+    sections: ['errors', 'stationsOnScreen', 'areaCache', 'tiles', 'position', 'connectivity'],
+  },
+  { id: 'env', label: 'Env', sections: ['build', 'sw', 'app', 'storage'] },
+];
+
 const MONO_11 = `500 11px ${FONT.mono}`;
 
 function sectionTitleStyle(): React.CSSProperties {
@@ -105,6 +120,7 @@ export default function DebugOverlay() {
   const errorCount = useConsoleErrorCount();
 
   const [expanded, setExpanded] = useState(false);
+  const [tab, setTab] = useState<'live' | 'env'>('live');
   const [snapshot, setSnapshot] = useState<DebugSnapshot | null>(null);
   const [roundCoords, setRoundCoords] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -364,23 +380,41 @@ export default function DebugOverlay() {
         />
         Round coordinates (~1 km) — keeps screenshots from leaking home
       </label>
+      <div
+        role="tablist"
+        style={{ display: 'flex', gap: 6, padding: '8px 12px 0' }}
+      >
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => setTab(t.id)}
+            style={{
+              ...buttonStyle,
+              background: tab === t.id ? C.accent : C.surface2,
+              color: tab === t.id ? C.onAccent : C.body,
+              border: `1px solid ${tab === t.id ? C.accent : C.border12}`,
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
       <div style={{ overflow: 'auto', padding: '2px 12px 12px', minHeight: 0 }}>
         {snapshot == null ? (
           <div style={{ color: C.faint, padding: '12px 0' }}>Collecting…</div>
         ) : (
-          Object.entries(snapshot).map(([section, value]) =>
-            value !== null && typeof value === 'object' ? (
+          TABS.find((t) => t.id === tab)!.sections.map((section) => {
+            const value = snapshot[section];
+            if (value === null || typeof value !== 'object') return null;
+            return (
               <div key={section}>
                 <div style={sectionTitleStyle()}>{section}</div>
-                <Rows obj={value as Record<string, unknown>} />
+                <Rows obj={value as unknown as Record<string, unknown>} />
               </div>
-            ) : (
-              <div key={section} style={{ display: 'flex', gap: 8, justifyContent: 'space-between', marginTop: 6 }}>
-                <span style={{ color: C.mut }}>{section}</span>
-                <span style={{ color: C.body }}>{String(value)}</span>
-              </div>
-            ),
-          )
+            );
+          })
         )}
       </div>
     </div>
