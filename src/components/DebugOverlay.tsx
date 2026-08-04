@@ -47,10 +47,10 @@ const SECTION_ORDER: (keyof DebugSnapshot)[] = [
   'tiles',
   'position',
   'connectivity',
-  'build',
   'sw',
   'app',
   'storage',
+  'build',
 ];
 
 const MONO_11 = `500 11px ${FONT.mono}`;
