@@ -118,9 +118,7 @@ l'app choisit selon la zone affichée (source *Automatique*). Le reste
 L'app n'a **aucun backend** : le navigateur interroge directement ces services
 publics. Les sources sont pluggables (`src/data/types.ts`). Hors connexion ou
 flux indisponible, l'app garde les dernières stations chargées (cache par
-zone) avec une bannière explicite et réessaie dès que la connexion revient ;
-le jeu de données de démonstration hors-ligne ne sert qu'au développement et
-à la suite de tests, et n'est jamais proposé dans l'app.
+zone) avec une bannière explicite et réessaie dès que la connexion revient.
 
 ## 🛠️ Développement
 
