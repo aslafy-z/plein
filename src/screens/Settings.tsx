@@ -18,6 +18,7 @@ import {
   type DebugSnapshot,
 } from '../lib/debugSnapshot';
 import { clearFavoritePrices } from '../data/favoritePrices';
+import { isSourceAvailable } from '../data/providers';
 import { agoLabelFrom, fmtDecimal, sizeLabel } from '../lib/format';
 import { fuelLabel, sourceSublabel, sourceTitle, themeLabel, vehicleLabel } from '../lib/labels';
 import { THEMES } from '../lib/colorScheme';
@@ -773,17 +774,24 @@ export default function Settings() {
                 it left the list), so it can still be switched back off. */}
             {SOURCES.filter((src) => src !== 'demo' || sourceId === 'demo').map((src) => {
               const selected = sourceId === src;
+              // A source this deployment cannot serve stays listed — the
+              // coverage it names is real — but greyed out and unselectable,
+              // saying so instead of failing once picked.
+              const available = isSourceAvailable(src);
               return (
                 <button
                   key={src}
                   onClick={() => app.setSourceId(src)}
+                  disabled={!available}
+                  aria-disabled={!available}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: 12,
                     padding: '14px 16px',
                     borderBottom: `1px solid ${C.divider}`,
-                    cursor: 'pointer',
+                    cursor: available ? 'pointer' : 'default',
+                    opacity: available ? 1 : 0.5,
                     width: '100%',
                     textAlign: 'left',
                   }}
@@ -810,7 +818,7 @@ export default function Settings() {
                       {sourceTitle(src)}
                     </div>
                     <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>
-                      {sourceSublabel(src)}
+                      {available ? sourceSublabel(src) : m.source_unavailable()}
                     </div>
                   </div>
                 </button>

@@ -64,6 +64,7 @@
   "source_de_sub": "MTS-K officiel via le relais Tankerkönig · quasi temps réel",
   "source_demo_title": "Données de démonstration",
   "source_demo_sub": "hors-ligne · jeu de données fictif",
+  "source_unavailable": "Indisponible sur ce déploiement",
   "place_andorra": "Andorre",
   "place_andorra_parish": "Andorre · {parish}",
   "place_portugal": "Portugal",

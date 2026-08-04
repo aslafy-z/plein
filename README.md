@@ -151,12 +151,20 @@ honoring `HTTPS_PROXY` — see `vite.config.ts`.
 
 The German source (Tankerkönig) requires a **personal API key** — free, on
 [tankerkoenig.de](https://creativecommons.tankerkoenig.de). The terms of use
-forbid publishing a key (repo, bundle…), so it never goes through the client.
-In dev, export `TANKERKOENIG_API_KEY` before `npm run dev` (the Vite proxy
-injects it server-side); in production, store it as a Worker secret:
-`wrangler secret put TANKERKOENIG_API_KEY` (the Worker proxies the API with a
-~5 min edge cache — `worker/index.ts`). Without a key the German source
-simply reports itself unavailable.
+forbid publishing a key (repo, bundle…), so it never goes through the client:
+the browser only ever calls the app's own `/stations` route, and a proxy
+holding the key talks to the upstream API.
+
+In dev, export `TANKERKOENIG_API_KEY` before `npm run dev` and the Vite
+middleware becomes that proxy. In production, store the key as a Worker
+secret — `wrangler secret put TANKERKOENIG_API_KEY` — and build with
+`PLEIN_DE_PROXY=/api/de`, which is the route `worker/index.ts` serves (~5 min
+edge cache).
+
+**Without that build variable the German source is simply switched off**: it
+is greyed out in the settings, *Automatic* never queries it and German place
+search is disabled — rather than the app issuing requests that can only
+fail.
 
 ## 📄 License
 

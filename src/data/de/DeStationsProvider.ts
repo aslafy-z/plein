@@ -8,12 +8,18 @@
 // proxy that holds it: the Vite middleware in dev (TANKERKOENIG_API_KEY env
 // var, see vite.config.ts) and the Cloudflare Worker in production (Wrangler
 // secret, see worker/index.ts, with a ~5 min edge cache to respect the API's
-// ~1 request/min budget). Without a key the proxy answers 503, this provider
-// throws, and the store falls back as usual — never fake data shown as real.
-// `list.php` caps the search radius at 25 km, which matches the app's
-// MAX_RADIUS_KM exactly; route corridors are covered by sampling circles whose
-// spacing keeps every query under that cap.
-import { IS_DEV } from '../../lib/env';
+// ~1 request/min budget).
+//
+// That proxy is not part of every deployment, and a source that cannot answer
+// is declared unavailable rather than discovered through failing requests:
+// `DE_PROXY_BASE` (stamped from the build environment) is what `deAvailable()`
+// reports, Settings greys the source out, « Automatic » skips it and German
+// place search stays off. Never a placeholder shown as a real price.
+//
+// The upstream endpoint caps the search radius at 25 km, which matches the
+// app's MAX_RADIUS_KM exactly; route corridors are covered by sampling circles
+// whose spacing keeps every query under that cap.
+import { DE_PROXY_BASE } from '../../lib/env';
 import type { GeoPoint } from '../../lib/geo';
 import { haversineKm, nearestOnPolyline, polylineLengthKm, samplePolyline } from '../../lib/geo';
 import { initialsOf, titleCase } from '../../lib/text';
@@ -26,23 +32,34 @@ import type {
   StationsProvider,
 } from '../types';
 
-const LIST_PATH = '/json/list.php';
+/**
+ * The route the app calls, on its own origin. Tankerkönig serves its list
+ * from a PHP script; that endpoint belongs to the two proxies that hold the
+ * key (`vite.config.ts` in dev, `worker/index.ts` in production) and appears
+ * nowhere in this bundle — the browser only ever sees `<base>/stations`.
+ */
+const STATIONS_PATH = '/stations';
+/** Where Node aims the same route — scripts/live-providers.mjs maps it */
+const NODE_BASE = '/api/de';
 
-/** Node (scripts/live-providers.mjs) hits the API directly — the key comes
- * from the TANKERKOENIG_API_KEY environment variable, never from code. */
+/** Node (scripts/live-providers.mjs) supplies the key from the
+ * TANKERKOENIG_API_KEY environment variable, never from code. */
 function nodeApiKey(): string | undefined {
   const proc = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process;
-  return proc?.env?.TANKERKOENIG_API_KEY;
+  return proc?.env?.TANKERKOENIG_API_KEY || undefined;
+}
+
+/**
+ * Can this build reach the German flux at all? False when the deployment
+ * carries no key-holding proxy — which is a configuration answer, known
+ * before any request, not an outage.
+ */
+export function deAvailable(): boolean {
+  return DE_PROXY_BASE != null || nodeApiKey() != null;
 }
 
 function listUrl(params: URLSearchParams): string {
-  const nodeKey = nodeApiKey();
-  if (nodeKey) {
-    params.set('apikey', nodeKey);
-    return `https://creativecommons.tankerkoenig.de${LIST_PATH}?${params.toString()}`;
-  }
-  // Browser: same-origin key-holding proxy (Vite middleware / CF Worker)
-  return `${IS_DEV ? '/proxy/de' : '/api/de'}${LIST_PATH}?${params.toString()}`;
+  return `${DE_PROXY_BASE ?? NODE_BASE}${STATIONS_PATH}?${params.toString()}`;
 }
 
 const TIMEOUT_MS = 12000;
@@ -63,12 +80,21 @@ const MAX_PRICE = 3.5;
 const DE_CENTER: GeoPoint = { lat: 51.16, lng: 10.45 };
 const DE_RADIUS_KM = 470;
 
-/** Can the zone hold German stations at all? (drives the « Automatic » source) */
+/**
+ * Can this source serve the zone? (drives the « Automatic » source)
+ *
+ * Coverage is geography AND configuration: without a proxy the source covers
+ * nothing, anywhere. Folding it in here is what guarantees « Automatic » never
+ * issues a German request on a deployment that has no key — there is one gate,
+ * so no call site can forget it.
+ */
 export function deCoversNear(center: GeoPoint, radiusKm: number): boolean {
+  if (!deAvailable()) return false;
   return haversineKm(center, DE_CENTER) <= DE_RADIUS_KM + radiusKm;
 }
 
 export function deCoversAlong(polyline: GeoPoint[], corridorKm: number): boolean {
+  if (!deAvailable()) return false;
   return nearestOnPolyline(DE_CENTER, polyline).distKm <= DE_RADIUS_KM + corridorKm;
 }
 
@@ -224,6 +250,9 @@ export class DeStationsProvider implements StationsProvider {
     radiusKm: number,
     opts?: StationsFetchOptions,
   ): Promise<Station[]> {
+    // Called directly (the standalone « de » source) the answer is an error,
+    // not an empty zone: « no station here » would be a lie about Germany.
+    if (!deAvailable()) throw new Error('tankerkoenig: no price proxy configured');
     if (!deCoversNear(center, radiusKm)) return [];
     const stations = await fetchCircle(center, radiusKm, opts?.lowPriority);
     return stations
@@ -237,6 +266,7 @@ export class DeStationsProvider implements StationsProvider {
   }
 
   async getStationsAlong(polyline: GeoPoint[], corridorKm: number): Promise<Station[]> {
+    if (!deAvailable()) throw new Error('tankerkoenig: no price proxy configured');
     if (!deCoversAlong(polyline, corridorKm)) return [];
     // Sample spacing chosen so each 25 km-max circle overlaps its neighbours
     // enough to cover the whole corridor: spacing/2 + corridor + 1 ≤ RAD_MAX.

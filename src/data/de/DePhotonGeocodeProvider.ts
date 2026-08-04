@@ -8,9 +8,14 @@
 // and the country code is checked again because the box overlaps every
 // neighbour from France to Poland. That is also exactly what the Tankerkönig
 // price flux covers.
+//
+// Photon needs no key of its own, but it is gated on the price source all the
+// same (`deAvailable()`): on a deployment without a German proxy, offering
+// German places would only ever land the user on a map with no prices on it.
 import { IS_DEV } from '../../lib/env';
 import { rankByKind } from '../geocodeRank';
 import type { GeocodeProvider, GeocodeResult, PlaceKind } from '../types';
+import { deAvailable } from './DeStationsProvider';
 
 const ENDPOINT = (IS_DEV ? '/proxy/photon' : 'https://photon.komoot.io') + '/api';
 const TIMEOUT_MS = 6000;
@@ -87,6 +92,7 @@ function describe(p: PhotonProperties): Pick<GeocodeResult, 'label' | 'sublabel'
 
 export class DePhotonGeocodeProvider implements GeocodeProvider {
   async search(query: string): Promise<GeocodeResult[]> {
+    if (!deAvailable()) return [];
     const q = query.trim();
     if (q.length < MIN_QUERY) return [];
 

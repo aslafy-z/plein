@@ -155,11 +155,19 @@ respectant `HTTPS_PROXY` — voir `vite.config.ts`.
 La source allemande (Tankerkönig) demande une **clé API personnelle** —
 gratuite, sur [tankerkoenig.de](https://creativecommons.tankerkoenig.de). Les
 CGU interdisent de publier une clé (repo, bundle…) : elle ne transite donc
-jamais par le client. En dev, exportez `TANKERKOENIG_API_KEY` avant
-`npm run dev` (le proxy Vite l'injecte côté serveur) ; en production,
-stockez-la en secret Worker : `wrangler secret put TANKERKOENIG_API_KEY` (le
-Worker proxifie l'API avec un cache edge de ~5 min — `worker/index.ts`). Sans
-clé, la source allemande se déclare simplement indisponible.
+jamais par le client — le navigateur n'appelle que la route `/stations` de
+l'app, et c'est un proxy détenant la clé qui parle à l'API amont.
+
+En dev, exportez `TANKERKOENIG_API_KEY` avant `npm run dev` et le middleware
+Vite devient ce proxy. En production, stockez la clé en secret Worker —
+`wrangler secret put TANKERKOENIG_API_KEY` — et compilez avec
+`PLEIN_DE_PROXY=/api/de`, la route que sert `worker/index.ts` (cache edge de
+~5 min).
+
+**Sans cette variable de build, la source allemande est tout simplement
+coupée** : elle est grisée dans les réglages, *Automatique* ne l'interroge
+jamais et la recherche de lieux allemands est désactivée — plutôt que de
+lancer des requêtes qui ne peuvent qu'échouer.
 
 ## 📄 Licence
 

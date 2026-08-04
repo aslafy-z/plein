@@ -16,9 +16,18 @@ const pexec = promisify(execFile);
 
 // ── curl-backed fetch (proxy-aware) ──────────────────────────────────────────
 globalThis.fetch = async (url) => {
-  // App-relative URLs (only /brands-fr.json today) are bundled assets: serve
-  // the local file so OSM enrichment (brands + position snapping) runs too.
-  if (String(url).startsWith('/')) {
+  // The German provider calls the app's OWN route (/api/de/stations) because
+  // upstream's endpoint belongs to the proxies holding the key. Node has no
+  // proxy, so this plays that role: map the route and inject the key, exactly
+  // as the Vite middleware and the Worker do.
+  if (String(url).startsWith('/api/de/stations')) {
+    const raw = String(url);
+    const params = new URLSearchParams(raw.slice(raw.indexOf('?') + 1));
+    params.set('apikey', process.env.TANKERKOENIG_API_KEY ?? '');
+    url = `https://creativecommons.tankerkoenig.de/json/list.php?${params.toString()}`;
+  } else if (String(url).startsWith('/')) {
+    // App-relative URLs (only /brands-fr.json today) are bundled assets: serve
+    // the local file so OSM enrichment (brands + position snapping) runs too.
     const body = readFileSync(join(process.cwd(), 'public', String(url)), 'utf8');
     return { ok: true, status: 200, json: async () => JSON.parse(body), text: async () => body };
   }

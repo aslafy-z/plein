@@ -157,11 +157,19 @@ mosaicos (`/tiles/*`) respeitando `HTTPS_PROXY` — ver `vite.config.ts`.
 A fonte alemã (Tankerkönig) requer uma **chave API pessoal** — gratuita, em
 [tankerkoenig.de](https://creativecommons.tankerkoenig.de). As condições de
 utilização proíbem publicar uma chave (repo, bundle…), por isso nunca passa
-pelo cliente. Em desenvolvimento, exporte `TANKERKOENIG_API_KEY` antes de
-`npm run dev` (o proxy do Vite injeta-a no servidor); em produção, guarde-a
-como segredo do Worker: `wrangler secret put TANKERKOENIG_API_KEY` (o Worker
-faz proxy da API com uma cache edge de ~5 min — `worker/index.ts`). Sem
-chave, a fonte alemã declara-se simplesmente indisponível.
+pelo cliente: o navegador só chama a rota `/stations` da própria app, e é um
+proxy com a chave que fala com a API de origem.
+
+Em desenvolvimento, exporte `TANKERKOENIG_API_KEY` antes de `npm run dev` e o
+middleware do Vite passa a ser esse proxy. Em produção, guarde a chave como
+segredo do Worker — `wrangler secret put TANKERKOENIG_API_KEY` — e compile
+com `PLEIN_DE_PROXY=/api/de`, a rota que `worker/index.ts` serve (cache edge
+de ~5 min).
+
+**Sem essa variável de compilação a fonte alemã fica desligada**: aparece a
+cinzento nas definições, a *Automática* nunca a consulta e a pesquisa de
+locais alemães é desativada — em vez de lançar pedidos que só podem
+falhar.
 
 ## 📄 Licença
 

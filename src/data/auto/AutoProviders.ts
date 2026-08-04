@@ -24,7 +24,7 @@ import { AdStationsProvider, adCoversAlong, adCoversNear } from '../ad/AdStation
 import { AdGeocodeProvider } from '../ad/AdGeocodeProvider';
 import { PtStationsProvider, ptCoversAlong, ptCoversNear } from '../pt/PtStationsProvider';
 import { PhotonGeocodeProvider } from '../pt/PhotonGeocodeProvider';
-import { DeStationsProvider, deCoversAlong, deCoversNear } from '../de/DeStationsProvider';
+import { DeStationsProvider, deAvailable, deCoversAlong, deCoversNear } from '../de/DeStationsProvider';
 import { DePhotonGeocodeProvider } from '../de/DePhotonGeocodeProvider';
 import { mergeByKind } from '../geocodeRank';
 
@@ -183,8 +183,11 @@ export class AutoGeocodeProvider implements GeocodeProvider {
     // Localities of all five countries first, then their streets, then their
     // house numbers; inside one kind the sources interleave in the order given
     // here — France, Andorra, Portugal, Spain, Germany — so no country fills
-    // the visible rows on its own.
-    const sources = [this.ban, this.ad, this.photon, this.cartociudad, this.dePhoton];
+    // the visible rows on its own. Germany drops out entirely on a deployment
+    // with no price proxy: suggesting a town whose prices we cannot load is
+    // worse than not offering it.
+    const sources = [this.ban, this.ad, this.photon, this.cartociudad];
+    if (deAvailable()) sources.push(this.dePhoton);
     return mergeAsTheyLand(
       sources.map((source) => source.search(query)),
       opts?.onPartial,

@@ -64,6 +64,7 @@
   "source_de_sub": "MTS-K oficial a través del relleu Tankerkönig · gairebé en temps real",
   "source_demo_title": "Dades de demostració",
   "source_demo_sub": "sense connexió · conjunt de dades fictici",
+  "source_unavailable": "No disponible en aquest desplegament",
   "place_andorra": "Andorra",
   "place_andorra_parish": "Andorra · {parish}",
   "place_portugal": "Portugal",

@@ -64,6 +64,7 @@
   "source_de_sub": "MTS-K oficial através do retransmissor Tankerkönig · quase em tempo real",
   "source_demo_title": "Dados de demonstração",
   "source_demo_sub": "sem ligação · conjunto de dados fictício",
+  "source_unavailable": "Indisponível nesta implantação",
   "place_andorra": "Andorra",
   "place_andorra_parish": "Andorra · {parish}",
   "place_portugal": "Portugal",

@@ -51,7 +51,7 @@ import {
   type ServiceTag,
   type Station,
 } from '../data/types';
-import { getProviders } from '../data/providers';
+import { getProviders, isSourceAvailable } from '../data/providers';
 import { fuelLabel } from '../lib/labels';
 import { brandGroup } from '../lib/brandIcons';
 import {
@@ -760,14 +760,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // persisted are already translated by persist.ts's migrate() before this.
   const [sourceId, setSourceIdState] = useState<DataSourceId>(() => {
     const saved = persisted.sourceId as string | undefined;
-    return saved === 'fr' ||
+    const known =
+      saved === 'fr' ||
       saved === 'es' ||
       saved === 'ad' ||
       saved === 'pt' ||
       saved === 'de' ||
-      saved === 'demo'
-      ? saved
-      : 'auto';
+      saved === 'demo';
+    // A choice this build can no longer serve (Germany on a deployment whose
+    // price proxy went away) falls back rather than opening on a dead source.
+    return known && isSourceAvailable(saved) ? saved : 'auto';
   });
   const [mapsSite, setMapsSiteState] = useState<MapsSiteId>(persisted.mapsSite ?? 'google');
   // Mirror of the Paraglide locale. Message functions read it from the runtime;

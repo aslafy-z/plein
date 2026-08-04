@@ -64,6 +64,7 @@
   "source_de_sub": "official MTS-K via the Tankerkönig relay · near real-time",
   "source_demo_title": "Demo data",
   "source_demo_sub": "offline · fictional dataset",
+  "source_unavailable": "Unavailable in this deployment",
   "place_andorra": "Andorra",
   "place_andorra_parish": "Andorra · {parish}",
   "place_portugal": "Portugal",

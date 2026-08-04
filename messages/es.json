@@ -64,6 +64,7 @@
   "source_de_sub": "MTS-K oficial a través del relé Tankerkönig · casi en tiempo real",
   "source_demo_title": "Datos de demostración",
   "source_demo_sub": "sin conexión · conjunto de datos ficticio",
+  "source_unavailable": "No disponible en este despliegue",
   "place_andorra": "Andorra",
   "place_andorra_parish": "Andorra · {parish}",
   "place_portugal": "Portugal",

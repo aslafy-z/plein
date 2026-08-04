@@ -80,23 +80,33 @@ test.describe('Portuguese source', () => {
   })
 })
 
-test.describe('German source', () => {
-  // Same contract for the German flux (Tankerkönig / MTS-K), centered on
-  // Berlin. With TANKERKOENIG_API_KEY exported the dev proxy serves live
-  // data; without it the proxy answers 503 and the app must own up with its
-  // source-down state — both end on a usable map.
-  test.use({
-    seed: {
-      sourceId: 'de',
-      onboarded: true,
-      lastPos: { lat: 52.52, lng: 13.405 },
-    },
-  })
+test.describe('German source, unconfigured', () => {
+  // The German flux (Tankerkönig / MTS-K) is the one source a deployment can
+  // lack: it needs a proxy holding a personal key. Without one the app must
+  // say so UP FRONT rather than let it be picked and fail — greyed out in
+  // Settings, and a German choice restored from storage falls back.
+  // `npm run verify:live` covers the live flux when the key IS exported.
+  test.skip(
+    !!process.env.TANKERKOENIG_API_KEY,
+    'the dev proxy has a key here — the source is configured, so nothing to grey out',
+  )
 
-  test('de source yields a usable map (live data, or the explicit source-down state)', async ({ page }) => {
-    test.setTimeout(120_000)
-    await page.goto('/')
-    await expectUsableMap(page)
+  // Seeded ON the German source, which this build cannot serve: the row has to
+  // say so rather than sit there selectable.
+  test.use({ seed: { sourceId: 'de', onboarded: true, lastPos: { lat: 52.52, lng: 13.405 } } })
+
+  test('the de source is greyed out and cannot be picked', async ({ page }) => {
+    // Availability is a build-time answer, so no network luck is involved —
+    // every live request is aborted and the assertions still hold.
+    await page.route('**/proxy/**', (route) => route.abort())
+    await page.goto('/settings')
+
+    const germany = page.getByRole('button', { name: /Germany · tankerkoenig\.de/ })
+    await expect(germany).toBeVisible()
+    await expect(germany).toBeDisabled()
+    await expect(germany).toContainText('Unavailable in this deployment')
+    // The sources that need no key stay pickable next to it
+    await expect(page.getByRole('button', { name: /France · prix-carburants/ })).toBeEnabled()
   })
 })
 

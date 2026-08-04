@@ -159,12 +159,19 @@ les tessel·les (`/tiles/*`) respectant `HTTPS_PROXY` — vegeu
 La font alemanya (Tankerkönig) requereix una **clau API personal** —
 gratuïta, a [tankerkoenig.de](https://creativecommons.tankerkoenig.de). Les
 condicions d'ús prohibeixen publicar una clau (repo, bundle…), així que no
-passa mai pel client. En desenvolupament, exporteu `TANKERKOENIG_API_KEY`
-abans de `npm run dev` (el proxy de Vite la injecta al servidor); en
-producció, deseu-la com a secret del Worker:
-`wrangler secret put TANKERKOENIG_API_KEY` (el Worker fa de proxy de l'API
-amb una memòria cau edge de ~5 min — `worker/index.ts`). Sense clau, la font
-alemanya simplement es declara no disponible.
+passa mai pel client: el navegador només crida la ruta `/stations` de la
+mateixa app, i és un proxy amb la clau qui parla amb l'API original.
+
+En desenvolupament, exporteu `TANKERKOENIG_API_KEY` abans de `npm run dev` i
+el middleware de Vite esdevé aquest proxy. En producció, deseu la clau com a
+secret del Worker — `wrangler secret put TANKERKOENIG_API_KEY` — i compileu
+amb `PLEIN_DE_PROXY=/api/de`, la ruta que serveix `worker/index.ts` (memòria
+cau edge de ~5 min).
+
+**Sense aquesta variable de compilació la font alemanya queda desactivada**:
+surt en gris a la configuració, *Automàtica* no la consulta mai i la cerca de
+llocs alemanys es deshabilita — en comptes de llançar peticions que només
+poden fallar.
 
 ## 📄 Llicència
 
