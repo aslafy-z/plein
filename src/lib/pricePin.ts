@@ -5,7 +5,10 @@
 // wrap the HTML in an L.divIcon, and the tests read the markup directly.
 //
 // The label arrives already formatted (lib/format fmtPrice) so nothing here
-// touches the locale.
+// touches the locale. Colors are C tokens — var() references that resolve in
+// the divIcon's inline styles, so the pins re-tint with the theme.
+
+import { C } from '../theme';
 
 export type PinTier = 'deal' | 'mid' | 'high';
 
@@ -18,11 +21,11 @@ export interface PricePinOptions {
   focused?: boolean;
 }
 
-const DEAL_BG = '#3ddc84';
-const DEAL_FG = '#08120c';
-const BASE_BG = '#22282c';
-const BASE_FG = '#cfd6da';
-const HIGH_FG = '#e07a5f';
+const DEAL_BG = C.accent;
+const DEAL_FG = C.onAccent;
+const BASE_BG = C.surface3;
+const BASE_FG = C.body;
+const HIGH_FG = C.warn;
 
 /** Full price bubble + tip. `deal` styling also crowns a recommended pin. */
 export function pricePinHtml(label: string, opts: PricePinOptions = {}): string {
@@ -41,16 +44,16 @@ export function pricePinHtml(label: string, opts: PricePinOptions = {}): string 
     : "600 13px 'Spline Sans Mono',monospace";
   const pad = big ? '7px 11px' : '5px 9px';
   const border = focused
-    ? `2px solid ${deal ? '#eafff3' : DEAL_BG}`
+    ? `2px solid ${deal ? C.accentPale : DEAL_BG}`
     : deal
       ? `1px solid ${DEAL_BG}`
       : tier === 'high'
-        ? '1px solid rgba(224,122,95,.35)'
-        : '1px solid rgba(255,255,255,.08)';
+        ? `1px solid ${C.warnBorder35}`
+        : `1px solid ${C.border08}`;
   const shadow = focused
-    ? 'drop-shadow(0 6px 16px rgba(61,220,132,.55))'
+    ? `drop-shadow(0 6px 16px ${C.accentGlow55})`
     : recommended
-      ? 'drop-shadow(0 4px 12px rgba(61,220,132,.35))'
+      ? `drop-shadow(0 4px 12px ${C.accentGlow35})`
       : 'none';
   const tierClass = deal ? '--deal' : tier === 'high' ? '--high' : '';
   const bubbleClass = `pin-bubble${tierClass && ` pin-bubble${tierClass}`}`;

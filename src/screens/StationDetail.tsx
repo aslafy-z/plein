@@ -26,7 +26,7 @@ import { useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
 import { openStatus } from '../lib/hours';
 import { brandIconSrc } from '../lib/brandIcons';
-import { addDarkBasemap } from '../lib/tiles';
+import { addBasemap } from '../lib/tiles';
 import Star from '../components/Star';
 import ShareIcon from '../components/ShareIcon';
 
@@ -48,24 +48,24 @@ function StationMiniMap({ station }: { station: Station }) {
       touchZoom: false,
     });
     map.setView([station.lat, station.lng], 15);
-    addDarkBasemap(map);
+    addBasemap(map);
     // The enseigne's logo on a white tile identifies the station far better
     // than its initials; brands we have no logo for keep the initials bubble.
     const iconSrc = brandIconSrc(station.brand ?? station.name);
     const bubble = iconSrc
-      ? `<div class="pin-bubble" style="background:#fff;border:1px solid #3ddc84;` +
+      ? `<div class="pin-bubble" style="background:#fff;border:1px solid ${C.accent};` +
         `width:34px;height:34px;display:flex;align-items:center;justify-content:center">` +
         // background-image rather than <img>: a missing file leaves the white
         // tile instead of a broken-image glyph.
         `<div style="width:23px;height:23px;background:url('${iconSrc}') center/contain no-repeat"></div>` +
         `</div>`
-      : `<div class="pin-bubble" style="background:#3ddc84;color:#08120c;` +
-        `font:700 13px 'Spline Sans Mono',monospace;padding:5px 9px;border:1px solid #3ddc84">` +
+      : `<div class="pin-bubble" style="background:${C.accent};color:${C.onAccent};` +
+        `font:700 13px 'Spline Sans Mono',monospace;padding:5px 9px;border:1px solid ${C.accent}">` +
         `${station.init}</div>`;
     const html =
       `<div style="transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center">` +
       bubble +
-      `<div class="pin-tip" style="border-top:6px solid #3ddc84"></div></div>`;
+      `<div class="pin-tip" style="border-top:6px solid ${C.accent}"></div></div>`;
     L.marker([station.lat, station.lng], {
       icon: L.divIcon({ className: '', html, iconSize: [0, 0], iconAnchor: [0, 0] }),
       interactive: false,
