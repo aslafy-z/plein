@@ -54,12 +54,16 @@ const CONTEXT_LOCALE = { en: 'en-US', fr: 'fr-FR', es: 'es-ES', ca: 'ca-ES', pt:
 
 // One scene per locale, in the language's own country (English rides along on
 // the French one): `center` seeds the position for the map and the fiche,
-// `from`/`to` is the trip — endpoints resolve through the auto source, which
-// merges all four countries' geocoders, so a trip may cross a border: the
-// Catalan scene is Andorra's — map and fiche in Andorra la Vella, the trip
-// down to Barcelona, the border fill-up the app exists for. `startTankPct`
-// keeps each trip longer than the departure tank's range, or short runs
-// would plan no stop at all and the route shot would have nothing to show.
+// `from`/`to` is the trip — the Catalan scene is Andorra's, map and fiche in
+// Andorra la Vella and the trip down to Barcelona, the border fill-up the app
+// exists for. Endpoints carry their coordinates and are DEEP-LINKED through
+// the shareable route URL (`routeUrl.ts`) instead of typed into the place
+// search: a link with coordinates never geocodes, so a geocoder having a slow
+// day (CartoCiudad regularly does) cannot sink the run — and the wrong
+// namesake can never be picked (BAN once answered « Madrid » with a French
+// hamlet of that name). `startTankPct` keeps each trip longer than the
+// departure tank's range, or short runs would plan no stop at all and the
+// route shot would have nothing to show.
 //
 // `station` pins the fiche when that station is in the loaded area — the
 // fiche has to have something to show, and tapping whatever is cheapest today
@@ -68,28 +72,41 @@ const CONTEXT_LOCALE = { en: 'en-US', fr: 'fr-FR', es: 'es-ES', ca: 'ca-ES', pt:
 // and an enseigne the mini-map has a logo for. Elsewhere (or should it ever
 // leave the flux) the richest loaded station stands in.
 const SCENES = {
-  en: { center: { lat: 43.6047, lng: 1.4442 }, station: 'fra-31100010', from: 'Toulouse', to: 'Lille', startTankPct: 70 },
-  fr: { center: { lat: 43.6047, lng: 1.4442 }, station: 'fra-31100010', from: 'Toulouse', to: 'Lille', startTankPct: 70 },
+  en: {
+    center: { lat: 43.6047, lng: 1.4442 },
+    station: 'fra-31100010',
+    from: { label: 'Toulouse', point: { lat: 43.6047, lng: 1.4442 } },
+    to: { label: 'Lille', point: { lat: 50.6292, lng: 3.0573 } },
+    startTankPct: 70,
+  },
+  fr: {
+    center: { lat: 43.6047, lng: 1.4442 },
+    station: 'fra-31100010',
+    from: { label: 'Toulouse', point: { lat: 43.6047, lng: 1.4442 } },
+    to: { label: 'Lille', point: { lat: 50.6292, lng: 3.0573 } },
+    startTankPct: 70,
+  },
   es: {
     center: { lat: 40.4168, lng: -3.7038 },
-    // « Madrid » alone picks whatever row lands first, and BAN answers fast
-    // with a French hamlet literally named Madrid (Lignières-Ambleville).
-    // The city row reads label + province — « Madrid Madrid » — so the pick
-    // regex runs over the whole row text.
-    from: { text: 'Madrid', pick: '^Madrid\\s*Madrid' },
-    to: { text: 'Barcelona', pick: '^Barcelona\\s*Barcelona' },
+    from: { label: 'Madrid', point: { lat: 40.4168, lng: -3.7038 } },
+    to: { label: 'Barcelona', point: { lat: 41.3874, lng: 2.1686 } },
     startTankPct: 40,
-    // The Spanish feed is one whole-country payload from minetur, and both
-    // it and CartoCiudad have slow days — give every wait twice the room.
+    // The Spanish stations feed is one whole-country payload from minetur
+    // with slow days of its own — give every wait twice the room.
     slowFactor: 2,
   },
   ca: {
     center: { lat: 42.5063, lng: 1.5218 },
-    from: 'Andorra la Vella',
-    to: { text: 'Barcelona', pick: '^Barcelona\\s*Barcelona' },
+    from: { label: 'Andorra la Vella', point: { lat: 42.5063, lng: 1.5218 } },
+    to: { label: 'Barcelona', point: { lat: 41.3874, lng: 2.1686 } },
     startTankPct: 15,
   },
-  pt: { center: { lat: 38.7223, lng: -9.1393 }, from: 'Lisboa', to: 'Porto', startTankPct: 25 },
+  pt: {
+    center: { lat: 38.7223, lng: -9.1393 },
+    from: { label: 'Lisboa', point: { lat: 38.7223, lng: -9.1393 } },
+    to: { label: 'Porto', point: { lat: 41.1579, lng: -8.6291 } },
+    startTankPct: 25,
+  },
 };
 
 const argv = process.argv.slice(2);
@@ -118,11 +135,6 @@ async function loadMessages(locale) {
     'sheet_cheapest_nearby',
     'sheet_cheapest_in_area',
     'detail_map_aria',
-    'nav_route',
-    'route_from_field_title',
-    'route_to_field_title',
-    'route_from_placeholder',
-    'route_to_placeholder',
     'ribbon_recommended_stop',
     'ribbon_plan_stop_index',
     'route_sheet_expand_aria',
@@ -325,51 +337,24 @@ async function shootLocale(browser, locale) {
       await shoot(page, locale, 'station');
     }
 
-    // ── Route screen: the scene's domestic trip ──
+    // ── Route screen: the scene's trip, deep-linked ──
     if (wanted('route')) {
-      await page.goto(BASE);
-      await page.getByText(zoneLead).first().waitFor({ timeout: T(60_000) });
-      await page.getByText(msg.nav_route, { exact: true }).click();
-      // Type the departure rather than leaving the implicit "My position", so
-      // the ribbon header names both cities as the README caption does. Same
-      // moves as the e2e fixture's pickRoutePlace: on a phone the endpoint
-      // field is a trigger button that opens the full-screen place search,
-      // whose input carries the field's placeholder — and the row to pick
-      // lives under `search-suggestions`, not just anywhere a matching city
-      // name is painted.
-      // An endpoint is a plain string, or { text, pick } when the typed text
-      // is ambiguous across the four geocoders — `pick` is a regex over a
-      // whole suggestion row (label then sublabel), not just its first line.
-      const pickPlace = async (placeholder, trigger, endpoint) => {
-        const { text, pick } = typeof endpoint === 'string' ? { text: endpoint } : endpoint;
-        const rowRe = new RegExp(pick ?? `^${reEscape(text)}`);
-        const input = page.getByPlaceholder(placeholder);
-        if ((await input.count()) === 0) {
-          await page.getByRole('button', { name: trigger, exact: true }).click();
-          await input.waitFor({ timeout: T(10_000) });
-        }
-        await input.fill(text);
-        const row = page
-          .getByTestId('search-suggestions')
-          .locator('button')
-          .filter({ hasText: rowRe })
-          .first();
-        try {
-          await row.click({ timeout: T(45_000) });
-        } catch {
-          // CartoCiudad has spells where it only answers after its timeout —
-          // retype to fire a fresh request and give it one more window.
-          await input.fill('');
-          await input.fill(text);
-          await row.click({ timeout: T(45_000) });
-        }
-      };
-      await pickPlace(msg.route_from_placeholder, msg.route_from_field_title, scene.from);
-      await pickPlace(msg.route_to_placeholder, msg.route_to_field_title, scene.to);
-      // Picking the destination submits the trip by itself — no CTA click
-      // (route.spec.ts leans on the same behavior). A one-stop plan headlines
-      // « Recommended stop », a chained one « Stop 1/2 » — wait for either,
-      // with the stop counter's regex built from its own catalog string.
+      // The shareable route URL (routeUrl.ts) fully specifies the trip, and a
+      // link whose endpoints carry coordinates never touches a geocoder — the
+      // ribbon header shows the `al`/`dl` labels, the plan runs on the tank
+      // the URL names. Opening it computes the route exactly as a submitted
+      // form would.
+      const q = new URLSearchParams({
+        a: `${scene.from.point.lat},${scene.from.point.lng}`,
+        al: scene.from.label,
+        d: `${scene.to.point.lat},${scene.to.point.lng}`,
+        dl: scene.to.label,
+        tp: String(scene.startTankPct),
+      });
+      await page.goto(`${BASE}/route/results?${q}`);
+      // A one-stop plan headlines « Recommended stop », a chained one
+      // « Stop 1/2 » — wait for either, with the stop counter's regex built
+      // from its own catalog string.
       const stopCounter = reEscape(msg.ribbon_plan_stop_index)
         .replaceAll('\\{index\\}', '\\d+')
         .replaceAll('\\{count\\}', '\\d+');
