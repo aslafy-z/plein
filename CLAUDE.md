@@ -33,12 +33,12 @@ it lives only in `messages/fr.json`.
 ## Internationalization
 
 [Paraglide JS](https://paraglidejs.com) is a **devDependency**: a compiler,
-not a runtime. `npm run messages` turns `messages/{locale}.json` into typed,
+not a runtime. `npm run build:messages` turns `messages/{locale}.json` into typed,
 tree-shakable functions under `src/paraglide/` (gitignored).
 
 **Anything that reads the generated code needs it compiled first**, and only
 `npm run dev` gets that from the Vite plugin. `typecheck`, `test`, `e2e` and
-`build` each run `npm run messages` from a `pre*` script — `build` included,
+`build` each run `npm run build:messages` from a `pre*` script — `build` included,
 because its `tsc -b` runs *before* Vite loads the plugin. A fresh clone that
 skips those scripts sees `Cannot find module '../paraglide/messages.js'`.
 
@@ -228,7 +228,7 @@ Anything that does not fit one of them does not get cached.
 ## Commands
 
 ```sh
-npm run messages    # compile messages/*.json → src/paraglide (gitignored)
+npm run build:messages    # compile messages/*.json → src/paraglide (gitignored)
 npm run typecheck   # tsc -b --noEmit
 npm test            # vitest unit tests (src/**/*.test.ts, node env)
 npm run e2e         # Playwright (starts the Vite dev server itself) — see

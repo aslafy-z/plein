@@ -37,7 +37,7 @@ jobs:
       # Compiles messages/{locale}.json into src/paraglide (gitignored). Both
       # scripts below also run it via `pre*`, so this only makes the step
       # visible in the log when the catalog is what broke.
-      - run: npm run messages
+      - run: npm run build:messages
       - run: npm run typecheck
       - run: npm test
 
@@ -59,7 +59,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run messages
+      - run: npm run build:messages
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
       - name: Run e2e tests
