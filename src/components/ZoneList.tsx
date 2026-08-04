@@ -285,28 +285,8 @@ export default function ZoneList({
             </div>
           );
 
-          /** Locate on the map: highlighted pin + pan, card at the top */
-          const locate = (
-            <button
-              onClick={() => {
-                app.setFocusStation(s.id);
-                onRowPick?.();
-              }}
-              aria-label={m.sheet_locate_aria({ station: s.name })}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                flex: 1,
-                minWidth: 0,
-                alignSelf: 'stretch',
-              }}
-            >
-              {identity}
-              {priceBlock}
-            </button>
-          );
-
+          // The button IS the box — border, background and padding included —
+          // so the whole card is the hit target, edge to edge.
           const rowStyle = {
             display: 'flex',
             alignItems: 'center',
@@ -321,39 +301,45 @@ export default function ZoneList({
               : `1px solid ${deal ? C.accentBorderStrong : C.border}`,
           };
 
-          // A phone row does one thing: it locates the station, and the sheet
-          // collapses onto the map where the card — the way into the fiche —
-          // is now showing it. A window skips that intermediate step: one
-          // click opens the fiche right under the list (which stays put, so
-          // the next station is one click too) and the fiche itself selects
-          // the station on the live map.
+          // A phone row does one thing: it locates the station on the map
+          // (highlighted pin + pan), and the sheet collapses onto the map
+          // where the card — the way into the fiche — is now showing it. A
+          // window skips that intermediate step: one click opens the fiche
+          // right under the list (which stays put, so the next station is one
+          // click too) and the fiche itself selects the station on the live
+          // map.
           if (!desktop) {
             return (
-              <div key={s.id} data-station-id={s.id} data-testid="zone-row" style={rowStyle}>
-                {locate}
-              </div>
-            );
-          }
-
-          return (
-            <div key={s.id} data-station-id={s.id} data-testid="zone-row" style={rowStyle}>
               <button
-                onClick={() => app.openStation(s.id)}
-                aria-label={m.sheet_open_station_aria({ station: s.name })}
-                title={m.sheet_open_station_aria({ station: s.name })}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  flex: 1,
-                  minWidth: 0,
-                  alignSelf: 'stretch',
+                key={s.id}
+                data-station-id={s.id}
+                data-testid="zone-row"
+                onClick={() => {
+                  app.setFocusStation(s.id);
+                  onRowPick?.();
                 }}
+                aria-label={m.sheet_locate_aria({ station: s.name })}
+                style={rowStyle}
               >
                 {identity}
                 {priceBlock}
               </button>
-            </div>
+            );
+          }
+
+          return (
+            <button
+              key={s.id}
+              data-station-id={s.id}
+              data-testid="zone-row"
+              onClick={() => app.openStation(s.id)}
+              aria-label={m.sheet_open_station_aria({ station: s.name })}
+              title={m.sheet_open_station_aria({ station: s.name })}
+              style={rowStyle}
+            >
+              {identity}
+              {priceBlock}
+            </button>
           );
         })}
       </div>
