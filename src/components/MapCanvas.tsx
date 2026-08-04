@@ -7,6 +7,7 @@ import { haversineKm, radiusBounds, type GeoPoint } from '../lib/geo';
 import { useIsDesktop } from '../lib/layout';
 import { useLeafletMap, type LeafletShell } from '../lib/leafletMap';
 import { pricePinDotHtml, pricePinHtml } from '../lib/pricePin';
+import { zoneCircle } from '../lib/zoneCircle';
 import { useDebugMode } from '../lib/debugMode';
 import { fmtAgeMs } from '../lib/debugSnapshot';
 import { readCachedTiles, type TileStyle } from '../lib/tileCache';
@@ -480,7 +481,9 @@ export default function MapCanvas({
     const map = mapRef.current;
     if (!map) return;
     if (!circleRef.current) {
-      circleRef.current = L.circle([app.searchPos.lat, app.searchPos.lng], {
+      // zoneCircle, not L.circle: zoomed in, the radius is a six-figure pixel
+      // count and the browser repaints that arc on every frame of every pan
+      circleRef.current = zoneCircle([app.searchPos.lat, app.searchPos.lng], {
         radius: app.radius * 1000,
         // Colors come from the .zone-circle rule in styles.css — Leaflet
         // writes color options as SVG attributes, where a var() can't resolve
@@ -740,7 +743,11 @@ export default function MapCanvas({
       for (const [sig, area] of wanted) {
         if (held.has(sig)) continue;
         const sub = L.layerGroup();
-        L.circle([area.center.lat, area.center.lng], {
+        // zoneCircle for the same reason the search zone uses it: a fetch
+        // radius is metres too, so zoomed in each outline is a six-figure
+        // pixel arc — and here there is one per cached area, all of them
+        // repainted on every pan frame
+        zoneCircle([area.center.lat, area.center.lng], {
           radius: area.fetchRadiusKm * 1000,
           color: DEBUG_CACHE_COLOR,
           weight: 1.5,
