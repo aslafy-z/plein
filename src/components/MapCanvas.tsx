@@ -674,23 +674,51 @@ export default function MapCanvas({
   // The whole point is honesty about the cache: each stored area shows its
   // dashed violet outline and its stations as ghost dots — loaded zone or
   // not — so « the data is there in cache » is visible on the map instead of
-  // deduced. Explicitly cache data (violet, dashed, labelled), never mistakable
-  // for live pins; redrawn when a fetch commits a new area. Dots ride one
-  // canvas renderer: up to MAX_AREAS × a few hundred stations is too many
-  // SVG nodes, and none of them need DOM interactivity.
+  // deduced. Explicitly cache data (violet, dashed, labelled), never
+  // mistakable for live pins.
+  //
+  // Two rules keep this from taking the browser down under heavy panning
+  // (every fetch that commits re-runs the effect):
+  // – ONE canvas renderer for all the dots, created once and removed on
+  //   teardown. Renderers are layers Leaflet keeps ON THE MAP once a path
+  //   used them — a renderer per pass piled up full-viewport canvases that
+  //   all resized and repainted on every map move until the GPU gave out.
+  // – Updates are incremental, diffed per area on `key|fetchedAt` like the
+  //   station markers: a new fetch draws ITS area and drops replaced ones;
+  //   the thousands of dots of the untouched areas stay exactly where they
+  //   are instead of being torn down and rebuilt each time.
   const debugLayerRef = useRef<L.LayerGroup | null>(null);
+  const debugCanvasRef = useRef<L.Renderer | null>(null);
+  const debugAreasRef = useRef(new Map<string, L.LayerGroup>());
   useEffect(() => {
     const map = mapRef.current;
-    debugLayerRef.current?.remove();
-    debugLayerRef.current = null;
-    if (!map || !debugMode) return;
+    if (!map) return;
+    if (!debugMode) {
+      debugLayerRef.current?.remove();
+      debugLayerRef.current = null;
+      debugCanvasRef.current?.remove();
+      debugCanvasRef.current = null;
+      debugAreasRef.current.clear();
+      return;
+    }
     let live = true;
-    const layer = L.layerGroup().addTo(map);
-    debugLayerRef.current = layer;
     void readAllCachedAreas().then((areas) => {
-      if (!live) return;
-      const canvas = L.canvas({ padding: 0.3 });
-      for (const area of areas) {
+      if (!live || !mapRef.current) return;
+      const root =
+        debugLayerRef.current ?? (debugLayerRef.current = L.layerGroup().addTo(map));
+      const canvas =
+        debugCanvasRef.current ?? (debugCanvasRef.current = L.canvas({ padding: 0.3 }));
+      const held = debugAreasRef.current;
+      const wanted = new Map(areas.map((a) => [`${a.key}|${a.fetchedAt}`, a]));
+      for (const [sig, sub] of held) {
+        if (!wanted.has(sig)) {
+          root.removeLayer(sub);
+          held.delete(sig);
+        }
+      }
+      for (const [sig, area] of wanted) {
+        if (held.has(sig)) continue;
+        const sub = L.layerGroup();
         L.circle([area.center.lat, area.center.lng], {
           radius: area.fetchRadiusKm * 1000,
           color: DEBUG_CACHE_COLOR,
@@ -707,7 +735,7 @@ export default function MapCanvas({
             )} ago`,
             { sticky: true },
           )
-          .addTo(layer);
+          .addTo(sub);
         for (const s of area.stations) {
           L.circleMarker([s.lat, s.lng], {
             renderer: canvas,
@@ -718,16 +746,27 @@ export default function MapCanvas({
             fillColor: DEBUG_CACHE_COLOR,
             fillOpacity: 0.25,
             interactive: false,
-          }).addTo(layer);
+          }).addTo(sub);
         }
+        sub.addTo(root);
+        held.set(sig, sub);
       }
     });
     return () => {
       live = false;
-      layer.remove();
-      if (debugLayerRef.current === layer) debugLayerRef.current = null;
     };
   }, [debugMode, app.stations.fetchedAt]);
+
+  // The layers above die with the map — only the refs must not survive it
+  // (StrictMode remounts would reuse layers tied to the dead map otherwise)
+  useEffect(
+    () => () => {
+      debugLayerRef.current = null;
+      debugCanvasRef.current = null;
+      debugAreasRef.current.clear();
+    },
+    [],
+  );
 
   // ── Auto-fit on the SEARCH CIRCLE itself until the user takes over — and
   // never while a station is selected (don't yank the view). Framing the
