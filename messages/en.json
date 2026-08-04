@@ -304,6 +304,7 @@
   "route_avoid_tolls": "Avoid tolls",
   "route_start_tank": "Tank at departure",
   "route_start_tank_hint": "used to work out your range and the « where to stop » limit",
+  "route_tank_chip": "Tank {percent} %",
   "route_settings_recap": "{tank} L tank · change it in Settings",
   "route_settings_link": "Settings ›",
   "route_compare_cta": "Compare the stations along the route",

@@ -126,6 +126,36 @@ test.describe('phone', () => {
     ).toBeVisible()
   })
 
+  test('the route preferences ride the map overlay, at hand before any pick', async ({ page }) => {
+    await gotoMap(page)
+    await page.getByText('Route', { exact: true }).click()
+
+    // Picking a destination computes right away, so the avoid toggles must be
+    // reachable BEFORE the pick — over the map, no sheet expansion needed.
+    // (The sheet's form holds a second copy; scope to the overlay row.)
+    const chips = page.getByTestId('route-pref-chips')
+    const tolls = chips.getByRole('button', { name: 'Avoid tolls' })
+    await expect(tolls).toBeVisible()
+    await expect(chips.getByRole('button', { name: 'Avoid motorways' })).toBeVisible()
+
+    // The toggle state lives in aria-pressed (and the fill) — the label
+    // itself never changes, so the chip keeps its width
+    await tolls.click()
+    await expect(tolls).toHaveAttribute('aria-pressed', 'true')
+    await tolls.click()
+    await expect(tolls).toHaveAttribute('aria-pressed', 'false')
+
+    // The tank chip is the map tab's radius-chip idiom: it names the value
+    // (70 % is the default departure tank) and opens the sheet on the slider
+    const tank = chips.getByRole('button', { name: 'Tank 70 %' })
+    await expect(tank).toBeVisible()
+    await tank.click()
+    await expect(
+      page.getByRole('button', { name: /the route details/ }),
+    ).toHaveAttribute('aria-expanded', 'true')
+    await expect(page.getByRole('slider')).toBeVisible()
+  })
+
   test('picking a place fills the field it was opened for', async ({ page }) => {
     await gotoMap(page)
     await page.getByText('Route', { exact: true }).click()
