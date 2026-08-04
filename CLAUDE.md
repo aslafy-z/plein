@@ -23,8 +23,6 @@ it lives only in `messages/fr.json`.
   `messages/en.json` copy — the Settings « Data » section, the
   « Directions › » shortcut — never the French name (« réglages »,
   « Données », « Itinéraire »).
-- Don't translate existing French comments you happen to touch; only what you
-  newly write follows this rule.
 - **Never hard-wrap commit messages or PR descriptions.** Write each
   paragraph as one long line and let the renderer wrap; only actual
   paragraph breaks get a newline.
@@ -256,9 +254,13 @@ npm run build       # tsc + vite build
   boot — seed `sourceId`, `favorites`, `lastPos`… instead of clicking
   through setup. Tests needing the French flux mock `**/proxy/fra/**` and
   `**/brands-fra.json` with `page.route`. The fixture fails any test whose
-  page logs a console error. It also pins `locale: 'fr'` into every seed —
-  the runner's Chromium asks for `en-US`, and the assertions read French.
-  Override it in a spec's `seed` to assert on another language.
+  page logs a console error. It also pins `locale: 'en'` into every seed —
+  the assertions read the English catalog, and neither the runner's Chromium
+  (asked for `en-US` in `playwright.config.ts`) nor the app's French fallback
+  may silently become the reason the suite passes. Override it in a spec's
+  `seed` to assert on another language — `locale.spec.ts` drives the
+  resolution paths and the other catalogs. Mock payloads and the demo dataset
+  stay French: that's data, not UI copy.
 - **Two projects, two layouts.** `mobile` (Pixel 7) and `desktop` (1440×900)
   now see genuinely different arrangements, so a spec must say which one it is
   about: `phoneOnly()` / `desktopOnly()` from `e2e/fixtures.ts` gate on the

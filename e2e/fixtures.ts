@@ -6,12 +6,13 @@ import { test as base, expect } from '@playwright/test'
 type Options = { seed: Record<string, unknown> }
 
 // The app picks its language from the browser unless the blob names one.
-// Assertions here read French, so the locale is pinned for every test rather
+// Assertions here read English, so the locale is pinned for every test rather
 // than left to depend on the browser's — `playwright.config.ts` happens to ask
-// for fr-FR too, and one of those two must not silently become the reason the
-// suite passes. A spec picks another language through `seed`, or drops the pin
-// entirely with `locale: null` to exercise the detection path.
-const BASE_SEED = { locale: 'fr' }
+// for en-US too, and one of those two must not silently become the reason the
+// suite passes (the app's own fallback is French, the source locale). A spec
+// picks another language through `seed`, or drops the pin entirely with
+// `locale: null` to exercise the detection path.
+const BASE_SEED = { locale: 'en' }
 
 /** `locale: null` in a seed means « no explicit choice », not « choose null » */
 function dropNullLocale(settings: Record<string, unknown>): Record<string, unknown> {
@@ -117,7 +118,7 @@ export async function seedStationsCache(
 // The zone card appearing means stations are loaded and the map is live.
 export async function gotoMap(page: import('@playwright/test').Page) {
   await page.goto('/')
-  await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('The cheapest near you')).toBeVisible({ timeout: 15_000 })
 }
 
 // ── Which arrangement is under test ──────────────────────────────────────────
@@ -149,7 +150,7 @@ export function desktopOnly(reason = 'the desktop arrangement — a phone has no
  * out; on a window it is docked beside the map and already on screen.
  */
 export async function openZoneList(page: import('@playwright/test').Page) {
-  const handle = page.getByRole('button', { name: /liste des stations/ })
+  const handle = page.getByRole('button', { name: /list of stations/ })
   if ((await handle.count()) === 0) {
     await expect(page.getByTestId('zone-list')).toBeVisible()
     return
@@ -161,13 +162,13 @@ export async function openZoneList(page: import('@playwright/test').Page) {
 
 /** The reverse: collapse the sheet on a phone, nothing to do on a window. */
 export async function closeZoneList(page: import('@playwright/test').Page) {
-  const scrim = page.getByRole('button', { name: 'Fermer la liste' })
+  const scrim = page.getByRole('button', { name: 'Close the list' })
   if ((await scrim.count()) === 0) return
   // The scrim spans the whole stage but the expanded sheet (above it) covers
   // its center — Playwright's default click point. Tap near the top, on the
   // strip of dimmed map the sheet never reaches (≥ 64px stays free).
   await scrim.click({ position: { x: 40, y: 30 } })
-  await expect(page.getByRole('button', { name: /liste des stations/ })).toHaveAttribute(
+  await expect(page.getByRole('button', { name: /list of stations/ })).toHaveAttribute(
     'aria-expanded',
     'false',
   )
@@ -185,10 +186,13 @@ export async function pickRoutePlace(
   text: string,
   pickLabel: string | RegExp,
 ) {
-  const placeholder = field === 'from' ? 'Départ' : 'Destination'
+  // The input's placeholder and the phone trigger's aria-label are two
+  // different catalog keys for the departure (« From » vs « Departure »).
+  const placeholder = field === 'from' ? 'From' : 'Destination'
+  const trigger = field === 'from' ? 'Departure' : 'Destination'
   const input = page.getByPlaceholder(placeholder)
   if ((await input.count()) === 0) {
-    await page.getByRole('button', { name: placeholder, exact: true }).click()
+    await page.getByRole('button', { name: trigger, exact: true }).click()
     await expect(input).toBeVisible()
   }
   await input.fill(text)
@@ -203,10 +207,10 @@ export async function pickRoutePlace(
  * Reveal the route sheet's expanded content (the form, or the timeline). On
  * a phone the collapsed sheet only shows its lead and the CTA; on a window
  * the floating panel already shows everything. The two aria labels share the
- * « détail de l'itinéraire » phrase, so one locator survives the toggle.
+ * « the route details » phrase, so one locator survives the toggle.
  */
 export async function openRouteSheet(page: import('@playwright/test').Page) {
-  const handle = page.getByRole('button', { name: /détail de l'itinéraire/ })
+  const handle = page.getByRole('button', { name: /the route details/ })
   if ((await handle.count()) === 0) return
   await handle.click()
   await expect(handle).toHaveAttribute('aria-expanded', 'true')
@@ -216,7 +220,7 @@ export async function openRouteSheet(page: import('@playwright/test').Page) {
 /** Collapse the route sheet on a phone (the expanded sheet covers the
     endpoint fields); nothing to do on a window. */
 export async function closeRouteSheet(page: import('@playwright/test').Page) {
-  const handle = page.getByRole('button', { name: /détail de l'itinéraire/ })
+  const handle = page.getByRole('button', { name: /the route details/ })
   if ((await handle.count()) === 0) return
   if ((await handle.getAttribute('aria-expanded')) !== 'true') return
   await handle.click()
