@@ -7,8 +7,10 @@ export type TabKey = 'map' | 'favs' | 'route' | 'settings';
 
 /** Minimal 16px stroke pictos, tinted by the active state */
 export function TabIcon({ tab, color, size = 15 }: { tab: TabKey; color: string; size?: number }) {
+  // Colors ride the style prop: a var() token resolves in CSS, not in an
+  // SVG presentation attribute.
   const stroke = {
-    stroke: color,
+    style: { stroke: color },
     strokeWidth: 2,
     strokeLinecap: 'round' as const,
     fill: 'none',
@@ -18,7 +20,7 @@ export function TabIcon({ tab, color, size = 15 }: { tab: TabKey; color: string;
       // the brand drop-pin
       return (
         <svg viewBox="0 0 64 64" width={size} height={size} aria-hidden>
-          <path d={LOGO_PATH} fill={color} fillRule="evenodd" />
+          <path d={LOGO_PATH} style={{ fill: color }} fillRule="evenodd" />
         </svg>
       );
     case 'favs':
@@ -26,7 +28,7 @@ export function TabIcon({ tab, color, size = 15 }: { tab: TabKey; color: string;
         <svg viewBox="0 0 16 16" width={size} height={size} aria-hidden>
           <path
             d="M8 1.7 L9.9 5.6 L14.2 6.2 L11.1 9.2 L11.8 13.5 L8 11.4 L4.2 13.5 L4.9 9.2 L1.8 6.2 L6.1 5.6 Z"
-            fill={color}
+            style={{ fill: color }}
             strokeLinejoin="round"
           />
         </svg>
@@ -34,8 +36,8 @@ export function TabIcon({ tab, color, size = 15 }: { tab: TabKey; color: string;
     case 'route':
       return (
         <svg viewBox="0 0 16 16" width={size} height={size} aria-hidden>
-          <circle cx="3" cy="13" r="2" fill={color} />
-          <rect x="11" y="1" width="4" height="4" rx="1.2" fill={color} />
+          <circle cx="3" cy="13" r="2" style={{ fill: color }} />
+          <rect x="11" y="1" width="4" height="4" rx="1.2" style={{ fill: color }} />
           <path d="M4.5 11.5 C8 8, 8 8, 11.5 4.5" {...stroke} strokeDasharray="2.4 2.2" />
         </svg>
       );
@@ -43,8 +45,8 @@ export function TabIcon({ tab, color, size = 15 }: { tab: TabKey; color: string;
       return (
         <svg viewBox="0 0 16 16" width={size} height={size} aria-hidden>
           <path d="M1.5 5h13M1.5 11h13" {...stroke} />
-          <circle cx="10.5" cy="5" r="2.1" fill={C.navBg} stroke={color} strokeWidth="2" />
-          <circle cx="5.5" cy="11" r="2.1" fill={C.navBg} stroke={color} strokeWidth="2" />
+          <circle cx="10.5" cy="5" r="2.1" style={{ fill: C.navBg, stroke: color }} strokeWidth="2" />
+          <circle cx="5.5" cy="11" r="2.1" style={{ fill: C.navBg, stroke: color }} strokeWidth="2" />
         </svg>
       );
   }

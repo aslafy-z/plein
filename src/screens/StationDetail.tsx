@@ -26,7 +26,7 @@ import { useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
 import { openStatus } from '../lib/hours';
 import { brandIconSrc } from '../lib/brandIcons';
-import { addDarkBasemap } from '../lib/tiles';
+import { addBasemap } from '../lib/tiles';
 import Star from '../components/Star';
 import ShareIcon from '../components/ShareIcon';
 
@@ -48,24 +48,24 @@ function StationMiniMap({ station }: { station: Station }) {
       touchZoom: false,
     });
     map.setView([station.lat, station.lng], 15);
-    addDarkBasemap(map);
+    addBasemap(map);
     // The enseigne's logo on a white tile identifies the station far better
     // than its initials; brands we have no logo for keep the initials bubble.
     const iconSrc = brandIconSrc(station.brand ?? station.name);
     const bubble = iconSrc
-      ? `<div class="pin-bubble" style="background:#fff;border:1px solid #3ddc84;` +
+      ? `<div class="pin-bubble" style="background:#fff;border:1px solid ${C.accent};` +
         `width:34px;height:34px;display:flex;align-items:center;justify-content:center">` +
         // background-image rather than <img>: a missing file leaves the white
         // tile instead of a broken-image glyph.
         `<div style="width:23px;height:23px;background:url('${iconSrc}') center/contain no-repeat"></div>` +
         `</div>`
-      : `<div class="pin-bubble" style="background:#3ddc84;color:#08120c;` +
-        `font:700 13px 'Spline Sans Mono',monospace;padding:5px 9px;border:1px solid #3ddc84">` +
+      : `<div class="pin-bubble" style="background:${C.accent};color:${C.onAccent};` +
+        `font:700 13px 'Spline Sans Mono',monospace;padding:5px 9px;border:1px solid ${C.accent}">` +
         `${station.init}</div>`;
     const html =
       `<div style="transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center">` +
       bubble +
-      `<div class="pin-tip" style="border-top:6px solid #3ddc84"></div></div>`;
+      `<div class="pin-tip" style="border-top:6px solid ${C.accent}"></div></div>`;
     L.marker([station.lat, station.lng], {
       icon: L.divIcon({ className: '', html, iconSize: [0, 0], iconAnchor: [0, 0] }),
       interactive: false,
@@ -96,7 +96,7 @@ function StationDetailPending({ desktop }: { desktop: boolean }) {
         // when the station lands
         ...(desktop
           ? { flex: 1, minHeight: 0 }
-          : { position: 'absolute', inset: 0, background: '#101214', zIndex: 1200 }),
+          : { position: 'absolute', inset: 0, background: C.bg, zIndex: 1200 }),
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -322,7 +322,7 @@ export default function StationDetail() {
               right: 12,
               bottom: 26,
               zIndex: 1000,
-              background: '#101214d9',
+              background: C.overlay,
               color: C.accent,
               fontSize: 12,
               fontWeight: 700,
@@ -344,7 +344,7 @@ export default function StationDetail() {
               width: 40,
               height: 40,
               borderRadius: '50%',
-              background: '#101214d9',
+              background: C.overlay,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -366,7 +366,7 @@ export default function StationDetail() {
               width: 40,
               height: 40,
               borderRadius: '50%',
-              background: '#101214d9',
+              background: C.overlay,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -386,7 +386,7 @@ export default function StationDetail() {
               width: 40,
               height: 40,
               borderRadius: '50%',
-              background: '#101214d9',
+              background: C.overlay,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -414,7 +414,7 @@ export default function StationDetail() {
             {status && (
               <span
                 style={{
-                  background: status.open ? C.accentSoft14 : 'rgba(224,122,95,.14)',
+                  background: status.open ? C.accentSoft14 : C.warnSoft14,
                   color: status.open ? C.accent : C.warn,
                   fontSize: 12,
                   fontWeight: 700,
@@ -496,7 +496,7 @@ export default function StationDetail() {
                   alignItems: 'center',
                   gap: 12,
                   padding: '14px 16px',
-                  borderBottom: `1px solid rgba(255,255,255,.06)`,
+                  borderBottom: `1px solid ${C.divider}`,
                 }}
               >
                 <span style={{ flex: 1, color: C.ink, fontSize: 15, fontWeight: 600 }}>
@@ -524,7 +524,7 @@ export default function StationDetail() {
               </div>
             );
           })}
-          <div style={{ padding: '10px 16px', background: '#15181b', color: C.mut, fontSize: 11.5 }}>
+          <div style={{ padding: '10px 16px', background: C.navBg, color: C.mut, fontSize: 11.5 }}>
             {footerText}
           </div>
         </div>
@@ -597,7 +597,7 @@ export default function StationDetail() {
           <div style={{ font: mono(700, 20), color: C.accent, whiteSpace: 'nowrap' }}>
             {dSaveStr} €
           </div>
-          <div style={{ color: '#aab2b7', fontSize: 12.5, lineHeight: 1.45 }}>
+          <div style={{ color: C.body2, fontSize: 12.5, lineHeight: 1.45 }}>
             {m.detail_saving_on_tank({ tank: app.tank, scope: scopeSave })}
           </div>
         </div>
@@ -635,7 +635,7 @@ export default function StationDetail() {
               minHeight: 0,
               background: 'transparent',
             }
-          : { position: 'absolute', inset: 0, zIndex: 1200, background: '#101214' }),
+          : { position: 'absolute', inset: 0, zIndex: 1200, background: C.bg }),
       }}
     >
       {body}

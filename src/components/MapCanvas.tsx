@@ -449,10 +449,11 @@ export default function MapCanvas({
     if (!circleRef.current) {
       circleRef.current = L.circle([app.searchPos.lat, app.searchPos.lng], {
         radius: app.radius * 1000,
-        color: '#3ddc84',
+        // Colors come from the .zone-circle rule in styles.css — Leaflet
+        // writes color options as SVG attributes, where a var() can't resolve
+        className: 'zone-circle',
         weight: 1,
         opacity: 0.35,
-        fillColor: '#3ddc84',
         fillOpacity: 0.04,
         interactive: false,
       }).addTo(map);
@@ -483,10 +484,10 @@ export default function MapCanvas({
     if (!map) return;
     if (!userDotRef.current) {
       const userHtml =
-        `<div style="width:34px;height:34px;border-radius:50%;background:rgba(61,220,132,.15);` +
+        `<div style="width:34px;height:34px;border-radius:50%;background:${C.accentSoft15};` +
         `display:flex;align-items:center;justify-content:center">` +
-        `<div style="width:14px;height:14px;border-radius:50%;background:#3ddc84;` +
-        `border:3px solid #0c2116;box-sizing:border-box"></div></div>`;
+        `<div style="width:14px;height:14px;border-radius:50%;background:${C.accent};` +
+        `border:3px solid ${C.accentDeep};box-sizing:border-box"></div></div>`;
       userDotRef.current = L.marker([app.userPos.lat, app.userPos.lng], {
         icon: L.divIcon({ className: '', html: userHtml, iconSize: [34, 34], iconAnchor: [17, 17] }),
         interactive: false,
@@ -521,7 +522,9 @@ export default function MapCanvas({
     const pts = [L.latLng(app.userPos.lat, app.userPos.lng), zoneEnd];
     if (!originLineRef.current) {
       originLineRef.current = L.polyline(pts, {
-        color: '#9aa7b0',
+        // Color from the .origin-line rule in styles.css — Leaflet writes
+        // color options as SVG attributes, where a var() can't resolve
+        className: 'origin-line',
         weight: 1.5,
         opacity: 0.45,
         dashArray: '2 10',
@@ -545,7 +548,7 @@ export default function MapCanvas({
       circleRef.current?.getLatLng() ?? L.latLng(app.searchPos.lat, app.searchPos.lng);
     if (!reticleRef.current) {
       const bar = (r: string) =>
-        `<div style="position:absolute;${r};background:rgba(61,220,132,.55);border-radius:1px"></div>`;
+        `<div style="position:absolute;${r};background:${C.accentGlow55};border-radius:1px"></div>`;
       const html =
         `<div style="position:relative;width:14px;height:14px">` +
         bar('left:6.25px;top:0;width:1.5px;height:14px') +
@@ -718,10 +721,10 @@ export default function MapCanvas({
   // Floating pills and control clusters share the glass of the panels
   // (theme.ts) with a lighter shadow — they are small and many
   const pillGlass = {
-    background: 'rgba(16,18,20,.82)',
+    background: C.glassBgSoft,
     backdropFilter: 'blur(12px)',
     WebkitBackdropFilter: 'blur(12px)',
-    border: `1px solid rgba(255,255,255,.1)`,
+    border: `1px solid ${C.glassBorder}`,
   };
 
   // One button of the desktop control column (zoom, share, recenter)
@@ -772,7 +775,7 @@ export default function MapCanvas({
               fontWeight: 600,
               padding: '7px 14px',
               borderRadius: 16,
-              boxShadow: '0 8px 24px rgba(0,0,0,.5)',
+              boxShadow: `0 8px 24px ${C.shadow50}`,
               textAlign: 'center',
             }}
           >
@@ -803,7 +806,7 @@ export default function MapCanvas({
               fontWeight: 600,
               padding: '8px 16px',
               borderRadius: 18,
-              boxShadow: '0 8px 24px rgba(0,0,0,.5)',
+              boxShadow: `0 8px 24px ${C.shadow50}`,
             }}
           >
             {m.map_loading_stations()}
@@ -828,7 +831,7 @@ export default function MapCanvas({
             width: 44,
             borderRadius: 22,
             ...pillGlass,
-            boxShadow: '0 6px 18px rgba(0,0,0,.45)',
+            boxShadow: `0 6px 18px ${C.shadow45}`,
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
@@ -901,7 +904,7 @@ export default function MapCanvas({
               height: 44,
               borderRadius: '50%',
               ...pillGlass,
-              boxShadow: '0 6px 18px rgba(0,0,0,.45)',
+              boxShadow: `0 6px 18px ${C.shadow45}`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -927,8 +930,8 @@ export default function MapCanvas({
               height: 44,
               borderRadius: '50%',
               ...pillGlass,
-              border: `1px solid ${app.searchedAway ? 'rgba(255,255,255,.1)' : C.accentBorderStrong}`,
-              boxShadow: '0 6px 18px rgba(0,0,0,.45)',
+              border: `1px solid ${app.searchedAway ? C.glassBorder : C.accentBorderStrong}`,
+              boxShadow: `0 6px 18px ${C.shadow45}`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

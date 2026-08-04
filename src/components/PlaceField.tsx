@@ -435,7 +435,7 @@ export default function PlaceField(props: PlaceFieldProps) {
           background: C.surface,
           border: `1px solid ${C.border09}`,
           borderRadius: 22,
-          boxShadow: '0 8px 24px rgba(0,0,0,.4)',
+          boxShadow: `0 8px 24px ${C.shadow40}`,
           pointerEvents: 'auto',
         }}
       >
@@ -680,7 +680,7 @@ export default function PlaceField(props: PlaceFieldProps) {
           border: `1px solid ${C.border09}`,
           // The attached list squares the bar's bottom so the two read as one
           borderRadius: showRows ? '22px 22px 0 0' : 22,
-          boxShadow: '0 14px 40px rgba(0,0,0,.55)',
+          boxShadow: `0 14px 40px ${C.shadow55}`,
           pointerEvents: 'auto',
         }}
       >
@@ -734,7 +734,7 @@ export default function PlaceField(props: PlaceFieldProps) {
               border: `1px solid ${C.border09}`,
               borderTop: `1px solid ${C.border}`,
               borderRadius: '0 0 22px 22px',
-              boxShadow: '0 14px 40px rgba(0,0,0,.55)',
+              boxShadow: `0 14px 40px ${C.shadow55}`,
               maxHeight: 'min(46vh, 320px)',
               overflowY: 'auto',
               overscrollBehavior: 'contain',

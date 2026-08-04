@@ -71,7 +71,7 @@ export default function Freshness() {
         color: C.warn,
         whiteSpace: 'nowrap',
         cursor: 'pointer',
-        background: 'rgba(224,122,95,.12)',
+        background: C.warnSoft,
         padding: '3px 8px',
         borderRadius: 10,
       }}

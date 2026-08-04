@@ -301,7 +301,7 @@ export default function MapScreen() {
               position: 'absolute',
               inset: 0,
               zIndex: 1050,
-              background: 'rgba(6, 9, 11, 0.35)',
+              background: C.scrimSoft,
               cursor: 'pointer',
             }}
           />

@@ -47,6 +47,9 @@ export interface PersistedSettings {
   mapsSite: MapsSiteId;
   /** Explicit language choice — absent means « follow the browser » */
   locale: string;
+  /** Explicit theme choice — absent means « follow the browser » (validated
+      on the way out by lib/colorScheme.ts, like `locale` by lib/locale.ts) */
+  theme: string;
   /** Last position the app was centered on — restored on reload so the
       station cache hits instantly instead of flashing Toulouse/demo data */
   lastPos: GeoPoint;

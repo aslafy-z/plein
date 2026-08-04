@@ -159,16 +159,16 @@ function Block({ title, children }: { title: string; children: ReactNode }) {
 function EmptyZoneMark() {
   return (
     <svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true">
+      {/* Colors via style: a var() resolves in CSS, not in a presentation attribute */}
       <circle
         cx="28"
         cy="28"
         r="25"
-        fill="rgba(61,220,132,.05)"
-        stroke="rgba(61,220,132,.3)"
+        style={{ fill: C.accentSoft05, stroke: C.accentBorder30 }}
         strokeWidth="1.25"
       />
-      <circle cx="28" cy="28" r="6" fill={C.accentSoft14} />
-      <circle cx="28" cy="28" r="2.5" fill={C.accent} />
+      <circle cx="28" cy="28" r="6" style={{ fill: C.accentSoft14 }} />
+      <circle cx="28" cy="28" r="2.5" style={{ fill: C.accent }} />
     </svg>
   );
 }

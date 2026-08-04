@@ -10,10 +10,10 @@ export default function Star({
 }) {
   return (
     <svg viewBox="0 0 16 16" width={size} height={size} aria-hidden>
+      {/* Colors via style: a var() token resolves in CSS, not in an attribute */}
       <path
         d="M8 1.7 L9.9 5.6 L14.2 6.2 L11.1 9.2 L11.8 13.5 L8 11.4 L4.2 13.5 L4.9 9.2 L1.8 6.2 L6.1 5.6 Z"
-        fill={filled ? color : 'none'}
-        stroke={color}
+        style={{ fill: filled ? color : 'none', stroke: color }}
         strokeWidth={filled ? 0 : 1.6}
         strokeLinejoin="round"
       />

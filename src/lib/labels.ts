@@ -12,6 +12,7 @@ import type {
 } from '../data/types';
 import { EXTRA_PRODUCT_IDS, SERVICE_TAGS } from '../data/types';
 import { INDEPENDENT_BRAND_ID } from './brandIcons';
+import type { Theme } from './colorScheme';
 import { minutesLabel } from './format';
 import type { OpenStatus } from './hours';
 
@@ -53,6 +54,10 @@ export function serviceTagLabel(id: ServiceTag): string {
 
 export function vehicleLabel(id: VehicleId): string {
   return id === 'motorcycle' ? m.vehicle_motorcycle() : m.vehicle_car();
+}
+
+export function themeLabel(theme: Theme): string {
+  return theme === 'light' ? m.settings_theme_light() : m.settings_theme_dark();
 }
 
 /**

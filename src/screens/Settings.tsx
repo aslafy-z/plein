@@ -9,7 +9,8 @@ import {
 } from '../data/stationsCache';
 import { clearFavoritePrices } from '../data/favoritePrices';
 import { agoLabelFrom, fmtDecimal, sizeLabel } from '../lib/format';
-import { fuelLabel, sourceSublabel, sourceTitle, vehicleLabel } from '../lib/labels';
+import { fuelLabel, sourceSublabel, sourceTitle, themeLabel, vehicleLabel } from '../lib/labels';
+import { THEMES } from '../lib/colorScheme';
 import { CONTENT_MAX_WIDTH, useIsDesktop } from '../lib/layout';
 import { LOCALES, type Locale } from '../lib/locale';
 import { m } from '../paraglide/messages.js';
@@ -101,7 +102,7 @@ function CachedData({ onCleared }: { onCleared: () => void }) {
       <div
         style={{
           padding: '12px 16px',
-          borderBottom: '1px solid rgba(255,255,255,.06)',
+          borderBottom: `1px solid ${C.divider}`,
           fontSize: 12,
           lineHeight: 1.55,
           color: C.mut,
@@ -349,7 +350,7 @@ export default function Settings() {
               alignItems: 'center',
               gap: 12,
               padding: '14px 16px',
-              borderBottom: '1px solid rgba(255,255,255,.06)',
+              borderBottom: `1px solid ${C.divider}`,
               cursor: 'pointer',
               width: '100%',
               textAlign: 'left',
@@ -377,6 +378,50 @@ export default function Settings() {
           </button>
           <div style={{ fontSize: 11.5, color: C.faint, padding: '10px 16px', lineHeight: 1.5 }}>
             {m.settings_location_hint()}
+          </div>
+        </div>
+      </div>
+
+      {/* Appearance */}
+      <div style={{ marginTop: 18 }}>
+        <div style={SECTION_LABEL}>{m.settings_appearance_section()}</div>
+        <div
+          style={{
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            borderRadius: 16,
+            padding: 16,
+          }}
+        >
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {/* « Réglage du navigateur » is the absence of a choice, not a
+                theme: picking it drops the override so the browser's light or
+                dark preference applies again — live, dusk included. */}
+            {[null, ...THEMES].map((t) => {
+              const active = t == null ? !app.themeIsExplicit : app.themeIsExplicit && app.theme === t;
+              return (
+                <button
+                  key={t ?? 'auto'}
+                  onClick={() => app.setTheme(t)}
+                  style={{
+                    background: active ? C.accent : 'transparent',
+                    color: active ? C.onAccent : C.body,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    padding: '8px 14px',
+                    borderRadius: 16,
+                    border: active ? `1px solid ${C.accent}` : `1px solid ${C.border12}`,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {t == null ? m.settings_theme_auto() : themeLabel(t)}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: 11.5, color: C.faint, marginTop: 10 }}>
+            {m.settings_theme_hint({ auto: m.settings_theme_auto() })}
           </div>
         </div>
       </div>
@@ -499,7 +544,7 @@ export default function Settings() {
                   alignItems: 'center',
                   gap: 12,
                   padding: '14px 16px',
-                  borderBottom: '1px solid rgba(255,255,255,.06)',
+                  borderBottom: `1px solid ${C.divider}`,
                   cursor: 'pointer',
                   width: '100%',
                   textAlign: 'left',
@@ -510,7 +555,7 @@ export default function Settings() {
                     width: 18,
                     height: 18,
                     borderRadius: '50%',
-                    border: `2px solid ${selected ? C.accent : 'rgba(255,255,255,.25)'}`,
+                    border: `2px solid ${selected ? C.accent : C.border25}`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -541,7 +586,7 @@ export default function Settings() {
                 fontWeight: 600,
                 color: C.warn,
                 padding: '10px 16px',
-                borderBottom: '1px solid rgba(255,255,255,.06)',
+                borderBottom: `1px solid ${C.divider}`,
                 lineHeight: 1.4,
               }}
             >
@@ -552,7 +597,7 @@ export default function Settings() {
           <div
             style={{
               padding: '12px 16px',
-              borderBottom: '1px solid rgba(255,255,255,.06)',
+              borderBottom: `1px solid ${C.divider}`,
               fontSize: 12,
               lineHeight: 1.55,
               color: C.mut,
@@ -591,7 +636,7 @@ export default function Settings() {
                 gap: 12,
                 padding: '14px 16px',
                 borderBottom:
-                  i < contactRows.length - 1 ? '1px solid rgba(255,255,255,.06)' : undefined,
+                  i < contactRows.length - 1 ? `1px solid ${C.divider}` : undefined,
                 cursor: 'pointer',
                 width: '100%',
                 textAlign: 'left',

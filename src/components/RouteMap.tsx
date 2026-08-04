@@ -43,7 +43,7 @@ let savedRouteView: {
 /** Departure (accent circle) / arrival (warn square) marker markup */
 function endpointHtml(kind: 'from' | 'to'): string {
   const bg = kind === 'from' ? C.accent : C.warn;
-  const border = kind === 'from' ? '#0c2116' : '#2a130c';
+  const border = kind === 'from' ? C.accentDeep : C.warnDeep;
   const radius = kind === 'from' ? '50%' : '4px';
   return (
     `<div style="width:16px;height:16px;border-radius:${radius};background:${bg};` +
@@ -170,7 +170,9 @@ export default function RouteMap({
     layer.clearLayers();
 
     const line = route.polyline.map((p) => [p.lat, p.lng]) as L.LatLngExpression[];
-    L.polyline(line, { color: C.accent, weight: 4, opacity: 0.85 }).addTo(layer);
+    // Color from the .route-line rule in styles.css — Leaflet writes color
+    // options as SVG attributes, where a var() can't resolve
+    L.polyline(line, { className: 'route-line', weight: 4, opacity: 0.85 }).addTo(layer);
 
     // Departure / arrival
     const start = route.polyline[0];
@@ -191,8 +193,8 @@ export default function RouteMap({
       if (limit) {
         const html =
           `<div style="width:14px;height:14px;border-radius:50%;background:${C.warn};` +
-          `border:3px solid #101214;box-sizing:border-box;` +
-          `box-shadow:0 0 0 3px rgba(224,122,95,.3)"></div>`;
+          `border:3px solid ${C.bg};box-sizing:border-box;` +
+          `box-shadow:0 0 0 3px ${C.warnBorder30}"></div>`;
         L.marker([limit.lat, limit.lng], {
           icon: L.divIcon({ className: '', html, iconSize: [14, 14], iconAnchor: [7, 7] }),
           interactive: false,

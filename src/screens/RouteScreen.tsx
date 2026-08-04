@@ -144,7 +144,7 @@ function RouteForm({ withTitle }: { withTitle: boolean }) {
               fontWeight: 700,
               padding: '8px 14px',
               borderRadius: 16,
-              border: on ? `1px solid ${C.accent}` : '1px solid rgba(255,255,255,.15)',
+              border: on ? `1px solid ${C.accent}` : `1px solid ${C.border15}`,
               cursor: 'pointer',
               whiteSpace: 'nowrap',
             }}
@@ -589,7 +589,7 @@ export default function RouteScreen() {
               position: 'absolute',
               inset: 0,
               zIndex: 1050,
-              background: 'rgba(6, 9, 11, 0.35)',
+              background: C.scrimSoft,
               cursor: 'pointer',
             }}
           />

@@ -292,7 +292,7 @@ export default function ZoneList({
             alignItems: 'center',
             gap: 12,
             width: '100%',
-            background: deal ? C.accentSoft09 : C.surface2,
+            background: deal ? C.accentSoft09 : C.card,
             borderRadius: 14,
             padding: '11px 14px',
             flexShrink: 0,

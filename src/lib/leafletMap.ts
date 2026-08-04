@@ -1,8 +1,8 @@
 // The map shell shared by the two Leaflet wrappers (MapCanvas, RouteMap).
 //
 // It owns the MECHANISM both need and used to duplicate: creating the map
-// (no zoom control, attribution on, Leaflet's stepped keyboard off), the dark
-// basemap, the smooth keyboard loop, the « the user took the view over » rule,
+// (no zoom control, attribution on, Leaflet's stepped keyboard off), the
+// themed basemap, the smooth keyboard loop, the « the user took the view over » rule,
 // the container ResizeObserver (invalidateSize + optional re-fit), and the
 // inset-aware fitBounds / visible-center math — the floating panel covers the
 // map's LEFT edge on desktop and the bottom sheet its BOTTOM edge on a phone,
@@ -13,7 +13,7 @@
 // map's framing would start moving because the other one needed something.
 import { useEffect, useRef, type MutableRefObject, type RefObject } from 'react';
 import L from 'leaflet';
-import { addDarkBasemap } from './tiles';
+import { addBasemap } from './tiles';
 import { installSmoothKeyboard } from './mapKeyboard';
 
 /** How long after a programmatic fit Leaflet's own move events stay ours */
@@ -125,7 +125,7 @@ export function useLeafletMap(options: LeafletShellOptions): LeafletShell {
       // user pan (see the observer for what that did to a shared link).
       trackResize: false,
     });
-    addDarkBasemap(map);
+    addBasemap(map);
     mapRef.current = map;
 
     // ── The takeover rule, one copy for both maps ─────────────────────────

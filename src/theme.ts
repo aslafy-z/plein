@@ -1,35 +1,87 @@
-// Plein. design tokens — from the Claude Design prototype (« Cap nuit » dark system)
+// Plein. design tokens — from the Claude Design prototype (« Cap nuit » dark
+// system), now with a light counterpart.
+//
+// The VALUES live in src/styles.css as CSS custom properties, one block per
+// theme: `:root` carries the dark palette (the default), and
+// `:root[data-theme='light']` overrides it. Flipping that single attribute
+// (src/lib/colorScheme.ts) re-colors the whole app, because everything below
+// is a var() reference — valid in React inline styles and in the divIcon HTML
+// strings the maps build. The one place a var() cannot reach is an SVG
+// presentation attribute Leaflet writes on its vector layers; those get a
+// className instead, styled from styles.css (`.zone-circle`, `.route-line`).
+//
+// Adding a token: add its var() name here, then its dark AND light values in
+// styles.css — a token missing from one block silently falls through to the
+// other theme's look.
 
 import type { CSSProperties } from 'react';
 import { PANEL_GAP, PANEL_WIDTH } from './lib/layout';
 
 export const C = {
-  bg: '#101214', // app background
-  surface: '#1a1d20', // cards
-  surface2: '#1d2226', // chips / secondary surfaces
-  surface3: '#22282c', // tertiary (avatars, bars)
-  navBg: '#15181b',
-  mapBg: '#14181a',
-  accent: '#3ddc84', // green
-  onAccent: '#08120c', // near-black on green
-  ink: '#e8eaed', // primary text
-  body: '#cfd6da', // secondary text on chips
-  mut: '#8a949a', // muted text
-  faint: '#5c666c', // faintest text
-  ghost: '#3a4147', // footer text
-  warn: '#e07a5f', // orange (expensive / destination / limits)
-  border: 'rgba(255,255,255,.07)',
-  border08: 'rgba(255,255,255,.08)',
-  border09: 'rgba(255,255,255,.09)',
-  border12: 'rgba(255,255,255,.12)',
-  accentBorder: 'rgba(61,220,132,.25)',
-  accentBorderStrong: 'rgba(61,220,132,.35)',
-  accentSoft: 'rgba(61,220,132,.12)',
-  accentSoft09: 'rgba(61,220,132,.09)',
-  accentSoft10: 'rgba(61,220,132,.1)',
-  accentSoft14: 'rgba(61,220,132,.14)',
-  accentSoft15: 'rgba(61,220,132,.15)',
-  toggleOff: '#2a3136',
+  bg: 'var(--c-bg)', // app background
+  surface: 'var(--c-surface)', // cards
+  surface2: 'var(--c-surface-2)', // chips / secondary surfaces
+  surface3: 'var(--c-surface-3)', // tertiary (avatars, bars)
+  card: 'var(--c-card)', // bordered list cards (zone rows, timeline stops) —
+  // surface2's dark value, but paper-white in light where a grey tile reads
+  // as disabled rather than as a card
+
+  navBg: 'var(--c-nav-bg)',
+  mapBg: 'var(--c-map-bg)',
+  accent: 'var(--c-accent)', // green
+  onAccent: 'var(--c-on-accent)', // text on the accent green
+  ink: 'var(--c-ink)', // primary text
+  body: 'var(--c-body)', // secondary text on chips
+  body2: 'var(--c-body-2)', // between body and mut (fiche secondary lines)
+  mut: 'var(--c-mut)', // muted text
+  faint: 'var(--c-faint)', // faintest text
+  ghost: 'var(--c-ghost)', // footer text
+  warn: 'var(--c-warn)', // orange (expensive / destination / limits)
+  border: 'var(--c-border)',
+  border08: 'var(--c-border-08)',
+  border09: 'var(--c-border-09)',
+  border12: 'var(--c-border-12)',
+  border15: 'var(--c-border-15)',
+  border18: 'var(--c-border-18)', // sheet drag handles
+  border20: 'var(--c-border-20)',
+  border25: 'var(--c-border-25)', // radio / checkbox rings
+  divider: 'var(--c-divider)', // hairline between list rows
+  accentBorder: 'var(--c-accent-border)',
+  accentBorderStrong: 'var(--c-accent-border-strong)',
+  accentBorder30: 'var(--c-accent-border-30)',
+  accentBorder40: 'var(--c-accent-border-40)',
+  accentSoft: 'var(--c-accent-soft)',
+  accentSoft05: 'var(--c-accent-soft-05)',
+  accentSoft09: 'var(--c-accent-soft-09)',
+  accentSoft10: 'var(--c-accent-soft-10)',
+  accentSoft14: 'var(--c-accent-soft-14)',
+  accentSoft15: 'var(--c-accent-soft-15)',
+  accentPale: 'var(--c-accent-pale)', // ring of a focused deal pin
+  accentDeep: 'var(--c-accent-deep)', // ring around the geolocation dot
+  accentGlow25: 'var(--c-accent-glow-25)', // accent-tinted shadows
+  accentGlow28: 'var(--c-accent-glow-28)',
+  accentGlow35: 'var(--c-accent-glow-35)',
+  accentGlow55: 'var(--c-accent-glow-55)',
+  warnSoft: 'var(--c-warn-soft)',
+  warnSoft14: 'var(--c-warn-soft-14)',
+  warnBorder30: 'var(--c-warn-border-30)',
+  warnBorder35: 'var(--c-warn-border-35)',
+  warnDeep: 'var(--c-warn-deep)', // ring around the destination dot
+  warnText: 'var(--c-warn-text)', // body text on a warnSoft banner
+  toggleOff: 'var(--c-toggle-off)',
+  overlay: 'var(--c-overlay)', // bg at ~85% — rows over the fiche mini-map
+  scrim: 'var(--c-scrim)', // dialog backdrop
+  scrimSoft: 'var(--c-scrim-soft)', // map dimmed under a sheet
+  glassBg: 'var(--c-glass-bg)',
+  glassBgSoft: 'var(--c-glass-bg-soft)', // map control pills
+  glassBgStrong: 'var(--c-glass-bg-strong)', // anchored popovers
+  glassBorder: 'var(--c-glass-border)',
+  // Shadow COLORS (the geometry stays at the call site) — softer in light
+  shadow35: 'var(--c-shadow-35)',
+  shadow40: 'var(--c-shadow-40)',
+  shadow45: 'var(--c-shadow-45)',
+  shadow50: 'var(--c-shadow-50)',
+  shadow55: 'var(--c-shadow-55)',
 } as const;
 
 export const FONT = {
@@ -48,11 +100,11 @@ export const mono = (weight: number, sizePx: number) =>
  * over a busy map with nothing but this rgba behind it.
  */
 export const glass: CSSProperties = {
-  background: 'rgba(16,18,20,.86)',
+  background: C.glassBg,
   backdropFilter: 'blur(16px)',
   WebkitBackdropFilter: 'blur(16px)',
-  border: '1px solid rgba(255,255,255,.1)',
-  boxShadow: '0 18px 50px rgba(0,0,0,.45)',
+  border: `1px solid ${C.glassBorder}`,
+  boxShadow: `0 18px 50px ${C.shadow45}`,
 };
 
 /**
@@ -105,5 +157,7 @@ export const stickyBarStyle = (safeArea = true): CSSProperties => ({
   padding: safeArea
     ? '14px 20px calc(18px + env(safe-area-inset-bottom, 0px))'
     : '14px 20px 16px',
-  background: `linear-gradient(to top, ${C.bg} 62%, ${C.bg}00)`,
+  // --c-bg-0 is the same color fully transparent — `transparent` would be
+  // interpolated from black in browsers that don't premultiply
+  background: 'linear-gradient(to top, var(--c-bg) 62%, var(--c-bg-0))',
 });

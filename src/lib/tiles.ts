@@ -1,14 +1,18 @@
-// Dark basemap with automatic fallback.
-// Primary: CARTO dark CDN, re-toned to the app palette via `.tiles-carto`.
-// When it can't load (offline CDN, firewalled network), the map swaps to
-// OpenStreetMap tiles (through the dev-server proxy in dev), darkened with
-// the `.tiles-dark` CSS filter so the app keeps its look. The first map that
-// discovers the CDN is unreachable remembers it for the session, so the map,
-// route and station views all switch together.
+// Themed basemap with automatic fallback.
+// Primary: CARTO CDN — dark_all or light_all following the app theme, re-toned
+// to the palette via `.tiles-carto` (whose filter is per-theme in styles.css).
+// A theme switch swaps the layer's URL in place, so every mounted map follows
+// without remounting. When the CDN can't load (offline, firewalled network),
+// the map swaps to OpenStreetMap tiles (through the dev-server proxy in dev),
+// re-toned per theme with the `.tiles-dark` CSS filter so the app keeps its
+// look. The first map that discovers the CDN is unreachable remembers it for
+// the session, so the map, route and station views all switch together.
 import L from 'leaflet';
 import { IS_DEV } from './env';
+import { currentTheme, onThemeChange } from './colorScheme';
 
-const CARTO_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+const cartoUrl = () =>
+  `https://{s}.basemaps.cartocdn.com/${currentTheme() === 'light' ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png`;
 const FALLBACK_URL = IS_DEV ? '/tiles/{z}/{x}/{y}.png' : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 /** No CARTO tile managed to load within this window → assume unreachable */
 const GIVE_UP_MS = 6000;
@@ -78,13 +82,13 @@ function addFallback(map: L.Map): void {
   }).addTo(map);
 }
 
-export function addDarkBasemap(map: L.Map): void {
+export function addBasemap(map: L.Map): void {
   if (cartoUnreachable) {
     addFallback(map);
     return;
   }
 
-  const carto = bufferedTileLayer(CARTO_URL, {
+  const carto = bufferedTileLayer(cartoUrl(), {
     ...TILE_RETENTION,
     attribution: '© OpenStreetMap · © CARTO',
     subdomains: 'abcd',
@@ -118,7 +122,16 @@ export function addDarkBasemap(map: L.Map): void {
     errored++;
     if (loaded === 0 && errored >= 2) swap();
   });
-  map.on('unload', () => clearTimeout(giveUp));
+
+  // Follow a theme switch in place — the tile filters in styles.css flip on
+  // their own; only the tile set itself has to be refetched.
+  const offTheme = onThemeChange(() => {
+    if (!swapped) carto.setUrl(cartoUrl());
+  });
+  map.on('unload', () => {
+    clearTimeout(giveUp);
+    offTheme();
+  });
 
   carto.addTo(map);
 }
