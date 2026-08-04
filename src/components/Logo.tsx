@@ -7,8 +7,9 @@ export const LOGO_PATH =
   'M32 6 C32 6 11 27 11 39 a21 21 0 0 0 42 0 C53 27 32 6 32 6 Z ' +
   'M32 48 a9 9 0 1 1 0-18 a9 9 0 0 1 0 18 Z';
 
-/** Dark-green tile behind the glyph (adaptive-icon background) */
-export const LOGO_TILE_BG = '#0f1a14';
+// The adaptive-icon's dark-green tile stays in the icon files; in the app the
+// glyph sits directly on the themed surface — a near-black tile read as a
+// black square on the light Réglages page.
 
 export function LogoGlyph({ size = 24, color = C.accent }: { size?: number; color?: string }) {
   return (
@@ -20,10 +21,10 @@ export function LogoGlyph({ size = 24, color = C.accent }: { size?: number; colo
 }
 
 /**
- * Glyph on its tile + « Plein. » wordmark — matches the prototype header.
- * `tagline` stacks a line under the wordmark and `glow` haloes the tile in
- * accent light — the hero variant (Réglages header); chrome (SideNav,
- * Onboarding) passes neither.
+ * Glyph + « Plein. » wordmark. `tagline` stacks a line under the wordmark and
+ * `glow` haloes the glyph in accent light — the hero variant (Réglages
+ * header); chrome (SideNav, Onboarding) passes neither. `tile` keeps naming
+ * the box the glyph centers in, so the lockup's geometry is unchanged.
  */
 export function LogoLockup({
   tile = 36,
@@ -49,13 +50,13 @@ export function LogoLockup({
         style={{
           width: tile,
           height: tile,
-          borderRadius: Math.round(tile * 0.3),
-          background: LOGO_TILE_BG,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
-          ...(glow ? { boxShadow: `0 8px 28px ${C.accentGlow28}` } : undefined),
+          // drop-shadow follows the drop itself — a box-shadow would draw a
+          // square halo around a box that no longer paints anything
+          ...(glow ? { filter: `drop-shadow(0 6px 20px ${C.accentGlow28})` } : undefined),
         }}
       >
         <LogoGlyph size={glyph} />
