@@ -40,7 +40,13 @@ async function mockStationChain(page: Page) {
   await expect(page.getByText('La moins chère près de vous')).toBeVisible({ timeout: 15_000 })
 }
 
-/** Screen center of the search circle — the one path of the overlay pane */
+/**
+ * Screen center of the search circle, read off its SVG path. Only valid
+ * while the circle is around the view: the renderer clips the path to the
+ * viewport (+ a buffer) on moveend, so a far-off circle's box pins to the
+ * nearest edge. The far measurements below use the chain's first pin — a
+ * DOM marker, immune to clipping — as the zone's proxy instead.
+ */
 async function circleCenter(page: Page) {
   return page.evaluate(() => {
     const path = document.querySelector('.leaflet-overlay-pane path')
@@ -48,6 +54,14 @@ async function circleCenter(page: Page) {
     const r = path.getBoundingClientRect()
     return { x: r.x + r.width / 2, y: r.y + r.height / 2 }
   })
+}
+
+/** Screen point of the chain's first pin — 0.5 km from the circle center */
+async function zonePin(page: Page) {
+  const r = await page
+    .locator('.pin-bubble', { hasText: '1,70' })
+    .evaluate((el) => el.getBoundingClientRect())
+  return { x: r.x + r.width / 2, y: r.y + r.height / 2 }
 }
 
 /** A paced drag: one step per frame so the glide gets real move events */
@@ -68,17 +82,17 @@ test('one drag brings the circle back after pin-hopping away from the zone', asy
   expect(stage).not.toBeNull()
   const cx = stage!.x + stage!.width / 2
   const cy = stage!.y + stage!.height / 2
-  const gap = async () => {
-    const c = await circleCenter(page)
-    return c ? Math.hypot(c.x - cx, c.y - cy) : Number.NaN
+  const gapToZone = async () => {
+    const p = await zonePin(page)
+    return Math.hypot(p.x - cx, p.y - cy)
   }
 
   // Hop pins away from the zone: tap the visible pin farthest from the
   // circle until its center has left the viewport by a comfortable margin.
   // Candidates stay inside the map stage, clear of the search pill (top),
   // the sheet/card (bottom) and the map controls (right edge).
-  for (let hop = 0; hop < 10 && (await gap()) < 550; hop++) {
-    const circle = await circleCenter(page)
+  for (let hop = 0; hop < 10 && (await gapToZone()) < 550; hop++) {
+    const circle = await zonePin(page)
     const target = await page.evaluate(
       ({ circle, stage }) => {
         let best: { x: number; y: number; d: number } | null = null
@@ -101,7 +115,7 @@ test('one drag brings the circle back after pin-hopping away from the zone', asy
     await page.waitForTimeout(800) // the pan-to-station animation
   }
 
-  const before = await gap()
+  const before = await gapToZone()
   expect(before, 'the hops must have left the circle far behind').toBeGreaterThan(550)
 
   await drag(page, { x: cx, y: cy }, -110, 90)
@@ -109,9 +123,12 @@ test('one drag brings the circle back after pin-hopping away from the zone', asy
   await drag(page, { x: cx, y: cy }, 110, -90)
   await page.waitForTimeout(500)
 
-  const after = await gap()
-  // The circle must be back around the visible center (which sits up to half
-  // an inset from the stage center), not merely 35% of two drags closer
+  // The drawn circle (readable again now that it is back in view) must be
+  // around the visible center — which sits up to half an inset from the
+  // stage center — not merely 35% of two drags closer to it
+  const c = await circleCenter(page)
+  expect(c).not.toBeNull()
+  const after = Math.hypot(c!.x - cx, c!.y - cy)
   expect(after).toBeLessThan(350)
   expect(before - after).toBeGreaterThan(before * 0.6)
 })
