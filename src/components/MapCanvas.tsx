@@ -509,6 +509,11 @@ export default function MapCanvas({
   // Deliberately styled nothing like the route polyline — this must never
   // read as an itinerary.
   const linkWanted = app.searchedAway && tripOrigin;
+  // The recenter control stays lit while the view is still tied to the
+  // user's position: on it, or away with the origin link drawn. Only the
+  // center dot is reserved for « the view IS on the user ». Plain ink means
+  // the tie is gone — zone out of reach, or no position ever known.
+  const locateActive = !app.searchedAway || linkWanted;
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -871,15 +876,15 @@ export default function MapCanvas({
             title={m.map_my_position()}
             style={{
               ...clusterButton,
-              // Map-app convention: the control lights up green when the view
-              // IS on the user — everywhere else in the app green means « on /
-              // good », so green-when-away read backwards. Elsewhere it stays
+              // Green while the view is tied to the user's position (on it,
+              // or away with the origin link drawn — see locateActive); the
+              // filled dot alone says « the view IS on the user ». Otherwise
               // the same tappable ink as the zoom and share buttons above.
-              background: app.searchedAway ? 'transparent' : C.accentSoft15,
+              background: locateActive ? C.accentSoft15 : 'transparent',
             }}
           >
             <LocateIcon
-              color={app.searchedAway ? C.ink : C.accent}
+              color={locateActive ? C.accent : C.ink}
               dot={!app.searchedAway}
               size={19}
             />
@@ -914,10 +919,11 @@ export default function MapCanvas({
             <ShareIcon color={C.ink} size={18} />
           </button>
 
-          {/* Recenter on the user. Map-app convention: green + filled dot
-              when the view IS on the user, plain tappable ink (the share
-              button's look) when it is elsewhere — green meaning « away »
-              read backwards next to every other green in the app. */}
+          {/* Recenter on the user. Green while the view is tied to the
+              user's position (on it, or away with the origin link drawn —
+              see locateActive), the filled dot only when the view IS on the
+              user; plain tappable ink (the share button's look) once the
+              tie is gone. */}
           <button
             onClick={() => app.resetSearchToUser()}
             aria-label={m.map_recenter_aria()}
@@ -930,7 +936,7 @@ export default function MapCanvas({
               height: 44,
               borderRadius: '50%',
               ...pillGlass,
-              border: `1px solid ${app.searchedAway ? C.glassBorder : C.accentBorderStrong}`,
+              border: `1px solid ${locateActive ? C.accentBorderStrong : C.glassBorder}`,
               boxShadow: `0 6px 18px ${C.shadow45}`,
               display: 'flex',
               alignItems: 'center',
@@ -939,7 +945,7 @@ export default function MapCanvas({
             }}
           >
             <LocateIcon
-              color={app.searchedAway ? C.ink : C.accent}
+              color={locateActive ? C.accent : C.ink}
               dot={!app.searchedAway}
               size={19}
             />
