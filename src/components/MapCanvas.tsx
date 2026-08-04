@@ -7,6 +7,9 @@ import { haversineKm, radiusBounds, type GeoPoint } from '../lib/geo';
 import { useIsDesktop } from '../lib/layout';
 import { useLeafletMap, type LeafletShell } from '../lib/leafletMap';
 import { pricePinDotHtml, pricePinHtml } from '../lib/pricePin';
+import { useDebugMode } from '../lib/debugMode';
+import { fmtAgeMs } from '../lib/debugSnapshot';
+import { readAllCachedAreas } from '../data/stationsCache';
 import ShareIcon from './ShareIcon';
 import LocateIcon from './LocateIcon';
 import {
@@ -56,6 +59,14 @@ const OFFSET_ABSORB_RATE = 0.35;
  * second of panning whatever the distance, then settles under the cap.
  */
 const OFFSET_FAR_DECAY = 0.15;
+
+/**
+ * Debug layer color — a literal, not a C token: Leaflet writes vector colors
+ * as SVG/canvas values where a var() cannot resolve, and debug chrome keeps
+ * one look in both themes. Violet on purpose: nothing else on the map wears
+ * it, so cached ghosts can never pass for live data.
+ */
+const DEBUG_CACHE_COLOR = '#8b5cf6';
 
 /**
  * Leaflet sizes the SVG holding the vector layers to the viewport (+10%) and
@@ -135,6 +146,7 @@ export default function MapCanvas({
 }) {
   const app = useApp();
   const desktop = useIsDesktop();
+  const debugMode = useDebugMode();
   // The pan-to-station math reads the panel inset at run time
   const leftInsetRef = useRef(leftInset);
   leftInsetRef.current = leftInset;
@@ -657,6 +669,104 @@ export default function MapCanvas({
     // card — a plain render — already showed the road-aware one.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [app.stations.data, app.fuel, app.radius, app.brandSel, app.serviceTags, app.userPos, app.searchPos, app.focusStationId, app.roadReach, app.consumption, app.tank, viewTick]);
+
+  // ── Debug mode: EVERY cached area drawn as it sits in the store ───────────
+  // The whole point is honesty about the cache: each stored area shows its
+  // dashed violet outline and its stations as ghost dots — loaded zone or
+  // not — so « the data is there in cache » is visible on the map instead of
+  // deduced. Explicitly cache data (violet, dashed, labelled), never
+  // mistakable for live pins.
+  //
+  // Two rules keep this from taking the browser down under heavy panning
+  // (every fetch that commits re-runs the effect):
+  // – ONE canvas renderer for all the dots, created once and removed on
+  //   teardown. Renderers are layers Leaflet keeps ON THE MAP once a path
+  //   used them — a renderer per pass piled up full-viewport canvases that
+  //   all resized and repainted on every map move until the GPU gave out.
+  // – Updates are incremental, diffed per area on `key|fetchedAt` like the
+  //   station markers: a new fetch draws ITS area and drops replaced ones;
+  //   the thousands of dots of the untouched areas stay exactly where they
+  //   are instead of being torn down and rebuilt each time.
+  const debugLayerRef = useRef<L.LayerGroup | null>(null);
+  const debugCanvasRef = useRef<L.Renderer | null>(null);
+  const debugAreasRef = useRef(new Map<string, L.LayerGroup>());
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!debugMode) {
+      debugLayerRef.current?.remove();
+      debugLayerRef.current = null;
+      debugCanvasRef.current?.remove();
+      debugCanvasRef.current = null;
+      debugAreasRef.current.clear();
+      return;
+    }
+    let live = true;
+    void readAllCachedAreas().then((areas) => {
+      if (!live || !mapRef.current) return;
+      const root =
+        debugLayerRef.current ?? (debugLayerRef.current = L.layerGroup().addTo(map));
+      const canvas =
+        debugCanvasRef.current ?? (debugCanvasRef.current = L.canvas({ padding: 0.3 }));
+      const held = debugAreasRef.current;
+      const wanted = new Map(areas.map((a) => [`${a.key}|${a.fetchedAt}`, a]));
+      for (const [sig, sub] of held) {
+        if (!wanted.has(sig)) {
+          root.removeLayer(sub);
+          held.delete(sig);
+        }
+      }
+      for (const [sig, area] of wanted) {
+        if (held.has(sig)) continue;
+        const sub = L.layerGroup();
+        L.circle([area.center.lat, area.center.lng], {
+          radius: area.fetchRadiusKm * 1000,
+          color: DEBUG_CACHE_COLOR,
+          weight: 1.5,
+          dashArray: '6 8',
+          fill: false,
+          opacity: 0.7,
+          interactive: true,
+        })
+          // Debug chrome is English-only data — see CLAUDE.md, Language
+          .bindTooltip(
+            `cache · ${area.source} · ${area.stations.length} stations · fetched ${fmtAgeMs(
+              Date.now() - area.fetchedAt,
+            )} ago`,
+            { sticky: true },
+          )
+          .addTo(sub);
+        for (const s of area.stations) {
+          L.circleMarker([s.lat, s.lng], {
+            renderer: canvas,
+            radius: 3,
+            color: DEBUG_CACHE_COLOR,
+            weight: 1,
+            opacity: 0.55,
+            fillColor: DEBUG_CACHE_COLOR,
+            fillOpacity: 0.25,
+            interactive: false,
+          }).addTo(sub);
+        }
+        sub.addTo(root);
+        held.set(sig, sub);
+      }
+    });
+    return () => {
+      live = false;
+    };
+  }, [debugMode, app.stations.fetchedAt]);
+
+  // The layers above die with the map — only the refs must not survive it
+  // (StrictMode remounts would reuse layers tied to the dead map otherwise)
+  useEffect(
+    () => () => {
+      debugLayerRef.current = null;
+      debugCanvasRef.current = null;
+      debugAreasRef.current.clear();
+    },
+    [],
+  );
 
   // ── Auto-fit on the SEARCH CIRCLE itself until the user takes over — and
   // never while a station is selected (don't yank the view). Framing the

@@ -29,6 +29,13 @@ it lives only in `messages/fr.json`.
 - The **only** admitted French outside the catalog is text a source API
   invents (the gouv flux's free-text services) and proper nouns (enseignes,
   domain names, `Haute-Garonne`).
+- **Debug chrome is exempt from the catalog rule.** The debug overlay
+  (`src/components/DebugOverlay.tsx` — Settings › Developer, or `?debug=1`)
+  and the expanded cache diagnostics under Settings › Offline data are
+  developer tooling: their labels and payloads are English-only data meant to
+  be pasted into bug reports, and none of it enters `messages/`. The normal
+  Settings rows that lead there (section label, toggle title) are user UI and
+  stay in the catalogs.
 
 ## Internationalization
 

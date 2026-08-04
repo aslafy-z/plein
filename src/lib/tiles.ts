@@ -10,6 +10,7 @@
 import L from 'leaflet';
 import { IS_DEV } from './env';
 import { currentTheme, onThemeChange } from './colorScheme';
+import { registerTileDebugSource, type TileLayerDebug } from './debugState';
 
 const cartoUrl = () =>
   `https://{s}.basemaps.cartocdn.com/${currentTheme() === 'light' ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png`;
@@ -18,6 +19,21 @@ const FALLBACK_URL = IS_DEV ? '/tiles/{z}/{x}/{y}.png' : 'https://tile.openstree
 const GIVE_UP_MS = 6000;
 
 let cartoUnreachable = false;
+
+// Session totals across every mounted map and both layers — the debug
+// overlay's tile section. Counters only: no behavior hangs off them; the
+// registration keeps this module's Leaflet import out of the snapshot code.
+let tilesLoaded = 0;
+let tilesErrored = 0;
+
+registerTileDebugSource(
+  (): TileLayerDebug => ({
+    active: cartoUnreachable ? 'fallback' : 'carto',
+    cartoUnreachable,
+    tilesLoaded,
+    tilesErrored,
+  }),
+);
 
 // Small pans shouldn't refetch tiles: keep a wide ring of off-screen tiles
 // alive instead of Leaflet's default 2-tile buffer, and load new tiles while
@@ -72,14 +88,17 @@ const bufferedTileLayer = (url: string, opts: L.TileLayerOptions): L.TileLayer =
   new BufferedTileLayer(url, opts);
 
 function addFallback(map: L.Map): void {
-  bufferedTileLayer(FALLBACK_URL, {
+  const layer = bufferedTileLayer(FALLBACK_URL, {
     ...TILE_RETENTION,
     attribution: '© OpenStreetMap · © CARTO',
     maxZoom: 19,
     // The dev proxy serves CARTO (already dark); the prod fallback is raw OSM
     // and needs the darkening filter.
     className: IS_DEV ? 'tiles-carto' : 'tiles-dark',
-  }).addTo(map);
+  });
+  layer.on('tileload', () => tilesLoaded++);
+  layer.on('tileerror', () => tilesErrored++);
+  layer.addTo(map);
 }
 
 export function addBasemap(map: L.Map): void {
@@ -116,10 +135,12 @@ export function addBasemap(map: L.Map): void {
 
   carto.on('tileload', () => {
     loaded++;
+    tilesLoaded++;
     clearTimeout(giveUp);
   });
   carto.on('tileerror', () => {
     errored++;
+    tilesErrored++;
     if (loaded === 0 && errored >= 2) swap();
   });
 

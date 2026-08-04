@@ -1,5 +1,7 @@
+import { lazy, Suspense } from 'react';
 import { useApp, type Screen } from './state/store';
 import { useIsDesktop } from './lib/layout';
+import { useDebugMode } from './lib/debugMode';
 import Onboarding from './screens/Onboarding';
 import MapScreen from './screens/MapScreen';
 import FavoritesScreen from './screens/FavoritesScreen';
@@ -14,6 +16,10 @@ import FallbackBanner from './components/FallbackBanner';
 import InstallPrompt from './components/InstallPrompt';
 import UpdatePrompt from './components/UpdatePrompt';
 
+// Developer chrome behind its own chunk: a normal session (flag off) never
+// downloads a byte of it. The flag is session-scoped — see lib/debugMode.
+const DebugOverlay = lazy(() => import('./components/DebugOverlay'));
+
 /** Screens the tab bar / side navigation belongs on */
 const NAV_SCREENS: Screen[] = ['map', 'favs', 'route', 'routeSetup', 'settings'];
 
@@ -21,6 +27,7 @@ export default function App() {
   const app = useApp();
   const { screen } = app;
   const desktop = useIsDesktop();
+  const debug = useDebugMode();
 
   // A fiche opened from the route belongs to the route: on desktop it stacks
   // inside the route panel, over the corridor map — never a jump to the map
@@ -66,6 +73,13 @@ export default function App() {
         </div>
         {app.filtersOpen && <FiltersSheet />}
         <Toast />
+        {/* Portalled to <body> by the component — position in the tree only
+            decides when it mounts */}
+        {debug && (
+          <Suspense fallback={null}>
+            <DebugOverlay />
+          </Suspense>
+        )}
       </div>
     </div>
   );

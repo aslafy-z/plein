@@ -5,8 +5,18 @@ import { useApp, MAPS_SITE_IDS, mapsSiteLabel, VEHICLE_PRESETS } from '../state/
 import {
   cacheStats,
   clearStationsCache,
+  stationsCacheDebug,
+  type StationsCacheDebug,
   type StationsCacheStats,
 } from '../data/stationsCache';
+import { setDebugEnabled, useDebugMode } from '../lib/debugMode';
+import {
+  cacheTier,
+  collectSwCaches,
+  fmtAgeMs,
+  roundCoord,
+  type DebugSnapshot,
+} from '../lib/debugSnapshot';
 import { clearFavoritePrices } from '../data/favoritePrices';
 import { agoLabelFrom, fmtDecimal, sizeLabel } from '../lib/format';
 import { fuelLabel, sourceSublabel, sourceTitle, themeLabel, vehicleLabel } from '../lib/labels';
@@ -74,17 +84,223 @@ function localeName(locale: Locale): string {
  * whether any of it survives a reload) — there is nothing else to look at,
  * since instrumentation here has to be data rather than console logs.
  */
+/** Friendly names for the sw.js cache buckets (debug chrome, English-only) */
+const SW_CACHE_NAMES: Record<string, string> = {
+  'plein-assets-v1': 'App assets',
+  'plein-shell-v1': 'App shell',
+  'plein-tiles-v1': 'Basemap tiles',
+  'plein-data-v1': 'Brand data',
+};
+
+/** Chrome's non-standard estimate() breakdown, when it offers one */
+interface EstimateDetails {
+  usage: number | null;
+  quota: number | null;
+  caches: number | null;
+  indexedDB: number | null;
+}
+
+/**
+ * Extended diagnostics under the cache summary: per-area rows, the
+ * service-worker cache counts against their sw.js caps, the origin storage
+ * estimate, and a JSON copy button. English on purpose — data for a bug
+ * report, under the debug-chrome exemption (CLAUDE.md, Language) — but laid
+ * out as proper rows, not a raw dump. Coordinates ride the ~1 km grid so a
+ * screenshot cannot leak the tester's exact position.
+ */
+function CacheDetails() {
+  const [cache, setCache] = useState<StationsCacheDebug | null>(null);
+  const [swCaches, setSwCaches] = useState<DebugSnapshot['storage']['swCaches']>([]);
+  const [estimate, setEstimate] = useState<EstimateDetails>({
+    usage: null,
+    quota: null,
+    caches: null,
+    indexedDB: null,
+  });
+  const [copied, setCopied] = useState(false);
+
+  // Fresh on open, and kept fresh while open — a background revalidation or
+  // an eviction landing under the reader's eyes must show up.
+  useEffect(() => {
+    let live = true;
+    const load = () => {
+      setCache(stationsCacheDebug());
+      void collectSwCaches().then((next) => {
+        if (live) setSwCaches(next);
+      });
+      void navigator.storage
+        ?.estimate?.()
+        .then((est) => {
+          if (!live) return;
+          const details = (est as { usageDetails?: Record<string, number> }).usageDetails;
+          setEstimate({
+            usage: est?.usage ?? null,
+            quota: est?.quota ?? null,
+            caches: details?.caches ?? null,
+            indexedDB: details?.indexedDB ?? null,
+          });
+        })
+        .catch(() => {});
+    };
+    load();
+    const timer = setInterval(load, 2000);
+    return () => {
+      live = false;
+      clearInterval(timer);
+    };
+  }, []);
+
+  const copy = async () => {
+    const payload = { areaCache: cache, swCaches, storageEstimate: estimate };
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard denied — the numbers stay readable on screen */
+    }
+  };
+
+  const caption: React.CSSProperties = {
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: '.08em',
+    textTransform: 'uppercase',
+    color: C.faint,
+    margin: '12px 0 4px',
+  };
+  const row: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: 12,
+    padding: '5px 0',
+  };
+  const tierColor = (tier: string) => (tier === 'fresh' ? C.faint : tier === 'revalidate' ? C.mut : C.warn);
+
+  return (
+    <div
+      data-testid="cache-details"
+      style={{ padding: '2px 16px 12px', borderBottom: `1px solid ${C.divider}`, fontSize: 12.5 }}
+    >
+      <div style={caption}>Cached areas</div>
+      {cache != null && cache.areas.length === 0 && (
+        <div style={{ color: C.faint, padding: '4px 0' }}>None</div>
+      )}
+      {cache?.areas.map((a) => (
+        <div key={a.key} style={row}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ color: C.ink, fontWeight: 600 }}>
+              {a.source} · {roundCoord(a.center.lat)}, {roundCoord(a.center.lng)}
+            </div>
+            <div style={{ color: C.faint, fontSize: 11.5, marginTop: 1 }}>
+              {a.stationCount} stations · {a.fetchRadiusKm} km radius
+              {a.payloadInMemory ? ' · in memory' : ''}
+            </div>
+          </div>
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+            <div style={{ font: mono(600, 12), color: C.body }}>{sizeLabel(a.bytes)}</div>
+            <div style={{ fontSize: 11.5, marginTop: 1, color: tierColor(cacheTier(a.fetchedAt)) }}>
+              {fmtAgeMs(Date.now() - a.fetchedAt)} ago · {cacheTier(a.fetchedAt)}
+            </div>
+          </div>
+        </div>
+      ))}
+      {cache != null && (
+        <div style={{ color: C.faint, fontSize: 11.5, padding: '2px 0' }}>
+          {cache.durable ? 'Durable (IndexedDB)' : 'In-memory only'} ·{' '}
+          {cache.hydrated ? 'hydrated' : 'hydrating'}
+          {cache.pendingPuts + cache.pendingDeletes > 0
+            ? ` · ${cache.pendingPuts + cache.pendingDeletes} pending writes`
+            : ''}
+        </div>
+      )}
+
+      {swCaches.length > 0 && (
+        <>
+          <div style={caption}>Service worker caches</div>
+          {swCaches.map((c) => (
+            <div key={c.name} style={row}>
+              <span style={{ color: C.body }}>{SW_CACHE_NAMES[c.name] ?? c.name}</span>
+              <span style={{ font: mono(600, 12), color: C.body }}>
+                {c.entries}
+                {c.cap != null && <span style={{ color: C.faint }}> / {c.cap}</span>}
+              </span>
+            </div>
+          ))}
+        </>
+      )}
+
+      {estimate.usage != null && (
+        <>
+          <div style={caption}>Origin storage (browser estimate)</div>
+          <div style={row}>
+            <span style={{ color: C.body }}>Used</span>
+            <span style={{ font: mono(600, 12), color: C.body }}>{sizeLabel(estimate.usage)}</span>
+          </div>
+          {estimate.quota != null && (
+            <div style={row}>
+              <span style={{ color: C.body }}>Quota</span>
+              <span style={{ font: mono(600, 12), color: C.body }}>
+                {sizeLabel(estimate.quota)}
+              </span>
+            </div>
+          )}
+          {(estimate.caches != null || estimate.indexedDB != null) && (
+            <div style={{ color: C.faint, fontSize: 11.5, padding: '2px 0' }}>
+              {estimate.caches != null ? `Cache Storage ${sizeLabel(estimate.caches)}` : ''}
+              {estimate.caches != null && estimate.indexedDB != null ? ' · ' : ''}
+              {estimate.indexedDB != null ? `IndexedDB ${sizeLabel(estimate.indexedDB)}` : ''}
+            </div>
+          )}
+          {/* Opaque padding: the tiles are cached as no-cors (opaque)
+              responses, and Chromium charges each one ~7 MB against the
+              quota to keep cross-origin sizes unguessable — the « used »
+              figure balloons by gigabytes while the disk barely notices. */}
+          <div style={{ color: C.faint, fontSize: 11.5, lineHeight: 1.5, padding: '2px 0' }}>
+            Includes ~7 MB of browser padding per cached map tile (opaque responses) — actual
+            disk use is far smaller.
+          </div>
+        </>
+      )}
+
+      <button
+        onClick={() => void copy()}
+        style={{
+          marginTop: 10,
+          font: mono(600, 11),
+          color: C.body,
+          background: C.surface2,
+          border: `1px solid ${C.border12}`,
+          borderRadius: 10,
+          padding: '6px 12px',
+          cursor: 'pointer',
+        }}
+      >
+        {copied ? 'Copied ✓' : 'Copy JSON'}
+      </button>
+    </div>
+  );
+}
+
 function CachedData({ onCleared }: { onCleared: () => void }) {
   const [stats, setStats] = useState<StationsCacheStats | null>(null);
   const [round, setRound] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  // Loaded on every open (the screen remounts) and refreshed while the
+  // reader stays — the summary must follow a clear or a background fetch.
   useEffect(() => {
     let live = true;
-    void cacheStats().then((next) => {
-      if (live) setStats(next);
-    });
+    const load = () =>
+      void cacheStats().then((next) => {
+        if (live) setStats(next);
+      });
+    load();
+    const timer = setInterval(load, 2000);
     return () => {
       live = false;
+      clearInterval(timer);
     };
   }, [round]);
 
@@ -99,28 +315,53 @@ function CachedData({ onCleared }: { onCleared: () => void }) {
 
   return (
     <>
-      <div
+      {/* The summary row expands into the raw diagnostics on tap */}
+      <button
+        onClick={() => setDetailsOpen((v) => !v)}
+        aria-expanded={detailsOpen}
+        aria-label={m.settings_cache_details_toggle()}
+        title={m.settings_cache_details_toggle()}
         style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
           padding: '12px 16px',
           borderBottom: `1px solid ${C.divider}`,
           fontSize: 12,
           lineHeight: 1.55,
           color: C.mut,
+          cursor: 'pointer',
+          width: '100%',
+          textAlign: 'left',
         }}
       >
-        <div data-testid="cache-stats">
-          {stats == null || stats.areas === 0
-            ? m.settings_cache_empty()
-            : m.settings_cache_summary({
-                count: stats.areas,
-                size: sizeLabel(stats.bytes),
-                age: stats.oldestFetchedAt != null ? agoLabelFrom(stats.oldestFetchedAt) : '',
-              })}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div data-testid="cache-stats">
+            {stats == null || stats.areas === 0
+              ? m.settings_cache_empty()
+              : m.settings_cache_summary({
+                  count: stats.areas,
+                  size: sizeLabel(stats.bytes),
+                  age: stats.oldestFetchedAt != null ? agoLabelFrom(stats.oldestFetchedAt) : '',
+                })}
+          </div>
+          {stats != null && !stats.durable && (
+            <div style={{ color: C.warn, marginTop: 2 }}>{m.settings_cache_volatile()}</div>
+          )}
         </div>
-        {stats != null && !stats.durable && (
-          <div style={{ color: C.warn, marginTop: 2 }}>{m.settings_cache_volatile()}</div>
-        )}
-      </div>
+        <span
+          aria-hidden="true"
+          style={{
+            color: C.faint,
+            transform: detailsOpen ? 'rotate(90deg)' : 'none',
+            transition: 'transform .15s',
+            flexShrink: 0,
+          }}
+        >
+          ›
+        </span>
+      </button>
+      {detailsOpen && <CacheDetails key={round} />}
       <button
         onClick={() => void clear()}
         disabled={busy || stats == null || stats.areas === 0}
@@ -147,6 +388,7 @@ function CachedData({ onCleared }: { onCleared: () => void }) {
 export default function Settings() {
   const app = useApp();
   const desktop = useIsDesktop();
+  const debugOn = useDebugMode();
   const { fuel, vehicle, tank, consumption, sourceId, geoStatus, mapsSite } = app;
   // Slider ranges follow the profile (a motorcycle tank is far smaller than a car's)
   const tankRange =
@@ -608,7 +850,9 @@ export default function Settings() {
       </div>
 
       {/* Offline cache — cache-class data, not a source choice, so its own
-          section rather than a tail on the source picker */}
+          section rather than a tail on the source picker. The debug overlay
+          switch lives at its bottom: developer tooling reads the same cache,
+          and a section of its own gave one row a whole card. */}
       <div style={{ marginTop: 18 }}>
         <div style={SECTION_LABEL}>{m.settings_cache_section()}</div>
         <div
@@ -620,6 +864,59 @@ export default function Settings() {
           }}
         >
           <CachedData onCleared={() => app.notify(m.toast_cache_cleared())} />
+          {/* Session-scoped on purpose (sessionStorage, never the persisted
+              blob): closing the tab turns the overlay back off. */}
+          <button
+            role="switch"
+            aria-checked={debugOn}
+            onClick={() => setDebugEnabled(!debugOn)}
+            data-testid="debug-toggle"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '14px 16px',
+              borderTop: `1px solid ${C.divider}`,
+              cursor: 'pointer',
+              width: '100%',
+              textAlign: 'left',
+            }}
+          >
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>
+                {m.settings_debug_overlay_title()}
+              </div>
+              <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>
+                {m.settings_debug_overlay_sub()}
+              </div>
+            </div>
+            <span
+              aria-hidden="true"
+              style={{
+                width: 40,
+                height: 24,
+                borderRadius: 12,
+                background: debugOn ? C.accent : C.toggleOff,
+                position: 'relative',
+                flexShrink: 0,
+                transition: 'background .15s',
+              }}
+            >
+              <span
+                style={{
+                  position: 'absolute',
+                  top: 3,
+                  left: debugOn ? 19 : 3,
+                  width: 18,
+                  height: 18,
+                  borderRadius: '50%',
+                  background: C.surface,
+                  boxShadow: `0 1px 3px ${C.shadow40}`,
+                  transition: 'left .15s',
+                }}
+              />
+            </span>
+          </button>
         </div>
       </div>
 

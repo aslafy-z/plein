@@ -357,6 +357,10 @@ function supersededByMemory(meta: AreaMeta): boolean {
   return false;
 }
 
+/** true once `hydrate` finished — the debug readout tells a cold index apart
+ *  from a genuinely empty one */
+let hydratedDone = false;
+
 async function hydrate(): Promise<void> {
   store = await openCacheStore();
   durable = store.durable;
@@ -385,6 +389,7 @@ async function hydrate(): Promise<void> {
   importLegacyBlob();
   evict();
   if (pendingPuts.size || pendingDeletes.size) queueFlush();
+  hydratedDone = true;
 }
 
 /** Resolves once the area index is in memory. Idempotent, never rejects. */
@@ -577,6 +582,88 @@ export async function cacheStats(): Promise<StationsCacheStats> {
     oldestFetchedAt: metas.length ? Math.min(...metas.map((m) => m.fetchedAt)) : null,
     durable,
   };
+}
+
+/** One area of the index, as the debug overlay / Settings diagnostics see it */
+export interface CachedAreaDebug {
+  key: string;
+  source: DataSourceId;
+  center: GeoPoint;
+  fetchRadiusKm: number;
+  fetchedAt: number;
+  stationCount: number;
+  bytes: number;
+  /** Its station array currently sits in memory (was read this session) */
+  payloadInMemory: boolean;
+}
+
+export interface StationsCacheDebug {
+  durable: boolean;
+  hydrated: boolean;
+  pendingPuts: number;
+  pendingDeletes: number;
+  areas: CachedAreaDebug[];
+}
+
+/**
+ * Synchronous window on the in-memory index — the debug overlay's raw
+ * per-area records. Read-only: instrumentation is data here, never control.
+ */
+export function stationsCacheDebug(): StationsCacheDebug {
+  return {
+    durable,
+    hydrated: hydratedDone,
+    pendingPuts: pendingPuts.size,
+    pendingDeletes: pendingDeletes.size,
+    areas: [...index.values()]
+      .sort((a, b) => b.fetchedAt - a.fetchedAt)
+      .map((meta) => ({
+        key: meta.key,
+        source: meta.source,
+        center: meta.center,
+        fetchRadiusKm: meta.fetchRadiusKm,
+        fetchedAt: meta.fetchedAt,
+        stationCount: meta.stationCount,
+        bytes: meta.bytes,
+        payloadInMemory: payloads.has(meta.key),
+      })),
+  };
+}
+
+/** A cached area with its full station array, for the debug map layer */
+export interface CachedAreaStations {
+  key: string;
+  source: DataSourceId;
+  center: GeoPoint;
+  fetchRadiusKm: number;
+  fetchedAt: number;
+  stations: Station[];
+}
+
+/**
+ * EVERY cached area with its stations — the debug map layer draws the whole
+ * cache, loaded zone or not, so what the store holds is visible on the map.
+ * Deliberately eager about payloads (each read stays memoized); only debug
+ * chrome may call this, ordinary code keeps the lazy per-area reads.
+ */
+export async function readAllCachedAreas(): Promise<CachedAreaStations[]> {
+  await ready();
+  const now = Date.now();
+  const out: CachedAreaStations[] = [];
+  for (const meta of [...index.values()].sort((a, b) => b.fetchedAt - a.fetchedAt)) {
+    if (now - meta.fetchedAt > MAX_CACHE_AGE_MS) continue;
+    const stations = await loadPayload(meta.key);
+    if (!stations) continue;
+    out.push({
+      key: meta.key,
+      source: meta.source,
+      center: meta.center,
+      fetchRadiusKm: meta.fetchRadiusKm,
+      fetchedAt: meta.fetchedAt,
+      stations,
+    });
+  }
+  return out;
 }
 
 /** Drops every cached area, here and in the store. Settings stay untouched. */
