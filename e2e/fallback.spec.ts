@@ -66,11 +66,11 @@ test('a dead gouv source shows the source-down state, never demo data', async ({
   await expect(page.getByText('Station U · Croix-Blanche')).toHaveCount(0)
   await expect(page.getByText('1.67 €')).toHaveCount(0)
 
-  // « Settings » repeats the notice and offers the demo dataset as an explicit
-  // choice — a row hidden while the real source is healthy
+  // « Settings » repeats the notice but still does not offer the demo
+  // dataset — its row only exists while demo is the active source
   await page.getByText('Settings', { exact: true }).click()
   await expect(page.getByText(/unavailable right now/)).toBeVisible()
-  await expect(page.getByRole('button', { name: /Demo data/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Demo data/ })).toHaveCount(0)
 })
 
 test('retry loads the real source once it answers again', async ({ page }) => {

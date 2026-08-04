@@ -480,7 +480,7 @@
   "settings_maps_site": "Site pour « Y aller »",
   "settings_maps_site_hint": "site ouvert par le bouton « Y aller »",
   "settings_data_section": "Données",
-  "settings_source_down": "Source temps réel indisponible actuellement — les données de démonstration restent disponibles ci-dessous.",
+  "settings_source_down": "Source temps réel indisponible actuellement — les prix affichés peuvent dater.",
   "settings_price_disclaimer_title": "Un mot sur les prix",
   "settings_price_disclaimer_body": " — ils proviennent des déclarations officielles des stations et sont donnés à titre indicatif, sans garantie : nous ne pouvons pas les vérifier un par un, et il peut arriver qu'un prix ait changé le temps d'arriver à la pompe. Jetez-y un œil sur place avant de faire le plein — le détour reste à votre appréciation. Un prix erroné ne peut pour le moment être ni signalé ni corrigé depuis l'application — mais dites-le-nous par e-mail juste en dessous 💚",
   "settings_feedback_section": "Contact",

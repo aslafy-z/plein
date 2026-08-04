@@ -121,8 +121,7 @@ A app não tem **nenhum backend**: o navegador consulta diretamente estes
 serviços públicos. As fontes são conectáveis (`src/data/types.ts`). Sem
 ligação ou com um fluxo indisponível, a app mantém os últimos postos
 carregados (cache por zona) com uma faixa explícita e tenta de novo assim que
-a ligação volta; um conjunto de dados de demonstração offline continua
-selecionável nas definições.
+a ligação volta.
 
 ## 🛠️ Desenvolvimento
 

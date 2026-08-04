@@ -768,13 +768,10 @@ export default function Settings() {
               overflow: 'hidden',
             }}
           >
-            {/* The demo dataset is a deliberate choice, never a silent
-                fallback: its row shows for users who already selected it (so
-                they can switch back) and while the real source is failing, as
-                the explicit escape hatch. */}
-            {SOURCES.filter(
-              (src) => src !== 'demo' || sourceId === 'demo' || app.stations.lastError != null,
-            ).map((src) => {
+            {/* The demo dataset is never offered: its row exists only while it
+                IS the active source (an e2e seed, or a choice persisted before
+                it left the list), so it can still be switched back off. */}
+            {SOURCES.filter((src) => src !== 'demo' || sourceId === 'demo').map((src) => {
               const selected = sourceId === src;
               return (
                 <button

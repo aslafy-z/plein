@@ -115,8 +115,7 @@ rest (routing, basemaps) is shared by all four.
 The app has **no backend**: the browser queries these public services
 directly. Sources are pluggable (`src/data/types.ts`). Offline or when a feed
 is down, the app keeps the last loaded stations (per-area cache) with an
-explicit banner and retries as soon as the connection returns; an offline
-demo dataset stays selectable in the settings.
+explicit banner and retries as soon as the connection returns.
 
 ## 🛠️ Development
 
