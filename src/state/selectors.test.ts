@@ -32,8 +32,12 @@ import {
   selectPlanCandidates,
   selectReachCandidates,
   selectRecommended,
+  selectEffectiveSort,
   selectRouteAnalysis,
   selectVisible,
+  selectTripOriginKnown,
+  searchOutOfReach,
+  stationTrip,
   travelMatrixKey,
   selectZoneBrandCounts,
   selectZoneDelta,
@@ -76,6 +80,7 @@ function app(over: Partial<AppStore> = {}): AppStore {
     sort: 'price',
     userPos: BASE,
     searchPos: BASE,
+    hasKnownPos: true,
     focusStationId: null,
     stations: { status: 'ready', data: [], activeSource: 'demo', refreshing: false },
     roadReach: {},
@@ -537,6 +542,93 @@ describe('selectReachCandidates', () => {
     expect(picked).toHaveLength(60)
     // …the 60 nearest, not the first 60 of the input
     expect(picked[0].id).toBe('s79')
+  })
+})
+
+// ── Out-of-reach search area: the trip starts at the search center ───────────
+describe('searchOutOfReach / stationTrip', () => {
+  // ~1000 km north of the user — a Toulouse user opening a Granada link
+  const FAR = { lat: BASE.lat + 9, lng: BASE.lng }
+  const farNorth = (km: number) => ({ lat: FAR.lat + km / 111, lng: FAR.lng })
+
+  const remoteZone = (over: Partial<AppStore> = {}) =>
+    app({
+      searchPos: FAR,
+      stations: {
+        status: 'ready',
+        data: [
+          station({ id: 'near-dear', ...farNorth(1), prices: diesel(1.92) }),
+          station({ id: 'far-cheap', ...farNorth(3), prices: diesel(1.6) }),
+        ],
+        activeSource: 'demo',
+        refreshing: false,
+      },
+      ...over,
+    })
+
+  it('flips only beyond MAX_RADIUS_KM of the user', () => {
+    expect(searchOutOfReach(app())).toBe(false)
+    expect(searchOutOfReach(app({ searchPos: north(20) }))).toBe(false)
+    expect(searchOutOfReach(app({ searchPos: north(30) }))).toBe(true)
+  })
+
+  it('measures distance and drive time from the search center, not from the user', () => {
+    const rows = selectVisible(remoteZone())
+    const near = rows.find((s) => s.id === 'near-dear')!
+    expect(near.distKm).toBeCloseTo(1 * CROW_ROAD_FACTOR, 1)
+    expect(near.driveMin).toBeLessThan(10)
+  })
+
+  it('recommends the best deal of the area instead of the station nearest to the user', () => {
+    // Measured from the user, every round trip busts the tank: all effective
+    // prices are Infinity and the tie-break crowns the station nearest to the
+    // user — the dearest of the area here
+    expect(selectRecommended(remoteZone())?.id).toBe('far-cheap')
+    expect(selectSorted(remoteZone({ sort: 'recommended' })).map((s) => s.id)).toEqual([
+      'far-cheap',
+      'near-dear',
+    ])
+  })
+
+  it('ignores reach entries once out of reach — they were measured from the user', () => {
+    const a = remoteZone({ roadReach: { 'near-dear': { distanceKm: 1010, durationMin: 620 } } })
+    expect(selectVisible(a).find((s) => s.id === 'near-dear')!.distKm).toBeCloseTo(
+      1 * CROW_ROAD_FACTOR,
+      1,
+    )
+  })
+
+  it('loses the trip origin out of reach — and equally without a known position', () => {
+    expect(selectTripOriginKnown(app())).toBe(true)
+    expect(selectTripOriginKnown(app({ searchPos: north(30) }))).toBe(false)
+    // Geolocation never granted, nothing persisted: userPos is only
+    // DEFAULT_POS standing in — same rendering as the faraway area
+    expect(selectTripOriginKnown(app({ hasKnownPos: false }))).toBe(false)
+  })
+
+  it('falls back to the default ranking when « Distance » has nothing readable to sort on', () => {
+    expect(selectEffectiveSort(app({ sort: 'distance' }))).toBe('distance')
+    expect(selectEffectiveSort(app({ sort: 'distance', searchPos: north(30) }))).toBe('recommended')
+    expect(selectEffectiveSort(app({ sort: 'distance', hasKnownPos: false }))).toBe('recommended')
+    // The other sorts read fine without an origin — they stay
+    expect(selectEffectiveSort(app({ sort: 'price', hasKnownPos: false }))).toBe('price')
+    const remote = remoteZone({ sort: 'distance' })
+    expect(selectSorted(remote).map((s) => s.id)).toEqual(['far-cheap', 'near-dear'])
+  })
+
+  it('keeps measuring from the user while the searched area stays within reach', () => {
+    const a = app({
+      searchPos: north(10),
+      stations: {
+        status: 'ready',
+        data: [station({ id: 'a', ...north(11), prices: diesel(1.8) })],
+        activeSource: 'demo',
+        refreshing: false,
+      },
+      roadReach: { a: { distanceKm: 13.2, durationMin: 14 } },
+    })
+    expect(selectVisible(a).find((s) => s.id === 'a')!.distKm).toBe(13.2)
+    expect(stationTrip(a, a.stations.data[0])).toEqual({ distKm: 13.2, driveMin: 14 })
   })
 })
 
