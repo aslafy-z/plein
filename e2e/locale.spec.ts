@@ -30,7 +30,8 @@ test('the chosen language reaches the map chips and the sheet card', async ({ pa
   await page.getByRole('button', { name: 'Français', exact: true }).click()
   await page.getByRole('button', { name: 'Carte', exact: true }).click()
 
-  await expect(page.getByText('Diesel ↻')).toBeVisible()
+  // In French the diesel chip reads « Gazole » — the fuel label is catalog copy
+  await expect(page.getByText('Gazole ↻')).toBeVisible()
   await expect(page.getByText(/^Filtres · \d+$/)).toBeVisible()
   await expect(page.getByText('La moins chère près de vous')).toBeVisible()
 })
