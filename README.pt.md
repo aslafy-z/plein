@@ -23,7 +23,7 @@ e Portugal.
 
 | Os preços à sua volta | A ficha de um posto | No seu trajeto |
 | :---: | :---: | :---: |
-| <img src="docs/screenshots/pt/map.png" width="250" alt="Mapa de preços à volta de Toulouse" /> | <img src="docs/screenshots/pt/station.png" width="250" alt="Ficha de um posto: preço por combustível, diferença para o mais barato, serviços e poupança num depósito" /> | <img src="docs/screenshots/pt/route.png" width="250" alt="Comparação de postos num trajeto Toulouse → Nantes" /> |
+| <img src="docs/screenshots/pt/map.png" width="250" alt="Mapa de preços à volta de Lisboa" /> | <img src="docs/screenshots/pt/station.png" width="250" alt="Ficha de um posto: preço por combustível, diferença para o mais barato, serviços e poupança num depósito" /> | <img src="docs/screenshots/pt/route.png" width="250" alt="Comparação de postos num trajeto Lisboa → Porto" /> |
 
 </div>
 

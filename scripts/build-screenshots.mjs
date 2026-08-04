@@ -6,8 +6,9 @@
 // The shots are taken against the LIVE sources (`sourceId: 'auto'`), not the
 // deterministic demo dataset: real prices, real station names and a real OSRM
 // corridor are the point of these images, so every run produces the prices of
-// the day. Both screens start from Toulouse and the trip is Toulouse → Nantes,
-// matching the captions in the READMEs.
+// the day. Each locale plays a scene in its own country — the map and the
+// fiche around a well-known city, the trip a classic domestic run (SCENES
+// below) — matching the captions in that locale's README.
 //
 // The UI language is seeded through the persisted `locale` setting (the same
 // switch the Settings screen writes), and every selector string comes from
@@ -44,21 +45,33 @@ const OUT = join(ROOT, 'docs/screenshots');
 // A dedicated port so a dev server already running on 5173 is left alone
 const PORT = 5199;
 const BASE = `http://localhost:${PORT}`;
-const TOULOUSE = { lat: 43.6047, lng: 1.4442 };
 const VIEWPORT = { width: 480, height: 1064 };
-
-// The fiche the README shows off has to have something to show. Tapping the
-// recommended card lands on whichever station is cheapest today, and the gouv
-// flux leaves plenty of them with three fuels and « Aucun service renseigné »
-// under half an empty screen. This one is a Total Access in Toulouse: GPLc on
-// top of the usual pumps, nine services, and an enseigne the mini-map has a
-// logo for. Should it ever leave the flux, the richest loaded station stands in.
-const STATION_ID = 'fra-31100010';
 
 const SHOTS = ['map', 'station', 'route'];
 const LOCALES = ['en', 'fr', 'es', 'ca', 'pt'];
 // Full BCP 47 tags for the browser context, so Intl formats match the catalog
 const CONTEXT_LOCALE = { en: 'en-US', fr: 'fr-FR', es: 'es-ES', ca: 'ca-ES', pt: 'pt-PT' };
+
+// One scene per locale, in the language's own country (English rides along on
+// the French one): `center` seeds the position for the map and the fiche,
+// `from`/`to` is the trip — both endpoints in one country, so a single
+// geocoder resolves them — and `startTankPct` keeps the trip longer than the
+// departure tank's range, or short domestic runs would plan no stop at all
+// and the route shot would have nothing to show.
+//
+// `station` pins the fiche when that station is in the loaded area — the
+// fiche has to have something to show, and tapping whatever is cheapest today
+// often lands on three fuels over half an empty screen. fra-31100010 is a
+// Total Access in Toulouse: GPLc on top of the usual pumps, nine services,
+// and an enseigne the mini-map has a logo for. Elsewhere (or should it ever
+// leave the flux) the richest loaded station stands in.
+const SCENES = {
+  en: { center: { lat: 43.6047, lng: 1.4442 }, station: 'fra-31100010', from: 'Toulouse', to: 'Lille', startTankPct: 70 },
+  fr: { center: { lat: 43.6047, lng: 1.4442 }, station: 'fra-31100010', from: 'Toulouse', to: 'Lille', startTankPct: 70 },
+  es: { center: { lat: 40.4168, lng: -3.7038 }, from: 'Madrid', to: 'Barcelona', startTankPct: 40 },
+  ca: { center: { lat: 41.3874, lng: 2.1686 }, from: 'Barcelona', to: 'Lleida', startTankPct: 15 },
+  pt: { center: { lat: 38.7223, lng: -9.1393 }, from: 'Lisboa', to: 'Porto', startTankPct: 25 },
+};
 
 const argv = process.argv.slice(2);
 const headed = argv.includes('--headed');
@@ -178,6 +191,7 @@ async function shoot(page, locale, name) {
 /** Shoots one locale's set inside its own browser context. */
 async function shootLocale(browser, locale) {
   const msg = await loadMessages(locale);
+  const scene = SCENES[locale];
   await mkdir(join(OUT, locale), { recursive: true });
   const ctx = await browser.newContext({
     viewport: VIEWPORT,
@@ -188,20 +202,21 @@ async function shootLocale(browser, locale) {
     isMobile: true,
     hasTouch: true,
     permissions: ['geolocation'],
-    geolocation: { latitude: TOULOUSE.lat, longitude: TOULOUSE.lng },
+    geolocation: { latitude: scene.center.lat, longitude: scene.center.lng },
   });
 
   try {
-    // Skip onboarding, pin the position and the UI language, so the run never
-    // depends on the machine's real geolocation or the browser's language.
+    // Skip onboarding, pin the position, the UI language and the scene's
+    // departure tank, so the run never depends on the machine's real
+    // geolocation or the browser's language.
     await ctx.addInitScript(
-      ({ pos, locale }) => {
+      ({ pos, locale, startTankPct }) => {
         localStorage.setItem(
           'plein.settings.v1',
-          JSON.stringify({ sourceId: 'auto', onboarded: true, geoGranted: true, lastPos: pos, locale }),
+          JSON.stringify({ sourceId: 'auto', onboarded: true, geoGranted: true, lastPos: pos, locale, startTankPct }),
         );
       },
-      { pos: TOULOUSE, locale },
+      { pos: scene.center, locale, startTankPct: scene.startTankPct },
     );
 
     const page = await ctx.newPage();
@@ -256,10 +271,12 @@ async function shootLocale(browser, locale) {
           }
           return best?.id ?? null;
         },
-        { preferred: STATION_ID, center: TOULOUSE, radiusKm: 5 },
+        { preferred: scene.station ?? null, center: scene.center, radiusKm: 5 },
       );
-      if (!target) throw new Error('no station to shoot the fiche on');
-      if (target !== STATION_ID) console.log(`! ${STATION_ID} absent — falling back to ${target}`);
+      if (!target) throw new Error(`no station to shoot the ${locale} fiche on`);
+      if (scene.station && target !== scene.station) {
+        console.log(`! ${scene.station} absent — falling back to ${target}`);
+      }
 
       await page.goto(`${BASE}/station/${target}`);
       await page.locator(`[aria-label="${msg.detail_map_aria}"]`).waitFor({ timeout: 30_000 });
@@ -268,20 +285,18 @@ async function shootLocale(browser, locale) {
       await shoot(page, locale, 'station');
     }
 
-    // ── Route screen: Toulouse → Nantes ──
+    // ── Route screen: the scene's domestic trip ──
     if (wanted('route')) {
       await page.goto(BASE);
       await page.getByText(msg.sheet_best_choice_nearby).waitFor({ timeout: 60_000 });
       await page.getByText(msg.nav_route, { exact: true }).click();
-      // The endpoint fields are buttons on a phone — tapping one opens the
-      // full-screen place search, and the input to fill is the search's own.
       // Type the departure rather than leaving the implicit "My position", so
-      // the ribbon header reads "Toulouse → Nantes" as the README caption says.
-      // Same moves as the e2e fixture's pickRoutePlace: on a phone the
-      // endpoint field is a trigger button that opens the full-screen place
-      // search, whose input carries the field's placeholder — and the row to
-      // pick lives under `search-suggestions`, not just anywhere a matching
-      // city name is painted.
+      // the ribbon header names both cities as the README caption does. Same
+      // moves as the e2e fixture's pickRoutePlace: on a phone the endpoint
+      // field is a trigger button that opens the full-screen place search,
+      // whose input carries the field's placeholder — and the row to pick
+      // lives under `search-suggestions`, not just anywhere a matching city
+      // name is painted.
       const pickPlace = async (placeholder, trigger, text) => {
         const input = page.getByPlaceholder(placeholder);
         if ((await input.count()) === 0) {
@@ -295,8 +310,8 @@ async function shootLocale(browser, locale) {
           .first()
           .click({ timeout: 30_000 });
       };
-      await pickPlace(msg.route_from_placeholder, msg.route_from_field_title, 'Toulouse');
-      await pickPlace(msg.route_to_placeholder, msg.route_to_field_title, 'Nantes');
+      await pickPlace(msg.route_from_placeholder, msg.route_from_field_title, scene.from);
+      await pickPlace(msg.route_to_placeholder, msg.route_to_field_title, scene.to);
       // Picking the destination submits the trip by itself — no CTA click
       // (route.spec.ts leans on the same behavior). A one-stop plan headlines
       // « Recommended stop », a chained one « Stop 1/2 » — wait for either,

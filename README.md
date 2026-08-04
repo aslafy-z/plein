@@ -22,7 +22,7 @@ you and along your routes, in France, Spain, Andorra and Portugal.
 
 | Prices around you | A station's page | Along your route |
 | :---: | :---: | :---: |
-| <img src="docs/screenshots/en/map.png" width="250" alt="Price map around Toulouse" /> | <img src="docs/screenshots/en/station.png" width="250" alt="A station's page: price per fuel, gap to the cheapest, services and savings on a full tank" /> | <img src="docs/screenshots/en/route.png" width="250" alt="Station comparison on a Toulouse → Nantes route" /> |
+| <img src="docs/screenshots/en/map.png" width="250" alt="Price map around Toulouse" /> | <img src="docs/screenshots/en/station.png" width="250" alt="A station's page: price per fuel, gap to the cheapest, services and savings on a full tank" /> | <img src="docs/screenshots/en/route.png" width="250" alt="Station comparison on a Toulouse → Lille route" /> |
 
 </div>
 

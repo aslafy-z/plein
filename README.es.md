@@ -23,7 +23,7 @@ Portugal.
 
 | Los precios a tu alrededor | La ficha de una estación | En tu ruta |
 | :---: | :---: | :---: |
-| <img src="docs/screenshots/es/map.png" width="250" alt="Mapa de precios alrededor de Toulouse" /> | <img src="docs/screenshots/es/station.png" width="250" alt="Ficha de una estación: precio por combustible, diferencia con la más barata, servicios y ahorro en un depósito" /> | <img src="docs/screenshots/es/route.png" width="250" alt="Comparación de estaciones en una ruta Toulouse → Nantes" /> |
+| <img src="docs/screenshots/es/map.png" width="250" alt="Mapa de precios alrededor de Madrid" /> | <img src="docs/screenshots/es/station.png" width="250" alt="Ficha de una estación: precio por combustible, diferencia con la más barata, servicios y ahorro en un depósito" /> | <img src="docs/screenshots/es/route.png" width="250" alt="Comparación de estaciones en una ruta Madrid → Barcelona" /> |
 
 </div>
 
