@@ -489,7 +489,7 @@ export default function SheetShell({
           width: 36,
           height: 4,
           borderRadius: 2,
-          background: 'rgba(255,255,255,.18)',
+          background: C.border18,
           margin: '0 auto',
         }}
       />
@@ -515,7 +515,7 @@ export default function SheetShell({
         overflow: 'hidden',
         background: C.surface,
         borderRadius: '24px 24px 0 0',
-        boxShadow: '0 -10px 30px rgba(0,0,0,.45)',
+        boxShadow: `0 -10px 30px ${C.shadow45}`,
         height,
         // The hint keyframes bounce off this, the height they override
         ...(hinting ? { ['--sheet-h' as string]: `${height ?? 0}px` } : null),

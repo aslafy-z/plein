@@ -28,7 +28,7 @@ export default function PlaceSearch() {
     background: C.surface2,
     border: `1px solid ${C.border09}`,
     borderRadius: 28,
-    boxShadow: '0 8px 24px rgba(0,0,0,.4)',
+    boxShadow: `0 8px 24px ${C.shadow40}`,
     pointerEvents: 'auto' as const,
     width: '100%',
   };

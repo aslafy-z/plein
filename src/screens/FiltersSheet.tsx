@@ -279,7 +279,7 @@ export default function FiltersSheet() {
                             height: 20,
                             borderRadius: 6,
                             background: on ? C.accent : 'transparent',
-                            border: `2px solid ${on ? C.accent : 'rgba(255,255,255,.25)'}`,
+                            border: `2px solid ${on ? C.accent : C.border25}`,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -431,7 +431,7 @@ export default function FiltersSheet() {
 
       <button
         onClick={close}
-        style={{ ...ctaStyle(), boxShadow: '0 6px 16px rgba(61,220,132,.25)' }}
+        style={{ ...ctaStyle(), boxShadow: `0 6px 16px ${C.accentGlow25}` }}
       >
         {m.filters_apply({ count: nbVisible })}
       </button>
@@ -465,7 +465,7 @@ export default function FiltersSheet() {
             overflow: 'auto',
             borderRadius: 18,
             ...glass,
-            background: 'rgba(16,18,20,.94)',
+            background: C.glassBgStrong,
             outline: 'none',
             padding: '20px 22px 22px',
             display: 'flex',
@@ -484,7 +484,7 @@ export default function FiltersSheet() {
       <button
         onClick={close}
         aria-label={m.filters_close_overlay_aria()}
-        style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.55)', width: '100%' }}
+        style={{ position: 'absolute', inset: 0, background: C.scrim, width: '100%' }}
       />
       <div
         className="anim-sheet"
@@ -493,7 +493,7 @@ export default function FiltersSheet() {
           left: 0,
           right: 0,
           bottom: 0,
-          background: '#15181b',
+          background: C.navBg,
           borderRadius: '26px 26px 0 0',
           padding: '12px 20px 18px',
           display: 'flex',
@@ -510,7 +510,7 @@ export default function FiltersSheet() {
             width: 36,
             height: 4,
             borderRadius: 2,
-            background: 'rgba(255,255,255,.2)',
+            background: C.border20,
             margin: '0 auto',
           }}
         />

@@ -13,7 +13,8 @@ export const LOGO_TILE_BG = '#0f1a14';
 export function LogoGlyph({ size = 24, color = C.accent }: { size?: number; color?: string }) {
   return (
     <svg viewBox="0 0 64 64" style={{ width: size, height: size, flexShrink: 0 }} aria-hidden>
-      <path fill={color} fillRule="evenodd" d={LOGO_PATH} />
+      {/* Color via style: a var() token resolves in CSS, not in an attribute */}
+      <path style={{ fill: color }} fillRule="evenodd" d={LOGO_PATH} />
     </svg>
   );
 }
@@ -54,7 +55,7 @@ export function LogoLockup({
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
-          ...(glow ? { boxShadow: '0 8px 28px rgba(61,220,132,.28)' } : undefined),
+          ...(glow ? { boxShadow: `0 8px 28px ${C.accentGlow28}` } : undefined),
         }}
       >
         <LogoGlyph size={glyph} />

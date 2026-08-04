@@ -21,9 +21,9 @@ export default function FallbackBanner() {
   return (
     <div
       style={{
-        background: 'rgba(224,122,95,.12)',
-        borderBottom: '1px solid rgba(224,122,95,.3)',
-        color: '#e8b3a4',
+        background: C.warnSoft,
+        borderBottom: `1px solid ${C.warnBorder30}`,
+        color: C.warnText,
         fontSize: 12,
         fontWeight: 600,
         padding: '8px 14px',

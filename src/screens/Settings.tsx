@@ -102,7 +102,7 @@ function CachedData({ onCleared }: { onCleared: () => void }) {
       <div
         style={{
           padding: '12px 16px',
-          borderBottom: '1px solid rgba(255,255,255,.06)',
+          borderBottom: `1px solid ${C.divider}`,
           fontSize: 12,
           lineHeight: 1.55,
           color: C.mut,
@@ -350,7 +350,7 @@ export default function Settings() {
               alignItems: 'center',
               gap: 12,
               padding: '14px 16px',
-              borderBottom: '1px solid rgba(255,255,255,.06)',
+              borderBottom: `1px solid ${C.divider}`,
               cursor: 'pointer',
               width: '100%',
               textAlign: 'left',
@@ -544,7 +544,7 @@ export default function Settings() {
                   alignItems: 'center',
                   gap: 12,
                   padding: '14px 16px',
-                  borderBottom: '1px solid rgba(255,255,255,.06)',
+                  borderBottom: `1px solid ${C.divider}`,
                   cursor: 'pointer',
                   width: '100%',
                   textAlign: 'left',
@@ -555,7 +555,7 @@ export default function Settings() {
                     width: 18,
                     height: 18,
                     borderRadius: '50%',
-                    border: `2px solid ${selected ? C.accent : 'rgba(255,255,255,.25)'}`,
+                    border: `2px solid ${selected ? C.accent : C.border25}`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -586,7 +586,7 @@ export default function Settings() {
                 fontWeight: 600,
                 color: C.warn,
                 padding: '10px 16px',
-                borderBottom: '1px solid rgba(255,255,255,.06)',
+                borderBottom: `1px solid ${C.divider}`,
                 lineHeight: 1.4,
               }}
             >
@@ -597,7 +597,7 @@ export default function Settings() {
           <div
             style={{
               padding: '12px 16px',
-              borderBottom: '1px solid rgba(255,255,255,.06)',
+              borderBottom: `1px solid ${C.divider}`,
               fontSize: 12,
               lineHeight: 1.55,
               color: C.mut,
@@ -636,7 +636,7 @@ export default function Settings() {
                 gap: 12,
                 padding: '14px 16px',
                 borderBottom:
-                  i < contactRows.length - 1 ? '1px solid rgba(255,255,255,.06)' : undefined,
+                  i < contactRows.length - 1 ? `1px solid ${C.divider}` : undefined,
                 cursor: 'pointer',
                 width: '100%',
                 textAlign: 'left',

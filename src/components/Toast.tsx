@@ -26,7 +26,7 @@ export default function Toast() {
         fontWeight: 700,
         padding: '11px 18px',
         borderRadius: 22,
-        boxShadow: '0 10px 28px rgba(0,0,0,.5)',
+        boxShadow: `0 10px 28px ${C.shadow50}`,
         whiteSpace: 'nowrap',
         maxWidth: '90%',
         overflow: 'hidden',

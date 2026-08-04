@@ -96,7 +96,7 @@ function StationDetailPending({ desktop }: { desktop: boolean }) {
         // when the station lands
         ...(desktop
           ? { flex: 1, minHeight: 0 }
-          : { position: 'absolute', inset: 0, background: '#101214', zIndex: 1200 }),
+          : { position: 'absolute', inset: 0, background: C.bg, zIndex: 1200 }),
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -322,7 +322,7 @@ export default function StationDetail() {
               right: 12,
               bottom: 26,
               zIndex: 1000,
-              background: '#101214d9',
+              background: C.overlay,
               color: C.accent,
               fontSize: 12,
               fontWeight: 700,
@@ -344,7 +344,7 @@ export default function StationDetail() {
               width: 40,
               height: 40,
               borderRadius: '50%',
-              background: '#101214d9',
+              background: C.overlay,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -366,7 +366,7 @@ export default function StationDetail() {
               width: 40,
               height: 40,
               borderRadius: '50%',
-              background: '#101214d9',
+              background: C.overlay,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -386,7 +386,7 @@ export default function StationDetail() {
               width: 40,
               height: 40,
               borderRadius: '50%',
-              background: '#101214d9',
+              background: C.overlay,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -414,7 +414,7 @@ export default function StationDetail() {
             {status && (
               <span
                 style={{
-                  background: status.open ? C.accentSoft14 : 'rgba(224,122,95,.14)',
+                  background: status.open ? C.accentSoft14 : C.warnSoft14,
                   color: status.open ? C.accent : C.warn,
                   fontSize: 12,
                   fontWeight: 700,
@@ -496,7 +496,7 @@ export default function StationDetail() {
                   alignItems: 'center',
                   gap: 12,
                   padding: '14px 16px',
-                  borderBottom: `1px solid rgba(255,255,255,.06)`,
+                  borderBottom: `1px solid ${C.divider}`,
                 }}
               >
                 <span style={{ flex: 1, color: C.ink, fontSize: 15, fontWeight: 600 }}>
@@ -524,7 +524,7 @@ export default function StationDetail() {
               </div>
             );
           })}
-          <div style={{ padding: '10px 16px', background: '#15181b', color: C.mut, fontSize: 11.5 }}>
+          <div style={{ padding: '10px 16px', background: C.navBg, color: C.mut, fontSize: 11.5 }}>
             {footerText}
           </div>
         </div>
@@ -597,7 +597,7 @@ export default function StationDetail() {
           <div style={{ font: mono(700, 20), color: C.accent, whiteSpace: 'nowrap' }}>
             {dSaveStr} €
           </div>
-          <div style={{ color: '#aab2b7', fontSize: 12.5, lineHeight: 1.45 }}>
+          <div style={{ color: C.body2, fontSize: 12.5, lineHeight: 1.45 }}>
             {m.detail_saving_on_tank({ tank: app.tank, scope: scopeSave })}
           </div>
         </div>
@@ -635,7 +635,7 @@ export default function StationDetail() {
               minHeight: 0,
               background: 'transparent',
             }
-          : { position: 'absolute', inset: 0, zIndex: 1200, background: '#101214' }),
+          : { position: 'absolute', inset: 0, zIndex: 1200, background: C.bg }),
       }}
     >
       {body}

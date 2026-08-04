@@ -102,11 +102,11 @@ export const noticeStyle = {
   display: 'flex',
   alignItems: 'center',
   gap: 10,
-  background: 'rgba(224,122,95,.12)',
-  border: '1px solid rgba(224,122,95,.3)',
+  background: C.warnSoft,
+  border: `1px solid ${C.warnBorder30}`,
   borderRadius: 12,
   padding: '10px 14px',
-  color: '#e8b3a4',
+  color: C.warnText,
   fontSize: 12.5,
   fontWeight: 700,
   lineHeight: 1.4,
@@ -290,7 +290,7 @@ export default function RouteTimeline() {
       borderRadius: '50%',
       background: inRun ? C.accent : 'transparent',
       color: inRun ? C.onAccent : C.mut,
-      border: inRun ? `1.5px solid ${C.accent}` : '1.5px solid rgba(255,255,255,.2)',
+      border: inRun ? `1.5px solid ${C.accent}` : `1.5px solid ${C.border20}`,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -339,7 +339,7 @@ export default function RouteTimeline() {
             borderRadius: 16,
             padding: '14px 16px',
             color: C.ink,
-            boxShadow: '0 10px 26px rgba(0,0,0,.35)',
+            boxShadow: `0 10px 26px ${C.shadow35}`,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -444,7 +444,7 @@ export default function RouteTimeline() {
         <div
           style={{
             background: C.surface,
-            border: inRun ? '1.5px solid rgba(61,220,132,.4)' : `1px solid ${C.border}`,
+            border: inRun ? `1.5px solid ${C.accentBorder40}` : `1px solid ${C.border}`,
             borderRadius: 14,
             padding: '12px 14px',
             display: 'flex',
@@ -614,7 +614,7 @@ export default function RouteTimeline() {
                   fontWeight: 700,
                   padding: '7px 11px',
                   borderRadius: 16,
-                  border: active ? `1px solid ${C.accent}` : '1px solid rgba(255,255,255,.15)',
+                  border: active ? `1px solid ${C.accent}` : `1px solid ${C.border15}`,
                   cursor: 'pointer',
                   whiteSpace: 'nowrap',
                 }}
@@ -691,7 +691,7 @@ export default function RouteTimeline() {
                 <div
                   style={{
                     background: C.accentSoft10,
-                    border: '1px solid rgba(61,220,132,.3)',
+                    border: `1px solid ${C.accentBorder30}`,
                     borderRadius: 14,
                     padding: '12px 16px',
                   }}
@@ -756,7 +756,7 @@ export default function RouteTimeline() {
               style={{
                 width: '100%',
                 background: C.accentSoft10,
-                border: '1px solid rgba(61,220,132,.3)',
+                border: `1px solid ${C.accentBorder30}`,
                 borderRadius: 14,
                 padding: '12px 16px',
                 display: 'flex',
