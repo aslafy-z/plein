@@ -70,8 +70,22 @@ const CONTEXT_LOCALE = { en: 'en-US', fr: 'fr-FR', es: 'es-ES', ca: 'ca-ES', pt:
 const SCENES = {
   en: { center: { lat: 43.6047, lng: 1.4442 }, station: 'fra-31100010', from: 'Toulouse', to: 'Lille', startTankPct: 70 },
   fr: { center: { lat: 43.6047, lng: 1.4442 }, station: 'fra-31100010', from: 'Toulouse', to: 'Lille', startTankPct: 70 },
-  es: { center: { lat: 40.4168, lng: -3.7038 }, from: 'Madrid', to: 'Barcelona', startTankPct: 40 },
-  ca: { center: { lat: 42.5063, lng: 1.5218 }, from: 'Andorra la Vella', to: 'Barcelona', startTankPct: 15 },
+  es: {
+    center: { lat: 40.4168, lng: -3.7038 },
+    // « Madrid » alone picks whatever row lands first, and BAN answers fast
+    // with a French hamlet literally named Madrid (Lignières-Ambleville).
+    // The city row reads label + province — « Madrid Madrid » — so the pick
+    // regex runs over the whole row text.
+    from: { text: 'Madrid', pick: '^Madrid\\s*Madrid' },
+    to: { text: 'Barcelona', pick: '^Barcelona\\s*Barcelona' },
+    startTankPct: 40,
+  },
+  ca: {
+    center: { lat: 42.5063, lng: 1.5218 },
+    from: 'Andorra la Vella',
+    to: { text: 'Barcelona', pick: '^Barcelona\\s*Barcelona' },
+    startTankPct: 15,
+  },
   pt: { center: { lat: 38.7223, lng: -9.1393 }, from: 'Lisboa', to: 'Porto', startTankPct: 25 },
 };
 
@@ -318,7 +332,12 @@ async function shootLocale(browser, locale) {
       // whose input carries the field's placeholder — and the row to pick
       // lives under `search-suggestions`, not just anywhere a matching city
       // name is painted.
-      const pickPlace = async (placeholder, trigger, text) => {
+      // An endpoint is a plain string, or { text, pick } when the typed text
+      // is ambiguous across the four geocoders — `pick` is a regex over a
+      // whole suggestion row (label then sublabel), not just its first line.
+      const pickPlace = async (placeholder, trigger, endpoint) => {
+        const { text, pick } = typeof endpoint === 'string' ? { text: endpoint } : endpoint;
+        const rowRe = new RegExp(pick ?? `^${reEscape(text)}`);
         const input = page.getByPlaceholder(placeholder);
         if ((await input.count()) === 0) {
           await page.getByRole('button', { name: trigger, exact: true }).click();
@@ -327,7 +346,8 @@ async function shootLocale(browser, locale) {
         await input.fill(text);
         const row = page
           .getByTestId('search-suggestions')
-          .getByText(new RegExp(`^${reEscape(text)}`))
+          .locator('button')
+          .filter({ hasText: rowRe })
           .first();
         try {
           await row.click({ timeout: 45_000 });
