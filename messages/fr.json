@@ -69,6 +69,7 @@
   "source_demo_sub": "hors-ligne · jeu de données fictif",
   "place_france": "France",
   "place_spain": "Espagne",
+  "source_unavailable": "Indisponible sur ce déploiement",
   "place_andorra": "Andorre",
   "place_andorra_parish": "Andorre · {parish}",
   "place_portugal": "Portugal",

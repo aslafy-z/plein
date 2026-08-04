@@ -69,6 +69,7 @@
   "source_demo_sub": "sin conexión · conjunto de datos ficticio",
   "place_france": "Francia",
   "place_spain": "España",
+  "source_unavailable": "No disponible en este despliegue",
   "place_andorra": "Andorra",
   "place_andorra_parish": "Andorra · {parish}",
   "place_portugal": "Portugal",

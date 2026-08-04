@@ -69,6 +69,7 @@
   "source_demo_sub": "offline · fictional dataset",
   "place_france": "France",
   "place_spain": "Spain",
+  "source_unavailable": "Unavailable in this deployment",
   "place_andorra": "Andorra",
   "place_andorra_parish": "Andorra · {parish}",
   "place_portugal": "Portugal",

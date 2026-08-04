@@ -37,7 +37,7 @@ import {
   PhotonGeocodeProvider,
 } from '../pt/PhotonGeocodeProvider';
 import { BackedUpGeocodeProvider } from '../geocodeBackup';
-import { DeStationsProvider, deCoversAlong, deCoversNear } from '../de/DeStationsProvider';
+import { DeStationsProvider, deAvailable, deCoversAlong, deCoversNear } from '../de/DeStationsProvider';
 import { mergeByKind } from '../geocodeRank';
 
 // ── French flux coverage ─────────────────────────────────────────────────────
@@ -356,16 +356,23 @@ export class AutoGeocodeProvider extends MergedGeocodeProvider {
     // Inside one kind the country the map is looking at comes first, and the
     // others interleave in the order given here — France, Andorra, Portugal,
     // Spain, Germany — so none of them fills the visible rows on its own.
+    // Germany drops out entirely on a deployment with no price proxy:
+    // suggesting a town whose prices we cannot load is worse than not
+    // offering it.
     super([
       { country: 'fr', provider: new FrGeocodeProvider(), covers: (p) => frCoversNear(p, 0) },
       { country: 'ad', provider: adGeocodeProvider(), covers: (p) => adCoversNear(p, 0) },
       { country: 'pt', provider: new PhotonGeocodeProvider(), covers: (p) => ptCoversNear(p, 0) },
       { country: 'es', provider: esGeocodeProvider(), covers: (p) => esCoversNear(p, 0) },
-      {
-        country: 'de',
-        provider: new PhotonGeocodeProvider(PHOTON_GERMANY),
-        covers: (p) => deCoversNear(p, 0),
-      },
+      ...(deAvailable()
+        ? [
+            {
+              country: 'de' as const,
+              provider: new PhotonGeocodeProvider(PHOTON_GERMANY),
+              covers: (p: GeoPoint) => deCoversNear(p, 0),
+            },
+          ]
+        : []),
     ]);
   }
 }

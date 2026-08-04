@@ -8,7 +8,7 @@ import { EsStationsProvider } from './es/EsStationsProvider';
 import { AdStationsProvider } from './ad/AdStationsProvider';
 import { PtStationsProvider } from './pt/PtStationsProvider';
 import { PHOTON_GERMANY, PhotonGeocodeProvider } from './pt/PhotonGeocodeProvider';
-import { DeStationsProvider } from './de/DeStationsProvider';
+import { DeStationsProvider, deAvailable } from './de/DeStationsProvider';
 import {
   AutoGeocodeProvider,
   AutoStationsProvider,
@@ -66,7 +66,12 @@ function createBundle(id: DataSourceId): ProviderBundle {
   if (id === 'de') {
     return {
       stations: new DeStationsProvider(),
-      geocode: new PhotonGeocodeProvider(PHOTON_GERMANY),
+      // Photon needs no key of its own, but German places are gated on the
+      // price source all the same: without a proxy they would only ever land
+      // the user on a map with no prices on it.
+      geocode: deAvailable()
+        ? new PhotonGeocodeProvider(PHOTON_GERMANY)
+        : { search: () => Promise.resolve([]) },
       // OSRM / Valhalla public servers cover Germany too
       route: new RealRouteProvider(),
     };
@@ -76,6 +81,17 @@ function createBundle(id: DataSourceId): ProviderBundle {
     geocode: new DemoGeocodeProvider(),
     route: new DemoRouteProvider(),
   };
+}
+
+/**
+ * Can this build offer the source at all? Everything but Germany is keyless
+ * public data and always answerable; the German flux needs a proxy holding a
+ * personal key, which not every deployment runs. Settings greys the row out
+ * on false and the store refuses to restore it — one answer, so the list and
+ * the persisted choice cannot disagree.
+ */
+export function isSourceAvailable(id: DataSourceId): boolean {
+  return id === 'de' ? deAvailable() : true;
 }
 
 /**

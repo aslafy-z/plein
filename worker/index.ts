@@ -16,7 +16,12 @@ interface Env {
 }
 
 const UPSTREAM = 'https://creativecommons.tankerkoenig.de';
-const ALLOWED_PATHS = new Set(['/json/list.php']);
+/**
+ * The app's own route, and what Tankerkönig serves it from. The upstream
+ * endpoint is a PHP script; that is upstream's business and stops here — the
+ * browser only ever sees `/api/de/stations`.
+ */
+const ROUTES: Record<string, string> = { '/stations': '/json/list.php' };
 const ALLOWED_PARAMS = ['lat', 'lng', 'rad', 'sort', 'type'];
 const CACHE_TTL_S = 300;
 
@@ -29,8 +34,9 @@ export default {
     const url = new URL(request.url);
     if (!url.pathname.startsWith('/api/de/')) return env.ASSETS.fetch(request);
 
-    const upstreamPath = url.pathname.slice('/api/de'.length);
-    if (request.method !== 'GET' || !ALLOWED_PATHS.has(upstreamPath)) {
+    const route = url.pathname.slice('/api/de'.length);
+    const upstreamPath = ROUTES[route];
+    if (request.method !== 'GET' || upstreamPath == null) {
       return Response.json({ ok: false, message: 'not found' }, { status: 404 });
     }
     if (!env.TANKERKOENIG_API_KEY) {
@@ -46,7 +52,7 @@ export default {
       const v = url.searchParams.get(name);
       if (v != null) params.set(name, v);
     }
-    const cacheKey = new Request(`${url.origin}/api/de${upstreamPath}?${params.toString()}`);
+    const cacheKey = new Request(`${url.origin}/api/de${route}?${params.toString()}`);
     const cache = (caches as unknown as { default: Cache }).default;
     const hit = await cache.match(cacheKey);
     if (hit) return hit;
