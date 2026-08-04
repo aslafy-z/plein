@@ -29,75 +29,37 @@ Portugal.
 
 ## ✨ Funcionalitats
 
-- 🗺️ **Mapa de preus en directe** — les benzineres al vostre voltant amb el
-  preu a la xinxeta, acolorides segons el preu: les «bones ofertes» (totes les
-  estacions gairebé al millor preu, no només la primera) en verd, les més
-  cares tenyides de taronja; moveu el mapa i les estacions de la zona es
-  carreguen automàticament, i a les zones denses només les més barates
-  conserven la bombolla de preu.
+- 🗺️ **Mapa de preus en directe** — les benzineres al vostre voltant, preus
+  en xinxetes acolorides segons el preu: bones ofertes en verd, les més cares
+  en taronja. Moveu el mapa i la zona es carrega sola.
 - 🇫🇷🇪🇸🇦🇩🇵🇹 **Quatre països al mateix mapa** — la font «Automàtica» combina
-  els fluxos oficials de França, Espanya, Andorra i Portugal segons la zona
-  mostrada: els proveïments fronterers (el Pertús, Irún, el Pas de la Casa,
-  Vilar Formoso…) es comparen d'un cop d'ull.
-- 📋 **Llista de la zona** — estireu el plafó inferior: totes les estacions
-  visibles, ordenades per recomanació per defecte (preu o distància a un
-  toc), les bones ofertes ressaltades, sincronitzades amb el mapa. L'estació
-  destacada és la **millor tria real**: el combustible cremat en l'anada i
-  tornada (consum i dipòsit del perfil de vehicle dels Ajustos — cotxe o
-  moto) es té en compte, de manera que una estació una mica més cara però
-  molt més propera pot guanyar la més barata mostrada.
-- 🛣️ **Pla de proveïment del trajecte** — sortida des de «La meva posició» o
-  qualsevol adreça, autocompleció, mapa del corredor i **pla de proveïment**
-  segons 3 estratègies (millor compromís · preu més baix · desviament mínim):
-  una parada o diverses encadenades en els viatges llargs, cadascuna amb els
-  litres a comprar, el seu cost i el desviament, des del nivell del dipòsit a
-  la sortida fins al combustible restant a l'arribada. Fixeu o traieu parades
-  per compondre el vostre propi recorregut, eviteu autopistes o peatges, i
-  els resultats arriben progressivament — primer l'itinerari, després les
-  estacions, després el pla.
-- ⭐ **Preferits** — fixeu les vostres estacions i consulteu-ne el preu del dia
-  d'un cop d'ull; conserven el preu fins i tot a través de zones i països.
-- ⛽ **Tots els combustibles** — Dièsel, SP95/98, E10, E85, GLP; filtres per
-  radi, marques, tipus de distribuïdor i serveis (24 h, rentat, botiga,
-  inflat, additius). El filtre **AdBlue** només apareix allà on la font
-  publica la informació: els fluxos espanyol i andorrà declaren els productes
-  a la venda (i el seu preu, mostrat a la fitxa), els fluxos francès i
-  portuguès no en diuen res, així que les seves estacions continuen llistades
-  en lloc d'amagar-se per error. Com que l'E10 gairebé no existeix fora de
-  França, les estacions espanyoles, andorranes i portugueses mostren el seu
-  SP95 (compatible amb E10) al mapa E10 — amb l'etiqueta «SP95 / L» per
-  deixar-ho clar.
-- 🕐 **Horaris reals** — «Obert 24 h», «Tancat · obre a les 6.30»… calculats a
-  partir dels horaris oficials; frescor dels preus mostrada (i assenyalada
-  quan es fan vells).
-- 🏷️ **Marques reconegudes** — logotips i noms de les estacions
-  (TotalEnergies, E.Leclerc, Intermarché… i Repsol, Cepsa, Galp, Prio a la
-  banda espanyola, andorrana i portuguesa) aparellats des d'OpenStreetMap a
-  França (posicions ajustades a les coordenades OSM reals), aportats
-  directament pels fluxos oficials a la resta.
-- 🧭 **«Com arribar-hi»** — obre el lloc a la vostra app de GPS: selector
-  d'app a Android (`geo:`), Mapes a iOS, Google Maps a l'escriptori;
-  recorregut multiparada possible.
-- 🔗 **Enllaç compartible** — l'adreça de la pàgina segueix el mapa (zona
-  mostrada, zoom, combustible, radi i filtres) i el trajecte (etapes i
-  opcions): el botó *Compartir* envia un enllaç que reobre exactament la
-  mateixa vista — o el mateix viatge — a qui el rep. Les fitxes d'estació
-  conserven l'enllaç directe `/station/:id`.
-- 🌗 **Tema clar i fosc** — l'app segueix l'ajust del vostre navegador per
-  defecte i es canvia als Ajustos; el mapa base segueix el tema i el canvi es
-  fa amb un fos encreuat.
-- 🌍 **Cinc llengües** — francès, anglès, espanyol, català i portuguès; l'app
-  segueix la llengua del vostre navegador per defecte, modificable als
-  Ajustos.
-- 🖥️ **La mateixa app al mòbil i al navegador** — al mòbil, el mapa a
-  pantalla completa i el plafó que s'estira; en una pantalla ampla, la
-  navegació passa al costat i la llista d'estacions es col·loca **al costat**
-  del mapa en lloc de cobrir-lo, els filtres i les fitxes es converteixen en
-  plafons, i el ratolí recupera el que li faltava (botons de zoom, hover, Esc
-  per tancar). S'ha acabat el marc de telèfon al mig de la pantalla.
-- 📱 **PWA instal·lable i tolerant al mode fora de línia** — afegiu-la a la
-  pantalla d'inici; les últimes zones consultades i les tessel·les del mapa
-  continuen disponibles sense xarxa, amb indicador d'antiguitat dels preus.
+  els fluxos oficials de França, Espanya, Andorra i Portugal: els proveïments
+  fronterers es comparen d'un cop d'ull.
+- 📋 **Llista de la zona** — totes les estacions visibles, ordenades per
+  recomanació: el combustible cremat en l'anada i tornada es té en compte,
+  així que una estació més propera pot guanyar la més barata.
+- 🛣️ **Pla de proveïment del trajecte** — un pla al llarg del recorregut
+  segons 3 estratègies: on parar, quants litres a cada parada i a quin preu —
+  fins al combustible restant a l'arribada.
+- ⭐ **Preferits** — les vostres estacions i el seu preu del dia, a través de
+  zones i països.
+- ⛽ **Tots els combustibles, filtres de debò** — Dièsel, SP95/98, E10, E85,
+  GLP; radi, marques, serveis, AdBlue allà on la font ho publica.
+- 🕐 **Horaris reals** — «Obert 24 h», «Tancat · obre a les 6.30», calculats
+  des dels horaris oficials; frescor dels preus assenyalada.
+- 🏷️ **Marques reconegudes** — logotips i noms de les estacions des dels
+  fluxos oficials i OpenStreetMap.
+- 🧭 **«Com arribar-hi»** — obre l'estació a la vostra app de GPS.
+- 🔗 **Enllaços compartibles** — l'adreça segueix el mapa i el trajecte; un
+  enllaç reobre exactament la mateixa vista.
+- 🌗 **Tema clar i fosc** — segueix el navegador, modificable als Ajustos; el
+  mapa base el segueix.
+- 🌍 **Cinc llengües** — francès, anglès, espanyol, català i portuguès.
+- 🖥️ **Mòbil i pantalla gran** — mapa a pantalla completa amb plafó que
+  s'estira al mòbil; navegació lateral i plafons al costat del mapa a les
+  pantalles amples.
+- 📱 **PWA instal·lable** — funciona fora de línia amb les últimes zones i
+  tessel·les consultades.
 
 ## 🚀 Ús
 

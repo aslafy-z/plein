@@ -29,74 +29,37 @@ Portugal.
 
 ## ✨ Funcionalidades
 
-- 🗺️ **Mapa de precios en directo** — las estaciones a tu alrededor con su
-  precio en la chincheta, coloreadas según el precio: los «chollos» (todas las
-  estaciones casi al mejor precio, no solo la primera) en verde, las más caras
-  teñidas de naranja; mueve el mapa y las estaciones de la zona se cargan
-  automáticamente, y en las zonas densas solo las más baratas conservan su
-  burbuja de precio.
+- 🗺️ **Mapa de precios en directo** — las estaciones a tu alrededor, precios
+  en chinchetas coloreadas según el precio: chollos en verde, las más caras
+  en naranja. Mueve el mapa y la zona se carga sola.
 - 🇫🇷🇪🇸🇦🇩🇵🇹 **Cuatro países en el mismo mapa** — la fuente «Automática»
-  combina los flujos oficiales de Francia, España, Andorra y Portugal según la
-  zona mostrada: los repostajes fronterizos (Le Perthus, Irún, el Pas de la
-  Casa, Vilar Formoso…) se comparan de un vistazo.
-- 📋 **Lista de la zona** — desliza el panel inferior: todas las estaciones
-  visibles, ordenadas por recomendación por defecto (precio o distancia a un
-  toque), los chollos resaltados, sincronizadas con el mapa. La estación
-  destacada es la **mejor elección real**: el combustible quemado en la ida y
-  vuelta (consumo y depósito del perfil de vehículo de los Ajustes — coche o
-  moto) se tiene en cuenta, así que una estación algo más cara pero mucho más
-  cercana puede ganar a la más barata mostrada.
-- 🛣️ **Plan de repostaje de la ruta** — salida desde «Mi posición» o cualquier
-  dirección, autocompletado, mapa del corredor y **plan de repostaje** según
-  3 estrategias (mejor compromiso · precio más bajo · desvío mínimo): una
-  parada o varias encadenadas en los viajes largos, cada una con los litros a
-  comprar, su coste y el desvío, desde el nivel del depósito a la salida hasta
-  el combustible restante a la llegada. Fija o quita paradas para componer tu
-  propio recorrido, evita autopistas o peajes, y los resultados llegan
-  progresivamente — primero el itinerario, luego las estaciones, luego el
-  plan.
-- ⭐ **Favoritos** — fija tus estaciones y consulta su precio del día de un
-  vistazo; siguen con precio incluso a través de zonas y países.
-- ⛽ **Todos los combustibles** — Diésel, SP95/98, E10, E85, GLP; filtros por
-  radio, rótulos, tipo de distribuidor y servicios (24 h, lavado, tienda,
-  inflado, aditivos). El filtro **AdBlue** solo aparece donde la fuente
-  publica la información: los flujos español y andorrano declaran los
-  productos a la venta (y su precio, mostrado en la ficha), los flujos francés
-  y portugués no dicen nada al respecto, así que sus estaciones siguen
-  listadas en lugar de ocultarse por error. Como el E10 casi no existe fuera
-  de Francia, las estaciones españolas, andorranas y portuguesas muestran su
-  SP95 (compatible con E10) en el mapa E10 — con la etiqueta «SP95 / L» para
-  dejarlo claro.
-- 🕐 **Horarios reales** — «Abierto 24 h», «Cerrado · abre a las 6:30»…
-  calculados a partir de los horarios oficiales; frescura de los precios
-  mostrada (y señalada cuando envejecen).
-- 🏷️ **Marcas reconocidas** — logotipos y nombres de las estaciones
-  (TotalEnergies, E.Leclerc, Intermarché… y Repsol, Cepsa, Galp, Prio en el
-  lado español, andorrano y portugués) emparejados desde OpenStreetMap en
-  Francia (posiciones ajustadas a las coordenadas OSM reales), aportados
-  directamente por los flujos oficiales en el resto.
-- 🧭 **«Cómo llegar»** — abre el lugar en tu app de GPS: selector de app en
-  Android (`geo:`), Mapas en iOS, Google Maps en escritorio; recorrido
-  multiparada posible.
-- 🔗 **Enlace compartible** — la dirección de la página sigue al mapa (zona
-  mostrada, zoom, combustible, radio y filtros) y a la ruta (etapas y
-  opciones): el botón *Compartir* envía un enlace que reabre exactamente la
-  misma vista — o el mismo viaje — a quien lo recibe. Las fichas de estación
-  conservan su enlace directo `/station/:id`.
-- 🌗 **Tema claro y oscuro** — la app sigue el ajuste de tu navegador por
-  defecto y se cambia en los Ajustes; el mapa base sigue el tema y el cambio
-  se hace con un fundido.
-- 🌍 **Cinco idiomas** — francés, inglés, español, catalán y portugués; la app
-  sigue el idioma de tu navegador por defecto, modificable en los Ajustes.
-- 🖥️ **La misma app en el móvil y en el navegador** — en el móvil, el mapa a
-  pantalla completa y su panel deslizable; en una pantalla ancha, la
-  navegación pasa al lateral y la lista de estaciones se coloca **junto** al
-  mapa en lugar de cubrirlo, los filtros y las fichas se convierten en
-  paneles, y el ratón recupera lo que le faltaba (botones de zoom, hover,
-  Escape para cerrar). Se acabó el marco de teléfono en medio de la pantalla.
-- 📱 **PWA instalable y tolerante al modo sin conexión** — añádela a la
-  pantalla de inicio; las últimas zonas consultadas y las teselas del mapa
-  siguen disponibles sin red, con indicador de antigüedad de los precios.
+  combina los flujos oficiales de Francia, España, Andorra y Portugal: los
+  repostajes fronterizos se comparan de un vistazo.
+- 📋 **Lista de la zona** — todas las estaciones visibles, ordenadas por
+  recomendación: el combustible quemado en la ida y vuelta se tiene en
+  cuenta, así que una estación más cercana puede ganar a la más barata.
+- 🛣️ **Plan de repostaje de la ruta** — un plan a lo largo del recorrido
+  según 3 estrategias: dónde parar, cuántos litros en cada parada y a qué
+  precio — hasta el combustible restante a la llegada.
+- ⭐ **Favoritos** — tus estaciones y su precio del día, a través de zonas y
+  países.
+- ⛽ **Todos los combustibles, filtros de verdad** — Diésel, SP95/98, E10,
+  E85, GLP; radio, rótulos, servicios, AdBlue donde la fuente lo publica.
+- 🕐 **Horarios reales** — «Abierto 24 h», «Cerrado · abre a las 6:30»,
+  calculados desde los horarios oficiales; frescura de los precios señalada.
+- 🏷️ **Marcas reconocidas** — logotipos y nombres de las estaciones desde
+  los flujos oficiales y OpenStreetMap.
+- 🧭 **«Cómo llegar»** — abre la estación en tu app de GPS.
+- 🔗 **Enlaces compartibles** — la dirección sigue al mapa y a la ruta; un
+  enlace reabre exactamente la misma vista.
+- 🌗 **Tema claro y oscuro** — sigue a tu navegador, modificable en los
+  Ajustes; el mapa base lo sigue.
+- 🌍 **Cinco idiomas** — francés, inglés, español, catalán y portugués.
+- 🖥️ **Móvil y pantalla grande** — mapa a pantalla completa con panel
+  deslizable en el móvil; navegación lateral y paneles junto al mapa en
+  pantallas anchas.
+- 📱 **PWA instalable** — funciona sin conexión con las últimas zonas y
+  teselas consultadas.
 
 ## 🚀 Uso
 

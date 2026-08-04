@@ -28,69 +28,36 @@ you and along your routes, in France, Spain, Andorra and Portugal.
 
 ## ✨ Features
 
-- 🗺️ **Live price map** — the stations around you with their price as a pin,
-  colored by price: the "good deals" (every station close to the best price,
-  not just the first one) in green, the most expensive tinted orange; pan the
-  map and the area's stations load automatically, and in dense areas only the
-  cheapest keep their price bubble.
+- 🗺️ **Live price map** — the stations around you, price pins colored by
+  price: good deals in green, the most expensive tinted orange. Pan the map,
+  the area loads by itself.
 - 🇫🇷🇪🇸🇦🇩🇵🇹 **Four countries on one map** — the "Automatic" source combines
-  the official feeds of France, Spain, Andorra and Portugal according to the
-  visible area: cross-border fill-ups (Le Perthus, Irún, Pas de la Case,
-  Vilar Formoso…) compare at a glance.
-- 📋 **Area list** — pull the bottom sheet up: every visible station, sorted
-  by recommendation by default (price or distance a tap away), good deals
-  highlighted, in sync with the map. The featured station is the **real best
-  choice**: the fuel burned driving there and back (consumption and tank size
-  from the vehicle profile in Settings — car or motorcycle) is counted, so a
-  slightly pricier but much closer station can beat the cheapest one shown.
-- 🛣️ **Route fuel plan** — depart from "My position" or any address,
-  autocompletion, corridor map and a **refuelling plan** according to
-  3 strategies (best trade-off · lowest price · smallest detour): one stop or
-  several chained ones on long trips, each with the liters to buy, its cost
-  and the detour, from your tank level at departure to the fuel left on
-  arrival. Pin or remove stops to build your own run, avoid motorways or
-  tolls, and the results land progressively — the itinerary first, then the
-  stations, then the plan.
-- ⭐ **Favorites** — pin your stations, check their price of the day at a
-  glance; they stay priced even across areas and countries.
-- ⛽ **All fuels** — Diesel, SP95/98, E10, E85, LPG; filters by radius, brands,
-  distributor type and services (24/7, car wash, shop, tire inflation,
-  additives). The **AdBlue** filter only appears where the source publishes
-  the information: the Spanish and Andorran feeds declare the products on sale
-  (and their price, shown on the station page), the French and Portuguese
-  feeds say nothing about it, so their stations stay listed rather than
-  wrongly hidden. E10 being nearly nonexistent outside France, Spanish,
-  Andorran and Portuguese stations show their SP95 (E10-compatible) on the
-  E10 map — labeled "SP95 / L" to make it clear.
-- 🕐 **Real opening hours** — "Open 24/7", "Closed · opens at 6:30 am"…
-  computed from the official opening hours; price freshness shown (and
-  flagged when the prices are getting old).
-- 🏷️ **Recognized brands** — station logos and names (TotalEnergies,
-  E.Leclerc, Intermarché… and Repsol, Cepsa, Galp, Prio on the Spanish,
-  Andorran and Portuguese side) matched from OpenStreetMap in France
-  (positions snapped to the true OSM coordinates), carried directly by the
-  official feeds elsewhere.
-- 🧭 **"Directions"** — opens the place in your GPS app: app picker on Android
-  (`geo:`), Maps on iOS, Google Maps on desktop; multi-stop trips supported.
-- 🔗 **Shareable link** — the page URL follows the map (visible area, zoom,
-  fuel, radius and filters) and the route (endpoints and options): the *Share*
-  button sends a link that reopens exactly the same view — or the same trip —
-  for whoever receives it. Station pages keep their direct `/station/:id`
-  link.
-- 🌗 **Light and dark themes** — the app follows your browser's setting by
-  default and can be switched in Settings; the basemap follows the theme and
-  the switch cross-fades.
-- 🌍 **Five languages** — French, English, Spanish, Catalan and Portuguese;
-  the app follows your browser's language by default, switchable in Settings.
-- 🖥️ **The same app on phone and browser** — on mobile, the full-screen map
-  and its draggable sheet; on a wide screen, navigation moves to the side and
-  the station list docks **next to** the map instead of covering it, filters
-  and station pages become panels, and the mouse gets back what it was missing
-  (zoom buttons, hovers, Escape to close). No more phone frame sitting in the
-  middle of the screen.
-- 📱 **Installable, offline-tolerant PWA** — add it to your home screen; the
-  last visited areas and the map tiles stay available without network, with a
-  price-age indicator.
+  the official feeds of France, Spain, Andorra and Portugal: cross-border
+  fill-ups compare at a glance.
+- 📋 **Area list** — every visible station, sorted by recommendation: the
+  fuel burned driving there and back is counted, so a closer station can beat
+  the cheapest one.
+- 🛣️ **Route fuel plan** — a refuelling plan along your trip under
+  3 strategies: where to stop, how many liters at each stop, at what cost —
+  down to the fuel left on arrival.
+- ⭐ **Favorites** — your stations and their price of the day, across areas
+  and countries.
+- ⛽ **All fuels, real filters** — Diesel, SP95/98, E10, E85, LPG; radius,
+  brands, services, AdBlue where the source publishes it.
+- 🕐 **Real opening hours** — "Open 24/7", "Closed · opens at 6:30 am",
+  computed from the official hours; price freshness flagged.
+- 🏷️ **Recognized brands** — station logos and names from the official feeds
+  and OpenStreetMap.
+- 🧭 **"Directions"** — opens the station in your GPS app.
+- 🔗 **Shareable links** — the URL follows the map and the route; a link
+  reopens exactly the same view.
+- 🌗 **Light and dark themes** — follows your browser, switchable in
+  Settings; the basemap follows.
+- 🌍 **Five languages** — French, English, Spanish, Catalan and Portuguese.
+- 🖥️ **Phone and wide screen** — full-screen map with a draggable sheet on
+  mobile; side navigation and panels docked next to the map on a wide screen.
+- 📱 **Installable PWA** — works offline with the last visited areas and map
+  tiles.
 
 ## 🚀 Usage
 

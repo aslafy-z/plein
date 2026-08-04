@@ -29,73 +29,37 @@ e Portugal.
 
 ## ✨ Funcionalidades
 
-- 🗺️ **Mapa de preços em direto** — os postos à sua volta com o preço no
-  alfinete, coloridos consoante o preço: as «boas ofertas» (todos os postos
-  quase ao melhor preço, não apenas o primeiro) a verde, os mais caros em
-  tons de laranja; mova o mapa e os postos da zona carregam-se
-  automaticamente, e nas zonas densas só os mais baratos mantêm a bolha de
-  preço.
+- 🗺️ **Mapa de preços em direto** — os postos à sua volta, preços em
+  alfinetes coloridos consoante o preço: boas ofertas a verde, os mais caros
+  a laranja. Mova o mapa e a zona carrega-se sozinha.
 - 🇫🇷🇪🇸🇦🇩🇵🇹 **Quatro países no mesmo mapa** — a fonte «Automática» combina
-  os fluxos oficiais de França, Espanha, Andorra e Portugal consoante a zona
-  apresentada: os abastecimentos fronteiriços (Le Perthus, Irún, o Pas de la
-  Casa, Vilar Formoso…) comparam-se num relance.
-- 📋 **Lista da zona** — puxe o painel inferior: todos os postos visíveis,
-  ordenados por recomendação por defeito (preço ou distância a um toque), as
-  boas ofertas realçadas, sincronizados com o mapa. O posto em destaque é a
-  **melhor escolha real**: o combustível gasto na ida e volta (consumo e
-  depósito do perfil de veículo das Definições — carro ou mota) é
-  contabilizado, pelo que um posto um pouco mais caro mas muito mais próximo
-  pode bater o mais barato apresentado.
-- 🛣️ **Plano de abastecimento do trajeto** — partida de «A minha posição» ou
-  de qualquer morada, preenchimento automático, mapa do corredor e **plano de
-  abastecimento** segundo 3 estratégias (melhor compromisso · preço mais
-  baixo · desvio mínimo): uma paragem ou várias encadeadas nas viagens
-  longas, cada uma com os litros a comprar, o seu custo e o desvio, do nível
-  do depósito à partida ao combustível restante à chegada. Fixe ou retire
-  paragens para compor o seu próprio percurso, evite autoestradas ou
-  portagens, e os resultados chegam progressivamente — primeiro o itinerário,
-  depois os postos, depois o plano.
-- ⭐ **Favoritos** — fixe os seus postos e consulte o preço do dia num
-  relance; mantêm o preço mesmo através de zonas e países.
-- ⛽ **Todos os combustíveis** — Gasóleo, SP95/98, E10, E85, GPL; filtros por
-  raio, marcas, tipo de distribuidor e serviços (24 h, lavagem, loja,
-  calibragem, aditivos). O filtro **AdBlue** só aparece onde a fonte publica
-  a informação: os fluxos espanhol e andorrano declaram os produtos à venda
-  (e o seu preço, apresentado na ficha), os fluxos francês e português nada
-  dizem sobre isso, pelo que os seus postos continuam listados em vez de
-  indevidamente escondidos. Como o E10 quase não existe fora de França, os
-  postos espanhóis, andorranos e portugueses mostram a sua SP95 (compatível
-  com E10) no mapa E10 — com o rótulo «SP95 / L» a atestá-lo.
-- 🕐 **Horários reais** — «Aberto 24 h», «Fechado · abre às 6h30»… calculados
-  a partir dos horários oficiais; frescura dos preços apresentada (e
-  assinalada quando envelhecem).
-- 🏷️ **Marcas reconhecidas** — logótipos e nomes dos postos (TotalEnergies,
-  E.Leclerc, Intermarché… e Repsol, Cepsa, Galp, Prio do lado espanhol,
-  andorrano e português) emparelhados a partir do OpenStreetMap em França
-  (posições ajustadas às coordenadas OSM reais), fornecidos diretamente pelos
-  fluxos oficiais nos restantes países.
-- 🧭 **«Direções»** — abre o local na sua app de GPS: escolha da app no
-  Android (`geo:`), Mapas no iOS, Google Maps no desktop; percurso
-  multiparagens possível.
-- 🔗 **Ligação partilhável** — o endereço da página segue o mapa (zona
-  apresentada, zoom, combustível, raio e filtros) e o trajeto (etapas e
-  opções): o botão *Partilhar* envia uma ligação que reabre exatamente a
-  mesma vista — ou a mesma viagem — para quem a recebe. As fichas dos postos
-  mantêm a sua ligação direta `/station/:id`.
-- 🌗 **Tema claro e escuro** — a app segue a definição do seu navegador por
-  defeito e muda-se nas Definições; o mapa base segue o tema e a mudança faz-se
-  com um fundido.
-- 🌍 **Cinco línguas** — francês, inglês, espanhol, catalão e português; a
-  app segue a língua do seu navegador por defeito, alterável nas Definições.
-- 🖥️ **A mesma app no telemóvel e no navegador** — no telemóvel, o mapa em
-  ecrã inteiro e o painel que se puxa; num ecrã largo, a navegação passa para
-  o lado e a lista de postos encosta **ao lado** do mapa em vez de o cobrir,
-  os filtros e as fichas tornam-se painéis, e o rato recupera o que lhe
-  faltava (botões de zoom, hover, Esc para fechar). Acabou-se a moldura de
-  telemóvel no meio do ecrã.
-- 📱 **PWA instalável e tolerante ao modo offline** — adicione-a ao ecrã
-  inicial; as últimas zonas consultadas e os mosaicos do mapa continuam
-  disponíveis sem rede, com indicador da antiguidade dos preços.
+  os fluxos oficiais de França, Espanha, Andorra e Portugal: os
+  abastecimentos fronteiriços comparam-se num relance.
+- 📋 **Lista da zona** — todos os postos visíveis, ordenados por
+  recomendação: o combustível gasto na ida e volta é contabilizado, pelo que
+  um posto mais próximo pode bater o mais barato.
+- 🛣️ **Plano de abastecimento do trajeto** — um plano ao longo do percurso
+  segundo 3 estratégias: onde parar, quantos litros em cada paragem e a que
+  preço — até ao combustível restante à chegada.
+- ⭐ **Favoritos** — os seus postos e o preço do dia, através de zonas e
+  países.
+- ⛽ **Todos os combustíveis, filtros a sério** — Gasóleo, SP95/98, E10, E85,
+  GPL; raio, marcas, serviços, AdBlue onde a fonte o publica.
+- 🕐 **Horários reais** — «Aberto 24 h», «Fechado · abre às 6h30», calculados
+  a partir dos horários oficiais; frescura dos preços assinalada.
+- 🏷️ **Marcas reconhecidas** — logótipos e nomes dos postos a partir dos
+  fluxos oficiais e do OpenStreetMap.
+- 🧭 **«Direções»** — abre o posto na sua app de GPS.
+- 🔗 **Ligações partilháveis** — o endereço segue o mapa e o trajeto; uma
+  ligação reabre exatamente a mesma vista.
+- 🌗 **Tema claro e escuro** — segue o navegador, alterável nas Definições; o
+  mapa base acompanha.
+- 🌍 **Cinco línguas** — francês, inglês, espanhol, catalão e português.
+- 🖥️ **Telemóvel e ecrã grande** — mapa em ecrã inteiro com painel que se
+  puxa no telemóvel; navegação lateral e painéis ao lado do mapa nos ecrãs
+  largos.
+- 📱 **PWA instalável** — funciona offline com as últimas zonas e mosaicos
+  consultados.
 
 ## 🚀 Utilização
 

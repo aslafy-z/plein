@@ -29,73 +29,36 @@ au Portugal.
 
 ## ✨ Fonctionnalités
 
-- 🗺️ **Carte des prix en direct** — les stations autour de vous avec leur prix en
-  pin, colorés selon le prix : les « bons plans » (toutes les stations quasi au
-  meilleur prix, pas seulement la première) en vert, les plus chères teintées
-  orange ; déplacez la carte, les stations de la zone se chargent automatiquement,
-  et dans les zones denses seules les moins chères gardent leur bulle de prix.
+- 🗺️ **Carte des prix en direct** — les stations autour de vous, prix en pin
+  colorés selon le prix : bons plans en vert, les plus chères en orange.
+  Déplacez la carte, la zone se charge toute seule.
 - 🇫🇷🇪🇸🇦🇩🇵🇹 **Quatre pays sur la même carte** — la source « Automatique »
   combine les flux officiels de la France, de l'Espagne, de l'Andorre et du
-  Portugal selon la zone affichée : les pleins frontaliers (Le Perthus, Irún,
-  le Pas de la Case, Vilar Formoso…) se comparent d'un seul coup d'œil.
-- 📋 **Liste de la zone** — tirez le volet du bas : toutes les stations
-  visibles, triées par recommandation par défaut (prix ou distance en un
-  geste), les bons plans surlignés, synchronisées avec la carte. La station
-  mise en avant est le **meilleur choix réel** : le carburant brûlé pour
-  l'aller-retour (conso et réservoir du profil véhicule des Réglages — voiture
-  ou moto) est compté, donc une station un peu plus chère mais bien plus
-  proche peut battre la moins chère affichée.
-- 🛣️ **Plan carburant du trajet** — départ « Ma position » ou n'importe quelle
-  adresse, autocomplétion, carte du corridor et **plan de ravitaillement**
-  selon 3 stratégies (meilleur compromis · prix le plus bas · détour minimal) :
-  un arrêt ou plusieurs enchaînés sur les longs trajets, chacun avec les
-  litres à acheter, leur coût et le détour, du niveau de réservoir au départ
-  au carburant restant à l'arrivée. Épinglez ou retirez des arrêts pour
-  composer votre tournée, évitez autoroutes ou péages, et les résultats
-  arrivent progressivement — l'itinéraire d'abord, puis les stations, puis le
-  plan.
-- ⭐ **Favoris** — épinglez vos stations, retrouvez leur prix du jour d'un coup
-  d'œil ; elles restent chiffrées même à travers zones et pays.
-- ⛽ **Tous les carburants** — Gazole, SP95/98, E10, E85, GPLc ; filtres par
-  rayon, enseignes, type de distributeur et services (24/24, lavage, boutique,
-  gonflage, additifs). Le filtre **AdBlue** n'apparaît que là où la source
-  publie l'information : les flux espagnol et andorran déclarent les produits
-  en vente (et leur prix, affiché sur la fiche), les flux français et portugais
-  n'en disent rien, donc leurs stations restent listées plutôt que masquées à
-  tort. L'E10 n'existant quasi pas hors de France,
-  les stations espagnoles, andorranes et portugaises affichent leur SP95
-  (compatible E10) sur la carte E10 — libellé « SP95 / L » à l'appui.
-- 🕐 **Horaires réels** — « Ouvert 24/24 », « Fermé · ouvre à 6 h 30 »… calculés
-  depuis les horaires officiels ; fraîcheur des prix affichée (et signalée quand
-  ils datent).
-- 🏷️ **Enseignes reconnues** — logos et noms des stations (TotalEnergies,
-  E.Leclerc, Intermarché… et Repsol, Cepsa, Galp, Prio côté espagnol, andorran
-  et portugais) appariés depuis OpenStreetMap en France (positions recalées sur
-  les vraies coordonnées OSM), portés directement par les flux officiels
-  ailleurs.
-- 🧭 **« Y aller »** — ouvre la fiche du lieu dans votre app GPS : choix de
-  l'app sur Android (`geo:`), Plans sur iOS, Google Maps sur desktop ; tournée
-  multi-arrêts possible.
-- 🔗 **Lien partageable** — l'adresse de la page suit la carte (zone affichée,
-  zoom, carburant, rayon et filtres) et le trajet (étapes et options) : le
-  bouton *Partager* envoie un lien qui rouvre exactement la même vue — ou le
-  même trajet — chez qui le reçoit. Les fiches station gardent leur lien
-  direct `/station/:id`.
-- 🌗 **Thème clair et sombre** — l'app suit le réglage de votre navigateur par
-  défaut et se change dans les Réglages ; le fond de carte suit le thème et la
-  bascule se fait en fondu.
-- 🌍 **Cinq langues** — français, anglais, espagnol, catalan et portugais ;
-  l'app suit la langue de votre navigateur par défaut, modifiable dans les
-  Réglages.
-- 🖥️ **La même app sur téléphone et sur navigateur** — sur mobile, la carte en
-  plein écran et son volet qu'on tire ; sur un écran large, la navigation passe
-  sur le côté et la liste des stations se cale **à côté** de la carte au lieu de
-  la recouvrir, les filtres et les fiches deviennent des panneaux, et la souris
-  retrouve ce qui lui manquait (boutons de zoom, survols, Échap pour fermer).
-  Plus de cadre de téléphone posé au milieu de l'écran.
-- 📱 **PWA installable et tolérante au hors-ligne** — ajoutez-la à l'écran
-  d'accueil ; les dernières zones consultées et les tuiles de carte restent
-  disponibles sans réseau, avec indicateur d'ancienneté des prix.
+  Portugal : les pleins frontaliers se comparent d'un coup d'œil.
+- 📋 **Liste de la zone** — toutes les stations visibles, triées par
+  recommandation : le carburant brûlé pour l'aller-retour est compté, donc
+  une station plus proche peut battre la moins chère.
+- 🛣️ **Plan carburant du trajet** — un plan de ravitaillement le long du
+  parcours selon 3 stratégies : où s'arrêter, combien de litres à chaque
+  arrêt, à quel prix — jusqu'au carburant restant à l'arrivée.
+- ⭐ **Favoris** — vos stations et leur prix du jour, à travers zones et pays.
+- ⛽ **Tous les carburants, vrais filtres** — Gazole, SP95/98, E10, E85,
+  GPLc ; rayon, enseignes, services, AdBlue là où la source le publie.
+- 🕐 **Horaires réels** — « Ouvert 24/24 », « Fermé · ouvre à 6 h 30 »,
+  calculés depuis les horaires officiels ; fraîcheur des prix signalée.
+- 🏷️ **Enseignes reconnues** — logos et noms des stations depuis les flux
+  officiels et OpenStreetMap.
+- 🧭 **« Y aller »** — ouvre la station dans votre app GPS.
+- 🔗 **Liens partageables** — l'adresse suit la carte et le trajet ; un lien
+  rouvre exactement la même vue.
+- 🌗 **Thème clair et sombre** — suit votre navigateur, modifiable dans les
+  Réglages ; le fond de carte suit.
+- 🌍 **Cinq langues** — français, anglais, espagnol, catalan et portugais.
+- 🖥️ **Téléphone et grand écran** — carte plein écran et volet à tirer sur
+  mobile ; navigation latérale et panneaux à côté de la carte sur grand
+  écran.
+- 📱 **PWA installable** — fonctionne hors-ligne avec les dernières zones et
+  tuiles consultées.
 
 ## 🚀 Utilisation
 
