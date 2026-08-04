@@ -46,6 +46,18 @@ export interface SheetBodyGestures {
   onClickCapture(e: React.MouseEvent): void;
 }
 
+/** Pointer handlers for static chrome inside the body — a bar that scrolls
+    nothing (the zone list's count/sort row) has no scroll to arbitrate with,
+    so it drags the sheet exactly like the header. The element must set
+    `touchAction: 'none'` or the browser claims the touch gesture first. */
+export interface SheetChromeGestures {
+  onPointerDown(e: React.PointerEvent<HTMLDivElement>): void;
+  onPointerMove(e: React.PointerEvent<HTMLDivElement>): void;
+  onPointerUp(e: React.PointerEvent<HTMLDivElement>): void;
+  onPointerCancel(e: React.PointerEvent<HTMLDivElement>): void;
+  onClickCapture(e: React.MouseEvent): void;
+}
+
 /** A control opting out of the sheet drag (horizontal sliders fight it) */
 function insideNoDrag(target: EventTarget | null): boolean {
   return target instanceof Element && target.closest('[data-sheet-no-drag]') != null;
@@ -81,8 +93,13 @@ export default function SheetShell({
       gesture engine) and the caller decides where it sits. */
   header: (handle: ReactNode) => ReactNode;
   /** Expanded part — the render prop owns the scroll container and must
-      attach the ref and gestures to it */
-  body?: (scrollerRef: RefObject<HTMLDivElement>, gestures: SheetBodyGestures) => ReactNode;
+      attach the ref and gestures to it. `chrome` goes on any non-scrolling
+      bar the body keeps outside the scroller, so it drags too. */
+  body?: (
+    scrollerRef: RefObject<HTMLDivElement>,
+    gestures: SheetBodyGestures,
+    chrome: SheetChromeGestures,
+  ) => ReactNode;
   /** Pinned to the sheet's bottom edge, inside the collapsed height */
   footer?: ReactNode;
   /** What the drag handle announces — names the caller's content, since the
@@ -438,6 +455,17 @@ export default function SheetShell({
     onClickCapture: swallowClickAfterDrag,
   };
 
+  // The header's own handlers, verbatim: a tap still lands on whatever button
+  // the chrome carries (only the handle toggles on pointerup), a real drag
+  // captures the pointer and swallows the trailing click.
+  const chromeGestures: SheetChromeGestures = {
+    onPointerDown: cardPointerDown,
+    onPointerMove: cardPointerMove,
+    onPointerUp: cardPointerUp,
+    onPointerCancel: cardPointerCancel,
+    onClickCapture: swallowClickAfterDrag,
+  };
+
   // The drag handle — the visible affordance + a11y toggle. Pointer taps
   // toggle in cardPointerUp; onClick only serves keyboard/AT synthetic
   // clicks (no pointerup precedes them).
@@ -515,7 +543,7 @@ export default function SheetShell({
       </div>
 
       {/* ── Body revealed by pulling the sheet up ── */}
-      {listAttached && body?.(listRef, bodyGestures)}
+      {listAttached && body?.(listRef, bodyGestures, chromeGestures)}
 
       {/* ── Footer pinned to the bottom edge, always visible ── */}
       {footer && <div ref={footerRef} style={{ flexShrink: 0, marginTop: 'auto' }}>{footer}</div>}

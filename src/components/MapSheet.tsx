@@ -50,10 +50,11 @@ export default function MapSheet({
       hint={app.sheetHint && rowCount >= HINT_MIN_ROWS}
       onHintConsumed={app.consumeSheetHint}
       header={(handle) => <ZoneCard handle={handle} />}
-      body={(scrollerRef, gestures) => (
+      body={(scrollerRef, gestures, chrome) => (
         <ZoneList
           scrollerRef={scrollerRef}
           gestures={gestures}
+          chromeGestures={chrome}
           onRowPick={() => onExpandedChange(false)}
         />
       )}
