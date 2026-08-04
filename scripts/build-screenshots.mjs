@@ -1,22 +1,40 @@
-// Regenerates docs/screenshots/*.png — the two screenshots the README embeds.
+// Regenerates docs/screenshots/<locale>/*.png — the screenshots the READMEs
+// embed, one set per app locale (en, fr, es, ca, pt), each image a diagonal
+// light/dark split (light upper-left, dark lower-right) so one picture shows
+// both themes.
 //
 // The shots are taken against the LIVE sources (`sourceId: 'auto'`), not the
 // deterministic demo dataset: real prices, real station names and a real OSRM
 // corridor are the point of these images, so every run produces the prices of
-// the day. Both screens start from Toulouse and the trip is Toulouse → Nantes,
-// matching the captions in the README.
+// the day. Each locale plays a scene in its own country — the map and the
+// fiche around a well-known city, the trip a classic domestic run (SCENES
+// below) — matching the captions in that locale's README.
 //
-// The viewport is 480×1064 at DPR 3 (1440×3192), which the README displays at
-// width 300. That width is deliberate: the map auto-fit frames the search
+// The UI language is seeded through the persisted `locale` setting (the same
+// switch the Settings screen writes), and every selector string comes from
+// that locale's message catalog — messages/<locale>.json is the single source
+// of truth for what the screen says. Each screen is shot twice, dark then
+// light, by flipping the emulated `prefers-color-scheme` (the app's theme
+// default follows the browser), and the two frames are composited along a
+// diagonal.
+//
+// The viewport is 480×1064 at DPR 3 (1440×3192), which the READMEs display at
+// width 250. That width is deliberate: the map auto-fit frames the search
 // circle into the viewport and snaps to an integer zoom, so a narrower phone
 // (390 or 430 CSS px) lands one level further out and packs the price bubbles
 // of a dense centre on top of each other. PNGs are re-encoded losslessly
 // afterwards — Chromium's own encoder leaves roughly 45% on the table.
-// Usage: npm run build:screenshots [map] [station] [route]
-// Naming shots regenerates only those — handy to refresh the fiche without
-// reshooting the map and the trip with the prices of another day.
+// Usage: npm run build:screenshots [map] [station] [route] [en] [fr] [es] [ca] [pt] [--headed] [--parallel]
+// Naming shots and/or locales regenerates only those — handy to refresh one
+// language's fiche without reshooting every map with the prices of another day.
+// --headed opens a visible browser window to watch the run navigate — the
+// captures are identical, it only helps to see where a selector goes wrong.
+// --parallel runs the locales concurrently, one browser context each. Shots
+// within a locale stay sequential (they walk one page through the screens).
+// It multiplies the concurrent load on the live feeds and the OSRM demo
+// server by the locale count — if a run turns flaky, drop back to sequential.
 import { spawn } from 'node:child_process';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
@@ -27,22 +45,109 @@ const OUT = join(ROOT, 'docs/screenshots');
 // A dedicated port so a dev server already running on 5173 is left alone
 const PORT = 5199;
 const BASE = `http://localhost:${PORT}`;
-const TOULOUSE = { lat: 43.6047, lng: 1.4442 };
 const VIEWPORT = { width: 480, height: 1064 };
 
-// The fiche the README shows off has to have something to show. Tapping the
-// recommended card lands on whichever station is cheapest today, and the gouv
-// flux leaves plenty of them with three fuels and « Aucun service renseigné »
-// under half an empty screen. This one is a Total Access in Toulouse: GPLc on
-// top of the usual pumps, nine services, and an enseigne the mini-map has a
-// logo for. Should it ever leave the flux, the richest loaded station stands in.
-const STATION_ID = 'fra-31100010';
-
 const SHOTS = ['map', 'station', 'route'];
-const asked = process.argv.slice(2);
-const unknown = asked.filter((n) => !SHOTS.includes(n));
-if (unknown.length) throw new Error(`unknown shot(s): ${unknown.join(', ')} — expected ${SHOTS.join(', ')}`);
-const wanted = (name) => asked.length === 0 || asked.includes(name);
+const LOCALES = ['en', 'fr', 'es', 'ca', 'pt'];
+// Full BCP 47 tags for the browser context, so Intl formats match the catalog
+const CONTEXT_LOCALE = { en: 'en-US', fr: 'fr-FR', es: 'es-ES', ca: 'ca-ES', pt: 'pt-PT' };
+
+// One scene per locale, in the language's own country (English rides along on
+// the French one): `center` seeds the position for the map and the fiche,
+// `from`/`to` is the trip — the Catalan scene is Andorra's, map and fiche in
+// Andorra la Vella and the trip down to Barcelona, the border fill-up the app
+// exists for. Endpoints carry their coordinates and are DEEP-LINKED through
+// the shareable route URL (`routeUrl.ts`) instead of typed into the place
+// search: a link with coordinates never geocodes, so a geocoder having a slow
+// day (CartoCiudad regularly does) cannot sink the run — and the wrong
+// namesake can never be picked (BAN once answered « Madrid » with a French
+// hamlet of that name). `startTankPct` keeps each trip longer than the
+// departure tank's range, or short runs would plan no stop at all and the
+// route shot would have nothing to show.
+//
+// `station` pins the fiche when that station is in the loaded area — the
+// fiche has to have something to show, and tapping whatever is cheapest today
+// often lands on three fuels over half an empty screen. fra-31100010 is a
+// Total Access in Toulouse: GPLc on top of the usual pumps, nine services,
+// and an enseigne the mini-map has a logo for. Elsewhere (or should it ever
+// leave the flux) the richest loaded station stands in.
+const SCENES = {
+  en: {
+    center: { lat: 43.6047, lng: 1.4442 },
+    station: 'fra-31100010',
+    from: { label: 'Toulouse', point: { lat: 43.6047, lng: 1.4442 } },
+    to: { label: 'Lille', point: { lat: 50.6292, lng: 3.0573 } },
+    startTankPct: 70,
+  },
+  fr: {
+    center: { lat: 43.6047, lng: 1.4442 },
+    station: 'fra-31100010',
+    from: { label: 'Toulouse', point: { lat: 43.6047, lng: 1.4442 } },
+    to: { label: 'Lille', point: { lat: 50.6292, lng: 3.0573 } },
+    startTankPct: 70,
+  },
+  es: {
+    center: { lat: 40.4168, lng: -3.7038 },
+    from: { label: 'Madrid', point: { lat: 40.4168, lng: -3.7038 } },
+    to: { label: 'Barcelona', point: { lat: 41.3874, lng: 2.1686 } },
+    startTankPct: 40,
+    // The Spanish stations feed is one whole-country payload from minetur
+    // with slow days of its own — give every wait twice the room.
+    slowFactor: 2,
+  },
+  ca: {
+    center: { lat: 42.5063, lng: 1.5218 },
+    from: { label: 'Andorra la Vella', point: { lat: 42.5063, lng: 1.5218 } },
+    to: { label: 'Barcelona', point: { lat: 41.3874, lng: 2.1686 } },
+    startTankPct: 15,
+  },
+  pt: {
+    center: { lat: 38.7223, lng: -9.1393 },
+    from: { label: 'Lisboa', point: { lat: 38.7223, lng: -9.1393 } },
+    to: { label: 'Porto', point: { lat: 41.1579, lng: -8.6291 } },
+    startTankPct: 25,
+  },
+};
+
+const argv = process.argv.slice(2);
+const headed = argv.includes('--headed');
+const parallel = argv.includes('--parallel');
+const asked = argv.filter((n) => n !== '--headed' && n !== '--parallel');
+const unknown = asked.filter((n) => !SHOTS.includes(n) && !LOCALES.includes(n));
+if (unknown.length) {
+  throw new Error(
+    `unknown argument(s): ${unknown.join(', ')} — expected shots (${SHOTS.join(', ')}) or locales (${LOCALES.join(', ')})`,
+  );
+}
+const askedShots = asked.filter((n) => SHOTS.includes(n));
+const askedLocales = asked.filter((n) => LOCALES.includes(n));
+const wanted = (name) => askedShots.length === 0 || askedShots.includes(name);
+const locales = askedLocales.length === 0 ? LOCALES : askedLocales;
+
+const reEscape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** The catalog strings the selectors below rely on, out of messages/<locale>.json. */
+async function loadMessages(locale) {
+  const catalog = JSON.parse(await readFile(join(ROOT, `messages/${locale}.json`), 'utf8'));
+  const need = [
+    'sheet_best_choice_nearby',
+    'sheet_best_choice_in_area',
+    'sheet_cheapest_nearby',
+    'sheet_cheapest_in_area',
+    'detail_map_aria',
+    'ribbon_recommended_stop',
+    'ribbon_plan_stop_index',
+    'route_sheet_expand_aria',
+    'map_route_aria',
+  ];
+  const msg = {};
+  for (const key of need) {
+    const value = catalog[key];
+    if (typeof value !== 'string') throw new Error(`messages/${locale}.json: ${key} is not a plain string`);
+    msg[key] = value;
+  }
+  return msg;
+}
 
 /** Boots the Vite dev server and resolves once it answers. */
 async function startServer() {
@@ -66,12 +171,221 @@ async function startServer() {
   throw new Error(`the dev server did not answer on ${BASE} within 60 s`);
 }
 
-/** Screenshots the page, then re-encodes the PNG losslessly. */
-async function shoot(page, name, opts = {}) {
-  const buf = await page.screenshot(opts);
-  const path = join(OUT, `${name}.png`);
-  await sharp(buf).png({ compressionLevel: 9, effort: 10 }).toFile(path);
-  console.log(`✓ ${name}.png`);
+/** Flips the emulated color scheme and waits out the cross-fade and the tile swap. */
+async function setTheme(page, scheme) {
+  await page.emulateMedia({ colorScheme: scheme });
+  await page.waitForLoadState('networkidle').catch(() => {});
+  // The basemap swaps to its light_all/dark_all URL and refetches every
+  // visible tile — screenshot only once they have all painted, or the freshly
+  // themed UI sits on the other theme's map.
+  await page
+    .waitForFunction(
+      () => {
+        const tiles = document.querySelectorAll('.leaflet-tile');
+        return tiles.length > 0 && [...tiles].every((t) => t.classList.contains('leaflet-tile-loaded'));
+      },
+      { timeout: 20_000 },
+    )
+    .catch(() => {});
+  // The tiles' own fade-in and the View Transitions cross-fade
+  await page.waitForTimeout(2000);
+}
+
+/**
+ * Screenshots the page in both themes and composites them along a diagonal:
+ * light keeps the upper-left, dark the lower-right, with a hairline divider.
+ * The PNG is re-encoded losslessly on the way out.
+ */
+async function shoot(page, locale, name) {
+  await setTheme(page, 'light');
+  const light = await page.screenshot();
+  await setTheme(page, 'dark');
+  const dark = await page.screenshot();
+
+  const { width: W, height: H } = await sharp(light).metadata();
+  // The split line runs through the center, leaning right: from 62% of the
+  // width at the top edge down to 38% at the bottom, so every UI region
+  // (header, map, sheet) shows up once per theme.
+  const xTop = Math.round(W * 0.62);
+  const xBottom = Math.round(W * 0.38);
+  const darkSide = Buffer.from(
+    `<svg width="${W}" height="${H}"><polygon points="${xTop},0 ${W},0 ${W},${H} ${xBottom},${H}" fill="#fff"/></svg>`,
+  );
+  const divider = Buffer.from(
+    `<svg width="${W}" height="${H}"><line x1="${xTop}" y1="0" x2="${xBottom}" y2="${H}" stroke="rgba(127,127,127,0.9)" stroke-width="6"/></svg>`,
+  );
+  const darkMasked = await sharp(dark).composite([{ input: darkSide, blend: 'dest-in' }]).toBuffer();
+
+  const path = join(OUT, locale, `${name}.png`);
+  await sharp(light)
+    .composite([{ input: darkMasked }, { input: divider }])
+    .png({ compressionLevel: 9, effort: 10 })
+    .toFile(path);
+  console.log(`✓ ${locale}/${name}.png`);
+}
+
+/** Shoots one locale's set inside its own browser context. */
+async function shootLocale(browser, locale) {
+  const msg = await loadMessages(locale);
+  const scene = SCENES[locale];
+  // Stretches every wait for scenes whose sources have slow days
+  const T = (ms) => ms * (scene.slowFactor ?? 1);
+  await mkdir(join(OUT, locale), { recursive: true });
+  const ctx = await browser.newContext({
+    viewport: VIEWPORT,
+    deviceScaleFactor: 3,
+    locale: CONTEXT_LOCALE[locale],
+    timezoneId: 'Europe/Paris',
+    colorScheme: 'dark',
+    isMobile: true,
+    hasTouch: true,
+    permissions: ['geolocation'],
+    geolocation: { latitude: scene.center.lat, longitude: scene.center.lng },
+  });
+
+  try {
+    // Skip onboarding, pin the position, the UI language and the scene's
+    // departure tank, so the run never depends on the machine's real
+    // geolocation or the browser's language.
+    await ctx.addInitScript(
+      ({ pos, locale, startTankPct }) => {
+        localStorage.setItem(
+          'plein.settings.v1',
+          JSON.stringify({ sourceId: 'auto', onboarded: true, geoGranted: true, lastPos: pos, locale, startTankPct }),
+        );
+      },
+      { pos: scene.center, locale, startTankPct: scene.startTankPct },
+    );
+
+    const page = await ctx.newPage();
+
+    // The zone card's headline depends on what has landed: « best choice »
+    // needs road distances, « cheapest » stands in before them, each with an
+    // in-area variant — any of the four means the zone is on screen.
+    const zoneLead = new RegExp(
+      [
+        msg.sheet_best_choice_nearby,
+        msg.sheet_best_choice_in_area,
+        msg.sheet_cheapest_nearby,
+        msg.sheet_cheapest_in_area,
+      ]
+        .map(reEscape)
+        .join('|'),
+    );
+
+    // ── Map screen ──
+    await page.goto(BASE);
+    await page.getByText(zoneLead).first().waitFor({ timeout: T(60_000) });
+    await page.waitForLoadState('networkidle').catch(() => {});
+    // Leaflet keeps painting after the network settles: tiles fade in and the
+    // price pins are laid out once their road distances land.
+    await page.waitForTimeout(4000);
+    if (wanted('map')) await shoot(page, locale, 'map');
+
+    // ── Station detail: the fiche of a well-equipped station ──
+    if (wanted('station')) {
+      // The map screen leaves the stations of the area in the cache the app reads
+      // on a cold boot, so a /station/<id> deep link paints straight away — and
+      // that cache is also where we look for a stand-in.
+      const target = await page.evaluate(
+        async ({ preferred, center, radiusKm }) => {
+          // src/data/cacheStore.ts: one record per fetched area under `payloads`
+          const stations = await new Promise((resolve) => {
+            const req = indexedDB.open('plein.cache');
+            req.onerror = () => resolve([]);
+            req.onsuccess = () => {
+              const db = req.result;
+              if (!db.objectStoreNames.contains('payloads')) return resolve([]);
+              const all = db.transaction('payloads').objectStore('payloads').getAll();
+              all.onsuccess = () => resolve(all.result.flat());
+              all.onerror = () => resolve([]);
+            };
+          });
+          if (stations.some((s) => s.id === preferred)) return preferred;
+          const km = (a, b) => {
+            const rad = (d) => (d * Math.PI) / 180;
+            const dLat = rad(b.lat - a.lat);
+            const dLng = rad(b.lng - a.lng);
+            const h =
+              Math.sin(dLat / 2) ** 2 +
+              Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+            return 2 * 6371 * Math.asin(Math.sqrt(h));
+          };
+          // Fuels weigh double: a priced row says more than one more chip.
+          let best = null;
+          for (const s of stations) {
+            const dist = km(center, s);
+            if (dist > radiusKm || !s.brand) continue;
+            const score = 2 * Object.keys(s.prices ?? {}).length + (s.services?.length ?? 0);
+            if (!best || score > best.score || (score === best.score && dist < best.dist)) {
+              best = { id: s.id, score, dist };
+            }
+          }
+          return best?.id ?? null;
+        },
+        { preferred: scene.station ?? null, center: scene.center, radiusKm: 5 },
+      );
+      if (!target) throw new Error(`no station to shoot the ${locale} fiche on`);
+      if (scene.station && target !== scene.station) {
+        console.log(`! ${scene.station} absent — falling back to ${target}`);
+      }
+
+      await page.goto(`${BASE}/station/${target}`);
+      await page.locator(`[aria-label="${msg.detail_map_aria}"]`).waitFor({ timeout: T(30_000) });
+      await page.waitForLoadState('networkidle').catch(() => {});
+      await page.waitForTimeout(3000);
+      await shoot(page, locale, 'station');
+    }
+
+    // ── Route screen: the scene's trip, deep-linked ──
+    if (wanted('route')) {
+      // The shareable route URL (routeUrl.ts) fully specifies the trip, and a
+      // link whose endpoints carry coordinates never touches a geocoder — the
+      // ribbon header shows the `al`/`dl` labels, the plan runs on the tank
+      // the URL names. Opening it computes the route exactly as a submitted
+      // form would.
+      const q = new URLSearchParams({
+        a: `${scene.from.point.lat},${scene.from.point.lng}`,
+        al: scene.from.label,
+        d: `${scene.to.point.lat},${scene.to.point.lng}`,
+        dl: scene.to.label,
+        tp: String(scene.startTankPct),
+      });
+      await page.goto(`${BASE}/route/results?${q}`);
+      // A one-stop plan headlines « Recommended stop », a chained one
+      // « Stop 1/2 » — wait for either, with the stop counter's regex built
+      // from its own catalog string.
+      const stopCounter = reEscape(msg.ribbon_plan_stop_index)
+        .replaceAll('\\{index\\}', '\\d+')
+        .replaceAll('\\{count\\}', '\\d+');
+      const planLabel = new RegExp(`${reEscape(msg.ribbon_recommended_stop)}|${stopCounter}`);
+      await page.getByText(planLabel).first().waitFor({ timeout: T(60_000) });
+      // Expand the sheet so the shot shows the plan's timeline rather than
+      // one collapsed row (openRouteSheet in e2e/fixtures.ts, same handle)
+      const expand = page.locator(`[aria-label="${msg.route_sheet_expand_aria}"]`);
+      if ((await expand.count()) > 0) {
+        await expand.click();
+        // the sheet's height transition (.3s)
+        await page.waitForTimeout(600);
+      }
+      // The plan lands before the corridor's priced pins are drawn on the
+      // route map — wait for at least one price bubble inside it, or the
+      // shot shows a bare line between two endpoint dots.
+      await page
+        .waitForFunction(
+          (aria) =>
+            (document.querySelector(`[aria-label="${aria}"]`)?.querySelectorAll('.pin-bubble').length ?? 0) > 0,
+          msg.map_route_aria,
+          { timeout: T(60_000) },
+        )
+        .catch(() => {});
+      await page.waitForLoadState('networkidle').catch(() => {});
+      await page.waitForTimeout(4000);
+      await shoot(page, locale, 'route');
+    }
+  } finally {
+    await ctx.close();
+  }
 }
 
 const server = await startServer();
@@ -79,110 +393,25 @@ const server = await startServer();
 // browser build point at a system Chromium instead of downloading one.
 const browser = await chromium.launch({
   executablePath: process.env.PLEIN_CHROMIUM || undefined,
+  headless: !headed,
 });
 try {
-  await mkdir(OUT, { recursive: true });
-  const ctx = await browser.newContext({
-    viewport: VIEWPORT,
-    deviceScaleFactor: 3,
-    locale: 'fr-FR',
-    timezoneId: 'Europe/Paris',
-    colorScheme: 'dark',
-    isMobile: true,
-    hasTouch: true,
-    permissions: ['geolocation'],
-    geolocation: { latitude: TOULOUSE.lat, longitude: TOULOUSE.lng },
-  });
-
-  // Skip onboarding and pin the position, so the run never depends on the
-  // machine's real geolocation.
-  await ctx.addInitScript((pos) => {
-    localStorage.setItem(
-      'plein.settings.v1',
-      JSON.stringify({ sourceId: 'auto', onboarded: true, geoGranted: true, lastPos: pos }),
-    );
-  }, TOULOUSE);
-
-  const page = await ctx.newPage();
-
-  // ── Map screen ──
-  await page.goto(BASE);
-  await page.getByText('Le meilleur choix près de vous').waitFor({ timeout: 60_000 });
-  await page.waitForLoadState('networkidle').catch(() => {});
-  // Leaflet keeps painting after the network settles: tiles fade in and the
-  // price pins are laid out once their road distances land.
-  await page.waitForTimeout(4000);
-  if (wanted('map')) await shoot(page, 'map');
-
-  // ── Station detail: the fiche of a well-equipped station ──
-  if (wanted('station')) {
-    // The map screen leaves the stations of the area in the cache the app reads
-    // on a cold boot, so a /station/<id> deep link paints straight away — and
-    // that cache is also where we look for a stand-in.
-    const target = await page.evaluate(
-      async ({ preferred, center, radiusKm }) => {
-        // src/data/cacheStore.ts: one record per fetched area under `payloads`
-        const stations = await new Promise((resolve) => {
-          const req = indexedDB.open('plein.cache');
-          req.onerror = () => resolve([]);
-          req.onsuccess = () => {
-            const db = req.result;
-            if (!db.objectStoreNames.contains('payloads')) return resolve([]);
-            const all = db.transaction('payloads').objectStore('payloads').getAll();
-            all.onsuccess = () => resolve(all.result.flat());
-            all.onerror = () => resolve([]);
-          };
-        });
-        if (stations.some((s) => s.id === preferred)) return preferred;
-        const km = (a, b) => {
-          const rad = (d) => (d * Math.PI) / 180;
-          const dLat = rad(b.lat - a.lat);
-          const dLng = rad(b.lng - a.lng);
-          const h =
-            Math.sin(dLat / 2) ** 2 +
-            Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
-          return 2 * 6371 * Math.asin(Math.sqrt(h));
-        };
-        // Fuels weigh double: a priced row says more than one more chip.
-        let best = null;
-        for (const s of stations) {
-          const dist = km(center, s);
-          if (dist > radiusKm || !s.brand) continue;
-          const score = 2 * Object.keys(s.prices ?? {}).length + (s.services?.length ?? 0);
-          if (!best || score > best.score || (score === best.score && dist < best.dist)) {
-            best = { id: s.id, score, dist };
-          }
-        }
-        return best?.id ?? null;
-      },
-      { preferred: STATION_ID, center: TOULOUSE, radiusKm: 5 },
-    );
-    if (!target) throw new Error('no station to shoot the fiche on');
-    if (target !== STATION_ID) console.log(`! ${STATION_ID} absent — falling back to ${target}`);
-
-    await page.goto(`${BASE}/station/${target}`);
-    await page.locator('[aria-label="Carte de la station"]').waitFor({ timeout: 30_000 });
-    await page.waitForLoadState('networkidle').catch(() => {});
-    await page.waitForTimeout(3000);
-    await shoot(page, 'station');
-  }
-
-  // ── Route screen: Toulouse → Nantes ──
-  if (wanted('route')) {
-    await page.goto(BASE);
-    await page.getByText('Le meilleur choix près de vous').waitFor({ timeout: 60_000 });
-    await page.getByText('Trajet', { exact: true }).click();
-    // Type the departure rather than leaving the implicit "Ma position", so the
-    // ribbon header reads "Toulouse → Nantes" as the README caption says.
-    await page.locator('input[placeholder="Départ"]').fill('Toulouse');
-    await page.getByText(/^Toulouse/).first().click({ timeout: 30_000 });
-    await page.locator('input[placeholder="Destination"]').fill('Nantes');
-    await page.getByText(/^Nantes/).first().click({ timeout: 30_000 });
-    await page.getByText('Comparer les stations sur le trajet').click();
-    await page.getByText('Arrêt conseillé').waitFor({ timeout: 60_000 });
-    await page.waitForLoadState('networkidle').catch(() => {});
-    await page.waitForTimeout(4000);
-    await shoot(page, 'route');
+  if (parallel) {
+    // One failed locale must not kill the others mid-shot — settle them all,
+    // then report and fail the run if any went down.
+    const results = await Promise.allSettled(locales.map((locale) => shootLocale(browser, locale)));
+    let failures = 0;
+    for (const [i, result] of results.entries()) {
+      if (result.status === 'rejected') {
+        failures += 1;
+        console.error(`✗ ${locales[i]}: ${result.reason?.message ?? result.reason}`);
+      }
+    }
+    if (failures) process.exitCode = 1;
+  } else {
+    for (const locale of locales) {
+      await shootLocale(browser, locale);
+    }
   }
 } finally {
   await browser.close();
