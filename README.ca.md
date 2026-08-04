@@ -23,7 +23,7 @@ Portugal.
 
 | Els preus al vostre voltant | La fitxa d'una estació | Al vostre trajecte |
 | :---: | :---: | :---: |
-| <img src="docs/screenshots/ca/map.png" width="250" alt="Mapa de preus al voltant de Barcelona" /> | <img src="docs/screenshots/ca/station.png" width="250" alt="Fitxa d'una estació: preu per combustible, diferència amb la més barata, serveis i estalvi en un dipòsit" /> | <img src="docs/screenshots/ca/route.png" width="250" alt="Comparació d'estacions en un trajecte Barcelona → Lleida" /> |
+| <img src="docs/screenshots/ca/map.png" width="250" alt="Mapa de preus al voltant de Barcelona" /> | <img src="docs/screenshots/ca/station.png" width="250" alt="Fitxa d'una estació: preu per combustible, diferència amb la més barata, serveis i estalvi en un dipòsit" /> | <img src="docs/screenshots/ca/route.png" width="250" alt="Comparació d'estacions en un trajecte Andorra la Vella → Barcelona" /> |
 
 </div>
 

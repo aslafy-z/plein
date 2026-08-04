@@ -54,10 +54,12 @@ const CONTEXT_LOCALE = { en: 'en-US', fr: 'fr-FR', es: 'es-ES', ca: 'ca-ES', pt:
 
 // One scene per locale, in the language's own country (English rides along on
 // the French one): `center` seeds the position for the map and the fiche,
-// `from`/`to` is the trip — both endpoints in one country, so a single
-// geocoder resolves them — and `startTankPct` keeps the trip longer than the
-// departure tank's range, or short domestic runs would plan no stop at all
-// and the route shot would have nothing to show.
+// `from`/`to` is the trip — endpoints resolve through the auto source, which
+// merges all four countries' geocoders, so a trip may cross a border: the
+// Catalan one runs Andorra la Vella → Barcelona, the border fill-up the app
+// exists for. `startTankPct` keeps each trip longer than the departure tank's
+// range, or short runs would plan no stop at all and the route shot would
+// have nothing to show.
 //
 // `station` pins the fiche when that station is in the loaded area — the
 // fiche has to have something to show, and tapping whatever is cheapest today
@@ -69,7 +71,7 @@ const SCENES = {
   en: { center: { lat: 43.6047, lng: 1.4442 }, station: 'fra-31100010', from: 'Toulouse', to: 'Lille', startTankPct: 70 },
   fr: { center: { lat: 43.6047, lng: 1.4442 }, station: 'fra-31100010', from: 'Toulouse', to: 'Lille', startTankPct: 70 },
   es: { center: { lat: 40.4168, lng: -3.7038 }, from: 'Madrid', to: 'Barcelona', startTankPct: 40 },
-  ca: { center: { lat: 41.3874, lng: 2.1686 }, from: 'Barcelona', to: 'Lleida', startTankPct: 15 },
+  ca: { center: { lat: 41.3874, lng: 2.1686 }, from: 'Andorra la Vella', to: 'Barcelona', startTankPct: 15 },
   pt: { center: { lat: 38.7223, lng: -9.1393 }, from: 'Lisboa', to: 'Porto', startTankPct: 25 },
 };
 
