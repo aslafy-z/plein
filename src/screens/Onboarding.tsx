@@ -133,13 +133,18 @@ export default function Onboarding() {
         <button
           onClick={() => app.finishOnboarding(false)}
           style={{
+            // Secondary pill mirroring the CTA's geometry: it must READ as a
+            // button (a bare text link here was missed), while the surface2 +
+            // hairline look keeps it clearly second to the green CTA
+            width: '100%',
             textAlign: 'center',
-            fontSize: 13.5,
-            fontWeight: 600,
-            color: C.mut,
-            // Quiet text link, full-size control: the padding buys the ~44px
-            // hit target a fingertip needs, which `padding: 4` was far under
-            padding: '13px 16px',
+            fontSize: 14,
+            fontWeight: 700,
+            color: C.body,
+            background: C.surface2,
+            border: `1px solid ${C.border12}`,
+            borderRadius: 26,
+            padding: '14px 0',
           }}
         >
           {m.onboarding_skip_location()}
