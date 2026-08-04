@@ -1002,16 +1002,20 @@ export default function MapCanvas({
 
   // Asking for a fix can take seconds (cold GPS, permission prompt still up)
   // and nothing else on the map moves meanwhile — so the control that asked
-  // says so, instead of leaving a tap that looks dead. Both arrangements swap
-  // the same picto; the store only reports a wait long enough to be seen, so
-  // a cached fix never makes this flash.
+  // says so, instead of leaving a tap that looks dead. The crosshair does the
+  // saying itself: it turns in place and goes dim, then settles upright and
+  // takes its color back when the fix lands. Swapping in a spinner glyph
+  // instead made the control change shape and wobble on an off-center
+  // baseline. Both arrangements share the picto; the store only reports a
+  // wait long enough to be seen, so a cached fix never makes this flash.
   const locating = app.geoLocating;
-  const locateGlyph = locating ? (
-    <span className="spin" aria-hidden style={{ color: C.accent, fontSize: 16, lineHeight: 1 }}>
-      ↻
-    </span>
-  ) : (
-    <LocateIcon color={locateActive ? C.accent : C.ink} dot={!app.searchedAway} size={19} />
+  const locateGlyph = (
+    <LocateIcon
+      color={locating ? C.mut : locateActive ? C.accent : C.ink}
+      dot={!app.searchedAway}
+      size={19}
+      spinning={locating}
+    />
   );
   const locateAria = locating ? m.map_locating() : m.map_recenter_aria();
   const locateTitle = locating ? m.map_locating() : m.map_my_position();
