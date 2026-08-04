@@ -17,6 +17,8 @@ import {
   selectPriceStats,
   effectivePrice,
   priceTier,
+  searchOutOfReach,
+  selectTripOriginKnown,
   type AppStore,
 } from '../state/store';
 
@@ -161,6 +163,7 @@ export default function MapCanvas({
       begins (auto-fit never centers on searchPos), absorbed over the pan */
   const circleOffsetRef = useRef({ x: 0, y: 0 });
   const userDotRef = useRef<L.Marker | null>(null);
+  const originLineRef = useRef<L.Polyline | null>(null);
   const markersRef = useRef(new Map<string, { marker: L.Marker; sig: string }>());
   /** Set by setup — the keyboard gesture start needs it through the shell */
   const measureCircleOffsetRef = useRef<(() => void) | null>(null);
@@ -371,6 +374,7 @@ export default function MapCanvas({
       circleRef.current = null;
       circleOffsetRef.current = { x: 0, y: 0 };
       userDotRef.current = null;
+      originLineRef.current = null;
     };
   };
 
@@ -444,6 +448,16 @@ export default function MapCanvas({
     }
   }, [app.searchPos, app.radius]);
 
+  // The circle's stroke carries the trip-origin state: solid when the trip
+  // figures on screen start from the user, dashed when they don't (area out
+  // of reach, or no position ever known) — the map-level echo of the hidden
+  // distances and the greyed « Distance » chip. Runs after the effect above,
+  // so the circle exists on the render that creates it.
+  const tripOrigin = selectTripOriginKnown(app);
+  useEffect(() => {
+    circleRef.current?.setStyle({ dashArray: tripOrigin ? undefined : '5 9' });
+  }, [tripOrigin, app.searchPos, app.radius]);
+
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -462,6 +476,39 @@ export default function MapCanvas({
       userDotRef.current.setLatLng([app.userPos.lat, app.userPos.lng]);
     }
   }, [app.userPos]);
+
+  // ── User → zone link while the searched area is out of reach ────────────────
+  // A sparse, muted dashed segment from the user's position to the zone: at
+  // zone zoom the origin end sits off-screen, so what shows is a stub
+  // entering from the edge — « your position is that way, far ». Only drawn
+  // from a KNOWN position: without one there is no origin to link from, and
+  // the dashed circle alone carries the state. Deliberately nothing like the
+  // route polyline — this must never read as an itinerary.
+  const linkWanted = app.hasKnownPos && searchOutOfReach(app);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!linkWanted) {
+      originLineRef.current?.remove();
+      originLineRef.current = null;
+      return;
+    }
+    const pts: L.LatLngExpression[] = [
+      [app.userPos.lat, app.userPos.lng],
+      [app.searchPos.lat, app.searchPos.lng],
+    ];
+    if (!originLineRef.current) {
+      originLineRef.current = L.polyline(pts, {
+        color: '#9aa7b0',
+        weight: 1.5,
+        opacity: 0.45,
+        dashArray: '2 10',
+        interactive: false,
+      }).addTo(map);
+    } else {
+      originLineRef.current.setLatLngs(pts);
+    }
+  }, [linkWanted, app.userPos, app.searchPos]);
 
   // ── Station pins: keyed diff so panning/refreshes never blink the markers ──
   // The map shows every loaded station passing the filters (the whole fetched
