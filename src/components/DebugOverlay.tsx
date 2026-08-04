@@ -14,7 +14,7 @@
 // – snapshots refresh on a short tick while the panel is OPEN — live numbers
 //   are the point of watching it — and never behind a closed chip: cache
 //   enumeration is async IO with no one looking.
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { C, FONT } from '../theme';
 import { useIsDesktop } from '../lib/layout';
@@ -55,6 +55,13 @@ const SECTION_ORDER: (keyof DebugSnapshot)[] = [
 
 const MONO_11 = `500 11px ${FONT.mono}`;
 
+/**
+ * Panel-only noise filter: epoch-millisecond fields say nothing a human
+ * reads (their `age` twin does), so the PANEL hides them — the copied JSON
+ * keeps every field.
+ */
+const HIDDEN_KEYS = new Set(['fetchedAt', 'at', 'collectedAt']);
+
 /** A lat/lng pair — the one nested shape worth its own compact form */
 function isPoint(v: unknown): v is { lat: number; lng: number } {
   return (
@@ -76,8 +83,74 @@ function fmtValue(v: unknown): string {
 /** `key:value · key:value` — the panel's whole grammar */
 function inlinePairs(obj: Record<string, unknown>): string {
   return Object.entries(obj)
+    .filter(([k]) => !HIDDEN_KEYS.has(k))
     .map(([k, v]) => `${k}:${fmtValue(v)}`)
     .join(' · ');
+}
+
+function fmtBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)}kB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
+
+const SECTION_TITLE: React.CSSProperties = {
+  color: C.accent,
+  fontWeight: 700,
+  textTransform: 'uppercase',
+  letterSpacing: '.08em',
+};
+
+/**
+ * The area cache deserves better than the generic pair soup: one aligned
+ * row per cached area — source, center, radius, stations, size, age+tier,
+ * a `mem` marker when its payload sits in memory. The `key` and the epoch
+ * timestamps stay in the copied JSON; here they only repeated the columns.
+ */
+function AreaCacheSection({ value }: { value: DebugSnapshot['areaCache'] }) {
+  const tierColor = (tier: string) =>
+    tier === 'fresh' ? C.faint : tier === 'revalidate' ? C.body : C.warn;
+  return (
+    <div style={{ margin: '6px 0' }}>
+      <div style={{ wordBreak: 'break-word' }}>
+        <span style={SECTION_TITLE}>areaCache</span>{' '}
+        <span style={{ color: C.body }}>
+          {`hydrated:${value.hydrated} · pending:${value.pendingPuts}+${value.pendingDeletes}`}
+          {value.lastLoad ? ` · lastLoad:${value.lastLoad.path} ${value.lastLoad.age} ago` : ''}
+        </span>
+      </div>
+      {value.areas.length === 0 ? (
+        <div style={{ color: C.faint, paddingLeft: 8 }}>no cached areas</div>
+      ) : (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(6, max-content)',
+            columnGap: 10,
+            rowGap: 2,
+            paddingLeft: 8,
+            overflowX: 'auto',
+          }}
+        >
+          {value.areas.map((a) => (
+            <Fragment key={a.key}>
+              <span style={{ color: C.mut }}>{a.source}</span>
+              <span style={{ color: C.body }}>
+                {a.center.lat},{a.center.lng}
+              </span>
+              <span style={{ color: C.faint }}>r{a.fetchRadiusKm}</span>
+              <span style={{ color: C.ink, textAlign: 'right' }}>{a.stationCount} st</span>
+              <span style={{ color: C.faint, textAlign: 'right' }}>{fmtBytes(a.bytes)}</span>
+              <span style={{ color: tierColor(a.tier) }}>
+                {a.age} {a.tier}
+                {a.payloadInMemory ? ' · mem' : ''}
+              </span>
+            </Fragment>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 /**
@@ -95,6 +168,7 @@ function CompactSection({ title, value }: { title: string; value: Record<string,
     wordBreak: 'break-word',
   };
   for (const [key, v] of Object.entries(value)) {
+    if (HIDDEN_KEYS.has(key)) continue;
     if (Array.isArray(v)) {
       if (v.length === 0) scalars.push(`${key}:—`);
       else
@@ -120,16 +194,7 @@ function CompactSection({ title, value }: { title: string; value: Record<string,
   return (
     <div style={{ margin: '6px 0' }}>
       <div style={{ wordBreak: 'break-word' }}>
-        <span
-          style={{
-            color: C.accent,
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '.08em',
-          }}
-        >
-          {title}
-        </span>{' '}
+        <span style={SECTION_TITLE}>{title}</span>{' '}
         <span style={{ color: C.body }}>{scalars.join(' · ')}</span>
       </div>
       {blocks}
@@ -386,6 +451,9 @@ export default function DebugOverlay() {
           <div style={{ color: C.faint, padding: '12px 0' }}>Collecting…</div>
         ) : (
           SECTION_ORDER.map((section) => {
+            if (section === 'areaCache') {
+              return <AreaCacheSection key={section} value={snapshot.areaCache} />;
+            }
             const value = snapshot[section];
             if (value === null || typeof value !== 'object') return null;
             return (
