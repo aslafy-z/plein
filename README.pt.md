@@ -123,35 +123,20 @@ ligação ou com um fluxo indisponível, a app mantém os últimos postos
 carregados (cache por zona) com uma faixa explícita e tenta de novo assim que
 a ligação volta.
 
-## 🛠️ Desenvolvimento
+## 🛠️ Construído com
 
-Stack: **Vite · React 18 · TypeScript estrito · Leaflet**, sem outra
-dependência de runtime. Implantado em Cloudflare Workers (`wrangler`).
-
-```bash
-npm install
-npm run dev          # http://localhost:5173
-npm run build        # build de produção (dist/)
-npm run e2e          # E2E Playwright: percorre todos os ecrãs
-npm run verify:live  # verifica os fornecedores reais (França, Espanha, Andorra, Portugal, geocodificadores, OSRM) contra os endpoints reais
-npm run deploy       # build + wrangler deploy
-```
-
-Para adicionar uma fonte de dados: implementar as interfaces
-`StationsProvider` / `GeocodeProvider` / `RouteProvider` e registá-la em
-`src/data/providers.ts`.
-
-Em ambientes sem acesso direto à internet (sandbox, proxy empresarial), o
-servidor de desenvolvimento do Vite faz proxy das APIs (`/proxy/*`) e dos
-mosaicos (`/tiles/*`) respeitando `HTTPS_PROXY` — ver `vite.config.ts`.
+**Vite · React 18 · TypeScript estrito · Leaflet**, sem outra dependência de
+runtime. O build de produção são apenas recursos estáticos, servidos por um
+Cloudflare Worker.
 
 ## 🤝 Contribuir
 
 Relatos de erros, traduções e pull requests são bem-vindos —
-[CONTRIBUTING.md](CONTRIBUTING.md) (em inglês) explica a instalação, as regras
-da casa e os testes. Para comunicar um erro, cole o instantâneo de depuração:
-Definições › Dados offline › Sobreposição de depuração, depois a pastilha
-flutuante **DBG** → **Report**, que o copia e abre o formulário.
+[CONTRIBUTING.md](CONTRIBUTING.md) (em inglês) explica a instalação, os
+comandos, as regras da casa e os testes. Para comunicar um erro, cole o
+instantâneo de depuração: Definições › Dados offline › Sobreposição de
+depuração, depois a pastilha flutuante **DBG** → **Report**, que o copia e
+abre o formulário.
 
 ## 📄 Licença
 

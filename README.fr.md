@@ -120,35 +120,20 @@ publics. Les sources sont pluggables (`src/data/types.ts`). Hors connexion ou
 flux indisponible, l'app garde les dernières stations chargées (cache par
 zone) avec une bannière explicite et réessaie dès que la connexion revient.
 
-## 🛠️ Développement
+## 🛠️ Construit avec
 
-Stack : **Vite · React 18 · TypeScript strict · Leaflet**, sans autre dépendance
-runtime. Déployé sur Cloudflare Workers (`wrangler`).
-
-```bash
-npm install
-npm run dev          # http://localhost:5173
-npm run build        # build de production (dist/)
-npm run e2e          # E2E Playwright : parcourt tous les écrans
-npm run verify:live  # vérifie les providers réels (France, Espagne, Andorre, Portugal, géocodeurs, OSRM) contre les vrais endpoints
-npm run deploy       # build + wrangler deploy
-```
-
-Pour ajouter une source de données : implémenter les interfaces
-`StationsProvider` / `GeocodeProvider` / `RouteProvider` et l'enregistrer dans
-`src/data/providers.ts`.
-
-En environnement sans accès internet direct (sandbox, proxy d'entreprise), le
-dev server Vite proxifie les APIs (`/proxy/*`) et les tuiles (`/tiles/*`) en
-respectant `HTTPS_PROXY` — voir `vite.config.ts`.
+**Vite · React 18 · TypeScript strict · Leaflet**, sans autre dépendance
+runtime. Le build de production n'est que des assets statiques, servis par un
+Cloudflare Worker.
 
 ## 🤝 Contribuer
 
 Signalements, traductions et pull requests sont les bienvenus —
 [CONTRIBUTING.md](CONTRIBUTING.md) (en anglais) détaille l'installation, les
-règles de la maison et les tests. Pour signaler un bug, collez le snapshot de
-débogage : Réglages › Données hors ligne › Overlay de débogage, puis la
-pastille flottante **DBG** → **Report**, qui le copie et ouvre le formulaire.
+commandes, les règles de la maison et les tests. Pour signaler un bug, collez
+le snapshot de débogage : Réglages › Données hors ligne › Overlay de débogage,
+puis la pastille flottante **DBG** → **Report**, qui le copie et ouvre le
+formulaire.
 
 ## 📄 Licence
 

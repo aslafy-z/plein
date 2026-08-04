@@ -38,6 +38,9 @@ Behind a corporate proxy or in a sandbox without direct internet access, the dev
 | `npm run e2e` | Playwright, `e2e/` — starts the dev server itself |
 | `npm run build` | production build into `dist/` |
 | `npm run verify:live` | hits the real providers and geocoders, to see whether an upstream moved |
+| `npm run deploy` | build + `wrangler deploy` — maintainers only; PRs get a preview deploy from CI |
+
+Three more regenerate committed assets, so run them when what they generate changed rather than on every change: `build:brands` (the OpenStreetMap brand index behind `public/brands-fr.json`), `build:icons` (the brand icons) and `build:screenshots` (the per-locale screenshots in `docs/screenshots/`, whose selector strings come from the catalogs).
 
 [Paraglide JS](https://paraglidejs.com) is a compiler, not a runtime: `src/paraglide/` is generated and gitignored. Only `npm run dev` gets it from the Vite plugin — every other script recompiles it from a `pre*` hook. A fresh clone that skips those sees `Cannot find module '../paraglide/messages.js'`; `npm run build:messages` fixes it.
 
