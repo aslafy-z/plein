@@ -13,6 +13,15 @@ import { C } from '../theme';
 /** Side of the icon box, soft halo included — the callers' iconSize/iconAnchor */
 export const USER_DOT_SIZE = 34;
 
+/**
+ * Class both callers put on the divIcon. It styles nothing — it is the e2e's
+ * handle on « is the user drawn at all », which a Leaflet layer offers no role
+ * or test id for, and the answer has to be assertable: the dot is only ever
+ * drawn on a position geolocation returned (`hasKnownPos`), never on the
+ * default area the app falls back to.
+ */
+export const USER_DOT_CLASS = 'user-dot';
+
 /** Accent dot inside a soft accent halo, centered on the user's position. */
 export function userDotHtml(): string {
   return (

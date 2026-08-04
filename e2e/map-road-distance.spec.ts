@@ -11,14 +11,16 @@ import { test, expect, openZoneList } from './fixtures'
 // When the matrix is unreachable, every station falls back to the same
 // crow-flies × CROW_ROAD_FACTOR estimate and Rivegauche wins.
 
-// lastPos: trip figures (distances, ETA) only show from a KNOWN origin —
-// without it the zone hides them, which is not what this spec is about
+// lastFix: trip figures (distances, ETA) only show from a KNOWN origin — a
+// position geolocation actually returned, not merely the area the map opens
+// on. Without it the zone hides them, which is not what this spec is about.
 test.use({
   seed: {
     sourceId: 'fr',
     onboarded: true,
     radius: 25,
     lastPos: { lat: 43.6047, lng: 1.4442 },
+    lastFix: { lat: 43.6047, lng: 1.4442 },
   },
 })
 

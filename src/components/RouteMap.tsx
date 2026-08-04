@@ -15,7 +15,7 @@ import { fmtPrice } from '../lib/format';
 import { cumulativeKm, radiusBounds, type GeoPoint } from '../lib/geo';
 import { useLeafletMap } from '../lib/leafletMap';
 import { pricePinHtml } from '../lib/pricePin';
-import { USER_DOT_SIZE, userDotHtml } from '../lib/userDot';
+import { USER_DOT_CLASS, USER_DOT_SIZE, userDotHtml } from '../lib/userDot';
 import LocateIcon from './LocateIcon';
 import { useApp, selectRouteAnalysis, effectivePrice } from '../state/store';
 
@@ -163,13 +163,21 @@ export default function RouteMap({
   // with the corridor being redrawn. Under everything else (negative z) — a
   // trip departing from the user puts the departure marker right on it, and
   // the halo has to read as its surround, not as something covering it.
+  // Drawn only where geolocation actually put the user: until a fix lands
+  // `userPos` is the area the app fell back to, and a dot on it would tell
+  // the trip it departs from a place the user has never been located in.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    if (!app.hasKnownPos) {
+      userDotRef.current?.remove();
+      userDotRef.current = null;
+      return;
+    }
     if (!userDotRef.current) {
       userDotRef.current = L.marker([app.userPos.lat, app.userPos.lng], {
         icon: L.divIcon({
-          className: '',
+          className: USER_DOT_CLASS,
           html: userDotHtml(),
           iconSize: [USER_DOT_SIZE, USER_DOT_SIZE],
           iconAnchor: [USER_DOT_SIZE / 2, USER_DOT_SIZE / 2],
@@ -182,7 +190,7 @@ export default function RouteMap({
       userDotRef.current.setLatLng([app.userPos.lat, app.userPos.lng]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [app.userPos]);
+  }, [app.userPos, app.hasKnownPos]);
 
   // ── Before the route: departure/arrival pins over the search-area framing ──
   useEffect(() => {
@@ -320,7 +328,9 @@ export default function RouteMap({
   const recenterOnUser = () => {
     app.requestGeolocation();
     const map = mapRef.current;
-    if (!map) return;
+    // No fix yet → the button is only the ask. There is no dot to go back to,
+    // and panning onto the fallback area would look like one was found.
+    if (!map || !app.hasKnownPos) return;
     // A deliberate recenter is the user's framing from here on: without this
     // the next stage resize would re-fit the corridor over it
     userInteractedRef.current = true;
@@ -336,9 +346,12 @@ export default function RouteMap({
   // Lit while the user's dot is on screen, the center dot filled only once the
   // view actually sits on them — the two states the map tab's control wears,
   // told about this map's subject (the view) instead of about a search area.
-  const userView = mapRef.current
-    ? userViewState(mapRef.current, app.userPos, leftInset, bottomInset)
-    : { onScreen: true, centered: false };
+  // Both are about a dot: without a fix there is none, and the control falls
+  // back to plain ink rather than reporting on the fallback area.
+  const userView =
+    mapRef.current && app.hasKnownPos
+      ? userViewState(mapRef.current, app.userPos, leftInset, bottomInset)
+      : { onScreen: app.hasKnownPos, centered: false };
 
   // A fix can take seconds and nothing else on the map moves meanwhile — the
   // control that asked says so here exactly as it does on the map tab
