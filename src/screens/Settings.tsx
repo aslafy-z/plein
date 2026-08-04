@@ -108,9 +108,6 @@ function CachedData({ onCleared }: { onCleared: () => void }) {
           color: C.mut,
         }}
       >
-        <div style={{ fontWeight: 700, color: C.body, fontSize: 13 }}>
-          {m.settings_cache_title()}
-        </div>
         <div data-testid="cache-stats">
           {stats == null || stats.areas === 0
             ? m.settings_cache_empty()
@@ -597,7 +594,6 @@ export default function Settings() {
           <div
             style={{
               padding: '12px 16px',
-              borderBottom: `1px solid ${C.divider}`,
               fontSize: 12,
               lineHeight: 1.55,
               color: C.mut,
@@ -608,7 +604,21 @@ export default function Settings() {
             </span>
             {m.settings_price_disclaimer_body()}
           </div>
+        </div>
+      </div>
 
+      {/* Offline cache — cache-class data, not a source choice, so its own
+          section rather than a tail on the source picker */}
+      <div style={{ marginTop: 18 }}>
+        <div style={SECTION_LABEL}>{m.settings_cache_section()}</div>
+        <div
+          style={{
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            borderRadius: 16,
+            overflow: 'hidden',
+          }}
+        >
           <CachedData onCleared={() => app.notify(m.toast_cache_cleared())} />
         </div>
       </div>

@@ -490,7 +490,7 @@
   "settings_feedback_version_title": "Versió de l'aplicació",
   "feedback_mail_subject": "Comentaris sobre Plein.",
   "feedback_mail_body": "Hola,\n\nEl meu comentari sobre l'aplicació:\n\n\n{details}",
-  "settings_cache_title": "Dades sense connexió",
+  "settings_cache_section": "Dades sense connexió",
   "settings_cache_empty": "Encara no hi ha cap zona desada",
   "settings_cache_summary": [
     {

@@ -483,7 +483,7 @@
   "settings_feedback_version_title": "Versão da aplicação",
   "feedback_mail_subject": "Comentários sobre a Plein.",
   "feedback_mail_body": "Olá,\n\nO meu comentário sobre a aplicação:\n\n\n{details}",
-  "settings_cache_title": "Dados offline",
+  "settings_cache_section": "Dados offline",
   "settings_cache_empty": "Ainda não há nenhuma zona guardada",
   "settings_cache_summary": [
     {

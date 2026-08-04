@@ -490,7 +490,7 @@
   "settings_feedback_version_title": "App version",
   "feedback_mail_subject": "Feedback on Plein.",
   "feedback_mail_body": "Hello,\n\nMy feedback on the app:\n\n\n{details}",
-  "settings_cache_title": "Offline data",
+  "settings_cache_section": "Offline data",
   "settings_cache_empty": "No area stored yet",
   "settings_cache_summary": [
     {
