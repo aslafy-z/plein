@@ -14,11 +14,12 @@ test.beforeEach(async ({ page }) => {
 async function setRadius(page: import('@playwright/test').Page, km: string) {
   await page.getByText(/^Filtres · \d+$/).click()
   const slider = page.locator('input[type=range]')
-  // The anchor MUST be read before the slider moves: the radius applies on the
-  // input event (FiltersSheet), not on the button below — which only closes
-  // the sheet. Reading it after would already be the post-fit level, and the
-  // fit could then never be seen to land. The sheet standing open has not
-  // moved the map: the map's inset follows the COLLAPSED sheet height.
+  // The anchor MUST be read before the slider moves: the radius commits on a
+  // short debounce after the input event (FiltersSheet), and the button below
+  // flushes it as it closes the sheet. Reading it after would already be the
+  // post-fit level, and the fit could then never be seen to land. The sheet
+  // standing open has not moved the map: the map's inset follows the
+  // COLLAPSED sheet height.
   const before = await mapZoom(page)
   await slider.fill(km)
   await expect(slider).toHaveValue(km)

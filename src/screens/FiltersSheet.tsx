@@ -16,6 +16,11 @@ import {
   KNOWN_BRAND_GROUPS,
 } from '../lib/brandIcons';
 
+// How long the radius slider may rest before its value is committed to the
+// store. Each committed step re-filters the zone, re-sorts the list and
+// re-fits the map — far too much work to run on every pixel of a drag.
+const RADIUS_COMMIT_MS = 200;
+
 const sectionLabel = {
   fontSize: 12,
   fontWeight: 700,
@@ -57,6 +62,46 @@ export default function FiltersSheet() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  // The radius slider emits a value per pixel dragged. The dragged value stays
+  // local — the slider and its « N km » label follow the finger — and reaches
+  // the store debounced, once the drag pauses.
+  const [radiusDraft, setRadiusDraft] = useState(app.radius);
+  const radiusTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const radiusDraftRef = useRef(radiusDraft);
+  radiusDraftRef.current = radiusDraft;
+
+  // A store change from elsewhere (« Réinitialiser », a shared link) came
+  // after the drag: it wins — drop any pending commit and follow. Our own
+  // debounced commit lands here too, with no timer left, as a no-op sync.
+  useEffect(() => {
+    if (radiusTimer.current != null) {
+      clearTimeout(radiusTimer.current);
+      radiusTimer.current = undefined;
+    }
+    setRadiusDraft(app.radius);
+  }, [app.radius]);
+
+  // Closing the sheet flushes instead of discarding: « Voir N stations »
+  // right after a drag must apply the radius just chosen, not lose it.
+  useEffect(
+    () => () => {
+      if (radiusTimer.current != null) {
+        clearTimeout(radiusTimer.current);
+        appRef.current.setRadius(radiusDraftRef.current);
+      }
+    },
+    [],
+  );
+
+  const dragRadius = (r: number) => {
+    setRadiusDraft(r);
+    clearTimeout(radiusTimer.current);
+    radiusTimer.current = setTimeout(() => {
+      radiusTimer.current = undefined;
+      appRef.current.setRadius(r);
+    }, RADIUS_COMMIT_MS);
+  };
 
   // The popover takes focus on open, so the keyboard lands inside the thing
   // that just appeared instead of staying on the chip that opened it
@@ -146,15 +191,15 @@ export default function FiltersSheet() {
       <div>
         <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
           <span style={{ ...sectionLabel, flex: 1 }}>{m.filters_radius_section()}</span>
-          <span style={{ font: mono(700, 15), color: C.ink }}>{app.radius} km</span>
+          <span style={{ font: mono(700, 15), color: C.ink }}>{radiusDraft} km</span>
         </div>
         <input
           type="range"
           min={1}
           max={25}
           step={1}
-          value={app.radius}
-          onChange={(e) => app.setRadius(+e.target.value)}
+          value={radiusDraft}
+          onChange={(e) => dragRadius(+e.target.value)}
           style={{ width: '100%', cursor: 'pointer' }}
         />
         <div
