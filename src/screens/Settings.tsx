@@ -166,9 +166,12 @@ function CacheDetails() {
         </div>
       ))}
       {estimate.usage != null && (
+        // navigator.storage.estimate(): the whole origin across every storage
+        // API (IndexedDB, the SW caches, tiles…), so it dwarfs the stations
+        // summary above; the quota is what the browser WOULD grant, not usage
         <div style={line}>
-          origin storage: {sizeLabel(estimate.usage)}
-          {estimate.quota != null ? ` of ${sizeLabel(estimate.quota)}` : ''}
+          whole origin (browser estimate): {sizeLabel(estimate.usage)} used
+          {estimate.quota != null ? ` · quota ${sizeLabel(estimate.quota)}` : ''}
         </div>
       )}
       <button
