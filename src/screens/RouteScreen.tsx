@@ -46,6 +46,7 @@ type Phase = 'form' | 'computing' | 'error' | 'ready';
     over the map, in both arrangements and every phase. */
 function RouteFields() {
   const app = useApp();
+  const desktop = useIsDesktop();
 
   const fromIcon = (
     <div
@@ -62,48 +63,62 @@ function RouteFields() {
     <div style={{ width: 12, height: 12, borderRadius: 3, background: C.warn, flexShrink: 0 }} />
   );
 
+  // A phone owes its vertical space to the map: the two endpoints share ONE
+  // line — departure on the left, destination on the right — instead of
+  // stacking two boxes over the corridor. They are halves of the same line, so
+  // each takes exactly half of it (`flex: 1 1 0`, never `1 1 auto`: a long
+  // remembered label would otherwise eat the other endpoint's width) and
+  // ellipsizes its own value; the two icons are what says which is which. A
+  // window stacks them, where the overlay column is wide enough to read a full
+  // address on each line.
+  const half: CSSProperties | undefined = desktop ? undefined : { flex: '1 1 0', minWidth: 0 };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <PlaceField
-        target="routeFrom"
-        value={routeFromLabel(app)}
-        // « My position » is a value, not text to edit around: the field
-        // edits as empty, and an empty field means « wherever I am » again
-        // as soon as it settles.
-        editValue={app.fromIsCurrentPosition ? '' : undefined}
-        placeholder={m.route_from_placeholder()}
-        title={m.route_from_field_title()}
-        icon={fromIcon}
-        onChangeText={(text) =>
-          text.trim() ? app.setFrom(text) : app.useCurrentPositionAsStart()
-        }
-        onPick={(r: GeocodeResult) => app.setFrom(r.label, r.point)}
-        onClear={
-          app.fromIsCurrentPosition ? undefined : () => app.useCurrentPositionAsStart()
-        }
-        clearAria={m.route_from_clear_aria()}
-        emptyHint={m.route_search_hint()}
-      />
-      <PlaceField
-        target="routeTo"
-        value={app.toText}
-        placeholder={m.route_to_placeholder()}
-        title={m.route_to_field_title()}
-        icon={toIcon}
-        onChangeText={(text) => app.setTo(text)}
-        // Picking a destination IS the intent: the comparison starts right
-        // away (the departure is already resolved or geocodes in the same
-        // breath) — no second tap on the CTA. The staged pipeline keeps every
-        // control live while it runs.
-        pickNavigates
-        onPick={(r: GeocodeResult) => {
-          app.setTo(r.label, r.point);
-          app.startRoute(r);
-        }}
-        onClear={app.toText.trim() ? () => app.setTo('') : undefined}
-        clearAria={m.route_to_clear_aria()}
-        emptyHint={m.route_search_hint()}
-      />
+    <div style={{ display: 'flex', flexDirection: desktop ? 'column' : 'row', gap: 8 }}>
+      <div style={half}>
+        <PlaceField
+          target="routeFrom"
+          value={routeFromLabel(app)}
+          // « My position » is a value, not text to edit around: the field
+          // edits as empty, and an empty field means « wherever I am » again
+          // as soon as it settles.
+          editValue={app.fromIsCurrentPosition ? '' : undefined}
+          placeholder={m.route_from_placeholder()}
+          title={m.route_from_field_title()}
+          icon={fromIcon}
+          onChangeText={(text) =>
+            text.trim() ? app.setFrom(text) : app.useCurrentPositionAsStart()
+          }
+          onPick={(r: GeocodeResult) => app.setFrom(r.label, r.point)}
+          onClear={
+            app.fromIsCurrentPosition ? undefined : () => app.useCurrentPositionAsStart()
+          }
+          clearAria={m.route_from_clear_aria()}
+          emptyHint={m.route_search_hint()}
+        />
+      </div>
+      <div style={half}>
+        <PlaceField
+          target="routeTo"
+          value={app.toText}
+          placeholder={m.route_to_placeholder()}
+          title={m.route_to_field_title()}
+          icon={toIcon}
+          onChangeText={(text) => app.setTo(text)}
+          // Picking a destination IS the intent: the comparison starts right
+          // away (the departure is already resolved or geocodes in the same
+          // breath) — no second tap on the CTA. The staged pipeline keeps every
+          // control live while it runs.
+          pickNavigates
+          onPick={(r: GeocodeResult) => {
+            app.setTo(r.label, r.point);
+            app.startRoute(r);
+          }}
+          onClear={app.toText.trim() ? () => app.setTo('') : undefined}
+          clearAria={m.route_to_clear_aria()}
+          emptyHint={m.route_search_hint()}
+        />
+      </div>
     </div>
   );
 }
@@ -523,8 +538,9 @@ export default function RouteScreen() {
             leftInset={desktop ? panelInset : 0}
           />
 
-          {/* The endpoint fields — over the map's top edge, one row beside
-              the panel on desktop, a column under the status bar otherwise.
+          {/* The endpoint fields — over the map's top edge, beside the panel
+              on desktop, under the status bar otherwise (where the two of
+              them split one line rather than stacking; see RouteFields).
               1010: dropdowns cover the map's floating controls (1000) while
               staying under the scrim (1050) and the sheet (1100). */}
           {desktop ? (
