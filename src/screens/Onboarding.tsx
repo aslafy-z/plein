@@ -93,12 +93,12 @@ export default function Onboarding() {
           paddingTop: 24,
         }}
       >
+        {/* Plain row on purpose: with both actions below now drawn as pills,
+            a third boxed rectangle here made the bottom stack read as three
+            competing controls — the box language belongs to the buttons */}
         <div
           style={{
-            background: C.surface,
-            border: `1px solid ${C.border08}`,
-            borderRadius: 14,
-            padding: '13px 16px',
+            padding: '0 4px',
             display: 'flex',
             alignItems: 'center',
             gap: 12,
