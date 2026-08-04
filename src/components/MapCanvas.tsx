@@ -9,6 +9,8 @@ import { useLeafletMap, type LeafletShell } from '../lib/leafletMap';
 import { pricePinDotHtml, pricePinHtml } from '../lib/pricePin';
 import { useDebugMode } from '../lib/debugMode';
 import { fmtAgeMs } from '../lib/debugSnapshot';
+import { readCachedTiles, type TileStyle } from '../lib/tileCache';
+import { tileToBounds } from '../lib/tilePyramid';
 import { readAllCachedAreas } from '../data/stationsCache';
 import ShareIcon from './ShareIcon';
 import LocateIcon from './LocateIcon';
@@ -67,6 +69,25 @@ const OFFSET_FAR_DECAY = 0.15;
  * it, so cached ghosts can never pass for live data.
  */
 const DEBUG_CACHE_COLOR = '#8b5cf6';
+
+/** Tile-cache inspector colors, one per cached style — literals for the same
+    reason as DEBUG_CACHE_COLOR, and none of them violet: tiles and areas
+    stay tellable apart when both debug layers are on. */
+const DEBUG_TILE_COLORS: Record<TileStyle, string> = {
+  dark: '#22d3ee',
+  light: '#f59e0b',
+  fallback: '#10b981',
+};
+/** Zooms drawn around the current one — all 15 levels at once is unreadable;
+    the overlay's per-zoom counts cover the rest numerically. */
+const DEBUG_TILE_ZOOM_SPAN = 3;
+/** Ceiling on drawn tile outlines, nearest zoom levels first. The whole cache
+    is at most 600 entries, so this only ever bites zoomed in, where one
+    heavily-panned level can fill the window on its own. */
+const DEBUG_TILE_MAX_RINGS = 400;
+/** Past the pyramid prefetcher's debounce (2 s) + idle slack, so a settled
+    view's read sees its own freshly-warmed tiles. */
+const DEBUG_TILE_READ_DELAY_MS = 3000;
 
 /**
  * Leaflet sizes the SVG holding the vector layers to the viewport (+10%) and
@@ -744,7 +765,7 @@ export default function MapCanvas({
             weight: 1,
             opacity: 0.55,
             fillColor: DEBUG_CACHE_COLOR,
-            fillOpacity: 0.25,
+            fillOpacity: 0.05,
             interactive: false,
           }).addTo(sub);
         }
@@ -757,6 +778,95 @@ export default function MapCanvas({
     };
   }, [debugMode, app.stations.fetchedAt]);
 
+  // ── Debug mode: the SW tile cache drawn as tile footprints ────────────────
+  // Same honesty as the cached-areas layer, for the basemap: every entry of
+  // the service worker's tile cache near the current zoom draws its
+  // geographic footprint — cyan for dark CARTO, amber for light, green for
+  // the OSM fallback — off-screen tiles included. Other zooms render at their
+  // true size, so the offline pyramid (lib/tiles.ts) shows up as it is:
+  // nested squares around wherever the map settled.
+  //
+  // ONE PATH PER BUCKET, not per tile. A Leaflet Path is reprojected and
+  // redrawn on every frame of every pan and pinch, and zoomed in the ±span
+  // window catches most of a 600-entry cache — hundreds of paths (on top of
+  // the areas layer's dots) is what made zoomed-in panning crawl. Tiles that
+  // share a color and a fade are one multi-ring polygon instead: at most
+  // 3 styles × the span, whatever the tile count.
+  //
+  // A bucket holds ONE zoom level, so its rings are the disjoint cells of a
+  // grid — never nested — and canvas's nonzero winding fills each of them.
+  // (Nesting only happens ACROSS levels, which are already separate paths.)
+  // The tint is what carries at arm's length: hairlines alone read as almost
+  // nothing on a phone against a dark map.
+  const debugTilesLayerRef = useRef<L.LayerGroup | null>(null);
+  const debugTilesCanvasRef = useRef<L.Renderer | null>(null);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!debugMode) {
+      debugTilesLayerRef.current?.remove();
+      debugTilesLayerRef.current = null;
+      debugTilesCanvasRef.current?.remove();
+      debugTilesCanvasRef.current = null;
+      return;
+    }
+    let live = true;
+    const timer = window.setTimeout(() => {
+      void readCachedTiles().then((tiles) => {
+        if (!live || !mapRef.current) return;
+        const zoom = Math.round(map.getZoom());
+        const root =
+          debugTilesLayerRef.current ?? (debugTilesLayerRef.current = L.layerGroup().addTo(map));
+        const canvas =
+          debugTilesCanvasRef.current ?? (debugTilesCanvasRef.current = L.canvas({ padding: 0.3 }));
+
+        // Nearest levels win the ring budget: a level deeper holds 4× the
+        // tiles, so an unbounded set is dominated by whichever zoom was
+        // panned the most. The overlay's per-zoom counts stay the full truth.
+        const near = tiles
+          .filter((t) => Math.abs(t.z - zoom) <= DEBUG_TILE_ZOOM_SPAN)
+          .sort((a, b) => Math.abs(a.z - zoom) - Math.abs(b.z - zoom))
+          .slice(0, DEBUG_TILE_MAX_RINGS);
+
+        const buckets = new Map<string, L.LatLngExpression[][]>();
+        for (const t of near) {
+          const b = tileToBounds(t);
+          const key = `${t.style}|${Math.abs(t.z - zoom)}`;
+          const rings = buckets.get(key) ?? [];
+          rings.push([
+            [b.south, b.west],
+            [b.south, b.east],
+            [b.north, b.east],
+            [b.north, b.west],
+          ]);
+          buckets.set(key, rings);
+        }
+
+        // Rebuilt whole rather than diffed: the buckets are keyed on the
+        // distance to the CURRENT zoom, so a zoom change restyles every one of
+        // them anyway, and there are only ever a handful of layers to make.
+        root.clearLayers();
+        for (const [key, rings] of buckets) {
+          const [style, dist] = key.split('|') as [TileStyle, string];
+          L.polygon(rings, {
+            renderer: canvas,
+            color: DEBUG_TILE_COLORS[style],
+            weight: 1,
+            // The current zoom's tiles read strongest; each level away fades
+            opacity: 0.75 - 0.18 * Number(dist),
+            fillColor: DEBUG_TILE_COLORS[style],
+            fillOpacity: 0.05,
+            interactive: false,
+          }).addTo(root);
+        }
+      });
+    }, DEBUG_TILE_READ_DELAY_MS);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [debugMode, viewTick]);
+
   // The layers above die with the map — only the refs must not survive it
   // (StrictMode remounts would reuse layers tied to the dead map otherwise)
   useEffect(
@@ -764,6 +874,8 @@ export default function MapCanvas({
       debugLayerRef.current = null;
       debugCanvasRef.current = null;
       debugAreasRef.current.clear();
+      debugTilesLayerRef.current = null;
+      debugTilesCanvasRef.current = null;
     },
     [],
   );

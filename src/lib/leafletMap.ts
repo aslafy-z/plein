@@ -125,7 +125,10 @@ export function useLeafletMap(options: LeafletShellOptions): LeafletShell {
       // user pan (see the observer for what that did to a shared link).
       trackResize: false,
     });
-    addBasemap(map);
+    // The pyramid prefetcher warms tiles around the VISIBLE center — the
+    // shell knows where the floating panel / bottom sheet leave it, and the
+    // insets are read live through the refs so the closure never goes stale.
+    addBasemap(map, () => map.containerPointToLatLng(shell.visibleCenterPoint(map)));
     mapRef.current = map;
 
     // ── The takeover rule, one copy for both maps ─────────────────────────

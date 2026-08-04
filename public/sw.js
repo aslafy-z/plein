@@ -31,7 +31,11 @@ const TILE_MAX_ENTRIES = 600;
 // worth of chunks for an offline list to keep its avatars.
 const ASSET_MAX_ENTRIES = 160;
 
+// Real tile URLs never carry a query string; one marks a request that must
+// NOT be answered from this cache — src/lib/tiles.ts probes CDN reachability
+// with `?probe=<ts>`, and a cached tile would say nothing about the network.
 const isTileRequest = (url) =>
+  url.search === '' &&
   TILE_HOSTS.some((h) => url.hostname === h || url.hostname.endsWith('.' + h));
 
 // cache.keys() preserves insertion order → dropping the head is FIFO eviction
@@ -44,7 +48,15 @@ async function trimCache(cache, max) {
 async function tileFromCacheFirst(event, req) {
   const cache = await caches.open(TILE_CACHE);
   const hit = await cache.match(req);
-  if (hit) return hit;
+  if (hit) {
+    // Refresh the entry's recency: cache.keys() is insertion-ordered, so
+    // delete+put moves a hit to the tail and the cap below evicts the least
+    // recently USED tile instead of the first ever seen — without this,
+    // panning a new region evicts the home pyramid the session uses most.
+    const copy = hit.clone();
+    event.waitUntil(cache.delete(req).then(() => cache.put(req, copy)));
+    return hit;
+  }
   const res = await fetch(req);
   // Leaflet loads tiles via <img> (no-cors) → opaque responses (status 0);
   // those are the ones we actually get in prod, so cache them too.

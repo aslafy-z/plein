@@ -387,6 +387,42 @@ describe('service worker — tiles and activation', () => {
     expect(tiles?.entries.has('https://basemaps.cartocdn.com/dark_all/10/0/0.png')).toBe(false)
   })
 
+  it('refreshes a hit tile so the cap evicts least-recently-used, not oldest-inserted', async () => {
+    const sw = loadSw(async (req) => new Response(req.url, { status: 200 }))
+    const max = sw.limits.TILE_MAX_ENTRIES
+
+    for (let i = 0; i < max; i += 1) {
+      await sw.fetchEvent(request(`https://basemaps.cartocdn.com/dark_all/10/0/${i}.png`))
+    }
+    // Touch the oldest entry (a cache hit), then overflow the cap by one:
+    // the hit moved tile 0 to the tail, so tile 1 is now the eviction victim.
+    await sw.fetchEvent(request('https://basemaps.cartocdn.com/dark_all/10/0/0.png'))
+    await sw.fetchEvent(request(`https://basemaps.cartocdn.com/dark_all/10/0/${max}.png`))
+
+    const tiles = sw.caches.stores.get('plein-tiles-v1')
+    expect(tiles?.entries.size).toBe(max)
+    expect(tiles?.entries.has('https://basemaps.cartocdn.com/dark_all/10/0/0.png')).toBe(true)
+    expect(tiles?.entries.has('https://basemaps.cartocdn.com/dark_all/10/0/1.png')).toBe(false)
+  })
+
+  it('lets a queried tile URL — the reachability probe — pass by untouched', async () => {
+    const sw = loadSw(async (req) => new Response(req.url, { status: 200 }))
+    const tiles = await sw.caches.open('plein-tiles-v1')
+    await tiles.put(
+      'https://a.basemaps.cartocdn.com/dark_all/3/4/2.png',
+      new Response('cached tile'),
+    )
+
+    const { res } = await sw.fetchEvent(
+      request('https://a.basemaps.cartocdn.com/dark_all/3/4/2.png?probe=123'),
+    )
+
+    // Not intercepted at all: the probe must reach the network (or fail),
+    // never be answered by a cached tile — and never pollute the cache.
+    expect(res).toBeUndefined()
+    expect(tiles.entries.size).toBe(1)
+  })
+
   it('drops caches that are no longer in the keep list', async () => {
     const sw = loadSw(async () => new Response('', { status: 200 }))
     await sw.caches.open('plein-assets-v1')
