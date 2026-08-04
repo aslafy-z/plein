@@ -32,8 +32,17 @@ const PIN_CAP = 15;
 const LIVE_SEARCH_MS = 250;
 /** Live drifts smaller than this (km) don't change the results — skip them */
 const LIVE_SEARCH_MIN_KM = 0.1;
-/** Per-move decay of the circle↔center gap left over when a pan begins */
-const OFFSET_DECAY = 0.8;
+/**
+ * How fast the circle↔center gap left over when a pan begins is absorbed,
+ * as a FRACTION OF THE PAN DISTANCE — the circle recenters at 35% of the
+ * finger's speed, never faster. A per-frame decay here (the previous 0.8×
+ * per move event) absorbed the whole gap in a fraction of a second whatever
+ * the finger did: near a results boundary — one station on the circle's
+ * edge — the sheet swap (card ⇄ empty) moved the gesture center, the circle
+ * shot toward it faster than the pan, re-crossed the boundary, and the
+ * whole thing self-accelerated.
+ */
+const OFFSET_ABSORB_RATE = 0.35;
 
 /**
  * Leaflet sizes the SVG holding the vector layers to the viewport (+10%) and
@@ -177,11 +186,27 @@ export default function MapCanvas({
     // pan-to-station). Snapping it onto the center at the first move event
     // was a visible jump — measure the gap here and absorb it gradually.
     // The keyboard loop begins its gestures the same way (shell option).
+    //
+    // The center is CAPTURED per gesture, not read per frame: the visible
+    // center depends on the sheet height, and the live search resizes the
+    // sheet mid-pan whenever the zone crosses a results boundary (list ⇄
+    // empty block). A per-frame read made the glide target — and the circle —
+    // jump with every resize, and the circle↔results coupling could
+    // oscillate. The next gesture re-measures both, and the offset decay
+    // absorbs whatever the sheet did in between.
+    let gestureMid: L.Point | null = null;
+    /** Projected map center at the last glide frame — its per-frame delta is
+        the pan distance the offset absorption is proportional to */
+    let lastPanPt: L.Point | null = null;
+    let lastPanZoom = 0;
     const measureCircleOffset = () => {
       if (!circleRef.current) return;
       const p = map.latLngToContainerPoint(circleRef.current.getLatLng());
       const mid = sh.visibleCenterPoint(map);
+      gestureMid = mid;
       circleOffsetRef.current = { x: p.x - mid.x, y: p.y - mid.y };
+      lastPanZoom = map.getZoom();
+      lastPanPt = map.project(map.getCenter(), lastPanZoom);
     };
     measureCircleOffsetRef.current = measureCircleOffset;
     map.on('dragstart', measureCircleOffset);
@@ -221,8 +246,13 @@ export default function MapCanvas({
     map.on('zoomend', () => {
       zooming = false;
       if (sh.userInteractedRef.current) {
+        // Re-capture the gesture center too: a pinch can flow into a drag
+        // without a dragstart, and the glide must aim at the point the
+        // circle was just snapped onto
+        const mid = sh.visibleCenterPoint(map);
+        gestureMid = mid;
         circleOffsetRef.current = { x: 0, y: 0 };
-        circleRef.current?.setLatLng(map.containerPointToLatLng(sh.visibleCenterPoint(map)));
+        circleRef.current?.setLatLng(map.containerPointToLatLng(mid));
       }
     });
     // Results follow the circle LIVE while the finger drags (throttled):
@@ -244,16 +274,27 @@ export default function MapCanvas({
       if (circleRef.current && !zooming) reclipRenderer(map, circleRef.current);
       if (!sh.userInteractedRef.current || zooming) return;
       if (Date.now() < sh.programmaticUntilRef.current) return; // pan-to-station, fits…
-      // Absorb the gap left at dragstart over the first frames of the pan
-      // instead of snapping the circle onto the exact center (visible jerk).
+      // Absorb the gap left at dragstart in proportion to the pan itself —
+      // this frame's map movement in container px (never during a zoom: the
+      // zooming guard above skips those frames, and a zoom change resets the
+      // baseline below instead of measuring across projection scales).
+      const z = map.getZoom();
+      const panPt = map.project(map.getCenter(), z);
+      const step = lastPanPt && lastPanZoom === z ? panPt.distanceTo(lastPanPt) : 0;
+      lastPanPt = panPt;
+      lastPanZoom = z;
       const off = circleOffsetRef.current;
-      off.x *= OFFSET_DECAY;
-      off.y *= OFFSET_DECAY;
-      if (Math.abs(off.x) < 0.5 && Math.abs(off.y) < 0.5) {
-        off.x = 0;
-        off.y = 0;
+      const len = Math.hypot(off.x, off.y);
+      if (len > 0) {
+        const absorb = Math.min(len, step * OFFSET_ABSORB_RATE);
+        off.x -= (off.x / len) * absorb;
+        off.y -= (off.y / len) * absorb;
+        if (Math.hypot(off.x, off.y) < 0.5) {
+          off.x = 0;
+          off.y = 0;
+        }
       }
-      const mid = sh.visibleCenterPoint(map);
+      const mid = gestureMid ?? sh.visibleCenterPoint(map);
       const c = map.containerPointToLatLng(L.point(mid.x + off.x, mid.y + off.y));
       circleRef.current?.setLatLng(c);
       const now = Date.now();
