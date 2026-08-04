@@ -436,545 +436,146 @@ export default function Settings() {
   ];
 
   return (
-    <div
-      style={{
-        flex: 1,
-        minHeight: 0,
-        overflow: 'auto',
-        // A column of settings rows, centered: on a wide window the section
-        // labels and the sliders would otherwise sit a full screen apart
-        maxWidth: CONTENT_MAX_WIDTH,
-        width: '100%',
-        margin: '0 auto',
-        padding: desktop ? '26px 32px 40px' : '16px 20px 20px',
-        boxSizing: 'border-box',
-      }}
-    >
-      {/* Brand header — the one place the app shows itself off a little */}
-      <div style={{ marginBottom: 22 }}>
-        <LogoLockup tile={52} glyph={34} fontSize={26} tagline={m.settings_brand_tagline()} glow />
-      </div>
-
-      <div style={{ fontSize: 24, fontWeight: 800, color: C.ink }}>{m.settings_title()}</div>
-
-      {/* Vehicle */}
-      <div style={{ marginTop: 18 }}>
-        <div style={SECTION_LABEL}>{m.settings_vehicle_section()}</div>
-        <div
-          style={{
-            background: C.surface,
-            border: `1px solid ${C.border}`,
-            borderRadius: 16,
-            padding: 16,
-          }}
-        >
-          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 10 }}>
-            {m.settings_profile()}
-          </div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            {VEHICLES.map((v) => {
-              const active = vehicle === v;
-              return (
-                <button
-                  key={v}
-                  onClick={() => app.setVehicle(v)}
-                  style={{
-                    flex: 1,
-                    background: active ? C.accent : 'transparent',
-                    color: active ? C.onAccent : C.body,
-                    fontSize: 13.5,
-                    fontWeight: 700,
-                    padding: '10px 0',
-                    borderRadius: 16,
-                    border: active ? `1px solid ${C.accent}` : `1px solid ${C.border12}`,
-                    cursor: 'pointer',
-                    textAlign: 'center',
-                  }}
-                >
-                  {vehicleLabel(v)}
-                </button>
-              );
-            })}
-          </div>
-          <div style={{ fontSize: 11.5, color: C.faint, marginTop: -10, marginBottom: 14 }}>
-            {m.settings_profile_hint({
-              fuel: fuelLabel(otherPreset.fuel),
-              tank: otherPreset.tank,
-              consumption: fmtDecimal(otherPreset.consumption, 1),
-            })}
-          </div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 10 }}>
-            {m.settings_default_fuel()}
-          </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {ALL_FUELS.map((f) => {
-              const active = f === fuel;
-              return (
-                <button
-                  key={f}
-                  onClick={() => app.setFuel(f)}
-                  style={{
-                    background: active ? C.accent : 'transparent',
-                    color: active ? C.onAccent : C.body,
-                    fontSize: 13,
-                    fontWeight: 700,
-                    padding: '8px 14px',
-                    borderRadius: 16,
-                    border: active ? `1px solid ${C.accent}` : `1px solid ${C.border12}`,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {fuelLabel(f)}
-                </button>
-              );
-            })}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', marginTop: 18, marginBottom: 6 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: C.ink, flex: 1 }}>
-              {m.settings_tank()}
-            </span>
-            <span style={{ font: mono(700, 15), color: C.accent }}>{tank} L</span>
-          </div>
-          <input
-            type="range"
-            min={tankRange.min}
-            max={tankRange.max}
-            step={tankRange.step}
-            value={tank}
-            onChange={(e) => app.setTank(+e.target.value)}
-            style={{ width: '100%', cursor: 'pointer' }}
-          />
-          <div style={{ fontSize: 11.5, color: C.faint, marginTop: 6 }}>
-            {m.settings_tank_hint()}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', marginTop: 18, marginBottom: 6 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: C.ink, flex: 1 }}>
-              {m.settings_consumption()}
-            </span>
-            <span style={{ font: mono(700, 15), color: C.accent }}>
-              {fmtDecimal(consumption, 1)} L/100 km
-            </span>
-          </div>
-          <input
-            type="range"
-            min={3}
-            max={12}
-            step={0.5}
-            value={consumption}
-            onChange={(e) => app.setConsumption(+e.target.value)}
-            style={{ width: '100%', cursor: 'pointer' }}
-          />
-          <div style={{ fontSize: 11.5, color: C.faint, marginTop: 6 }}>
-            {m.settings_consumption_hint()}
-          </div>
+    // The scroll container spans the whole stage; only the column inside is
+    // capped. Merged into one div, the wheel would go dead over the side
+    // margins and the scrollbar would hug the column instead of the window
+    // edge (same split as FavoritesScreen).
+    <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+      <div
+        style={{
+          // A column of settings rows, centered: on a wide window the section
+          // labels and the sliders would otherwise sit a full screen apart
+          maxWidth: CONTENT_MAX_WIDTH,
+          width: '100%',
+          margin: '0 auto',
+          padding: desktop ? '26px 32px 40px' : '16px 20px 20px',
+          boxSizing: 'border-box',
+        }}
+      >
+        {/* Brand header — the one place the app shows itself off a little */}
+        <div style={{ marginBottom: 22 }}>
+          <LogoLockup tile={52} glyph={34} fontSize={26} tagline={m.settings_brand_tagline()} glow />
         </div>
-      </div>
 
-      {/* Location */}
-      <div style={{ marginTop: 18 }}>
-        <div style={SECTION_LABEL}>{m.settings_location_section()}</div>
-        <div
-          style={{
-            background: C.surface,
-            border: `1px solid ${C.border}`,
-            borderRadius: 16,
-            overflow: 'hidden',
-          }}
-        >
-          <button
-            onClick={() => app.requestGeolocation()}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              padding: '14px 16px',
-              borderBottom: `1px solid ${C.divider}`,
-              cursor: 'pointer',
-              width: '100%',
-              textAlign: 'left',
-            }}
-          >
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>
-                {m.settings_device_position()}
-              </div>
-              <div
-                style={{
-                  fontSize: 12,
-                  color: geoStatus === 'granted' ? C.accent : geoStatus === 'pending' ? C.faint : C.warn,
-                  marginTop: 2,
-                }}
-              >
-                {geoStatusLabel(geoStatus)}
-              </div>
-            </div>
-            {geoStatus !== 'granted' && (
-              <span style={{ color: C.accent, fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
-                {m.settings_geo_enable()}
-              </span>
-            )}
-          </button>
-          <div style={{ fontSize: 11.5, color: C.faint, padding: '10px 16px', lineHeight: 1.5 }}>
-            {m.settings_location_hint()}
-          </div>
-        </div>
-      </div>
+        <div style={{ fontSize: 24, fontWeight: 800, color: C.ink }}>{m.settings_title()}</div>
 
-      {/* Appearance */}
-      <div style={{ marginTop: 18 }}>
-        <div style={SECTION_LABEL}>{m.settings_appearance_section()}</div>
-        <div
-          style={{
-            background: C.surface,
-            border: `1px solid ${C.border}`,
-            borderRadius: 16,
-            padding: 16,
-          }}
-        >
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {/* « Browser setting » is the absence of a choice, not a
-                theme: picking it drops the override so the browser's light or
-                dark preference applies again — live, dusk included. */}
-            {[null, ...THEMES].map((t) => {
-              const active = t == null ? !app.themeIsExplicit : app.themeIsExplicit && app.theme === t;
-              return (
-                <button
-                  key={t ?? 'auto'}
-                  onClick={() => app.setTheme(t)}
-                  style={{
-                    background: active ? C.accent : 'transparent',
-                    color: active ? C.onAccent : C.body,
-                    fontSize: 13,
-                    fontWeight: 700,
-                    padding: '8px 14px',
-                    borderRadius: 16,
-                    border: active ? `1px solid ${C.accent}` : `1px solid ${C.border12}`,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {t == null ? m.settings_theme_auto() : themeLabel(t)}
-                </button>
-              );
-            })}
-          </div>
-          <div style={{ fontSize: 11.5, color: C.faint, marginTop: 10 }}>
-            {m.settings_theme_hint({ auto: m.settings_theme_auto() })}
-          </div>
-        </div>
-      </div>
-
-      {/* Language */}
-      <div style={{ marginTop: 18 }}>
-        <div style={SECTION_LABEL}>{m.settings_language_section()}</div>
-        <div
-          style={{
-            background: C.surface,
-            border: `1px solid ${C.border}`,
-            borderRadius: 16,
-            padding: 16,
-          }}
-        >
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {/* « Browser language » is the absence of a choice, not a
-                locale: picking it drops the override so detection applies
-                again — including after the user changes their browser. */}
-            {[null, ...LOCALES].map((l) => {
-              const active = l == null ? !app.localeIsExplicit : app.localeIsExplicit && app.locale === l;
-              return (
-                <button
-                  key={l ?? 'auto'}
-                  onClick={() => app.setLocale(l)}
-                  style={{
-                    background: active ? C.accent : 'transparent',
-                    color: active ? C.onAccent : C.body,
-                    fontSize: 13,
-                    fontWeight: 700,
-                    padding: '8px 14px',
-                    borderRadius: 16,
-                    border: active ? `1px solid ${C.accent}` : `1px solid ${C.border12}`,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {l == null ? m.settings_language_auto() : localeName(l)}
-                </button>
-              );
-            })}
-          </div>
-          <div style={{ fontSize: 11.5, color: C.faint, marginTop: 10 }}>
-            {m.settings_language_hint({ auto: m.settings_language_auto() })}
-          </div>
-        </div>
-      </div>
-
-      {/* Routes — desktop only: on mobile « Go there » opens the native GPS app */}
-      {!HAS_NATIVE_MAPS && (
-      <div style={{ marginTop: 18 }}>
-        <div style={SECTION_LABEL}>{m.settings_routes_section()}</div>
-        <div
-          style={{
-            background: C.surface,
-            border: `1px solid ${C.border}`,
-            borderRadius: 16,
-            padding: 16,
-          }}
-        >
-          <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 10 }}>
-            {m.settings_maps_site()}
-          </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {MAPS_SITE_IDS.map((site) => {
-              const active = site === mapsSite;
-              return (
-                <button
-                  key={site}
-                  onClick={() => app.setMapsSite(site)}
-                  style={{
-                    background: active ? C.accent : 'transparent',
-                    color: active ? C.onAccent : C.body,
-                    fontSize: 13,
-                    fontWeight: 700,
-                    padding: '8px 14px',
-                    borderRadius: 16,
-                    border: active ? `1px solid ${C.accent}` : `1px solid ${C.border12}`,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {mapsSiteLabel(site)}
-                </button>
-              );
-            })}
-          </div>
-          <div style={{ fontSize: 11.5, color: C.faint, marginTop: 10 }}>
-            {m.settings_maps_site_hint()}
-          </div>
-        </div>
-      </div>
-      )}
-
-      {/* Data */}
-      <div style={{ marginTop: 18 }}>
-        <div style={SECTION_LABEL}>{m.settings_data_section()}</div>
-        <div
-          style={{
-            background: C.surface,
-            border: `1px solid ${C.border}`,
-            borderRadius: 16,
-            overflow: 'hidden',
-          }}
-        >
-          {/* The demo dataset is a deliberate choice, never a silent
-              fallback: its row shows for users who already selected it (so
-              they can switch back) and while the real source is failing, as
-              the explicit escape hatch. */}
-          {SOURCES.filter(
-            (src) => src !== 'demo' || sourceId === 'demo' || app.stations.lastError != null,
-          ).map((src) => {
-            const selected = sourceId === src;
-            return (
-              <button
-                key={src}
-                onClick={() => app.setSourceId(src)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: '14px 16px',
-                  borderBottom: `1px solid ${C.divider}`,
-                  cursor: 'pointer',
-                  width: '100%',
-                  textAlign: 'left',
-                }}
-              >
-                <div
-                  style={{
-                    width: 18,
-                    height: 18,
-                    borderRadius: '50%',
-                    border: `2px solid ${selected ? C.accent : C.border25}`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    boxSizing: 'border-box',
-                  }}
-                >
-                  {selected && (
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.accent }} />
-                  )}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>
-                    {sourceTitle(src)}
-                  </div>
-                  <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>
-                    {sourceSublabel(src)}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-
-          {app.stations.lastError != null && (
-            <div
-              style={{
-                fontSize: 11.5,
-                fontWeight: 600,
-                color: C.warn,
-                padding: '10px 16px',
-                borderBottom: `1px solid ${C.divider}`,
-                lineHeight: 1.4,
-              }}
-            >
-              {m.settings_source_down()}
-            </div>
-          )}
-
+        {/* Vehicle */}
+        <div style={{ marginTop: 18 }}>
+          <div style={SECTION_LABEL}>{m.settings_vehicle_section()}</div>
           <div
             style={{
-              padding: '12px 16px',
-              fontSize: 12,
-              lineHeight: 1.55,
-              color: C.mut,
+              background: C.surface,
+              border: `1px solid ${C.border}`,
+              borderRadius: 16,
+              padding: 16,
             }}
           >
-            <span style={{ fontWeight: 700, color: C.body }}>
-              {m.settings_price_disclaimer_title()}
-            </span>
-            {m.settings_price_disclaimer_body()}
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 10 }}>
+              {m.settings_profile()}
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              {VEHICLES.map((v) => {
+                const active = vehicle === v;
+                return (
+                  <button
+                    key={v}
+                    onClick={() => app.setVehicle(v)}
+                    style={{
+                      flex: 1,
+                      background: active ? C.accent : 'transparent',
+                      color: active ? C.onAccent : C.body,
+                      fontSize: 13.5,
+                      fontWeight: 700,
+                      padding: '10px 0',
+                      borderRadius: 16,
+                      border: active ? `1px solid ${C.accent}` : `1px solid ${C.border12}`,
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {vehicleLabel(v)}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 11.5, color: C.faint, marginTop: -10, marginBottom: 14 }}>
+              {m.settings_profile_hint({
+                fuel: fuelLabel(otherPreset.fuel),
+                tank: otherPreset.tank,
+                consumption: fmtDecimal(otherPreset.consumption, 1),
+              })}
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 10 }}>
+              {m.settings_default_fuel()}
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {ALL_FUELS.map((f) => {
+                const active = f === fuel;
+                return (
+                  <button
+                    key={f}
+                    onClick={() => app.setFuel(f)}
+                    style={{
+                      background: active ? C.accent : 'transparent',
+                      color: active ? C.onAccent : C.body,
+                      fontSize: 13,
+                      fontWeight: 700,
+                      padding: '8px 14px',
+                      borderRadius: 16,
+                      border: active ? `1px solid ${C.accent}` : `1px solid ${C.border12}`,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {fuelLabel(f)}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', marginTop: 18, marginBottom: 6 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: C.ink, flex: 1 }}>
+                {m.settings_tank()}
+              </span>
+              <span style={{ font: mono(700, 15), color: C.accent }}>{tank} L</span>
+            </div>
+            <input
+              type="range"
+              min={tankRange.min}
+              max={tankRange.max}
+              step={tankRange.step}
+              value={tank}
+              onChange={(e) => app.setTank(+e.target.value)}
+              style={{ width: '100%', cursor: 'pointer' }}
+            />
+            <div style={{ fontSize: 11.5, color: C.faint, marginTop: 6 }}>
+              {m.settings_tank_hint()}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', marginTop: 18, marginBottom: 6 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: C.ink, flex: 1 }}>
+                {m.settings_consumption()}
+              </span>
+              <span style={{ font: mono(700, 15), color: C.accent }}>
+                {fmtDecimal(consumption, 1)} L/100 km
+              </span>
+            </div>
+            <input
+              type="range"
+              min={3}
+              max={12}
+              step={0.5}
+              value={consumption}
+              onChange={(e) => app.setConsumption(+e.target.value)}
+              style={{ width: '100%', cursor: 'pointer' }}
+            />
+            <div style={{ fontSize: 11.5, color: C.faint, marginTop: 6 }}>
+              {m.settings_consumption_hint()}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Offline cache — cache-class data, not a source choice, so its own
-          section rather than a tail on the source picker. The debug overlay
-          switch lives at its bottom: developer tooling reads the same cache,
-          and a section of its own gave one row a whole card. */}
-      <div style={{ marginTop: 18 }}>
-        <div style={SECTION_LABEL}>{m.settings_cache_section()}</div>
-        <div
-          style={{
-            background: C.surface,
-            border: `1px solid ${C.border}`,
-            borderRadius: 16,
-            overflow: 'hidden',
-          }}
-        >
-          <CachedData onCleared={() => app.notify(m.toast_cache_cleared())} />
-          {/* Session-scoped on purpose (sessionStorage, never the persisted
-              blob): closing the tab turns the overlay back off. */}
-          <button
-            role="switch"
-            aria-checked={debugOn}
-            onClick={() => setDebugEnabled(!debugOn)}
-            data-testid="debug-toggle"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              padding: '14px 16px',
-              borderTop: `1px solid ${C.divider}`,
-              cursor: 'pointer',
-              width: '100%',
-              textAlign: 'left',
-            }}
-          >
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>
-                {m.settings_debug_overlay_title()}
-              </div>
-              <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>
-                {m.settings_debug_overlay_sub()}
-              </div>
-            </div>
-            <span
-              aria-hidden="true"
-              style={{
-                width: 40,
-                height: 24,
-                borderRadius: 12,
-                background: debugOn ? C.accent : C.toggleOff,
-                position: 'relative',
-                flexShrink: 0,
-                transition: 'background .15s',
-              }}
-            >
-              <span
-                style={{
-                  position: 'absolute',
-                  top: 3,
-                  left: debugOn ? 19 : 3,
-                  width: 18,
-                  height: 18,
-                  borderRadius: '50%',
-                  background: C.surface,
-                  boxShadow: `0 1px 3px ${C.shadow40}`,
-                  transition: 'left .15s',
-                }}
-              />
-            </span>
-          </button>
-        </div>
-      </div>
-
-      {/* Contact */}
-      <div style={{ marginTop: 18 }}>
-        <div style={SECTION_LABEL}>{m.settings_feedback_section()}</div>
-        <div
-          style={{
-            background: C.surface,
-            border: `1px solid ${C.border}`,
-            borderRadius: 16,
-            overflow: 'hidden',
-          }}
-        >
-          {contactRows.map((row, i) => (
-            <a
-              key={row.title}
-              href={row.href}
-              title={row.titleAttr}
-              {...(row.external ? { target: '_blank', rel: 'noreferrer' } : {})}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '14px 16px',
-                borderBottom:
-                  i < contactRows.length - 1 ? `1px solid ${C.divider}` : undefined,
-                cursor: 'pointer',
-                width: '100%',
-                textAlign: 'left',
-                textDecoration: 'none',
-              }}
-            >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>{row.title}</div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: C.faint,
-                    marginTop: 2,
-                    fontFamily: row.mono
-                      ? "'Spline Sans Mono', ui-monospace, monospace"
-                      : undefined,
-                  }}
-                >
-                  {row.sub}
-                </div>
-              </div>
-              <span style={{ color: C.faint }}>{row.external ? '↗' : '›'}</span>
-            </a>
-          ))}
-        </div>
-      </div>
-
-      {/* Application */}
-      {app.installReady && (
+        {/* Location */}
         <div style={{ marginTop: 18 }}>
-          <div style={SECTION_LABEL}>{m.settings_app_section()}</div>
+          <div style={SECTION_LABEL}>{m.settings_location_section()}</div>
           <div
             style={{
               background: C.surface,
@@ -984,12 +585,13 @@ export default function Settings() {
             }}
           >
             <button
-              onClick={() => app.promptInstall()}
+              onClick={() => app.requestGeolocation()}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: 12,
                 padding: '14px 16px',
+                borderBottom: `1px solid ${C.divider}`,
                 cursor: 'pointer',
                 width: '100%',
                 textAlign: 'left',
@@ -997,67 +599,468 @@ export default function Settings() {
             >
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>
-                  {m.settings_install_title()}
+                  {m.settings_device_position()}
                 </div>
-                <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>
-                  {m.settings_install_sub()}
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: geoStatus === 'granted' ? C.accent : geoStatus === 'pending' ? C.faint : C.warn,
+                    marginTop: 2,
+                  }}
+                >
+                  {geoStatusLabel(geoStatus)}
                 </div>
               </div>
-              <span style={{ color: C.accent, fontWeight: 700 }}>›</span>
+              {geoStatus !== 'granted' && (
+                <span style={{ color: C.accent, fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+                  {m.settings_geo_enable()}
+                </span>
+              )}
+            </button>
+            <div style={{ fontSize: 11.5, color: C.faint, padding: '10px 16px', lineHeight: 1.5 }}>
+              {m.settings_location_hint()}
+            </div>
+          </div>
+        </div>
+
+        {/* Appearance */}
+        <div style={{ marginTop: 18 }}>
+          <div style={SECTION_LABEL}>{m.settings_appearance_section()}</div>
+          <div
+            style={{
+              background: C.surface,
+              border: `1px solid ${C.border}`,
+              borderRadius: 16,
+              padding: 16,
+            }}
+          >
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {/* « Browser setting » is the absence of a choice, not a
+                  theme: picking it drops the override so the browser's light or
+                  dark preference applies again — live, dusk included. */}
+              {[null, ...THEMES].map((t) => {
+                const active = t == null ? !app.themeIsExplicit : app.themeIsExplicit && app.theme === t;
+                return (
+                  <button
+                    key={t ?? 'auto'}
+                    onClick={() => app.setTheme(t)}
+                    style={{
+                      background: active ? C.accent : 'transparent',
+                      color: active ? C.onAccent : C.body,
+                      fontSize: 13,
+                      fontWeight: 700,
+                      padding: '8px 14px',
+                      borderRadius: 16,
+                      border: active ? `1px solid ${C.accent}` : `1px solid ${C.border12}`,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {t == null ? m.settings_theme_auto() : themeLabel(t)}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 11.5, color: C.faint, marginTop: 10 }}>
+              {m.settings_theme_hint({ auto: m.settings_theme_auto() })}
+            </div>
+          </div>
+        </div>
+
+        {/* Language */}
+        <div style={{ marginTop: 18 }}>
+          <div style={SECTION_LABEL}>{m.settings_language_section()}</div>
+          <div
+            style={{
+              background: C.surface,
+              border: `1px solid ${C.border}`,
+              borderRadius: 16,
+              padding: 16,
+            }}
+          >
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {/* « Browser language » is the absence of a choice, not a
+                  locale: picking it drops the override so detection applies
+                  again — including after the user changes their browser. */}
+              {[null, ...LOCALES].map((l) => {
+                const active = l == null ? !app.localeIsExplicit : app.localeIsExplicit && app.locale === l;
+                return (
+                  <button
+                    key={l ?? 'auto'}
+                    onClick={() => app.setLocale(l)}
+                    style={{
+                      background: active ? C.accent : 'transparent',
+                      color: active ? C.onAccent : C.body,
+                      fontSize: 13,
+                      fontWeight: 700,
+                      padding: '8px 14px',
+                      borderRadius: 16,
+                      border: active ? `1px solid ${C.accent}` : `1px solid ${C.border12}`,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {l == null ? m.settings_language_auto() : localeName(l)}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 11.5, color: C.faint, marginTop: 10 }}>
+              {m.settings_language_hint({ auto: m.settings_language_auto() })}
+            </div>
+          </div>
+        </div>
+
+        {/* Routes — desktop only: on mobile « Go there » opens the native GPS app */}
+        {!HAS_NATIVE_MAPS && (
+        <div style={{ marginTop: 18 }}>
+          <div style={SECTION_LABEL}>{m.settings_routes_section()}</div>
+          <div
+            style={{
+              background: C.surface,
+              border: `1px solid ${C.border}`,
+              borderRadius: 16,
+              padding: 16,
+            }}
+          >
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 10 }}>
+              {m.settings_maps_site()}
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {MAPS_SITE_IDS.map((site) => {
+                const active = site === mapsSite;
+                return (
+                  <button
+                    key={site}
+                    onClick={() => app.setMapsSite(site)}
+                    style={{
+                      background: active ? C.accent : 'transparent',
+                      color: active ? C.onAccent : C.body,
+                      fontSize: 13,
+                      fontWeight: 700,
+                      padding: '8px 14px',
+                      borderRadius: 16,
+                      border: active ? `1px solid ${C.accent}` : `1px solid ${C.border12}`,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {mapsSiteLabel(site)}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 11.5, color: C.faint, marginTop: 10 }}>
+              {m.settings_maps_site_hint()}
+            </div>
+          </div>
+        </div>
+        )}
+
+        {/* Data */}
+        <div style={{ marginTop: 18 }}>
+          <div style={SECTION_LABEL}>{m.settings_data_section()}</div>
+          <div
+            style={{
+              background: C.surface,
+              border: `1px solid ${C.border}`,
+              borderRadius: 16,
+              overflow: 'hidden',
+            }}
+          >
+            {/* The demo dataset is a deliberate choice, never a silent
+                fallback: its row shows for users who already selected it (so
+                they can switch back) and while the real source is failing, as
+                the explicit escape hatch. */}
+            {SOURCES.filter(
+              (src) => src !== 'demo' || sourceId === 'demo' || app.stations.lastError != null,
+            ).map((src) => {
+              const selected = sourceId === src;
+              return (
+                <button
+                  key={src}
+                  onClick={() => app.setSourceId(src)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: '14px 16px',
+                    borderBottom: `1px solid ${C.divider}`,
+                    cursor: 'pointer',
+                    width: '100%',
+                    textAlign: 'left',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: '50%',
+                      border: `2px solid ${selected ? C.accent : C.border25}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    {selected && (
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.accent }} />
+                    )}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>
+                      {sourceTitle(src)}
+                    </div>
+                    <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>
+                      {sourceSublabel(src)}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+
+            {app.stations.lastError != null && (
+              <div
+                style={{
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  color: C.warn,
+                  padding: '10px 16px',
+                  borderBottom: `1px solid ${C.divider}`,
+                  lineHeight: 1.4,
+                }}
+              >
+                {m.settings_source_down()}
+              </div>
+            )}
+
+            <div
+              style={{
+                padding: '12px 16px',
+                fontSize: 12,
+                lineHeight: 1.55,
+                color: C.mut,
+              }}
+            >
+              <span style={{ fontWeight: 700, color: C.body }}>
+                {m.settings_price_disclaimer_title()}
+              </span>
+              {m.settings_price_disclaimer_body()}
+            </div>
+          </div>
+        </div>
+
+        {/* Offline cache — cache-class data, not a source choice, so its own
+            section rather than a tail on the source picker. The debug overlay
+            switch lives at its bottom: developer tooling reads the same cache,
+            and a section of its own gave one row a whole card. */}
+        <div style={{ marginTop: 18 }}>
+          <div style={SECTION_LABEL}>{m.settings_cache_section()}</div>
+          <div
+            style={{
+              background: C.surface,
+              border: `1px solid ${C.border}`,
+              borderRadius: 16,
+              overflow: 'hidden',
+            }}
+          >
+            <CachedData onCleared={() => app.notify(m.toast_cache_cleared())} />
+            {/* Session-scoped on purpose (sessionStorage, never the persisted
+                blob): closing the tab turns the overlay back off. */}
+            <button
+              role="switch"
+              aria-checked={debugOn}
+              onClick={() => setDebugEnabled(!debugOn)}
+              data-testid="debug-toggle"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: '14px 16px',
+                borderTop: `1px solid ${C.divider}`,
+                cursor: 'pointer',
+                width: '100%',
+                textAlign: 'left',
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>
+                  {m.settings_debug_overlay_title()}
+                </div>
+                <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>
+                  {m.settings_debug_overlay_sub()}
+                </div>
+              </div>
+              <span
+                aria-hidden="true"
+                style={{
+                  width: 40,
+                  height: 24,
+                  borderRadius: 12,
+                  background: debugOn ? C.accent : C.toggleOff,
+                  position: 'relative',
+                  flexShrink: 0,
+                  transition: 'background .15s',
+                }}
+              >
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: 3,
+                    left: debugOn ? 19 : 3,
+                    width: 18,
+                    height: 18,
+                    borderRadius: '50%',
+                    background: C.surface,
+                    boxShadow: `0 1px 3px ${C.shadow40}`,
+                    transition: 'left .15s',
+                  }}
+                />
+              </span>
             </button>
           </div>
         </div>
-      )}
 
-      {/* Footer — credits, kept compact */}
-      <div
-        style={{
-          textAlign: 'center',
-          fontSize: 11,
-          color: C.ghost,
-          marginTop: 20,
-          lineHeight: 1.7,
-        }}
-      >
-        <div style={{ color: C.faint }}>
-          {m.settings_credits_made_with()}{' '}
-          <a
-            href="https://zadkiel.fr"
-            target="_blank"
-            rel="noreferrer"
-            style={{ color: C.mut, textDecoration: 'underline' }}
+        {/* Contact */}
+        <div style={{ marginTop: 18 }}>
+          <div style={SECTION_LABEL}>{m.settings_feedback_section()}</div>
+          <div
+            style={{
+              background: C.surface,
+              border: `1px solid ${C.border}`,
+              borderRadius: 16,
+              overflow: 'hidden',
+            }}
           >
-            Zadkiel AHARONIAN
-          </a>
+            {contactRows.map((row, i) => (
+              <a
+                key={row.title}
+                href={row.href}
+                title={row.titleAttr}
+                {...(row.external ? { target: '_blank', rel: 'noreferrer' } : {})}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '14px 16px',
+                  borderBottom:
+                    i < contactRows.length - 1 ? `1px solid ${C.divider}` : undefined,
+                  cursor: 'pointer',
+                  width: '100%',
+                  textAlign: 'left',
+                  textDecoration: 'none',
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>{row.title}</div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: C.faint,
+                      marginTop: 2,
+                      fontFamily: row.mono
+                        ? "'Spline Sans Mono', ui-monospace, monospace"
+                        : undefined,
+                    }}
+                  >
+                    {row.sub}
+                  </div>
+                </div>
+                <span style={{ color: C.faint }}>{row.external ? '↗' : '›'}</span>
+              </a>
+            ))}
+          </div>
         </div>
-        {/* Credits, one line per country so each flux is named where it applies */}
-        <div>
-          {m.settings_credits_prices_fra()}{' '}
-          <a href="https://prix-carburants.gouv.fr" target="_blank" rel="noreferrer" style={CREDIT_LINK}>prix-carburants.gouv.fr</a>
-          {' '}
-          {m.settings_credits_addresses({ source: 'BAN' })}
-        </div>
-        <div>
-          {m.settings_credits_prices_esp()}{' '}
-          <a href="https://geoportalgasolineras.es" target="_blank" rel="noreferrer" style={CREDIT_LINK}>geoportalgasolineras.es</a>
-          {' '}
-          {m.settings_credits_addresses({ source: 'CartoCiudad' })}
-        </div>
-        <div>
-          {m.settings_credits_prices_and()}{' '}
-          <a href="https://sig.govern.ad/IPE/PreusCarburants" target="_blank" rel="noreferrer" style={CREDIT_LINK}>sig.govern.ad</a>
-          {' '}
-          {m.settings_credits_and_extra()}
-        </div>
-        <div>
-          {m.settings_credits_prices_prt()}{' '}
-          <a href="https://precoscombustiveis.dgeg.gov.pt" target="_blank" rel="noreferrer" style={CREDIT_LINK}>precoscombustiveis.dgeg.gov.pt</a>
-          {' '}
-          {m.settings_credits_addresses({ source: 'Photon · OpenStreetMap' })}
-        </div>
-        <div>
-          {m.settings_credits_misc()}{' '}
-          <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" style={CREDIT_LINK}>OpenStreetMap</a> · © CARTO
+
+        {/* Application */}
+        {app.installReady && (
+          <div style={{ marginTop: 18 }}>
+            <div style={SECTION_LABEL}>{m.settings_app_section()}</div>
+            <div
+              style={{
+                background: C.surface,
+                border: `1px solid ${C.border}`,
+                borderRadius: 16,
+                overflow: 'hidden',
+              }}
+            >
+              <button
+                onClick={() => app.promptInstall()}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '14px 16px',
+                  cursor: 'pointer',
+                  width: '100%',
+                  textAlign: 'left',
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>
+                    {m.settings_install_title()}
+                  </div>
+                  <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>
+                    {m.settings_install_sub()}
+                  </div>
+                </div>
+                <span style={{ color: C.accent, fontWeight: 700 }}>›</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Footer — credits, kept compact */}
+        <div
+          style={{
+            textAlign: 'center',
+            fontSize: 11,
+            color: C.ghost,
+            marginTop: 20,
+            lineHeight: 1.7,
+          }}
+        >
+          <div style={{ color: C.faint }}>
+            {m.settings_credits_made_with()}{' '}
+            <a
+              href="https://zadkiel.fr"
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: C.mut, textDecoration: 'underline' }}
+            >
+              Zadkiel AHARONIAN
+            </a>
+          </div>
+          {/* Credits, one line per country so each flux is named where it applies */}
+          <div>
+            {m.settings_credits_prices_fra()}{' '}
+            <a href="https://prix-carburants.gouv.fr" target="_blank" rel="noreferrer" style={CREDIT_LINK}>prix-carburants.gouv.fr</a>
+            {' '}
+            {m.settings_credits_addresses({ source: 'BAN' })}
+          </div>
+          <div>
+            {m.settings_credits_prices_esp()}{' '}
+            <a href="https://geoportalgasolineras.es" target="_blank" rel="noreferrer" style={CREDIT_LINK}>geoportalgasolineras.es</a>
+            {' '}
+            {m.settings_credits_addresses({ source: 'CartoCiudad' })}
+          </div>
+          <div>
+            {m.settings_credits_prices_and()}{' '}
+            <a href="https://sig.govern.ad/IPE/PreusCarburants" target="_blank" rel="noreferrer" style={CREDIT_LINK}>sig.govern.ad</a>
+            {' '}
+            {m.settings_credits_and_extra()}
+          </div>
+          <div>
+            {m.settings_credits_prices_prt()}{' '}
+            <a href="https://precoscombustiveis.dgeg.gov.pt" target="_blank" rel="noreferrer" style={CREDIT_LINK}>precoscombustiveis.dgeg.gov.pt</a>
+            {' '}
+            {m.settings_credits_addresses({ source: 'Photon · OpenStreetMap' })}
+          </div>
+          <div>
+            {m.settings_credits_misc()}{' '}
+            <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" style={CREDIT_LINK}>OpenStreetMap</a> · © CARTO
+          </div>
         </div>
       </div>
     </div>
