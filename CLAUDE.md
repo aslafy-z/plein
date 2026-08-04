@@ -44,6 +44,9 @@ it lives only in `messages/fr.json`.
   data-source row changed, a command renamed. They translate meaning, not
   words: each version reads natively and uses that language's own UI names
   (its `messages/<locale>.json` copy) when it points at a screen or button.
+  Screenshots are per-locale too: `npm run build:screenshots` shoots every
+  locale's set into `docs/screenshots/<locale>/`, each image a diagonal
+  light/dark split, and reads its selector strings from the catalogs.
 
 ## Internationalization
 
