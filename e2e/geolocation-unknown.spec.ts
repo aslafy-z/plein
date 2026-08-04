@@ -3,7 +3,7 @@
 // default area — but an area is not a person. Nothing may present that
 // fallback as the user: no dot on it, and the recentre control stays plain
 // ink, an invitation to locate rather than a state already reached.
-import { test, expect, gotoMap } from './fixtures'
+import { test, expect, gotoMap, pickRoutePlace } from './fixtures'
 
 /** The user dot is a Leaflet layer — its class is the only handle on it */
 const USER_DOT = '.leaflet-marker-icon.user-dot'
@@ -121,6 +121,43 @@ test('the route stage marks no user either', async ({ page }) => {
   await expect(page.locator(USER_DOT)).toHaveCount(0)
   // The picto's center dot is what says « the view sits on you »
   await expect(recentre.locator('svg circle[r="2.1"]')).toHaveCount(0)
+  // …and the departure field claims no more than the map does: « from
+  // wherever I am » needs a place the user has been located in, so the field
+  // reads as unset (its « From » placeholder) instead of naming the fallback
+  // area « My position ».
+  await expect(page.getByText('My position', { exact: true })).toHaveCount(0)
+})
+
+test('a trip cannot depart from a position the app never had', async ({ page }) => {
+  await stubRefusedFix(page)
+  await gotoMap(page)
+  await page.getByText('Route', { exact: true }).click()
+
+  // Picking a destination is the submit — with no fix it can only be the ask
+  await pickRoutePlace(page, 'to', 'Bordeaux', 'Bordeaux centre')
+  await expect(
+    page.getByText('Position unknown — turn location on or enter a departure'),
+  ).toBeVisible()
+
+  // Nothing was computed from the default area: the setup form still stands
+  await expect(
+    page.getByRole('button', { name: 'Compare the stations along the route' }),
+  ).toBeVisible()
+  await expect(page.getByText('Recommended stop')).toHaveCount(0)
+})
+
+test('naming a departure is the way out of having no position', async ({ page }) => {
+  await stubRefusedFix(page)
+  await gotoMap(page)
+  await page.getByText('Route', { exact: true }).click()
+
+  await pickRoutePlace(page, 'from', 'Toulouse', 'Toulouse Capitole')
+  await pickRoutePlace(page, 'to', 'Bordeaux', 'Bordeaux centre')
+  // Whether the tank covers the trip or not, a result stands — the departure
+  // is a named place now, so nothing is being claimed about the user
+  await expect(
+    page.getByText(/No fuel stop needed|Recommended stop/).first(),
+  ).toBeVisible({ timeout: 30_000 })
 })
 
 test.describe('a device located before', () => {

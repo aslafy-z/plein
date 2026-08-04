@@ -67,7 +67,9 @@ au Portugal.
    distance, détour compté) apparaît dans le volet du bas, **Y aller** lance le
    guidage.
 4. Avant de partir loin, onglet **Trajet** : saisissez la destination et
-   comparez les stations le long du parcours.
+   comparez les stations le long du parcours. Le départ est sur **Ma position**
+   dès que la localisation en a donné une, et la recherche de chacun des deux
+   points la propose en tête — sur un seul des deux à la fois.
 5. Sur mobile, installez l'app (bannière d'installation ou
    *Réglages → Application*) pour l'avoir en icône, plein écran et hors-ligne.
 

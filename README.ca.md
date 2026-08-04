@@ -68,7 +68,9 @@ Portugal.
    distància, desviament comptat) apareix al plafó inferior, **Com
    arribar-hi** inicia el guiatge.
 4. Abans d'un viatge llarg, pestanya **Trajecte**: introduïu la destinació i
-   compareu les estacions al llarg del recorregut.
+   compareu les estacions al llarg del recorregut. L'origen surt de **La meva
+   posició** així que la ubicació en dona una, i la cerca de qualsevol dels
+   dos extrems l'ofereix com a fila — només en un dels dos alhora.
 5. Al mòbil, instal·leu l'app (bàner d'instal·lació o
    *Ajustos → Aplicació*) per tenir-la com a icona, a pantalla completa i
    fora de línia.

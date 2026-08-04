@@ -64,7 +64,9 @@ you and along your routes, in France, Spain, Andorra and Portugal.
    detour counted) shows up in the bottom sheet, **Directions** starts the
    guidance.
 4. Before a long trip, open the **Route** tab: enter the destination and
-   compare the stations along the way.
+   compare the stations along the way. The departure starts on **My position**
+   as soon as location has given one, and either endpoint's search offers it
+   as a row — one end at a time.
 5. On mobile, install the app (install banner or *Settings → Application*) to
    get it as an icon, full screen and offline.
 

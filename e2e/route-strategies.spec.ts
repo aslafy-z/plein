@@ -7,6 +7,13 @@ import { test, expect, gotoMap, closeRouteSheet, openRouteSheet, pickRoutePlace 
 // in driving order, the zero-stop and infeasible states render, and the copy
 // comes from the catalogs.
 
+// lastFix: every trip below departs from « My position », and that means a
+// position the app actually has — a fix the runner's Chromium never grants,
+// so it is seeded. Without one the departure is unset and no route computes.
+const TOULOUSE = { lat: 43.6047, lng: 1.4442 }
+
+test.use({ seed: { sourceId: 'demo', onboarded: true, lastFix: TOULOUSE } })
+
 async function computeBordeauxRoute(page: import('@playwright/test').Page) {
   await gotoMap(page)
   await page.getByText('Route', { exact: true }).click()
@@ -15,7 +22,7 @@ async function computeBordeauxRoute(page: import('@playwright/test').Page) {
 }
 
 test.describe('with a 20 % departure tank', () => {
-  test.use({ seed: { sourceId: 'demo', onboarded: true, startTankPct: 20 } })
+  test.use({ seed: { sourceId: 'demo', onboarded: true, lastFix: TOULOUSE, startTankPct: 20 } })
 
   test('the strategy chips swap the displayed plan', async ({ page }) => {
     await computeBordeauxRoute(page)
@@ -41,7 +48,9 @@ test.describe('with a 20 % departure tank', () => {
 })
 
 test.describe('with a small 15 L tank', () => {
-  test.use({ seed: { sourceId: 'demo', onboarded: true, tank: 15, startTankPct: 20 } })
+  test.use({
+    seed: { sourceId: 'demo', onboarded: true, lastFix: TOULOUSE, tank: 15, startTankPct: 20 },
+  })
 
   test('a multi-stop plan renders in driving order', async ({ page }) => {
     await computeBordeauxRoute(page)
@@ -93,7 +102,10 @@ test('a low departure tank caps the autonomy and plans a reachable stop', async 
 
 test.describe('a vehicle that cannot bridge the corridor gaps', () => {
   test.use({
-    seed: { sourceId: 'demo', onboarded: true, tank: 10, consumption: 17, startTankPct: 40 },
+    seed: {
+      sourceId: 'demo', onboarded: true, lastFix: TOULOUSE,
+      tank: 10, consumption: 17, startTankPct: 40,
+    },
   })
 
   test('renders an actionable infeasible state instead of a fake plan', async ({ page }) => {

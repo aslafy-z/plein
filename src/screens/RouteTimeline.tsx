@@ -19,6 +19,7 @@ import ShareIcon from '../components/ShareIcon';
 import {
   useApp,
   routeFromLabel,
+  routeToLabel,
   selectRouteAnalysis,
   effectiveFuel,
   effectivePrice,
@@ -249,7 +250,7 @@ export function RouteAwaited() {
         m.ribbon_departure_tank({ percent: app.startTankPct, km: analysis.autonomyKm }),
       )}
       {[0, 1, 2].map((i) => skeletonNode(i, !desktop))}
-      {arrivalNode(app.toText, '')}
+      {arrivalNode(routeToLabel(app), '')}
     </div>
   );
 }
@@ -277,13 +278,13 @@ const limitMarker = (limitKm: number) => (
 export default function RouteTimeline() {
   const app = useApp();
   const desktop = useIsDesktop();
-  const { toText, fuel, tank, routeMode, routeState } = app;
+  const { fuel, tank, routeMode, routeState } = app;
   const analysis = selectRouteAnalysis(app);
   const route = routeState.route;
   // A displayed result is always labelled with the endpoints it was computed
   // for; only a screen with no result yet shows what is being requested.
   const fromLabel = route ? routeState.endpoints.from : routeFromLabel(app);
-  const arrivalPlace = route ? routeState.endpoints.to : toText;
+  const arrivalPlace = route ? routeState.endpoints.to : routeToLabel(app);
 
   const toggleStyle = (id: string, size: number) => {
     const inRun = !!app.plannedStops[id];

@@ -10,6 +10,7 @@ import {
   type RouteState,
 } from './routePipeline'
 import { INDEPENDENT_BRAND_ID } from '../lib/brandIcons'
+import { m } from '../paraglide/messages.js'
 import {
   answersAdBlue,
   CROW_ROAD_FACTOR,
@@ -35,6 +36,9 @@ import {
   selectEffectiveSort,
   selectRouteAnalysis,
   selectVisible,
+  routeFromLabel,
+  routeToLabel,
+  selectCanPickCurrentPosition,
   selectTripOriginKnown,
   searchOutOfReach,
   stationTrip,
@@ -845,6 +849,57 @@ describe('selectAutonomy', () => {
   it('derives autonomy from tank × level ÷ consumption, with a ~20 % reserve', () => {
     expect(selectAutonomy(app())).toEqual({ autonomyKm: 538, limitKm: 430 })
     expect(selectAutonomy(app({ startTankPct: 10 }))).toEqual({ autonomyKm: 77, limitKm: 60 })
+  })
+})
+
+describe('routeFromLabel', () => {
+  const current = (over: Partial<AppStore> = {}) =>
+    routeFromLabel(app({ fromIsCurrentPosition: true, fromText: '', ...over }))
+
+  it('shows a departure the user named, as they named it', () => {
+    expect(routeFromLabel(app({ fromIsCurrentPosition: false, fromText: 'Albi' }))).toBe('Albi')
+  })
+
+  it('says « my position » only where the user has actually been located', () => {
+    expect(current()).toBe(m.route_from_current_position())
+    // No fix: `userPos` is the area the app fell back to, so there is no
+    // « my position » to depart from — the departure reads as unset.
+    expect(current({ hasKnownPos: false })).toBe('')
+  })
+})
+
+describe('routeToLabel', () => {
+  it('shows a destination the user named, as they named it', () => {
+    expect(routeToLabel(app({ toIsCurrentPosition: false, toText: 'Albi' }))).toBe('Albi')
+  })
+
+  it('names a current-position arrival whatever the fix does afterwards', () => {
+    // The arrival froze its point when it was picked, so unlike the departure
+    // it does not stop being a place if the position goes unknown
+    const at = (over: Partial<AppStore> = {}) =>
+      routeToLabel(app({ toIsCurrentPosition: true, toText: '', ...over }))
+    expect(at()).toBe(m.route_from_current_position())
+    expect(at({ hasKnownPos: false })).toBe(m.route_from_current_position())
+  })
+})
+
+describe('selectCanPickCurrentPosition', () => {
+  const offer = (over: Partial<AppStore> = {}) =>
+    selectCanPickCurrentPosition(
+      app({ fromIsCurrentPosition: false, toIsCurrentPosition: false, ...over }),
+    )
+
+  it('offers the user their own position as a place to pick', () => {
+    expect(offer()).toBe(true)
+  })
+
+  it('offers nothing without a position to offer', () => {
+    expect(offer({ hasKnownPos: false })).toBe(false)
+  })
+
+  it('withdraws the offer once either end is already it — here to here is not a trip', () => {
+    expect(offer({ fromIsCurrentPosition: true })).toBe(false)
+    expect(offer({ toIsCurrentPosition: true })).toBe(false)
   })
 })
 

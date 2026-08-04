@@ -199,12 +199,18 @@ export default function RouteMap({
     if (!map || !layer || route) return;
 
     layer.clearLayers();
-    const from = app.fromPoint ?? app.userPos;
+    // The departure defaults to the user, so it exists only where they do:
+    // without a fix `userPos` is the fallback area, and a departure pin on it
+    // would mark a trip starting from a place the user has never been located
+    // in — the same claim the dot above refuses to make.
+    const from = app.fromPoint ?? (app.hasKnownPos ? app.userPos : null);
     const to = app.toPoint;
-    L.marker([from.lat, from.lng], {
-      icon: L.divIcon({ className: '', html: endpointHtml('from'), iconSize: [16, 16], iconAnchor: [8, 8] }),
-      interactive: false,
-    }).addTo(layer);
+    if (from) {
+      L.marker([from.lat, from.lng], {
+        icon: L.divIcon({ className: '', html: endpointHtml('from'), iconSize: [16, 16], iconAnchor: [8, 8] }),
+        interactive: false,
+      }).addTo(layer);
+    }
     if (to) {
       L.marker([to.lat, to.lng], {
         icon: L.divIcon({ className: '', html: endpointHtml('to'), iconSize: [16, 16], iconAnchor: [8, 8] }),
@@ -212,13 +218,13 @@ export default function RouteMap({
       }).addTo(layer);
     }
 
-    // Both ends set → frame the trip to come; otherwise keep the search-area
-    // framing the map tab uses, so the stage reads as one map across tabs.
-    const box = to
-      ? L.latLngBounds([
-          [from.lat, from.lng],
-          [to.lat, to.lng],
-        ])
+    // Both ends set → frame the trip to come; one end alone (a destination
+    // picked with no departure yet) → frame that end; neither → keep the
+    // search-area framing the map tab uses, so the stage reads as one map
+    // across tabs.
+    const ends = [from, to].filter((p): p is GeoPoint => p != null);
+    const box = ends.length
+      ? L.latLngBounds(ends.map((p) => [p.lat, p.lng] as [number, number]))
       : (() => {
           const b = radiusBounds(app.searchPos, app.radius);
           return L.latLngBounds([b.south, b.west], [b.north, b.east]);
@@ -227,7 +233,7 @@ export default function RouteMap({
     // A newly picked endpoint deserves its framing, like a newly computed
     // route — but a plain re-render must not fight the user's pan.
     if (!userInteractedRef.current) {
-      shell.fitBounds(box, to ? { pad: 60 } : { pad: 40, maxZoom: 15 });
+      shell.fitBounds(box, ends.length > 1 ? { pad: 60 } : { pad: 40, maxZoom: 15 });
     }
     // The insets are deps like they are on the zone map's auto-fit: the
     // desktop panel only reports its width AFTER the first render, so a fit
@@ -235,7 +241,10 @@ export default function RouteMap({
     // under the panel — and nothing re-ran to correct it (the container never
     // resizes, so the shell's re-fit doesn't fire either).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [route, app.fromPoint, app.toPoint, app.userPos, app.searchPos, app.radius, bottomInset, leftInset]);
+  }, [
+    route, app.fromPoint, app.toPoint, app.userPos, app.hasKnownPos, app.searchPos, app.radius,
+    bottomInset, leftInset,
+  ]);
 
   // Picking a new endpoint re-arms the framing the way a new route does
   useEffect(() => {
