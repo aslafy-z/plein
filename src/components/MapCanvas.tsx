@@ -522,7 +522,9 @@ export default function MapCanvas({
     const pts = [L.latLng(app.userPos.lat, app.userPos.lng), zoneEnd];
     if (!originLineRef.current) {
       originLineRef.current = L.polyline(pts, {
-        color: '#9aa7b0',
+        // Color from the .origin-line rule in styles.css — Leaflet writes
+        // color options as SVG attributes, where a var() can't resolve
+        className: 'origin-line',
         weight: 1.5,
         opacity: 0.45,
         dashArray: '2 10',
@@ -546,7 +548,7 @@ export default function MapCanvas({
       circleRef.current?.getLatLng() ?? L.latLng(app.searchPos.lat, app.searchPos.lng);
     if (!reticleRef.current) {
       const bar = (r: string) =>
-        `<div style="position:absolute;${r};background:rgba(61,220,132,.55);border-radius:1px"></div>`;
+        `<div style="position:absolute;${r};background:${C.accentGlow55};border-radius:1px"></div>`;
       const html =
         `<div style="position:relative;width:14px;height:14px">` +
         bar('left:6.25px;top:0;width:1.5px;height:14px') +

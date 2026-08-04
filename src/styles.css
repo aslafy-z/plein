@@ -138,6 +138,7 @@
   --c-pin-dot-deal-border: rgba(8, 18, 12, 0.55);
   --c-pin-dot-high-bg: #3a2b27;
   --c-pin-dot-high-border: rgba(224, 122, 95, 0.6);
+  --c-origin-line: #9aa7b0;
 }
 
 /* « Cap jour » — same hue family, flipped: paper surfaces, the brand green
@@ -215,6 +216,7 @@
   --c-pin-dot-deal-border: rgba(255, 255, 255, 0.75);
   --c-pin-dot-high-bg: #f7ded4;
   --c-pin-dot-high-border: rgba(193, 79, 46, 0.7);
+  --c-origin-line: #66737a;
 }
 
 * {
@@ -472,6 +474,9 @@ button {
 }
 .route-line {
   stroke: var(--c-accent);
+}
+.origin-line {
+  stroke: var(--c-origin-line);
 }
 
 /* Background-refresh indicator */
