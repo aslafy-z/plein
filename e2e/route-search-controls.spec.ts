@@ -138,10 +138,12 @@ test.describe('phone', () => {
     await expect(tolls).toBeVisible()
     await expect(chips.getByRole('button', { name: 'Avoid motorways' })).toBeVisible()
 
+    // The toggle state lives in aria-pressed (and the fill) — the label
+    // itself never changes, so the chip keeps its width
     await tolls.click()
-    await expect(tolls).toContainText('✓')
+    await expect(tolls).toHaveAttribute('aria-pressed', 'true')
     await tolls.click()
-    await expect(tolls).not.toContainText('✓')
+    await expect(tolls).toHaveAttribute('aria-pressed', 'false')
 
     // The tank chip is the map tab's radius-chip idiom: it names the value
     // (70 % is the default departure tank) and opens the sheet on the slider

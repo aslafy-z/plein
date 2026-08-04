@@ -117,7 +117,9 @@ function routeChipStyle(on: boolean, onMap: boolean): CSSProperties {
     background: on ? C.accent : onMap ? C.surface2 : 'transparent',
     color: on ? C.onAccent : C.body,
     fontSize: onMap ? 13 : 12.5,
-    fontWeight: on ? 700 : onMap ? 500 : 700,
+    // Constant per variant: a weight that flips with the state changes the
+    // label's width and the chip resizes under the finger
+    fontWeight: onMap ? 600 : 700,
     padding: '8px 14px',
     borderRadius: onMap ? 18 : 16,
     border: on ? `1px solid ${C.accent}` : `1px solid ${onMap ? C.border09 : C.border15}`,
@@ -142,8 +144,14 @@ function RoutePrefChips({ onMap = false }: { onMap?: boolean }) {
           [m.route_avoid_tolls(), app.avoidToll, app.setAvoidToll],
         ] as const
       ).map(([label, on, set]) => (
-        <button key={label} onClick={() => set(!on)} style={routeChipStyle(on, onMap)}>
-          {on ? '✓ ' : ''}
+        // The state lives in the fill (and aria-pressed), never in the text:
+        // a « ✓ » prefix grows the chip on toggle and the row jumps
+        <button
+          key={label}
+          onClick={() => set(!on)}
+          aria-pressed={on}
+          style={routeChipStyle(on, onMap)}
+        >
           {label}
         </button>
       ))}
