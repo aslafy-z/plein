@@ -124,6 +124,7 @@
     }
   ],
   "map_loading_stations": "Buscando gasolineras…",
+  "map_locating": "Buscando tu posición…",
   "map_geo_last_known": "Última posición conocida — reactivar la ubicación",
   "map_geo_default_pos": "Posición por defecto: Toulouse — activar la ubicación",
   "install_pitch": "Instala Plein. para abrirlo con un gesto, incluso sin conexión.",
@@ -166,6 +167,7 @@
   "sheet_go_there_no_eta": "Ir",
   "sheet_per_litre": "{fuel} / L",
   "sheet_price_per_litre_delta": "{sign}{amount} €/L",
+  "sheet_locating": "Buscando tu posición…",
   "sheet_loading": "Buscando gasolineras a tu alrededor…",
   "sheet_fuel_not_sold": "Ninguna gasolinera vende {fuel} en esta zona.",
   "sheet_sold_here": "Se vende aquí:",
@@ -463,6 +465,7 @@
   "settings_geo_denied": "denegada para este sitio",
   "settings_geo_unavailable": "no disponible en este dispositivo",
   "settings_geo_pending": "no solicitada",
+  "settings_geo_locating": "buscando…",
   "settings_geo_enable": "Activar",
   "settings_location_hint": "Sin ubicación, el mapa se abre en la última zona consultada (Toulouse por defecto). Si el aviso ya no aparece, permite la ubicación para este sitio en los ajustes del navegador.",
   "settings_appearance_section": "Apariencia",

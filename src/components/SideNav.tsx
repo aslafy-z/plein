@@ -125,7 +125,11 @@ export default function SideNav() {
               cursor: 'pointer',
             }}
           >
-            {app.hasKnownPos ? m.map_geo_last_known() : m.map_geo_default_pos()}
+            {app.geoLocating
+              ? m.map_locating()
+              : app.hasKnownPos
+                ? m.map_geo_last_known()
+                : m.map_geo_default_pos()}
           </button>
         )}
 

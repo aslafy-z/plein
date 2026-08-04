@@ -122,6 +122,7 @@
     }
   ],
   "map_loading_stations": "À procura de postos…",
+  "map_locating": "A procurar a sua posição…",
   "map_geo_last_known": "Última posição conhecida — reativar a localização",
   "map_geo_default_pos": "Posição predefinida: Toulouse — ativar a localização",
   "map_install_app": "⤓ Instalar a app",
@@ -161,6 +162,7 @@
   "sheet_go_there_no_eta": "Ir",
   "sheet_per_litre": "{fuel} / L",
   "sheet_price_per_litre_delta": "{sign}{amount} €/L",
+  "sheet_locating": "A procurar a sua posição…",
   "sheet_loading": "À procura de postos à sua volta…",
   "sheet_fuel_not_sold": "Nenhum posto vende {fuel} nesta área.",
   "sheet_sold_here": "Vendidos aqui:",
@@ -456,6 +458,7 @@
   "settings_geo_denied": "recusada para este site",
   "settings_geo_unavailable": "indisponível neste dispositivo",
   "settings_geo_pending": "não pedida",
+  "settings_geo_locating": "a procurar…",
   "settings_geo_enable": "Ativar",
   "settings_location_hint": "Sem localização, o mapa abre na última área consultada (por predefinição: Toulouse). Se o pedido já não aparecer, autorize a localização para este site nas definições do navegador.",
   "settings_appearance_section": "Aparência",

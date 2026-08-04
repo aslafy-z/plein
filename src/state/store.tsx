@@ -146,6 +146,10 @@ import {
 /** Toulouse Capitole — default position when geolocation is unavailable */
 export const DEFAULT_POS: GeoPoint = { lat: 43.6047, lng: 1.4442 };
 export const MAX_RADIUS_KM = 25;
+/** How long a fix may take before the app says out loud that it is locating */
+const GEO_SPINNER_DELAY_MS = 350;
+/** Give up on a fix after this — past it the last known area is what we have */
+const GEO_TIMEOUT_MS = 10000;
 /** Vehicle profile presets (tank L, consumption L/100 km, default fuel) — adjustable in Settings */
 export const VEHICLE_PRESETS: Record<
   VehicleId,
@@ -432,6 +436,14 @@ export interface AppStore {
   // stations around me
   userPos: GeoPoint;
   geoStatus: 'pending' | 'granted' | 'denied' | 'unavailable';
+  /**
+   * true while a fix is being acquired AND the wait has lasted long enough to
+   * be worth showing (GEO_SPINNER_DELAY_MS). A fix served from the device's
+   * cache lands in a few milliseconds: a spinner appearing and disappearing
+   * inside one frame reads as a glitch, so the flag only rises once the user
+   * is actually waiting on the GPS — which is the whole point of showing it.
+   */
+  geoLocating: boolean;
   /** true when a real position was known before (persisted across reloads) */
   hasKnownPos: boolean;
   requestGeolocation(): void;
@@ -785,6 +797,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const initialPos = persisted.lastPos ?? DEFAULT_POS;
   const [userPos, setUserPos] = useState<GeoPoint>(initialPos);
   const [geoStatus, setGeoStatus] = useState<AppStore['geoStatus']>('pending');
+  const [geoLocating, setGeoLocating] = useState(false);
   // Search area: follows the user's position until they search elsewhere on
   // the map — or until a shared link says which area to open on.
   const [searchPos, setSearchPos] = useState<GeoPoint>(initialMap.center ?? initialPos);
@@ -866,29 +879,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ── Geolocation ────────────────────────────────────────────────────────────
+  // A fix can take seconds (cold GPS, permission prompt still up) and nothing
+  // else on screen moves meanwhile — so the request carries its own visible
+  // state. `geoReq` tells a superseded fix from the current one: tapping
+  // « my position » twice must not let the first answer clear the second's
+  // spinner. The timer is what keeps a cached, instant fix from flashing it.
+  const geoReq = useRef(0);
+  const geoSpinTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const endGeoRequest = useCallback(() => {
+    clearTimeout(geoSpinTimer.current);
+    setGeoLocating(false);
+  }, []);
   const requestGeolocation = useCallback(() => {
     if (!('geolocation' in navigator)) {
       setGeoStatus('unavailable');
       setGeoHold(false);
+      endGeoRequest();
       return;
     }
+    const req = ++geoReq.current;
+    clearTimeout(geoSpinTimer.current);
+    geoSpinTimer.current = setTimeout(() => setGeoLocating(true), GEO_SPINNER_DELAY_MS);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        if (req !== geoReq.current) return;
         const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserPos(p);
         if (!searchMovedRef.current) setSearchPos(p);
         setGeoStatus('granted');
         setGeoHold(false);
+        endGeoRequest();
         savePersisted({ lastPos: p, geoGranted: true });
       },
       () => {
+        if (req !== geoReq.current) return;
         setGeoStatus('denied');
         setGeoHold(false);
+        endGeoRequest();
         savePersisted({ geoGranted: false });
       },
-      { timeout: 10000, maximumAge: 300000 },
+      { timeout: GEO_TIMEOUT_MS, maximumAge: 300000 },
     );
-  }, []);
+  }, [endGeoRequest]);
+  useEffect(() => () => clearTimeout(geoSpinTimer.current), []);
 
   const setSearchArea = useCallback((p: GeoPoint, label?: string) => {
     searchMovedRef.current = true;
@@ -2089,6 +2122,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       resetFilters,
       userPos,
       geoStatus,
+      geoLocating,
       hasKnownPos: persisted.lastPos != null || geoStatus === 'granted',
       requestGeolocation,
       searchPos,
@@ -2172,7 +2206,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [
       screen, prevScreen, go, back, openStation, fuel, setFuel, cycleFuel, sort, radius, setRadius,
       brandSel, toggleBrand, serviceTags, filtersOpen, resetFilters, userPos, geoStatus,
-      requestGeolocation, searchPos, searchLabel, setSearchArea, resetSearchToUser,
+      geoLocating, requestGeolocation, searchPos, searchLabel, setSearchArea, resetSearchToUser,
       searchOpen, setSearchOpenNav,
       focusStationId, mapZoom, setMapZoom,
       favorites, toggleFavorite, favoritePrices, stations, roadReach, loadStations,

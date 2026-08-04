@@ -463,7 +463,7 @@ export default function Settings() {
   const desktop = useIsDesktop();
   const debugOn = useDebugMode();
   const forcedOffline = useForcedOffline();
-  const { fuel, vehicle, tank, consumption, sourceId, geoStatus, mapsSite } = app;
+  const { fuel, vehicle, tank, consumption, sourceId, geoStatus, geoLocating, mapsSite } = app;
   // Slider ranges follow the profile (a motorcycle tank is far smaller than a car's)
   const tankRange =
     vehicle === 'motorcycle' ? { min: 5, max: 30, step: 1 } : { min: 30, max: 80, step: 5 };
@@ -657,6 +657,7 @@ export default function Settings() {
           >
             <button
               onClick={() => app.requestGeolocation()}
+              aria-busy={geoLocating}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -672,20 +673,39 @@ export default function Settings() {
                 <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>
                   {m.settings_device_position()}
                 </div>
+                {/* A fix under way outranks the status it is about to
+                    replace: « denied » under a row the user just tapped
+                    reads as a refusal that already happened. */}
                 <div
                   style={{
                     fontSize: 12,
-                    color: geoStatus === 'granted' ? C.accent : geoStatus === 'pending' ? C.faint : C.warn,
+                    color: geoLocating
+                      ? C.faint
+                      : geoStatus === 'granted'
+                        ? C.accent
+                        : geoStatus === 'pending'
+                          ? C.faint
+                          : C.warn,
                     marginTop: 2,
                   }}
                 >
-                  {geoStatusLabel(geoStatus)}
+                  {geoLocating ? m.settings_geo_locating() : geoStatusLabel(geoStatus)}
                 </div>
               </div>
-              {geoStatus !== 'granted' && (
-                <span style={{ color: C.accent, fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
-                  {m.settings_geo_enable()}
+              {geoLocating ? (
+                <span
+                  className="spin"
+                  aria-hidden
+                  style={{ color: C.accent, fontSize: 14, lineHeight: 1, flexShrink: 0 }}
+                >
+                  ↻
                 </span>
+              ) : (
+                geoStatus !== 'granted' && (
+                  <span style={{ color: C.accent, fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+                    {m.settings_geo_enable()}
+                  </span>
+                )
               )}
             </button>
             <div style={{ fontSize: 11.5, color: C.faint, padding: '10px 16px', lineHeight: 1.5 }}>

@@ -124,6 +124,7 @@
     }
   ],
   "map_loading_stations": "Searching for stations…",
+  "map_locating": "Finding your position…",
   "map_geo_last_known": "Last known position — turn location back on",
   "map_geo_default_pos": "Default position: Toulouse — turn location on",
   "install_pitch": "Install Plein. to open it in one tap, offline included.",
@@ -166,6 +167,7 @@
   "sheet_go_there_no_eta": "Go there",
   "sheet_per_litre": "{fuel} / L",
   "sheet_price_per_litre_delta": "{sign}{amount} €/L",
+  "sheet_locating": "Finding your position…",
   "sheet_loading": "Looking for stations around you…",
   "sheet_fuel_not_sold": "No station sells {fuel} in this area.",
   "sheet_sold_here": "Sold here:",
@@ -463,6 +465,7 @@
   "settings_geo_denied": "denied for this site",
   "settings_geo_unavailable": "unavailable on this device",
   "settings_geo_pending": "not requested",
+  "settings_geo_locating": "locating…",
   "settings_geo_enable": "Turn on",
   "settings_location_hint": "Without location the map opens on the last area you viewed (Toulouse by default). If the prompt no longer appears, allow location for this site in your browser settings.",
   "settings_appearance_section": "Appearance",

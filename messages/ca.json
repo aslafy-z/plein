@@ -124,6 +124,7 @@
     }
   ],
   "map_loading_stations": "S'estan cercant benzineres…",
+  "map_locating": "S'està cercant la teva posició…",
   "map_geo_last_known": "Última posició coneguda — reactiva la ubicació",
   "map_geo_default_pos": "Posició per defecte: Toulouse — activa la ubicació",
   "install_pitch": "Instal·la Plein. per obrir-lo amb un gest, fins i tot sense connexió.",
@@ -166,6 +167,7 @@
   "sheet_go_there_no_eta": "Anar-hi",
   "sheet_per_litre": "{fuel} / L",
   "sheet_price_per_litre_delta": "{sign}{amount} €/L",
+  "sheet_locating": "S'està cercant la teva posició…",
   "sheet_loading": "S'estan cercant benzineres al teu voltant…",
   "sheet_fuel_not_sold": "Cap benzinera no ven {fuel} en aquesta zona.",
   "sheet_sold_here": "Es ven aquí:",
@@ -463,6 +465,7 @@
   "settings_geo_denied": "denegada per a aquest lloc",
   "settings_geo_unavailable": "no disponible en aquest dispositiu",
   "settings_geo_pending": "no sol·licitada",
+  "settings_geo_locating": "s'està cercant…",
   "settings_geo_enable": "Activa",
   "settings_location_hint": "Sense ubicació, el mapa s'obre a l'última zona consultada (Toulouse per defecte). Si l'avís ja no apareix, permet la ubicació per a aquest lloc a la configuració del navegador.",
   "settings_appearance_section": "Aparença",
