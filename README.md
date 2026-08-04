@@ -138,6 +138,14 @@ In an environment without direct internet access (sandbox, corporate proxy),
 the Vite dev server proxies the APIs (`/proxy/*`) and the tiles (`/tiles/*`)
 honoring `HTTPS_PROXY` — see `vite.config.ts`.
 
+## 🤝 Contributing
+
+Bug reports, translations and pull requests are welcome —
+[CONTRIBUTING.md](CONTRIBUTING.md) covers the setup, the house rules and the
+tests. When reporting a bug, paste the debug snapshot: Settings › Offline data
+› Debug overlay, then the floating **DBG** chip → **Report**, which copies it
+and opens the form.
+
 ## 📄 License
 
 Code under the [MIT](LICENSE) license © Zadkiel Aharonian.

@@ -147,6 +147,15 @@ servidor de desenvolupament de Vite fa de proxy per a les APIs (`/proxy/*`) i
 les tessel·les (`/tiles/*`) respectant `HTTPS_PROXY` — vegeu
 `vite.config.ts`.
 
+## 🤝 Contribuir
+
+Els informes d'errors, les traduccions i les pull requests són benvinguts —
+[CONTRIBUTING.md](CONTRIBUTING.md) (en anglès) explica la instal·lació, les
+regles de la casa i les proves. Per informar d'un error, enganxeu la
+instantània de depuració: Configuració › Dades sense connexió › Superposició de
+depuració, i després la pastilla flotant **DBG** → **Report**, que la copia i
+obre el formulari.
+
 ## 📄 Llicència
 
 Codi sota llicència [MIT](LICENSE) © Zadkiel Aharonian.

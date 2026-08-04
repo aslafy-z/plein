@@ -145,6 +145,14 @@ Em ambientes sem acesso direto à internet (sandbox, proxy empresarial), o
 servidor de desenvolvimento do Vite faz proxy das APIs (`/proxy/*`) e dos
 mosaicos (`/tiles/*`) respeitando `HTTPS_PROXY` — ver `vite.config.ts`.
 
+## 🤝 Contribuir
+
+Relatos de erros, traduções e pull requests são bem-vindos —
+[CONTRIBUTING.md](CONTRIBUTING.md) (em inglês) explica a instalação, as regras
+da casa e os testes. Para comunicar um erro, cole o instantâneo de depuração:
+Definições › Dados offline › Sobreposição de depuração, depois a pastilha
+flutuante **DBG** → **Report**, que o copia e abre o formulário.
+
 ## 📄 Licença
 
 Código sob licença [MIT](LICENSE) © Zadkiel Aharonian.

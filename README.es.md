@@ -145,6 +145,15 @@ En entornos sin acceso directo a internet (sandbox, proxy corporativo), el
 servidor de desarrollo de Vite hace de proxy para las APIs (`/proxy/*`) y las
 teselas (`/tiles/*`) respetando `HTTPS_PROXY` — ver `vite.config.ts`.
 
+## 🤝 Contribuir
+
+Informes de errores, traducciones y pull requests son bienvenidos —
+[CONTRIBUTING.md](CONTRIBUTING.md) (en inglés) explica la instalación, las
+reglas de la casa y las pruebas. Para informar de un error, pega la instantánea
+de depuración: Ajustes › Datos sin conexión › Superposición de depuración, y
+luego la pastilla flotante **DBG** → **Report**, que la copia y abre el
+formulario.
+
 ## 📄 Licencia
 
 Código bajo licencia [MIT](LICENSE) © Zadkiel Aharonian.

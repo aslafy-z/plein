@@ -142,6 +142,14 @@ En environnement sans accès internet direct (sandbox, proxy d'entreprise), le
 dev server Vite proxifie les APIs (`/proxy/*`) et les tuiles (`/tiles/*`) en
 respectant `HTTPS_PROXY` — voir `vite.config.ts`.
 
+## 🤝 Contribuer
+
+Signalements, traductions et pull requests sont les bienvenus —
+[CONTRIBUTING.md](CONTRIBUTING.md) (en anglais) détaille l'installation, les
+règles de la maison et les tests. Pour signaler un bug, collez le snapshot de
+débogage : Réglages › Données hors ligne › Overlay de débogage, puis la
+pastille flottante **DBG** → **Report**, qui le copie et ouvre le formulaire.
+
 ## 📄 Licence
 
 Code sous licence [MIT](LICENSE) © Zadkiel Aharonian.
