@@ -82,6 +82,8 @@ async function loadMessages(locale) {
     'route_from_placeholder',
     'route_to_placeholder',
     'ribbon_recommended_stop',
+    'ribbon_plan_stop_index',
+    'route_sheet_expand_aria',
     'map_route_aria',
   ];
   const msg = {};
@@ -291,8 +293,23 @@ async function shootLocale(browser, locale) {
       await pickPlace(msg.route_from_placeholder, msg.route_from_field_title, 'Toulouse');
       await pickPlace(msg.route_to_placeholder, msg.route_to_field_title, 'Nantes');
       // Picking the destination submits the trip by itself — no CTA click
-      // (route.spec.ts leans on the same behavior)
-      await page.getByText(msg.ribbon_recommended_stop).first().waitFor({ timeout: 60_000 });
+      // (route.spec.ts leans on the same behavior). A one-stop plan headlines
+      // « Recommended stop », a chained one « Stop 1/2 » — wait for either,
+      // with the stop counter's regex built from its own catalog string.
+      const reEscape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const stopCounter = reEscape(msg.ribbon_plan_stop_index)
+        .replaceAll('\\{index\\}', '\\d+')
+        .replaceAll('\\{count\\}', '\\d+');
+      const planLabel = new RegExp(`${reEscape(msg.ribbon_recommended_stop)}|${stopCounter}`);
+      await page.getByText(planLabel).first().waitFor({ timeout: 60_000 });
+      // Expand the sheet so the shot shows the plan's timeline rather than
+      // one collapsed row (openRouteSheet in e2e/fixtures.ts, same handle)
+      const expand = page.locator(`[aria-label="${msg.route_sheet_expand_aria}"]`);
+      if ((await expand.count()) > 0) {
+        await expand.click();
+        // the sheet's height transition (.3s)
+        await page.waitForTimeout(600);
+      }
       // The plan lands before the corridor's priced pins are drawn on the
       // route map — wait for at least one price bubble inside it, or the
       // shot shows a bare line between two endpoint dots.
