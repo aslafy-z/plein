@@ -23,9 +23,11 @@
 // (390 or 430 CSS px) lands one level further out and packs the price bubbles
 // of a dense centre on top of each other. PNGs are re-encoded losslessly
 // afterwards — Chromium's own encoder leaves roughly 45% on the table.
-// Usage: npm run build:screenshots [map] [station] [route] [en] [fr] [es] [ca] [pt]
+// Usage: npm run build:screenshots [map] [station] [route] [en] [fr] [es] [ca] [pt] [--headed]
 // Naming shots and/or locales regenerates only those — handy to refresh one
 // language's fiche without reshooting every map with the prices of another day.
+// --headed opens a visible browser window to watch the run navigate — the
+// captures are identical, it only helps to see where a selector goes wrong.
 import { spawn } from 'node:child_process';
 import { mkdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -54,7 +56,9 @@ const LOCALES = ['en', 'fr', 'es', 'ca', 'pt'];
 // Full BCP 47 tags for the browser context, so Intl formats match the catalog
 const CONTEXT_LOCALE = { en: 'en-US', fr: 'fr-FR', es: 'es-ES', ca: 'ca-ES', pt: 'pt-PT' };
 
-const asked = process.argv.slice(2);
+const argv = process.argv.slice(2);
+const headed = argv.includes('--headed');
+const asked = argv.filter((n) => n !== '--headed');
 const unknown = asked.filter((n) => !SHOTS.includes(n) && !LOCALES.includes(n));
 if (unknown.length) {
   throw new Error(
@@ -77,7 +81,6 @@ async function loadMessages(locale) {
     'route_to_field_title',
     'route_from_placeholder',
     'route_to_placeholder',
-    'route_compare_cta',
     'ribbon_recommended_stop',
   ];
   const msg = {};
@@ -286,7 +289,8 @@ async function shootLocale(browser, locale) {
       };
       await pickPlace(msg.route_from_placeholder, msg.route_from_field_title, 'Toulouse');
       await pickPlace(msg.route_to_placeholder, msg.route_to_field_title, 'Nantes');
-      await page.getByText(msg.route_compare_cta).click();
+      // Picking the destination submits the trip by itself — no CTA click
+      // (route.spec.ts leans on the same behavior)
       await page.getByText(msg.ribbon_recommended_stop).waitFor({ timeout: 60_000 });
       await page.waitForLoadState('networkidle').catch(() => {});
       await page.waitForTimeout(4000);
@@ -302,6 +306,7 @@ const server = await startServer();
 // browser build point at a system Chromium instead of downloading one.
 const browser = await chromium.launch({
   executablePath: process.env.PLEIN_CHROMIUM || undefined,
+  headless: !headed,
 });
 try {
   for (const locale of locales) {
