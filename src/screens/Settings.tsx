@@ -34,6 +34,7 @@ import { m } from '../paraglide/messages.js';
 import { HAS_NATIVE_MAPS } from '../lib/env';
 import { LogoLockup } from '../components/Logo';
 import { APP_VERSION, REPO_URL } from '../lib/appUpdate';
+import { bugReportUrl, environmentLines } from '../lib/issueReport';
 
 const SECTION_LABEL: React.CSSProperties = {
   fontSize: 12,
@@ -470,14 +471,9 @@ export default function Settings() {
   const otherPreset = VEHICLE_PRESETS[otherVehicle];
 
   // Diagnostic block the mail and the GitHub issue both arrive with — data,
-  // not copy, so it is assembled here in English rather than through the catalog
-  const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
-  const diagnostics = [
-    '—',
-    `version: ${APP_VERSION}`,
-    `platform: ${nav.userAgentData?.platform || nav.platform || 'unknown'}`,
-    `user agent: ${nav.userAgent}`,
-  ].join('\n');
+  // not copy, so it is assembled in English rather than through the catalog
+  const environment = environmentLines();
+  const diagnostics = `—\n${environment}`;
   // The message functions re-run on every render, so the prefilled mail
   // follows a locale switch without any extra wiring
   const feedbackHref = `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent(
@@ -495,7 +491,9 @@ export default function Settings() {
     {
       title: m.settings_feedback_github_title(),
       sub: m.settings_feedback_github_sub(),
-      href: `${REPO_URL}/issues/new?body=${encodeURIComponent(`\n\n${diagnostics}`)}`,
+      // The bug form rather than a blank issue: it is what asks for the debug
+      // overlay snapshot, and it arrives with the environment already filled in
+      href: bugReportUrl(environment),
       external: true,
     },
     {

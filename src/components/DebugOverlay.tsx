@@ -1,5 +1,5 @@
 // Developer/tester overlay — a window on the state the app already holds
-// (src/lib/debugSnapshot.ts), togglable from Settings › Developer or
+// (src/lib/debugSnapshot.ts), togglable from Settings › Offline data or
 // `?debug=1`, for the phone in the field where DevTools don't exist.
 //
 // Deliberately English-only: debug chrome, not user UI (see CLAUDE.md,
@@ -24,6 +24,7 @@ import {
   type AppDebugInput,
   type DebugSnapshot,
 } from '../lib/debugSnapshot';
+import { bugReportUrl } from '../lib/issueReport';
 import { selectVisible, useApp } from '../state/store';
 
 const Z_OVERLAY = 5000;
@@ -307,6 +308,18 @@ export default function DebugOverlay() {
     setTimeout(() => setCopied(false), 1500);
   };
 
+  // The whole reporting flow in one tap: the snapshot lands on the clipboard
+  // and the bug form opens next to it, waiting for the paste its « Debug
+  // overlay snapshot » field asks for. The snapshot is far too big to ride in
+  // the URL, so pasting is the transport — copying first is what makes it one
+  // gesture instead of three. Both calls are fired from the SAME task as the
+  // tap: an `await` before window.open would lose the user activation the
+  // popup blocker keys on.
+  const report = () => {
+    void copy();
+    window.open(bugReportUrl(), '_blank', 'noopener,noreferrer');
+  };
+
   // Dragging the open panel by its header. Buttons in the header keep their
   // taps; anywhere else on it grabs the panel.
   const onPanelPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -365,6 +378,7 @@ export default function DebugOverlay() {
     borderRadius: 12,
     padding: '6px 10px',
     cursor: 'pointer',
+    flexShrink: 0,
   };
 
   const node = expanded ? (
@@ -417,6 +431,10 @@ export default function DebugOverlay() {
             font: `700 12px ${FONT.mono}`,
             color: C.ink,
             flex: 1,
+            // Three buttons now share the header: the title is what gives way
+            // on a narrow phone, never the actions
+            minWidth: 0,
+            overflow: 'hidden',
             display: 'flex',
             alignItems: 'center',
             gap: 6,
@@ -437,6 +455,14 @@ export default function DebugOverlay() {
         </span>
         <button onClick={() => void copy()} disabled={!snapshot} style={buttonStyle}>
           {copied ? 'Copied ✓' : 'Copy JSON'}
+        </button>
+        <button
+          onClick={report}
+          disabled={!snapshot}
+          title="Copy the snapshot and open the bug form — paste it in"
+          style={buttonStyle}
+        >
+          Report
         </button>
         <button
           onClick={() => setExpanded(false)}

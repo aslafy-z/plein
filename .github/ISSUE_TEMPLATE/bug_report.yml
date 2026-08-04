@@ -1,0 +1,108 @@
+name: Bug report
+description: Something in the app misbehaves — a broken screen, prices that never load, a route that never lands
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. The single most useful thing you can attach is the **debug overlay snapshot** — the field near the bottom of this form explains where to copy it from. It answers most of the questions a maintainer would otherwise have to ask you.
+
+        Please write in English or French.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw, in one or two sentences.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: What you did, in order. Say whether it happens every time or only sometimes.
+      placeholder: |
+        1. Open the map around Toulouse
+        2. Drag the radius slider to 20 km
+        3. …
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where in the app
+      options:
+        - Map and zone list
+        - Station details
+        - Directions (route and fuel stops)
+        - Favorites
+        - Settings
+        - First run (location, onboarding)
+        - Offline data and caching
+        - Install or update (PWA)
+        - Somewhere else, or not sure
+    validations:
+      required: false
+
+  - type: dropdown
+    id: source
+    attributes:
+      label: Data source
+      description: The source picked in Settings › Data (Automatic if you never changed it).
+      options:
+        - Automatic
+        - France · prix-carburants.gouv.fr
+        - Spain · geoportalgasolineras.es
+        - Andorra · sig.govern.ad
+        - Portugal · precoscombustiveis.dgeg.gov.pt
+        - Not applicable
+    validations:
+      required: false
+
+  - type: textarea
+    id: debug
+    attributes:
+      label: Debug overlay snapshot
+      description: |
+        **Please paste it — this is what turns a report into a fix.**
+
+        In the app: **Settings › Offline data › Debug overlay** (or add `?debug=1` to the URL). A floating **DBG** chip appears — tap it, then hit **Copy JSON** in the panel header and paste the result below.
+
+        It carries the app version, the arrangement and viewport, the source and freshness of the prices on screen, the cached areas, the service-worker and storage state, the tile layer, and the recent console errors. Coordinates are rounded to a ~1 km grid, so it says which town you were in, never where you are.
+      render: json
+    validations:
+      required: false
+
+  - type: input
+    id: environment
+    attributes:
+      label: Version, platform and browser
+      description: Settings › Contact › Report an issue on GitHub prefills this for you. Otherwise, the version is at the bottom of Settings.
+      placeholder: 'version: 1a2b3c4 · platform: iOS · user agent: …'
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots or anything else
+      description: Drag images in. A screen recording beats a paragraph for anything about a gesture or an animation.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues and this is not a duplicate
+          required: true

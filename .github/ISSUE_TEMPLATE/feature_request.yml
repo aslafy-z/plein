@@ -1,0 +1,56 @@
+name: Feature request
+description: Suggest a feature, or an improvement to one that exists
+labels: ['enhancement']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please write in English or French.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that the app makes hard or impossible today? Describe the situation, not the solution.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like
+      description: The feature as you picture it. If it is a change to an existing screen, say which one and what it would look like afterwards.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where it belongs
+      options:
+        - Map and zone list
+        - Station details
+        - Directions (route and fuel stops)
+        - Favorites
+        - Settings
+        - Offline data and caching
+        - A new screen or a cross-cutting change
+        - Not sure
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+      description: Including what you do today to work around it.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues and this is not a duplicate
+          required: true
