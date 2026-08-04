@@ -226,7 +226,9 @@ export default function StationDetail() {
           ? m.detail_source_ad()
           : stationSource === 'pt'
             ? 'precoscombustiveis.dgeg.gov.pt'
-            : null;
+            : stationSource === 'de'
+              ? 'tankerkoenig.de (MTS-K)'
+              : null;
   const footerText = sourceName
     ? m.detail_footer_source({ ago, source: sourceName })
     : m.detail_footer_demo({ ago });

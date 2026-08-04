@@ -124,7 +124,27 @@ const API_UPSTREAMS: Record<string, string> = {
   cartociudad: 'https://www.cartociudad.es',
   ad: 'https://sig.govern.ad',
   pt: 'https://precoscombustiveis.dgeg.gov.pt',
+  de: 'https://creativecommons.tankerkoenig.de',
   photon: 'https://photon.komoot.io',
+}
+
+/** What the app itself calls, on its own origin — no upstream file extension */
+const DE_STATIONS_PATH = '/stations'
+/** …and what Tankerkönig actually serves it from, never seen by the browser */
+const DE_UPSTREAM_PATH = '/json/list.php'
+
+// ── German source availability ────────────────────────────────────────────────
+// The German prices need a key-holding proxy (above in dev, worker/index.ts in
+// production), which not every deployment runs. This resolves ITS base path —
+// stamped into the bundle as `__DE_PROXY__` — so an unconfigured build greys
+// the source out instead of firing requests that can only 503:
+//   • PLEIN_DE_PROXY names it explicitly (the Worker serves `/api/de`);
+//   • otherwise `npm run dev` derives it from the key the middleware needs;
+//   • otherwise there is none.
+function deProxyBase(dev: boolean): string | null {
+  if (process.env.PLEIN_DE_PROXY) return process.env.PLEIN_DE_PROXY
+  if (dev && process.env.TANKERKOENIG_API_KEY) return '/proxy/de'
+  return null
 }
 
 function fetchJson(url: string): Promise<{ status: number; body: string }> {
@@ -151,13 +171,38 @@ function fetchJson(url: string): Promise<{ status: number; body: string }> {
 }
 
 function apiHandler(req: IncomingMessage, res: ServerResponse): void {
-  const m = (req.url ?? '').match(/^\/(fr|ban|osrm|valhalla|es|cartociudad|ad|pt|photon)(\/.*)$/)
+  const m = (req.url ?? '').match(/^\/(fr|ban|osrm|valhalla|es|cartociudad|ad|pt|de|photon)(\/.*)$/)
   if (!m) {
     res.statusCode = 404
     res.end()
     return
   }
-  fetchJson(`${API_UPSTREAMS[m[1]]}${m[2]}`)
+  let path = m[2]
+  if (m[1] === 'de') {
+    // The app's own route is `/proxy/de/stations`; that upstream serves it
+    // from a PHP endpoint is upstream's business and stays behind the proxy.
+    // Checked before the key, so an unknown path is a 404 either way.
+    const q = path.indexOf('?')
+    if ((q === -1 ? path : path.slice(0, q)) !== DE_STATIONS_PATH) {
+      res.statusCode = 404
+      res.end()
+      return
+    }
+    // Tankerkönig needs a PERSONAL API key (free, tankerkoenig.de) that must
+    // never be committed nor bundled: the dev server injects it from the
+    // environment, mirroring the production Worker (worker/index.ts).
+    const key = process.env.TANKERKOENIG_API_KEY
+    if (!key) {
+      res.statusCode = 503
+      res.setHeader('Content-Type', 'application/json; charset=utf-8')
+      res.end('{"ok":false,"message":"TANKERKOENIG_API_KEY not set in the dev environment"}')
+      return
+    }
+    const params = new URLSearchParams(q === -1 ? '' : path.slice(q + 1))
+    params.set('apikey', key)
+    path = `${DE_UPSTREAM_PATH}?${params.toString()}`
+  }
+  fetchJson(`${API_UPSTREAMS[m[1]]}${path}`)
     .then(({ status, body }) => {
       res.statusCode = status
       res.setHeader('Content-Type', 'application/json; charset=utf-8')
@@ -206,14 +251,15 @@ const paraglide = () =>
     strategy: ['custom-appSettings', 'preferredLanguage', 'baseLocale'],
   })
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [paraglide(), react(), devProxies(), versionStamp(APP_VERSION), cloudflare()],
   define: {
     __APP_VERSION__: JSON.stringify(APP_VERSION),
     __REPO_URL__: JSON.stringify(repoUrl()),
+    __DE_PROXY__: JSON.stringify(deProxyBase(command === 'serve')),
   },
   server: {
     host: true,
     port: 5173,
   },
-})
+}))

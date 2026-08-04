@@ -8,6 +8,13 @@
 # Required repository secrets:
 #   CLOUDFLARE_API_TOKEN   — API token with the "Edit Cloudflare Workers" template
 #   CLOUDFLARE_ACCOUNT_ID  — Cloudflare account id (dashboard → Workers & Pages)
+# Optional, to enable the German source (both halves are needed):
+#   1. wrangler secret put TANKERKOENIG_API_KEY — personal tankerkoenig.de key,
+#      held server-side by worker/index.ts and never sent to the browser;
+#   2. repository variable PLEIN_DE_PROXY=/api/de — the route the Worker
+#      serves, passed to the build so the bundle knows the source can answer.
+#   Without them the German source ships switched off: greyed out in the
+#   settings, skipped by « Automatic », German place search disabled.
 #
 # Actions are pinned by commit SHA (tag in comment).
 name: Deploy
@@ -41,6 +48,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+        env:
+          # Empty unless the repository variable is set — and empty means the
+          # German source ships switched off (see the header).
+          PLEIN_DE_PROXY: ${{ vars.PLEIN_DE_PROXY }}
       - name: Deploy to production
         uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
         with:
@@ -66,6 +77,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+        env:
+          # Empty unless the repository variable is set — and empty means the
+          # German source ships switched off (see the header).
+          PLEIN_DE_PROXY: ${{ vars.PLEIN_DE_PROXY }}
       - name: Upload preview version
         id: preview
         uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0

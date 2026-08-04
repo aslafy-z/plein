@@ -5,8 +5,8 @@
 # Plein.
 
 **Le plein au juste prix** — trouvez les stations-service les moins chères
-autour de vous et le long de vos trajets, en France, en Espagne, en Andorre et
-au Portugal.
+autour de vous et le long de vos trajets, en France, en Espagne, en Andorre,
+au Portugal et en Allemagne.
 
 [English](README.md) · **Français** · [Español](README.es.md) · [Català](README.ca.md) · [Português](README.pt.md)
 
@@ -14,7 +14,7 @@ au Portugal.
 
 [![Licence MIT](https://img.shields.io/badge/licence-MIT-3ddc84?labelColor=0f1a14)](LICENSE)
 [![PWA](https://img.shields.io/badge/PWA-installable-3ddc84?labelColor=0f1a14)](#-utilisation)
-[![Données](https://img.shields.io/badge/donn%C3%A9es-%F0%9F%87%AB%F0%9F%87%B7%20France%20%C2%B7%20%F0%9F%87%AA%F0%9F%87%B8%20Espagne%20%C2%B7%20%F0%9F%87%A6%F0%9F%87%A9%20Andorre%20%C2%B7%20%F0%9F%87%B5%F0%9F%87%B9%20Portugal-blue?labelColor=0f1a14)](#-sources-de-données)
+[![Données](https://img.shields.io/badge/donn%C3%A9es-%F0%9F%87%AB%F0%9F%87%B7%20France%20%C2%B7%20%F0%9F%87%AA%F0%9F%87%B8%20Espagne%20%C2%B7%20%F0%9F%87%A6%F0%9F%87%A9%20Andorre%20%C2%B7%20%F0%9F%87%B5%F0%9F%87%B9%20Portugal%20%C2%B7%20%F0%9F%87%A9%F0%9F%87%AA%20Allemagne-blue?labelColor=0f1a14)](#-sources-de-données)
 [![React 18](https://img.shields.io/badge/React-18-61dafb?labelColor=0f1a14&logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?labelColor=0f1a14&logo=typescript)](https://www.typescriptlang.org)
 [![Leaflet](https://img.shields.io/badge/Leaflet-1.9-199900?labelColor=0f1a14)](https://leafletjs.com)
@@ -31,9 +31,9 @@ au Portugal.
 
 - 🗺️ **Carte des prix en direct** — les stations autour de vous, prix en pin
   colorés selon le prix : bons plans en vert, les plus chères en orange.
-- 🇫🇷🇪🇸🇦🇩🇵🇹 **Quatre pays sur une carte** — les flux officiels de la France,
-  de l'Espagne, de l'Andorre et du Portugal combinés ; les pleins frontaliers
-  se comparent d'un coup d'œil.
+- 🇫🇷🇪🇸🇦🇩🇵🇹🇩🇪 **Cinq pays sur une carte** — les flux officiels de la France,
+  de l'Espagne, de l'Andorre, du Portugal et de l'Allemagne combinés ; les
+  pleins frontaliers se comparent d'un coup d'œil.
 - 📋 **Meilleur choix réel** — le carburant brûlé pour le détour est compté :
   une station plus proche peut battre la moins chère.
 - 🛣️ **Plan carburant du trajet** — où s'arrêter le long du parcours, combien
@@ -60,7 +60,7 @@ au Portugal.
 
 1. Ouvrez **[plein.zadkiel.fr](https://plein.zadkiel.fr)** (le déploiement officiel).
 2. Autorisez la géolocalisation — ou continuez sans, et cherchez une ville, en
-   France, en Espagne, en Andorre ou au Portugal. La recherche retient les lieux
+   France, en Espagne, en Andorre, au Portugal ou en Allemagne. La recherche retient les lieux
    que vous y avez choisis : elle les propose dès son ouverture et les remonte
    en tête des suggestions dès que vous tapez.
 3. Choisissez votre carburant en haut de la carte : le meilleur choix (prix ET
@@ -77,7 +77,7 @@ Aucun compte, aucun tracker : vos favoris et réglages restent dans votre naviga
 
 Chaque pays couvert a ses propres flux officiels — prix et géocodage — que
 l'app choisit selon la zone affichée (source *Automatique*). Le reste
-(itinéraires, fonds de carte) est commun aux quatre.
+(itinéraires, fonds de carte) est commun aux cinq.
 
 ### 🇫🇷 France
 
@@ -108,7 +108,14 @@ l'app choisit selon la zone affichée (source *Automatique*). Le reste
 | Prix des carburants & enseignes | [Preços dos combustíveis](https://precoscombustiveis.dgeg.gov.pt) (DGEG — Direção-Geral de Energia e Geologia) — l'enseigne (*marca*) est portée par le flux, qui ne donne ni horaires ni E10 ; couverture continentale (les Açores et Madère ont leur propre régime) | Dados abertos |
 | Géocodage & autocomplétion | [Photon](https://photon.komoot.io) (instance publique Komoot, index OpenStreetMap), borné au Portugal continental — le pays ne publie pas de géocodeur d'adresses sans clé | ODbL |
 
-### Communs aux quatre pays
+### 🇩🇪 Allemagne
+
+| Donnée | Source | Licence |
+| --- | --- | --- |
+| Prix des carburants & enseignes | [Tankerkönig](https://creativecommons.tankerkoenig.de) (relais ouvert du flux officiel MTS-K — Markttransparenzstelle für Kraftstoffe, Bundeskartellamt) — l'enseigne est portée par le flux, qui ne donne ni services ni horaires hebdomadaires ; une clé API personnelle est requise et reste côté serveur (voir [Développement](#%EF%B8%8F-développement)) | CC BY 4.0 |
+| Géocodage & autocomplétion | [Photon](https://photon.komoot.io) (instance publique Komoot, index OpenStreetMap), borné à l'Allemagne — les géocodeurs officiels du BKG exigent une inscription | ODbL |
+
+### Communs aux cinq pays
 
 | Donnée | Source | Licence |
 | --- | --- | --- |
@@ -116,9 +123,12 @@ l'app choisit selon la zone affichée (source *Automatique*). Le reste
 | Fonds de carte | [CARTO](https://carto.com/attributions) clair / sombre selon le thème (tuiles OpenStreetMap en secours hors-ligne) | © contributeurs [OpenStreetMap](https://www.openstreetmap.org/copyright) |
 
 L'app n'a **aucun backend** : le navigateur interroge directement ces services
-publics. Les sources sont pluggables (`src/data/types.ts`). Hors connexion ou
-flux indisponible, l'app garde les dernières stations chargées (cache par
-zone) avec une bannière explicite et réessaie dès que la connexion revient.
+publics. Seule exception, la source allemande — Tankerkönig exige une clé API
+personnelle qui ne doit jamais atteindre le client, alors le Worker qui sert
+l'app la proxifie (`worker/index.ts`). Les sources sont pluggables
+(`src/data/types.ts`). Hors connexion ou flux indisponible, l'app garde les
+dernières stations chargées (cache par zone) avec une bannière explicite et
+réessaie dès que la connexion revient.
 
 ## 🛠️ Développement
 
@@ -130,7 +140,7 @@ npm install
 npm run dev          # http://localhost:5173
 npm run build        # build de production (dist/)
 npm run e2e          # E2E Playwright : parcourt tous les écrans
-npm run verify:live  # vérifie les providers réels (France, Espagne, Andorre, Portugal, géocodeurs, OSRM) contre les vrais endpoints
+npm run verify:live  # vérifie les providers réels (France, Espagne, Andorre, Portugal, Allemagne, géocodeurs, OSRM) contre les vrais endpoints
 npm run deploy       # build + wrangler deploy
 ```
 
@@ -142,13 +152,31 @@ En environnement sans accès internet direct (sandbox, proxy d'entreprise), le
 dev server Vite proxifie les APIs (`/proxy/*`) et les tuiles (`/tiles/*`) en
 respectant `HTTPS_PROXY` — voir `vite.config.ts`.
 
+La source allemande (Tankerkönig) demande une **clé API personnelle** —
+gratuite, sur [tankerkoenig.de](https://creativecommons.tankerkoenig.de). Les
+CGU interdisent de publier une clé (repo, bundle…) : elle ne transite donc
+jamais par le client — le navigateur n'appelle que la route `/stations` de
+l'app, et c'est un proxy détenant la clé qui parle à l'API amont.
+
+En dev, exportez `TANKERKOENIG_API_KEY` avant `npm run dev` et le middleware
+Vite devient ce proxy. En production, stockez la clé en secret Worker —
+`wrangler secret put TANKERKOENIG_API_KEY` — et compilez avec
+`PLEIN_DE_PROXY=/api/de`, la route que sert `worker/index.ts` (cache edge de
+~5 min).
+
+**Sans cette variable de build, la source allemande est tout simplement
+coupée** : elle est grisée dans les réglages, *Automatique* ne l'interroge
+jamais et la recherche de lieux allemands est désactivée — plutôt que de
+lancer des requêtes qui ne peuvent qu'échouer.
+
 ## 📄 Licence
 
 Code sous licence [MIT](LICENSE) © Zadkiel Aharonian.
 Les données affichées restent soumises aux licences de leurs producteurs
 respectifs (Licence Ouverte pour les données publiques françaises, datos
 abiertos du MITECO pour les prix espagnols, © Govern d'Andorra pour l'Andorre,
-dados abertos de la DGEG pour les prix portugais, ODbL pour OpenStreetMap).
+dados abertos de la DGEG pour les prix portugais, CC BY 4.0 pour les prix
+allemands — Tankerkönig / MTS-K, ODbL pour OpenStreetMap).
 Les polices **Archivo** et **Spline Sans Mono**, embarquées dans
 `public/fonts/`, sont sous [SIL Open Font License 1.1](public/fonts/) (voir les
 fichiers `*-OFL.txt` du même dossier).

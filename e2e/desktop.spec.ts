@@ -92,7 +92,7 @@ test('the filters are a popover: Escape and a click outside both close it', asyn
   await adBlue.click()
   await expect(adBlue).toHaveAttribute('aria-pressed', 'true')
   await expect(
-    dialog.getByText(/French and Portuguese stations stay listed/),
+    dialog.getByText(/French, Portuguese and German stations stay listed/),
   ).toBeVisible()
   await adBlue.click()
 

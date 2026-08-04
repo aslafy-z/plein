@@ -63,7 +63,7 @@ test('the AdBlue filter narrows the zone and survives a reload', async ({ page }
   // Only TotalEnergies · Centre and BP · Rocade Est dispense it
   await expect(page.getByText('Show 2 stations')).toBeVisible()
   // …and the caveat about the sources that publish nothing is on screen
-  await expect(page.getByText(/French and Portuguese stations stay listed/)).toBeVisible()
+  await expect(page.getByText(/French, Portuguese and German stations stay listed/)).toBeVisible()
   await page.getByText('Show 2 stations').click()
   await expect(page.getByText('Filters · 2')).toBeVisible()
 

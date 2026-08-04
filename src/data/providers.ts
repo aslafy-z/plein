@@ -10,6 +10,8 @@ import { AdStationsProvider } from './ad/AdStationsProvider';
 import { AdGeocodeProvider } from './ad/AdGeocodeProvider';
 import { PtStationsProvider } from './pt/PtStationsProvider';
 import { PhotonGeocodeProvider } from './pt/PhotonGeocodeProvider';
+import { DeStationsProvider, deAvailable } from './de/DeStationsProvider';
+import { DePhotonGeocodeProvider } from './de/DePhotonGeocodeProvider';
 import { AutoGeocodeProvider, AutoStationsProvider } from './auto/AutoProviders';
 import {
   DemoGeocodeProvider,
@@ -58,11 +60,30 @@ function createBundle(id: DataSourceId): ProviderBundle {
       route: new RealRouteProvider(),
     };
   }
+  if (id === 'de') {
+    return {
+      stations: new DeStationsProvider(),
+      geocode: new DePhotonGeocodeProvider(),
+      // OSRM / Valhalla public servers cover Germany too
+      route: new RealRouteProvider(),
+    };
+  }
   return {
     stations: new DemoStationsProvider(),
     geocode: new DemoGeocodeProvider(),
     route: new DemoRouteProvider(),
   };
+}
+
+/**
+ * Can this build offer the source at all? Everything but Germany is keyless
+ * public data and always answerable; the German flux needs a proxy holding a
+ * personal key, which not every deployment runs. Settings greys the row out
+ * on false and the store refuses to restore it — one answer, so the list and
+ * the persisted choice cannot disagree.
+ */
+export function isSourceAvailable(id: DataSourceId): boolean {
+  return id === 'de' ? deAvailable() : true;
 }
 
 /** Memoized singleton bundle for a data source. */

@@ -1,12 +1,13 @@
 // ── Station ids ──────────────────────────────────────────────────────────────
 // Every station id carries the country that issued it — `fr-31000009`,
-// `es-1234`, `ad-42`, `pt-67360` — so a mixed « Automatic » list stays
-// attributable (source footer, SP95-for-E10 substitution) without asking the
-// provider. Demo ids ('su', 'r-a62'…) are deliberately outside that scheme.
+// `es-1234`, `ad-42`, `pt-67360`, `de-51d4b6a...` — so a mixed « Automatic »
+// list stays attributable (source footer, SP95-for-E10 substitution) without
+// asking the provider. Demo ids ('su', 'r-a62'…) are deliberately outside
+// that scheme.
 
-export type StationCountry = 'fr' | 'es' | 'ad' | 'pt';
+export type StationCountry = 'fr' | 'es' | 'ad' | 'pt' | 'de';
 
-const PREFIXES: StationCountry[] = ['fr', 'es', 'ad', 'pt'];
+const PREFIXES: StationCountry[] = ['fr', 'es', 'ad', 'pt', 'de'];
 
 /** Country that issued the id, or null for ids outside the scheme (demo) */
 export function stationCountry(id: string): StationCountry | null {

@@ -71,9 +71,9 @@ export function brandGroupLabel(group: string): string {
 /**
  * Where a search result is, in one line. Most sources spell it out themselves
  * — « Gironde », « Girona » — and that proper noun passes straight through.
- * Andorra's returns the parish alone and Portugal's an OSM district, so the
- * app names the country, and it has to follow a language switch like any
- * other sentence.
+ * Andorra's returns the parish alone and Portugal's and Germany's an OSM
+ * district, so the app names the country, and it has to follow a language
+ * switch like any other sentence.
  */
 export function placeSublabel(place: GeocodeResult): string {
   switch (place.country) {
@@ -83,6 +83,10 @@ export function placeSublabel(place: GeocodeResult): string {
       return place.sublabel
         ? m.place_portugal_district({ district: place.sublabel })
         : m.place_portugal();
+    case 'de':
+      return place.sublabel
+        ? m.place_germany_district({ district: place.sublabel })
+        : m.place_germany();
     default:
       return place.sublabel;
   }
@@ -178,6 +182,8 @@ export function sourceTitle(id: DataSourceId): string {
       return m.source_ad_title();
     case 'pt':
       return m.source_pt_title();
+    case 'de':
+      return m.source_de_title();
     case 'demo':
       return m.source_demo_title();
   }
@@ -195,6 +201,8 @@ export function sourceSublabel(id: DataSourceId): string {
       return m.source_ad_sub();
     case 'pt':
       return m.source_pt_sub();
+    case 'de':
+      return m.source_de_sub();
     case 'demo':
       return m.source_demo_sub();
   }
