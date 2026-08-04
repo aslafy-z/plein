@@ -14,14 +14,14 @@ const BRIDGE = { lat: 43.6247, lng: 1.4442 }
 
 test.use({
   seed: {
-    sourceId: 'fra',
+    sourceId: 'fr',
     onboarded: true,
     geoGranted: true,
     radius: 25,
     lastPos: TOULOUSE,
     favorites: [
       {
-        id: 'fra-e2e-bridge',
+        id: 'fr-e2e-bridge',
         name: 'Rivegauche',
         init: 'RI',
         city: 'Rivegauche',
@@ -65,7 +65,7 @@ test.beforeEach(async ({ page }) => {
   // Fixed coordinates, whatever area is asked for: the same stations stay
   // loaded when the user jumps to Lyon, which is what leaves them all outside
   // the routing radius while their ids still carry road measurements.
-  await page.route('**/proxy/fra/**', (route) =>
+  await page.route('**/proxy/fr/**', (route) =>
     route.fulfill({
       json: {
         total_count: 3,
@@ -95,7 +95,7 @@ test.beforeEach(async ({ page }) => {
       },
     }),
   )
-  await page.route('**/brands-fra.json', (route) =>
+  await page.route('**/brands-fr.json', (route) =>
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
   // Targets are requested nearest-crow-flies first: Fillerville, Rivegauche,

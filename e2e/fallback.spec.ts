@@ -5,7 +5,7 @@ import { test, expect, gotoMap } from './fixtures'
 // map honest: an explicit notice, a retry, and never a silent switch to the
 // demo dataset. Offline, previously loaded stations stay on screen.
 
-test.use({ seed: { sourceId: 'fra', onboarded: true } })
+test.use({ seed: { sourceId: 'fr', onboarded: true } })
 
 const SOURCE_DOWN = 'Live source unavailable — the prices shown may be out of date.'
 const OFFLINE = 'Offline — the prices shown may be out of date.'
@@ -45,13 +45,13 @@ async function drag(page: import('@playwright/test').Page, dx: number, dy: numbe
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/brands-fra.json', (route) =>
+  await page.route('**/brands-fr.json', (route) =>
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
 })
 
 test('a dead gouv source shows the source-down state, never demo data', async ({ page }) => {
-  await page.route('**/proxy/fra/**', (route) => route.abort())
+  await page.route('**/proxy/fr/**', (route) => route.abort())
   await page.goto('/')
 
   // The banner owns up and offers a retry
@@ -75,7 +75,7 @@ test('a dead gouv source shows the source-down state, never demo data', async ({
 
 test('retry loads the real source once it answers again', async ({ page }) => {
   let dead = true
-  await page.route('**/proxy/fra/**', (route) => (dead ? route.abort() : fulfillStations(route)))
+  await page.route('**/proxy/fr/**', (route) => (dead ? route.abort() : fulfillStations(route)))
   await page.goto('/')
   await expect(page.getByText(SOURCE_DOWN)).toBeVisible({ timeout: 30_000 })
 
@@ -88,13 +88,13 @@ test('retry loads the real source once it answers again', async ({ page }) => {
 })
 
 test('going offline keeps the loaded stations and never resets the card', async ({ page }) => {
-  await page.route('**/proxy/fra/**', fulfillStations)
+  await page.route('**/proxy/fr/**', fulfillStations)
   await gotoMap(page)
 
   // Cut the network: interception now aborts, and the browser knows it is
   // offline (which labels the notice and gates the auto-retry).
-  await page.unroute('**/proxy/fra/**')
-  await page.route('**/proxy/fra/**', (route) => route.abort())
+  await page.unroute('**/proxy/fr/**')
+  await page.route('**/proxy/fr/**', (route) => route.abort())
   await page.context().setOffline(true)
 
   // Drag beyond the fetched 25 km area until an attempt fails
@@ -116,8 +116,8 @@ test('going offline keeps the loaded stations and never resets the card', async 
   await expect(banner).toBeVisible()
 
   // Connectivity back → the store revalidates on its own, the notice clears
-  await page.unroute('**/proxy/fra/**')
-  await page.route('**/proxy/fra/**', fulfillStations)
+  await page.unroute('**/proxy/fr/**')
+  await page.route('**/proxy/fr/**', fulfillStations)
   await page.context().setOffline(false)
   await expect(page.getByText(OFFLINE)).toHaveCount(0, { timeout: 20_000 })
 })

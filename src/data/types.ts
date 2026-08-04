@@ -193,7 +193,7 @@ export interface GeocodeResult {
    * Portuguese one an OSM district, so the country is the app's own word and
    * belongs to the catalog.
    */
-  country?: 'and' | 'prt';
+  country?: 'ad' | 'pt';
   kind: PlaceKind;
 }
 
@@ -256,7 +256,7 @@ export interface RouteProvider {
 }
 
 // ── Source selection ─────────────────────────────────────────────────────────
-export type DataSourceId = 'auto' | 'fra' | 'esp' | 'and' | 'prt' | 'demo';
+export type DataSourceId = 'auto' | 'fr' | 'es' | 'ad' | 'pt' | 'demo';
 
 export interface ProviderBundle {
   stations: StationsProvider;

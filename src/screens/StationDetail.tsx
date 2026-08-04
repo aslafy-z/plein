@@ -213,18 +213,18 @@ export default function StationDetail() {
 
   const activeSource = isRoute ? app.sourceId : app.stations.activeSource;
   // The auto source mixes countries — attribute per station (ids are prefixed)
-  const stationSource = activeSource === 'auto' ? (stationCountry(s.id) ?? 'fra') : activeSource;
+  const stationSource = activeSource === 'auto' ? (stationCountry(s.id) ?? 'fr') : activeSource;
   const ago = agoLabel(mostRecent);
   // The « auto » source mixes countries, so the credit names the flux that
   // actually served THIS station — never a domain hard-coded per screen.
   const sourceName =
-    stationSource === 'fra'
+    stationSource === 'fr'
       ? 'prix-carburants.gouv.fr'
-      : stationSource === 'esp'
+      : stationSource === 'es'
         ? 'geoportalgasolineras.es'
-        : stationSource === 'and'
-          ? m.detail_source_and()
-          : stationSource === 'prt'
+        : stationSource === 'ad'
+          ? m.detail_source_ad()
+          : stationSource === 'pt'
             ? 'precoscombustiveis.dgeg.gov.pt'
             : null;
   const footerText = sourceName

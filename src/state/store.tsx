@@ -587,7 +587,7 @@ function navFromPath(path: string): { screen: Screen; detailId: string | null } 
   }
   if (path.startsWith('/settings')) return { screen: 'settings', detailId: null };
   if (path.startsWith('/station/')) {
-    // Bookmarks predating the `fra-` prefix still carry a bare French id
+    // Bookmarks predating the `fr-` prefix still carry a bare French id
     const id = normalizeStationId(decodeURIComponent(path.slice('/station/'.length)));
     return { screen: 'detail', detailId: id };
   }
@@ -756,10 +756,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
   // Forced migration to « Automatic »: legacy persisted ids ('gouv' before
   // the country rename) and new installs land on 'auto'; only explicit choices
-  // of the current scheme survive.
+  // of the current scheme survive. The 3-letter country codes older builds
+  // persisted are already translated by persist.ts's migrate() before this.
   const [sourceId, setSourceIdState] = useState<DataSourceId>(() => {
     const saved = persisted.sourceId as string | undefined;
-    return saved === 'fra' || saved === 'esp' || saved === 'and' || saved === 'prt' || saved === 'demo'
+    return saved === 'fr' || saved === 'es' || saved === 'ad' || saved === 'pt' || saved === 'demo'
       ? saved
       : 'auto';
   });
@@ -797,7 +798,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       'geolocation' in navigator,
   );
 
-  // Favorites pinned before the `fra-` prefix hold bare French ids — migrate
+  // Favorites pinned before the `fr-` prefix hold bare French ids — migrate
   // them, or they would stop matching the stations we load (star, sort, fiche).
   const [favorites, setFavorites] = useState<FavoriteStation[]>(() =>
     (persisted.favorites ?? []).map((f) => ({ ...f, id: normalizeStationId(f.id) })),
@@ -1322,10 +1323,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (reqId !== favPricesReq.current) return;
     setFavoritePrices(Object.fromEntries(entries));
     if (navigator.onLine === false) return;
-    // A source that answers by exact id (fra) refreshes all its favorites in
+    // A source that answers by exact id (fr) refreshes all its favorites in
     // one request wherever they sit; the others fetch one circle per place.
     const byIdCountries = new Set(
-      (['fra', 'esp', 'and', 'prt'] as const).filter(
+      (['fr', 'es', 'ad', 'pt'] as const).filter(
         (country) => getProviders(country).stations.getStationsByIds != null,
       ),
     );
@@ -2213,7 +2214,7 @@ function cached<A extends (string | number)[], T>(
  * SP95-only engine must not be sent to an E10 pump, and French stations list
  * both fuels separately anyway.
  */
-const SP95_FOR_E10: ReadonlyArray<StationCountry> = ['esp', 'and', 'prt'];
+const SP95_FOR_E10: ReadonlyArray<StationCountry> = ['es', 'ad', 'pt'];
 
 export function effectiveFuel(s: Pick<Station, 'id' | 'prices'>, fuel: FuelId): FuelId | null {
   if (s.prices[fuel] != null) return fuel;
@@ -2374,7 +2375,7 @@ const selectEnriched = cached((app: AppStore): NearbyStation[] => {
  * the fixture speaks the app's own service ids, so the offline dataset answers
  * like a declaring source.
  */
-const ADBLUE_COUNTRIES: ReadonlyArray<StationCountry | null> = ['esp', 'and', null];
+const ADBLUE_COUNTRIES: ReadonlyArray<StationCountry | null> = ['es', 'ad', null];
 
 /** Can this station's source answer « does it sell AdBlue »? */
 export function answersAdBlue(s: Station): boolean {

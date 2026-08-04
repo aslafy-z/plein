@@ -33,7 +33,7 @@ const LEGACY_LS_KEYS = [
   'plein.stations.cache.v2',
   'plein.stations.cache.v3',
 ] as const;
-// Only the last generation is worth adopting. v1 predates the `fra-` id prefix
+// Only the last generation is worth adopting. v1 predates the `fr-` id prefix
 // and would paint stations that no longer match favorites or /station/<id>
 // links; v2 predates the `adBlue` tag, so a Spanish station that does sell it
 // would stay hidden behind the filter until the background refresh landed.
@@ -156,12 +156,19 @@ function estimateBytes(stations: Station[]): number {
   return chars * 2; // UTF-16
 }
 
+/** Sources this build reads and writes. An area recorded under any other id —
+ *  the 3-letter country codes older builds used, a corrupt record — could
+ *  never match a read again, so hydration sheds it instead of carrying its
+ *  payload for a week. */
+const KNOWN_SOURCES: readonly string[] = ['auto', 'fr', 'es', 'ad', 'pt', 'demo'];
+
 function isUsableMeta(value: unknown): value is AreaMeta {
   if (typeof value !== 'object' || value === null) return false;
   const meta = value as Partial<AreaMeta>;
   return (
     typeof meta.key === 'string' &&
     typeof meta.source === 'string' &&
+    KNOWN_SOURCES.includes(meta.source) &&
     typeof meta.fetchRadiusKm === 'number' &&
     typeof meta.fetchedAt === 'number' &&
     typeof meta.bytes === 'number' &&
@@ -320,6 +327,10 @@ function importLegacyBlob(): void {
         for (const entry of entries as LegacyEntry[]) {
           const { source, center, fetchRadiusKm, fetchedAt, stations } = entry;
           if (!source || !center || fetchRadiusKm == null || fetchedAt == null) continue;
+          // A blob written under the 3-letter country codes carries station
+          // ids of that generation too — dropped, not translated: it is a
+          // cache, and the area simply refetches under the current scheme.
+          if (!KNOWN_SOURCES.includes(source)) continue;
           if (!Array.isArray(stations)) continue;
           if (Date.now() - fetchedAt > MAX_CACHE_AGE_MS) continue;
           // Anything IndexedDB already holds for that place is at least as new

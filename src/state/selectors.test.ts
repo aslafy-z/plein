@@ -103,17 +103,17 @@ function app(over: Partial<AppStore> = {}): AppStore {
 // ── Fuel substitution ────────────────────────────────────────────────────────
 describe('effectiveFuel', () => {
   it('lets Spanish and Andorran SP95 stand in for E10, never the reverse', () => {
-    const esp = station({ id: 'esp-1', prices: { unleaded95: { value: 1.6 } } })
-    const and = station({ id: 'and-1', prices: { unleaded95: { value: 1.5 } } })
-    const fra = station({ id: 'fra-1', prices: { unleaded95: { value: 1.7 } } })
-    expect(effectiveFuel(esp, 'e10')).toBe('unleaded95')
-    expect(effectiveFuel(and, 'e10')).toBe('unleaded95')
+    const es = station({ id: 'es-1', prices: { unleaded95: { value: 1.6 } } })
+    const ad = station({ id: 'ad-1', prices: { unleaded95: { value: 1.5 } } })
+    const fr = station({ id: 'fr-1', prices: { unleaded95: { value: 1.7 } } })
+    expect(effectiveFuel(es, 'e10')).toBe('unleaded95')
+    expect(effectiveFuel(ad, 'e10')).toBe('unleaded95')
     // French stations list both fuels separately — no substitution
-    expect(effectiveFuel(fra, 'e10')).toBeNull()
+    expect(effectiveFuel(fr, 'e10')).toBeNull()
     // An SP95-only engine must not be sent to an E10 pump
-    const espE10 = station({ id: 'esp-2', prices: { e10: { value: 1.55 } } })
+    const espE10 = station({ id: 'es-2', prices: { e10: { value: 1.55 } } })
     expect(effectiveFuel(espE10, 'unleaded95')).toBeNull()
-    expect(effectivePrice(esp, 'e10')?.value).toBe(1.6)
+    expect(effectivePrice(es, 'e10')?.value).toBe(1.6)
   })
 })
 
@@ -121,9 +121,9 @@ describe('effectiveFuel', () => {
 describe('fuelRange', () => {
   it('compares E10 on the Spanish SP95 prices instead of coming back empty', () => {
     const zone = [
-      station({ id: 'esp-1', prices: { unleaded95: { value: 1.6 } } }),
-      station({ id: 'esp-2', prices: { unleaded95: { value: 1.75 } } }),
-      station({ id: 'esp-3', prices: { unleaded95: { value: 1.68 }, diesel: { value: 1.5 } } }),
+      station({ id: 'es-1', prices: { unleaded95: { value: 1.6 } } }),
+      station({ id: 'es-2', prices: { unleaded95: { value: 1.75 } } }),
+      station({ id: 'es-3', prices: { unleaded95: { value: 1.68 }, diesel: { value: 1.5 } } }),
     ]
     // Not one Spanish pump serves E10 — reading the raw prices left the fiche
     // with no maximum and a 0,00 € saving on every station
@@ -134,7 +134,7 @@ describe('fuelRange', () => {
   })
 
   it('holds a single-station range and nulls out a fuel nobody sells', () => {
-    const zone = [station({ id: 'fra-1', prices: diesel(1.82) })]
+    const zone = [station({ id: 'fr-1', prices: diesel(1.82) })]
     expect(fuelRange(zone, 'diesel')).toEqual({ min: 1.82, max: 1.82 })
     // No substitution towards SP95 in France — the E10 range stays empty
     expect(fuelRange(zone, 'e10')).toBeNull()
@@ -163,15 +163,15 @@ describe('selectVisible', () => {
   })
 
   it('keeps stations whose source never publishes AdBlue, drops those that declare none', () => {
-    // esp/and declare the products on sale; fra/prt never mention AdBlue, so
+    // es/ad declare the products on sale; fr/pt never mention AdBlue, so
     // their silence is « never asked », not « not sold ». Demo ids sit outside
     // the scheme and the fixture speaks the app's own ids, so they answer.
     const mixed = [
-      station({ id: 'esp-1', ...north(1), prices: diesel(1.7), tags: ['adBlue'] }),
-      station({ id: 'esp-2', ...north(1), prices: diesel(1.7) }),
-      station({ id: 'and-1', ...north(1), prices: diesel(1.7), tags: ['adBlue'] }),
-      station({ id: 'fra-1', ...north(1), prices: diesel(1.7) }),
-      station({ id: 'prt-1', ...north(1), prices: diesel(1.7) }),
+      station({ id: 'es-1', ...north(1), prices: diesel(1.7), tags: ['adBlue'] }),
+      station({ id: 'es-2', ...north(1), prices: diesel(1.7) }),
+      station({ id: 'ad-1', ...north(1), prices: diesel(1.7), tags: ['adBlue'] }),
+      station({ id: 'fr-1', ...north(1), prices: diesel(1.7) }),
+      station({ id: 'pt-1', ...north(1), prices: diesel(1.7) }),
       station({ id: 'demo1', ...north(1), prices: diesel(1.7) }),
     ]
     const base = app({
@@ -179,27 +179,27 @@ describe('selectVisible', () => {
     })
     expect(selectVisible(base).map((s) => s.id)).toHaveLength(6)
     expect(selectVisible(app({ ...base, serviceTags: { adBlue: true } })).map((s) => s.id)).toEqual([
-      'esp-1',
-      'and-1',
-      'fra-1',
-      'prt-1',
+      'es-1',
+      'ad-1',
+      'fr-1',
+      'pt-1',
     ])
   })
 
   it('composes AdBlue with the other tags, which stay strict', () => {
     const data = [
-      station({ id: 'esp-1', ...north(1), prices: diesel(1.7), tags: ['adBlue', 'carWash'] }),
-      station({ id: 'esp-2', ...north(1), prices: diesel(1.7), tags: ['adBlue'] }),
+      station({ id: 'es-1', ...north(1), prices: diesel(1.7), tags: ['adBlue', 'carWash'] }),
+      station({ id: 'es-2', ...north(1), prices: diesel(1.7), tags: ['adBlue'] }),
       // Unknown for AdBlue, but « Car wash » is a tag every source can answer
-      station({ id: 'fra-1', ...north(1), prices: diesel(1.7), tags: ['carWash'] }),
-      station({ id: 'fra-2', ...north(1), prices: diesel(1.7) }),
+      station({ id: 'fr-1', ...north(1), prices: diesel(1.7), tags: ['carWash'] }),
+      station({ id: 'fr-2', ...north(1), prices: diesel(1.7) }),
     ]
     const base = app({
       stations: { status: 'ready', data, activeSource: 'auto', refreshing: false },
     })
     expect(
       selectVisible(app({ ...base, serviceTags: { adBlue: true, carWash: true } })).map((s) => s.id),
-    ).toEqual(['esp-1', 'fra-1'])
+    ).toEqual(['es-1', 'fr-1'])
   })
 
   it('selectAdBlueAnswerable gates the chip on what is actually loaded', () => {
@@ -207,21 +207,21 @@ describe('selectVisible', () => {
       app({ stations: { status: 'ready', data, activeSource: 'auto', refreshing: false } })
     expect(selectAdBlueAnswerable(ready([]))).toBe(false)
     expect(
-      selectAdBlueAnswerable(ready([station({ id: 'fra-1' }), station({ id: 'prt-1' })])),
+      selectAdBlueAnswerable(ready([station({ id: 'fr-1' }), station({ id: 'pt-1' })])),
     ).toBe(false)
-    expect(selectAdBlueAnswerable(ready([station({ id: 'fra-1' }), station({ id: 'esp-1' })]))).toBe(
+    expect(selectAdBlueAnswerable(ready([station({ id: 'fr-1' }), station({ id: 'es-1' })]))).toBe(
       true,
     )
-    expect(selectAdBlueAnswerable(ready([station({ id: 'and-1' })]))).toBe(true)
+    expect(selectAdBlueAnswerable(ready([station({ id: 'ad-1' })]))).toBe(true)
     // Demo ids are outside the country scheme and the fixture does declare it
     expect(selectAdBlueAnswerable(ready([station({ id: 'su' })]))).toBe(true)
   })
 
   it('answersAdBlue reads the country out of the station id', () => {
-    expect(answersAdBlue(station({ id: 'esp-1' }))).toBe(true)
-    expect(answersAdBlue(station({ id: 'and-1' }))).toBe(true)
-    expect(answersAdBlue(station({ id: 'fra-1' }))).toBe(false)
-    expect(answersAdBlue(station({ id: 'prt-1' }))).toBe(false)
+    expect(answersAdBlue(station({ id: 'es-1' }))).toBe(true)
+    expect(answersAdBlue(station({ id: 'ad-1' }))).toBe(true)
+    expect(answersAdBlue(station({ id: 'fr-1' }))).toBe(false)
+    expect(answersAdBlue(station({ id: 'pt-1' }))).toBe(false)
     expect(answersAdBlue(station({ id: 'su' }))).toBe(true)
   })
 
@@ -277,8 +277,8 @@ describe('selectVisible', () => {
   })
 
   it('selectZoneFuels only names fuels the pumps actually serve (no SP95 fallback)', () => {
-    const esp = station({ id: 'esp-9', ...north(1), prices: { unleaded95: { value: 1.6 } } })
-    const a = app({ stations: { status: 'ready', data: [esp], activeSource: 'esp', refreshing: false } })
+    const es = station({ id: 'es-9', ...north(1), prices: { unleaded95: { value: 1.6 } } })
+    const a = app({ stations: { status: 'ready', data: [es], activeSource: 'es', refreshing: false } })
     expect(selectZoneFuels(a)).toEqual(['unleaded95'])
   })
 

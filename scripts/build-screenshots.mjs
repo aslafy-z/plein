@@ -67,21 +67,21 @@ const CONTEXT_LOCALE = { en: 'en-US', fr: 'fr-FR', es: 'es-ES', ca: 'ca-ES', pt:
 //
 // `station` pins the fiche when that station is in the loaded area — the
 // fiche has to have something to show, and tapping whatever is cheapest today
-// often lands on three fuels over half an empty screen. fra-31100010 is a
+// often lands on three fuels over half an empty screen. fr-31100010 is a
 // Total Access in Toulouse: GPLc on top of the usual pumps, nine services,
 // and an enseigne the mini-map has a logo for. Elsewhere (or should it ever
 // leave the flux) the richest loaded station stands in.
 const SCENES = {
   en: {
     center: { lat: 43.6047, lng: 1.4442 },
-    station: 'fra-31100010',
+    station: 'fr-31100010',
     from: { label: 'Toulouse', point: { lat: 43.6047, lng: 1.4442 } },
     to: { label: 'Lille', point: { lat: 50.6292, lng: 3.0573 } },
     startTankPct: 70,
   },
   fr: {
     center: { lat: 43.6047, lng: 1.4442 },
-    station: 'fra-31100010',
+    station: 'fr-31100010',
     from: { label: 'Toulouse', point: { lat: 43.6047, lng: 1.4442 } },
     to: { label: 'Lille', point: { lat: 50.6292, lng: 3.0573 } },
     startTankPct: 70,

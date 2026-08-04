@@ -85,6 +85,20 @@ const LEGACY_FUELS: Record<string, FuelId> = {
 
 const LEGACY_VEHICLES: Record<string, VehicleId> = { moto: 'motorcycle' };
 
+// Country codes used to be ISO 3166-1 alpha-3. The source choice and the
+// geocoder country tag on history entries are both persisted, so a blob from
+// that generation is mapped onto the 2-letter scheme on the way in — otherwise
+// an explicit source choice would silently fall back to « Automatic » and a
+// history row would lose its country line.
+const LEGACY_SOURCES: Record<string, DataSourceId> = {
+  fra: 'fr',
+  esp: 'es',
+  and: 'ad',
+  prt: 'pt',
+};
+
+const LEGACY_PLACE_COUNTRIES: Record<string, 'ad' | 'pt'> = { and: 'ad', prt: 'pt' };
+
 /** Canonical fuel id for a value coming from storage or a shared link */
 export function migrateFuelId(raw: unknown): FuelId | null {
   if (typeof raw !== 'string') return null;
@@ -173,6 +187,16 @@ function migrate(raw: Partial<PersistedSettings> & LegacySettings): Partial<Pers
   const serviceTags = migrateServiceTags(out.serviceTags);
   if (serviceTags) out.serviceTags = serviceTags;
   else delete out.serviceTags;
+  if (typeof out.sourceId === 'string' && LEGACY_SOURCES[out.sourceId]) {
+    out.sourceId = LEGACY_SOURCES[out.sourceId];
+  }
+  if (Array.isArray(out.searchHistory)) {
+    out.searchHistory = out.searchHistory.map((place) => {
+      const country =
+        typeof place?.country === 'string' ? LEGACY_PLACE_COUNTRIES[place.country] : undefined;
+      return country ? { ...place, country } : place;
+    });
+  }
   if (out.consumption == null && typeof out.conso === 'number') out.consumption = out.conso;
   if (out.recents != null) {
     out.searchHistory = foldRecentsIntoSearchHistory(out.recents, out.searchHistory ?? []);

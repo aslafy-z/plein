@@ -5,10 +5,10 @@ import { test, expect, gotoMap, openZoneList } from './fixtures'
 // the user 3 km farther for a difference they cannot see: at the same
 // displayed cent, the NEAREST station wins.
 
-test.use({ seed: { sourceId: 'fra', onboarded: true } })
+test.use({ seed: { sourceId: 'fr', onboarded: true } })
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/proxy/fra/**', async (route) => {
+  await page.route('**/proxy/fr/**', async (route) => {
     const where = new URL(route.request().url()).searchParams.get('where') ?? ''
     const m = /POINT\(([-\d.]+) ([-\d.]+)\)/.exec(where)
     const lng = m ? parseFloat(m[1]) : 1.44
@@ -41,7 +41,7 @@ test.beforeEach(async ({ page }) => {
     ]
     await route.fulfill({ json: { total_count: results.length, results } })
   })
-  await page.route('**/brands-fra.json', (route) =>
+  await page.route('**/brands-fr.json', (route) =>
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
   // No road matrix → the crow-flies distances this spec's numbers are built on

@@ -113,11 +113,11 @@ describe('stationsCache', () => {
     const store = spyStore();
     const { writeStationsCache, readStationsCache } = await freshCache(store);
 
-    writeStationsCache('fra', CENTER, 30, [station('a')], 1_000);
+    writeStationsCache('fr', CENTER, 30, [station('a')], 1_000);
 
     expect(store.puts).toBe(0);
     // The area is usable right away, without waiting for the flush
-    const hit = await readStationsCache('fra', CENTER, 5);
+    const hit = await readStationsCache('fr', CENTER, 5);
     expect(hit?.stations.map((s) => s.id)).toEqual(['a']);
     expect(hit?.covers).toBe(true);
   });
@@ -126,7 +126,7 @@ describe('stationsCache', () => {
     const store = spyStore();
     const { writeStationsCache } = await freshCache(store);
 
-    writeStationsCache('fra', CENTER, 30, [station('a')], 1_000);
+    writeStationsCache('fr', CENTER, 30, [station('a')], 1_000);
     await vi.runAllTimersAsync();
 
     // One area record + one payload record, not a re-serialized blob
@@ -142,7 +142,7 @@ describe('stationsCache', () => {
 
     // A pan fires loadStations repeatedly as the search area moves
     for (let i = 0; i < 5; i++) {
-      writeStationsCache('fra', { lat: 43.6 + i, lng: 1.44 }, 30, [station(`s${i}`)], 1_000 + i);
+      writeStationsCache('fr', { lat: 43.6 + i, lng: 1.44 }, 30, [station(`s${i}`)], 1_000 + i);
     }
     await vi.runAllTimersAsync();
 
@@ -153,7 +153,7 @@ describe('stationsCache', () => {
   it('hydrates the index eagerly and reads a payload only when an area matches', async () => {
     const store = spyStore();
     const first = await freshCache(store);
-    first.writeStationsCache('fra', CENTER, 30, [station('a')], 1_000);
+    first.writeStationsCache('fr', CENTER, 30, [station('a')], 1_000);
     await first.flushStationsCache();
 
     // A reload: same store, fresh module state
@@ -162,15 +162,15 @@ describe('stationsCache', () => {
     expect(store.payloadReads).toBe(0);
 
     // A zone nowhere near the cached area must not deserialize it either
-    expect(await reloaded.readStationsCache('fra', PARIS, 5)).toBeNull();
+    expect(await reloaded.readStationsCache('fr', PARIS, 5)).toBeNull();
     expect(store.payloadReads).toBe(0);
 
-    const hit = await reloaded.readStationsCache('fra', CENTER, 5);
+    const hit = await reloaded.readStationsCache('fr', CENTER, 5);
     expect(hit?.stations.map((s) => s.id)).toEqual(['a']);
     expect(hit?.fetchedAt).toBe(1_000);
     expect(store.payloadReads).toBe(1);
     // Loaded once, then held for the session
-    await reloaded.readStationsCache('fra', CENTER, 5);
+    await reloaded.readStationsCache('fr', CENTER, 5);
     expect(store.payloadReads).toBe(1);
   });
 
@@ -178,12 +178,12 @@ describe('stationsCache', () => {
     const { writeStationsCache, collectCachedStations } = await freshCache(spyStore());
 
     // Two areas, two sources — and one id present in both, at different ages
-    writeStationsCache('fra', CENTER, 30, [station('fra-a'), station('both')], 1_000);
-    writeStationsCache('esp', PARIS, 30, [station('esp-b'), station('both')], 2_000);
+    writeStationsCache('fr', CENTER, 30, [station('fr-a'), station('both')], 1_000);
+    writeStationsCache('es', PARIS, 30, [station('es-b'), station('both')], 2_000);
 
-    const hits = await collectCachedStations(new Set(['fra-a', 'esp-b', 'both', 'absent']));
-    expect(hits.get('fra-a')?.fetchedAt).toBe(1_000);
-    expect(hits.get('esp-b')?.fetchedAt).toBe(2_000);
+    const hits = await collectCachedStations(new Set(['fr-a', 'es-b', 'both', 'absent']));
+    expect(hits.get('fr-a')?.fetchedAt).toBe(1_000);
+    expect(hits.get('es-b')?.fetchedAt).toBe(2_000);
     // The newer area answers for the shared id
     expect(hits.get('both')?.fetchedAt).toBe(2_000);
     expect(hits.has('absent')).toBe(false);
@@ -194,7 +194,7 @@ describe('stationsCache', () => {
       await freshCache(spyStore());
     vi.setSystemTime(MAX_CACHE_AGE_MS + 100_000);
 
-    writeStationsCache('fra', CENTER, 30, [station('ancient')], 50_000);
+    writeStationsCache('fr', CENTER, 30, [station('ancient')], 50_000);
 
     expect((await collectCachedStations(new Set(['ancient']))).size).toBe(0);
   });
@@ -202,10 +202,10 @@ describe('stationsCache', () => {
   it('reports a near-but-not-covering area as a hit that still needs a fetch', async () => {
     const { writeStationsCache, readStationsCache } = await freshCache(spyStore());
 
-    writeStationsCache('fra', CENTER, 10, [station('a')], 1_000);
+    writeStationsCache('fr', CENTER, 10, [station('a')], 1_000);
 
     // A 12 km zone around the same center reaches outside the fetched circle
-    const hit = await readStationsCache('fra', CENTER, 12);
+    const hit = await readStationsCache('fr', CENTER, 12);
     expect(hit?.covers).toBe(false);
     expect(hit?.stations.map((s) => s.id)).toEqual(['a']);
   });
@@ -215,13 +215,13 @@ describe('stationsCache', () => {
     const { writeStationsCache, readStationsCache, flushStationsCache } =
       await freshCache(store);
 
-    writeStationsCache('fra', PARIS, 30, [station('paris')], 1_000);
-    writeStationsCache('fra', CENTER, 30, [station('v1')], 1_000);
-    writeStationsCache('fra', CENTER, 30, [station('v2')], 2_000);
+    writeStationsCache('fr', PARIS, 30, [station('paris')], 1_000);
+    writeStationsCache('fr', CENTER, 30, [station('v1')], 1_000);
+    writeStationsCache('fr', CENTER, 30, [station('v2')], 2_000);
     await flushStationsCache();
 
-    expect((await readStationsCache('fra', CENTER, 5))?.stations.map((s) => s.id)).toEqual(['v2']);
-    expect((await readStationsCache('fra', PARIS, 5))?.stations.map((s) => s.id)).toEqual([
+    expect((await readStationsCache('fr', CENTER, 5))?.stations.map((s) => s.id)).toEqual(['v2']);
+    expect((await readStationsCache('fr', PARIS, 5))?.stations.map((s) => s.id)).toEqual([
       'paris',
     ]);
     expect(store.records.get('areas')?.size).toBe(2);
@@ -232,12 +232,12 @@ describe('stationsCache', () => {
       await freshCache(spyStore());
     vi.setSystemTime(MAX_CACHE_AGE_MS + 100_000);
 
-    writeStationsCache('fra', CENTER, 30, [station('ancient')], 50_000);
-    writeStationsCache('fra', PARIS, 30, [station('fresh')], Date.now() - 1_000);
+    writeStationsCache('fr', CENTER, 30, [station('ancient')], 50_000);
+    writeStationsCache('fr', PARIS, 30, [station('fresh')], Date.now() - 1_000);
 
     // Neither the containment hit nor the proximity hit may serve it
-    expect(await readStationsCache('fra', CENTER, 5)).toBeNull();
-    expect((await readStationsCache('fra', PARIS, 5))?.stations.map((s) => s.id)).toEqual([
+    expect(await readStationsCache('fr', CENTER, 5)).toBeNull();
+    expect((await readStationsCache('fr', PARIS, 5))?.stations.map((s) => s.id)).toEqual([
       'fresh',
     ]);
   });
@@ -245,7 +245,7 @@ describe('stationsCache', () => {
   it('drops an expired area on hydration instead of carrying it', async () => {
     const store = spyStore();
     const first = await freshCache(store);
-    first.writeStationsCache('fra', CENTER, 30, [station('old')], Date.now());
+    first.writeStationsCache('fr', CENTER, 30, [station('old')], Date.now());
     await first.flushStationsCache();
 
     vi.setSystemTime(Date.now() + first.MAX_CACHE_AGE_MS + 60_000);
@@ -253,7 +253,39 @@ describe('stationsCache', () => {
     await reloaded.ready();
     await vi.runAllTimersAsync();
 
-    expect(await reloaded.readStationsCache('fra', CENTER, 5)).toBeNull();
+    expect(await reloaded.readStationsCache('fr', CENTER, 5)).toBeNull();
+    expect(store.records.get('areas')?.size).toBe(0);
+    expect(store.records.get('payloads')?.size).toBe(0);
+  });
+
+  it('sheds an area recorded under a 3-letter country code on hydration', async () => {
+    const store = spyStore();
+    // What a build of the alpha-3 generation left behind — its payload carries
+    // ids of that generation too, so nothing of it may paint
+    store.records.set(
+      'areas',
+      new Map([
+        [
+          'fra|43.6045,1.4442',
+          {
+            key: 'fra|43.6045,1.4442',
+            source: 'fra',
+            center: CENTER,
+            fetchRadiusKm: 30,
+            fetchedAt: 50_000,
+            stationCount: 1,
+            bytes: 500,
+          },
+        ],
+      ]),
+    );
+    store.records.set('payloads', new Map([['fra|43.6045,1.4442', [station('fra-legacy')]]]));
+
+    const { readStationsCache, ready } = await freshCache(store);
+    await ready();
+    await vi.runAllTimersAsync();
+
+    expect(await readStationsCache('fr', CENTER, 5)).toBeNull();
     expect(store.records.get('areas')?.size).toBe(0);
     expect(store.records.get('payloads')?.size).toBe(0);
   });
@@ -265,7 +297,7 @@ describe('stationsCache', () => {
 
     // 10 distinct zones, oldest first — far enough apart to never merge
     for (let i = 0; i < 10; i++) {
-      writeStationsCache('fra', { lat: 43.6 + i, lng: 1.44 }, 30, [station(`z${i}`)], 1_000 + i);
+      writeStationsCache('fr', { lat: 43.6 + i, lng: 1.44 }, 30, [station(`z${i}`)], 1_000 + i);
     }
     await flushStationsCache();
 
@@ -274,8 +306,8 @@ describe('stationsCache', () => {
     expect(store.records.get('areas')?.size).toBe(6);
     expect(store.records.get('payloads')?.size).toBe(6);
     // The four oldest zones are gone, the six newest are still there
-    expect(await readStationsCache('fra', { lat: 43.6, lng: 1.44 }, 5)).toBeNull();
-    expect(await readStationsCache('fra', { lat: 43.6 + 9, lng: 1.44 }, 5)).not.toBeNull();
+    expect(await readStationsCache('fr', { lat: 43.6, lng: 1.44 }, 5)).toBeNull();
+    expect(await readStationsCache('fr', { lat: 43.6 + 9, lng: 1.44 }, 5)).not.toBeNull();
   });
 
   it('sheds the oldest area when the origin is full, then the write lands', async () => {
@@ -283,15 +315,15 @@ describe('stationsCache', () => {
     const { writeStationsCache, readStationsCache, flushStationsCache, cacheStats } =
       await freshCache(store);
 
-    writeStationsCache('fra', PARIS, 30, [station('old')], 1_000);
+    writeStationsCache('fr', PARIS, 30, [station('old')], 1_000);
     await flushStationsCache();
     store.failPuts = 1;
-    writeStationsCache('fra', CENTER, 30, [station('new')], 2_000);
+    writeStationsCache('fr', CENTER, 30, [station('new')], 2_000);
     await flushStationsCache();
 
     expect((await cacheStats()).durable).toBe(true);
-    expect((await readStationsCache('fra', CENTER, 5))?.stations.map((s) => s.id)).toEqual(['new']);
-    expect(await readStationsCache('fra', PARIS, 5)).toBeNull();
+    expect((await readStationsCache('fr', CENTER, 5))?.stations.map((s) => s.id)).toEqual(['new']);
+    expect(await readStationsCache('fr', PARIS, 5)).toBeNull();
     expect(store.records.get('areas')?.size).toBe(1);
   });
 
@@ -301,16 +333,16 @@ describe('stationsCache', () => {
       await freshCache(store);
 
     store.failPuts = Number.MAX_SAFE_INTEGER;
-    writeStationsCache('fra', CENTER, 30, [station('a')], 1_000);
+    writeStationsCache('fr', CENTER, 30, [station('a')], 1_000);
     await expect(flushStationsCache()).resolves.toBeUndefined();
 
     const stats = await cacheStats();
     expect(stats.durable).toBe(false);
     expect(stats.areas).toBe(1);
     // The session keeps its in-memory cache; nothing else is attempted
-    expect((await readStationsCache('fra', CENTER, 5))?.stations.map((s) => s.id)).toEqual(['a']);
+    expect((await readStationsCache('fr', CENTER, 5))?.stations.map((s) => s.id)).toEqual(['a']);
     store.failPuts = 0;
-    writeStationsCache('fra', PARIS, 30, [station('b')], 2_000);
+    writeStationsCache('fr', PARIS, 30, [station('b')], 2_000);
     await flushStationsCache();
     expect(store.puts).toBe(0);
   });
@@ -321,31 +353,40 @@ describe('stationsCache', () => {
       LEGACY_KEY,
       JSON.stringify([
         {
-          source: 'fra',
+          source: 'fr',
           center: CENTER,
           fetchRadiusKm: 30,
           fetchedAt: 42,
           stations: [station('legacy')],
         },
+        // Written under a 3-letter country code: its station ids are of that
+        // generation too, so the entry is skipped, never translated
+        {
+          source: 'fra',
+          center: PARIS,
+          fetchRadiusKm: 30,
+          fetchedAt: 42,
+          stations: [station('fra-outdated')],
+        },
       ]),
     );
     // Superseded generations: dead weight, never adopted (their entries
-    // predate the `fra-` id prefix and the `adBlue` tag respectively)
+    // predate the `fr-` id prefix and the `adBlue` tag respectively)
     storage.setItem('plein.stations.cache.v1', '[]');
     storage.setItem(
       'plein.stations.cache.v2',
       JSON.stringify([
-        { source: 'fra', center: PARIS, fetchRadiusKm: 30, fetchedAt: 42, stations: [station('older')] },
+        { source: 'fr', center: PARIS, fetchRadiusKm: 30, fetchedAt: 42, stations: [station('older')] },
       ]),
     );
     const store = spyStore();
     const { readStationsCache, flushStationsCache } = await freshCache(store);
 
-    const hit = await readStationsCache('fra', CENTER, 5);
+    const hit = await readStationsCache('fr', CENTER, 5);
 
     expect(hit?.stations.map((s) => s.id)).toEqual(['legacy']);
     expect(hit?.fetchedAt).toBe(42);
-    expect(await readStationsCache('fra', PARIS, 5)).toBeNull();
+    expect(await readStationsCache('fr', PARIS, 5)).toBeNull();
     expect(storage.getItem(LEGACY_KEY)).toBeNull();
     expect(storage.getItem('plein.stations.cache.v1')).toBeNull();
     expect(storage.getItem('plein.stations.cache.v2')).toBeNull();
@@ -359,7 +400,7 @@ describe('stationsCache', () => {
     storage.setItem(LEGACY_KEY, '{not json');
     const { readStationsCache } = await freshCache(spyStore());
 
-    expect(await readStationsCache('fra', CENTER, 5)).toBeNull();
+    expect(await readStationsCache('fr', CENTER, 5)).toBeNull();
     expect(storage.getItem(LEGACY_KEY)).toBeNull();
   });
 
@@ -367,10 +408,10 @@ describe('stationsCache', () => {
     const { writeStationsCache, readStationsCache, flushStationsCache, cacheStats } =
       await freshCache();
 
-    writeStationsCache('fra', CENTER, 30, [station('a')], 1_000);
+    writeStationsCache('fr', CENTER, 30, [station('a')], 1_000);
     await expect(flushStationsCache()).resolves.toBeUndefined();
 
-    const hit = await readStationsCache('fra', CENTER, 5);
+    const hit = await readStationsCache('fr', CENTER, 5);
     expect(hit?.stations.map((s) => s.id)).toEqual(['a']);
     expect((await cacheStats()).durable).toBe(false);
   });
@@ -380,8 +421,8 @@ describe('stationsCache', () => {
     const { writeStationsCache, readStationsCache, flushStationsCache, cacheStats, clearStationsCache } =
       await freshCache(store);
 
-    writeStationsCache('fra', CENTER, 30, [station('a'), station('b')], 1_000);
-    writeStationsCache('fra', PARIS, 30, [station('c')], 2_000);
+    writeStationsCache('fr', CENTER, 30, [station('a'), station('b')], 1_000);
+    writeStationsCache('fr', PARIS, 30, [station('c')], 2_000);
     await flushStationsCache();
 
     const before = await cacheStats();
@@ -394,23 +435,23 @@ describe('stationsCache', () => {
 
     const after = await cacheStats();
     expect(after).toEqual({ areas: 0, bytes: 0, oldestFetchedAt: null, durable: true });
-    expect(await readStationsCache('fra', CENTER, 5)).toBeNull();
+    expect(await readStationsCache('fr', CENTER, 5)).toBeNull();
     expect(store.records.get('areas')?.size ?? 0).toBe(0);
   });
 
   it('does not let hydration restore an area over a fresher one just fetched', async () => {
     const store = spyStore();
     const first = await freshCache(store);
-    first.writeStationsCache('fra', CENTER, 30, [station('old')], 1_000);
+    first.writeStationsCache('fr', CENTER, 30, [station('old')], 1_000);
     await first.flushStationsCache();
 
     // A fetch that lands before anything read the cache: the store only opens
     // on this write's flush, and hydration must not undo it.
     const second = await freshCache(store);
-    second.writeStationsCache('fra', CENTER, 30, [station('new')], 5_000);
+    second.writeStationsCache('fr', CENTER, 30, [station('new')], 5_000);
     await second.flushStationsCache();
 
-    const hit = await second.readStationsCache('fra', CENTER, 5);
+    const hit = await second.readStationsCache('fr', CENTER, 5);
     expect(hit?.stations.map((s) => s.id)).toEqual(['new']);
     expect(hit?.fetchedAt).toBe(5_000);
     expect(store.records.get('areas')?.size).toBe(1);
@@ -419,14 +460,14 @@ describe('stationsCache', () => {
   it('forgets an area whose payload disappeared under it', async () => {
     const store = spyStore();
     const first = await freshCache(store);
-    first.writeStationsCache('fra', CENTER, 30, [station('a')], 1_000);
+    first.writeStationsCache('fr', CENTER, 30, [station('a')], 1_000);
     await first.flushStationsCache();
     // The browser evicted the payload but left the index behind
     store.records.get('payloads')?.clear();
 
     const reloaded = await freshCache(store);
 
-    expect(await reloaded.readStationsCache('fra', CENTER, 5)).toBeNull();
+    expect(await reloaded.readStationsCache('fr', CENTER, 5)).toBeNull();
     await vi.runAllTimersAsync();
     expect(store.records.get('areas')?.size).toBe(0);
   });

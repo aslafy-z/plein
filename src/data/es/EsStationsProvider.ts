@@ -22,7 +22,7 @@ import type {
 } from '../types';
 
 const ENDPOINT =
-  (IS_DEV ? '/proxy/esp' : 'https://sedeaplicaciones.minetur.gob.es') +
+  (IS_DEV ? '/proxy/es' : 'https://sedeaplicaciones.minetur.gob.es') +
   '/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestres/FiltroProvincia/';
 
 const TIMEOUT_MS = 15000;
@@ -238,7 +238,7 @@ export function parseRecord(rec: Raw, updatedAt: string | undefined): Station | 
   const id = toStr(rec['IDEESS']);
 
   return {
-    id: id ? `esp-${id}` : `esp-${lat.toFixed(5)},${lng.toFixed(5)}`,
+    id: id ? `es-${id}` : `es-${lat.toFixed(5)},${lng.toFixed(5)}`,
     name: brand ? (city ? `${brand} · ${city}` : brand) : city ? `Station · ${city}` : 'Station',
     init: brand ? initialsOf(brand) : (city.slice(0, 2) || 'ST').toUpperCase(),
     brand,
@@ -277,11 +277,11 @@ function provincesAlong(polyline: GeoPoint[], corridorKm: number): string[] {
 }
 
 /** Can the zone hold Spanish stations at all? (drives the « auto » source) */
-export function espCoversNear(center: GeoPoint, radiusKm: number): boolean {
+export function esCoversNear(center: GeoPoint, radiusKm: number): boolean {
   return provincesNear(center, radiusKm).length > 0;
 }
 
-export function espCoversAlong(polyline: GeoPoint[], corridorKm: number): boolean {
+export function esCoversAlong(polyline: GeoPoint[], corridorKm: number): boolean {
   return provincesAlong(polyline, corridorKm).length > 0;
 }
 
@@ -311,10 +311,10 @@ async function loadProvince(id: string, lowPriority: boolean): Promise<Station[]
     signal: AbortSignal.timeout(TIMEOUT_MS),
     priority: lowPriority ? 'low' : 'auto',
   });
-  if (!res.ok) throw new Error(`esp flux HTTP ${res.status}`);
+  if (!res.ok) throw new Error(`es flux HTTP ${res.status}`);
   const json = (await res.json()) as EspResponse;
   const rows = Array.isArray(json.ListaEESSPrecio) ? json.ListaEESSPrecio : [];
-  if (json.ResultadoConsulta !== 'OK') throw new Error('esp flux rejected the query');
+  if (json.ResultadoConsulta !== 'OK') throw new Error('es flux rejected the query');
 
   const updatedAt = fluxDateToIso(json.Fecha);
   const stations: Station[] = [];
@@ -328,8 +328,8 @@ async function loadProvince(id: string, lowPriority: boolean): Promise<Station[]
 }
 
 // ── Provider ─────────────────────────────────────────────────────────────────
-export class EspStationsProvider implements StationsProvider {
-  readonly id = 'esp' as const;
+export class EsStationsProvider implements StationsProvider {
+  readonly id = 'es' as const;
   readonly capabilities: SourceCapabilities = {
     brands: true, // the flux carries the rótulo (banner) directly
   };

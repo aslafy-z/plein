@@ -17,7 +17,7 @@ async function expectUsableMap(page: import('@playwright/test').Page) {
   await expect(usable.first()).toBeVisible({ timeout: 90_000 })
 }
 
-test.use({ seed: { sourceId: 'fra', onboarded: true } })
+test.use({ seed: { sourceId: 'fr', onboarded: true } })
 
 test('gouv source yields a usable map (live data, or the explicit source-down state)', async ({ page }) => {
   // The live attempt can take a while before it settles either way
@@ -49,7 +49,7 @@ test.describe('Andorran source', () => {
   // Same contract for the Andorran flux, centered on Andorra la Vella.
   test.use({
     seed: {
-      sourceId: 'and',
+      sourceId: 'ad',
       onboarded: true,
       lastPos: { lat: 42.5063, lng: 1.5218 },
     },
@@ -67,13 +67,13 @@ test.describe('Portuguese source', () => {
   // actually intersects a Portuguese district.
   test.use({
     seed: {
-      sourceId: 'prt',
+      sourceId: 'pt',
       onboarded: true,
       lastPos: { lat: 38.7223, lng: -9.1393 },
     },
   })
 
-  test('prt source yields a usable map (live data, or the explicit source-down state)', async ({ page }) => {
+  test('pt source yields a usable map (live data, or the explicit source-down state)', async ({ page }) => {
     test.setTimeout(120_000)
     await page.goto('/')
     await expectUsableMap(page)
@@ -85,13 +85,13 @@ test.describe('Spanish source', () => {
   // zone actually intersects Spanish provinces.
   test.use({
     seed: {
-      sourceId: 'esp',
+      sourceId: 'es',
       onboarded: true,
       lastPos: { lat: 40.4168, lng: -3.7038 },
     },
   })
 
-  test('esp source yields a usable map (live data, or the explicit source-down state)', async ({ page }) => {
+  test('es source yields a usable map (live data, or the explicit source-down state)', async ({ page }) => {
     test.setTimeout(120_000)
     await page.goto('/')
     await expectUsableMap(page)

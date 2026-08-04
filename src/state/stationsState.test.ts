@@ -20,7 +20,7 @@ const station = (id: string): Station => ({
   highway: false,
 })
 
-const idle: StationsState = { status: 'idle', data: [], activeSource: 'fra', refreshing: false }
+const idle: StationsState = { status: 'idle', data: [], activeSource: 'fr', refreshing: false }
 
 /** Every intermediate frame of an event chain, initial state included */
 function frames(from: StationsState, events: StationsEvent[]): StationsState[] {
@@ -35,13 +35,13 @@ describe('nextStationsState', () => {
   it('cold load: request paints loading, success lands clean', () => {
     const chain = frames(idle, [
       { kind: 'request', offlineHint: false },
-      { kind: 'success', data: [station('a')], source: 'fra', fetchedAt: 5_000 },
+      { kind: 'success', data: [station('a')], source: 'fr', fetchedAt: 5_000 },
     ])
     expect(chain[1]).toMatchObject({ status: 'loading', refreshing: false })
     expect(last(chain)).toEqual({
       status: 'ready',
       data: [station('a')],
-      activeSource: 'fra',
+      activeSource: 'fr',
       fetchedAt: 5_000,
       refreshing: false,
     })
@@ -52,7 +52,7 @@ describe('nextStationsState', () => {
     const end = last(
       frames(idle, [
         { kind: 'request', offlineHint: true },
-        { kind: 'failure', source: 'fra', error: 'offline' },
+        { kind: 'failure', source: 'fr', error: 'offline' },
       ]),
     )
     expect(end).toMatchObject({ status: 'error', data: [], lastError: 'offline' })
@@ -60,8 +60,8 @@ describe('nextStationsState', () => {
 
   it('a failing revalidation keeps the painted cache and never passes through loading', () => {
     const chain = frames(idle, [
-      { kind: 'cache', data: [station('a')], source: 'fra', fetchedAt: 1_000, revalidating: true },
-      { kind: 'failure', source: 'fra', error: 'source' },
+      { kind: 'cache', data: [station('a')], source: 'fr', fetchedAt: 1_000, revalidating: true },
+      { kind: 'failure', source: 'fr', error: 'source' },
     ])
     expect(chain.some((s) => s.status === 'loading')).toBe(false)
     expect(last(chain)).toMatchObject({
@@ -76,9 +76,9 @@ describe('nextStationsState', () => {
   it('a transient failure after a success keeps the loaded stations on screen', () => {
     const end = last(
       frames(idle, [
-        { kind: 'success', data: [station('a')], source: 'fra', fetchedAt: 1_000 },
+        { kind: 'success', data: [station('a')], source: 'fr', fetchedAt: 1_000 },
         { kind: 'request', offlineHint: false },
-        { kind: 'failure', source: 'fra', error: 'source' },
+        { kind: 'failure', source: 'fr', error: 'source' },
       ]),
     )
     expect(end).toMatchObject({ status: 'ready', lastError: 'source' })
@@ -87,9 +87,9 @@ describe('nextStationsState', () => {
 
   it('with the browser positive about being offline, the attempt runs behind the data', () => {
     const chain = frames(idle, [
-      { kind: 'success', data: [station('a')], source: 'fra', fetchedAt: 1_000 },
+      { kind: 'success', data: [station('a')], source: 'fr', fetchedAt: 1_000 },
       { kind: 'request', offlineHint: true },
-      { kind: 'failure', source: 'fra', error: 'offline' },
+      { kind: 'failure', source: 'fr', error: 'offline' },
     ])
     // No loading frame: the card must not reset while panning offline
     expect(chain[2]).toMatchObject({ status: 'ready', refreshing: true })
@@ -100,13 +100,13 @@ describe('nextStationsState', () => {
     const failed = last(
       frames(idle, [
         { kind: 'request', offlineHint: false },
-        { kind: 'failure', source: 'fra', error: 'offline' },
+        { kind: 'failure', source: 'fr', error: 'offline' },
       ]),
     )
     const cached = nextStationsState(failed, {
       kind: 'cache',
       data: [station('b')],
-      source: 'fra',
+      source: 'fr',
       fetchedAt: 2_000,
       revalidating: false,
     })
@@ -115,7 +115,7 @@ describe('nextStationsState', () => {
     const recovered = nextStationsState(cached, {
       kind: 'success',
       data: [station('c')],
-      source: 'fra',
+      source: 'fr',
       fetchedAt: 3_000,
     })
     expect(recovered.lastError).toBeUndefined()
@@ -125,18 +125,18 @@ describe('nextStationsState', () => {
   it('a failure on another source drops the previous source data instead of relabelling it', () => {
     const end = last(
       frames(idle, [
-        { kind: 'success', data: [station('a')], source: 'fra', fetchedAt: 1_000 },
+        { kind: 'success', data: [station('a')], source: 'fr', fetchedAt: 1_000 },
         { kind: 'request', offlineHint: false },
-        { kind: 'failure', source: 'esp', error: 'offline' },
+        { kind: 'failure', source: 'es', error: 'offline' },
       ]),
     )
-    expect(end).toMatchObject({ status: 'error', data: [], activeSource: 'esp' })
+    expect(end).toMatchObject({ status: 'error', data: [], activeSource: 'es' })
   })
 
   it('is pure: same input twice gives the same output and never mutates prev', () => {
-    const prev = last(frames(idle, [{ kind: 'success', data: [station('a')], source: 'fra', fetchedAt: 1_000 }]))
+    const prev = last(frames(idle, [{ kind: 'success', data: [station('a')], source: 'fr', fetchedAt: 1_000 }]))
     const snapshot = structuredClone(prev)
-    const ev: StationsEvent = { kind: 'failure', source: 'fra', error: 'source' }
+    const ev: StationsEvent = { kind: 'failure', source: 'fr', error: 'source' }
     expect(nextStationsState(prev, ev)).toEqual(nextStationsState(prev, ev))
     expect(prev).toEqual(snapshot)
   })

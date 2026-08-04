@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fluxDateToIso, groupStations, prtCoversNear, tidyBrand, toPrice } from './PrtStationsProvider'
+import { fluxDateToIso, groupStations, ptCoversNear, tidyBrand, toPrice } from './PtStationsProvider'
 import type { GeoPoint } from '../../lib/geo'
 
 // Browser-typed project, Node-run tests — see src/lib/time.test.ts
@@ -95,7 +95,7 @@ describe('groupStations', () => {
     ])
     expect(stations).toHaveLength(1)
     const st = stations[0]
-    expect(st.id).toBe('prt-67360')
+    expect(st.id).toBe('pt-67360')
     expect(st.name).toBe('Intermarche Vilar Formoso')
     expect(st.brand).toBe('Intermarché')
     expect(st.prices.diesel?.value).toBe(1.719)
@@ -208,18 +208,18 @@ describe('groupStations', () => {
 
 describe('district coverage', () => {
   it('covers the mainland and nothing beyond it', () => {
-    expect(prtCoversNear({ lat: 38.7223, lng: -9.1393 }, 5)).toBe(true) // Lisboa
-    expect(prtCoversNear({ lat: 41.1496, lng: -8.611 }, 5)).toBe(true) // Porto
-    expect(prtCoversNear({ lat: 37.0194, lng: -7.9304 }, 5)).toBe(true) // Faro
+    expect(ptCoversNear({ lat: 38.7223, lng: -9.1393 }, 5)).toBe(true) // Lisboa
+    expect(ptCoversNear({ lat: 41.1496, lng: -8.611 }, 5)).toBe(true) // Porto
+    expect(ptCoversNear({ lat: 37.0194, lng: -7.9304 }, 5)).toBe(true) // Faro
     // The flux stops at the mainland: Madeira, the Azores and inland Spain
-    expect(prtCoversNear({ lat: 32.6669, lng: -16.9241 }, 20)).toBe(false)
-    expect(prtCoversNear({ lat: 37.7412, lng: -25.6756 }, 20)).toBe(false)
-    expect(prtCoversNear({ lat: 40.4168, lng: -3.7038 }, 20)).toBe(false)
+    expect(ptCoversNear({ lat: 32.6669, lng: -16.9241 }, 20)).toBe(false)
+    expect(ptCoversNear({ lat: 37.7412, lng: -25.6756 }, 20)).toBe(false)
+    expect(ptCoversNear({ lat: 40.4168, lng: -3.7038 }, 20)).toBe(false)
   })
 
   it('reaches across the border from a Spanish town facing it', () => {
     // Badajoz sits ~5 km from the Portuguese line — its zone must query
-    expect(prtCoversNear({ lat: 38.8794, lng: -6.9707 }, 15)).toBe(true)
+    expect(ptCoversNear({ lat: 38.8794, lng: -6.9707 }, 15)).toBe(true)
   })
 })
 
@@ -256,8 +256,8 @@ function deferredFetch() {
 
 async function freshProvider() {
   vi.resetModules()
-  const mod = await import('./PrtStationsProvider')
-  return new mod.PrtStationsProvider()
+  const mod = await import('./PtStationsProvider')
+  return new mod.PtStationsProvider()
 }
 
 describe('district fetch memo', () => {

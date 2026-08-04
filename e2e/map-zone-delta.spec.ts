@@ -9,11 +9,11 @@ import type { Page } from '@playwright/test'
 // printed the station's whole price as a delta (« +1.90 €/L »). No zone → no
 // chip, and the same goes for a station selected OUTSIDE the circle.
 
-test.use({ seed: { sourceId: 'fra', onboarded: true } })
+test.use({ seed: { sourceId: 'fr', onboarded: true } })
 
-/** Deterministic fra flux: one station per (price, distance north) pair */
+/** Deterministic fr flux: one station per (price, distance north) pair */
 async function mockStations(page: Page, pins: { price: number; km: number }[]) {
-  await page.route('**/proxy/fra/**', async (route) => {
+  await page.route('**/proxy/fr/**', async (route) => {
     const where = new URL(route.request().url()).searchParams.get('where') ?? ''
     const m = /POINT\(([-\d.]+) ([-\d.]+)\)/.exec(where)
     const lng = m ? parseFloat(m[1]) : 1.44
@@ -27,7 +27,7 @@ async function mockStations(page: Page, pins: { price: number; km: number }[]) {
     }))
     await route.fulfill({ json: { total_count: results.length, results } })
   })
-  await page.route('**/brands-fra.json', (route) =>
+  await page.route('**/brands-fr.json', (route) =>
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
   await page.goto('/')

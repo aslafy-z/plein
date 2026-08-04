@@ -6,10 +6,10 @@ import { test, expect, openZoneList } from './fixtures'
 // 1.89 € at ~11.8 km (defaults: 6.5 L/100 km, 50 L) → effective 1.937 vs
 // 1.948 €/L — within the 1-ct tie margin, and a tie goes to the NEAREST.
 
-test.use({ seed: { sourceId: 'fra', onboarded: true, radius: 25 } })
+test.use({ seed: { sourceId: 'fr', onboarded: true, radius: 25 } })
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/proxy/fra/**', async (route) => {
+  await page.route('**/proxy/fr/**', async (route) => {
     const where = new URL(route.request().url()).searchParams.get('where') ?? ''
     const m = /POINT\(([-\d.]+) ([-\d.]+)\)/.exec(where)
     const lng = m ? parseFloat(m[1]) : 1.44
@@ -42,7 +42,7 @@ test.beforeEach(async ({ page }) => {
     ]
     await route.fulfill({ json: { total_count: results.length, results } })
   })
-  await page.route('**/brands-fra.json', (route) =>
+  await page.route('**/brands-fr.json', (route) =>
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
   // No road matrix → the crow-flies distances this spec's numbers are built on

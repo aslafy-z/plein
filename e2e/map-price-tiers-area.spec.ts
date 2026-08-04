@@ -9,7 +9,7 @@ import { test, expect, gotoMap } from './fixtures'
 // always a « good deal » — its pin must agree with the green « The cheapest
 // in this area » card — without repainting out-of-circle pins.
 
-test.use({ seed: { sourceId: 'fra', onboarded: true } })
+test.use({ seed: { sourceId: 'fr', onboarded: true } })
 
 // In the circle (default radius 5 km): a single station at 2.05.
 // Out of the circle but on the map (~11 km away): 1.80/1.81 (deals),
@@ -20,7 +20,7 @@ const NEAR = [2.05]
 const FAR = [1.8, 1.81, 1.9, 2.1]
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/proxy/fra/**', async (route) => {
+  await page.route('**/proxy/fr/**', async (route) => {
     const where = new URL(route.request().url()).searchParams.get('where') ?? ''
     const m = /POINT\(([-\d.]+) ([-\d.]+)\)/.exec(where)
     const lng = m ? parseFloat(m[1]) : 1.44
@@ -39,7 +39,7 @@ test.beforeEach(async ({ page }) => {
     ]
     await route.fulfill({ json: { total_count: results.length, results } })
   })
-  await page.route('**/brands-fra.json', (route) =>
+  await page.route('**/brands-fr.json', (route) =>
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
   await gotoMap(page)

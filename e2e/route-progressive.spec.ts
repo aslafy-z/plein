@@ -12,7 +12,7 @@ import type { Page, Route as PwRoute } from '@playwright/test'
 // open by the test itself (a promise the stub awaits), so what the screen
 // shows between the commits is observable without racing a timer.
 
-test.use({ seed: { sourceId: 'fra', onboarded: true } })
+test.use({ seed: { sourceId: 'fr', onboarded: true } })
 
 const TOULOUSE = { lat: 43.6045, lng: 1.4442 }
 const BORDEAUX = { lat: 44.8378, lng: -0.5792 }
@@ -100,14 +100,14 @@ async function stubTravelMatrix(page: Page) {
     boot zone — the zone must answer so the fallback banner (and its own
     « Retry ») stays out of these specs' way. */
 async function stubStatics(page: Page) {
-  await page.route('**/brands-fra.json', (r) =>
+  await page.route('**/brands-fr.json', (r) =>
     r.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
   await page.route('**/proxy/ban/**', (r) =>
     r.fulfill({ json: banResponse(new URL(r.request().url()).searchParams.get('q') ?? '') }),
   )
   await stubTravelMatrix(page)
-  await page.route('**/proxy/fra/**', (r) => r.fulfill({ json: { total_count: 0, results: [] } }))
+  await page.route('**/proxy/fr/**', (r) => r.fulfill({ json: { total_count: 0, results: [] } }))
 }
 
 interface StageStub {
@@ -141,7 +141,7 @@ async function stubCorridor(
 ): Promise<StageStub> {
   let release!: () => void
   const held = new Promise<void>((res) => (release = res))
-  await page.route('**/proxy/fra/**', async (r) => {
+  await page.route('**/proxy/fr/**', async (r) => {
     if (mode === 'down') return r.abort()
     if (mode === 'hold') await held
     return r.fulfill({ json: corridorStations(r) })

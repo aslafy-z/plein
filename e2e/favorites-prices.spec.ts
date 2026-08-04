@@ -9,7 +9,7 @@ import { test, expect, seedStationsCache } from './fixtures'
 const PARIS = { lat: 48.8566, lng: 2.3522 }
 
 const parisStation = {
-  id: 'fra-remote1',
+  id: 'fr-remote1',
   name: 'Station · Paris',
   init: 'PA',
   lat: PARIS.lat,
@@ -29,7 +29,7 @@ test.use({
     favorites: [
       // 'su' is the demo dataset's Station U (diesel 1.67) — in the live area
       { id: 'su', name: 'Station U · Croix-Blanche', init: 'SU', lat: 43.6101, lng: 1.4519 },
-      { id: 'fra-remote1', name: 'Station · Paris', init: 'PA', lat: PARIS.lat, lng: PARIS.lng },
+      { id: 'fr-remote1', name: 'Station · Paris', init: 'PA', lat: PARIS.lat, lng: PARIS.lng },
     ],
   },
 })
@@ -37,7 +37,7 @@ test.use({
 test('favorites in two areas show both prices at once', async ({ page }) => {
   await seedStationsCache(page, [
     {
-      source: 'fra',
+      source: 'fr',
       center: PARIS,
       fetchRadiusKm: 25,
       ageMs: 60_000,

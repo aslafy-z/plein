@@ -38,9 +38,9 @@ describe('rankByKind', () => {
 
 describe('mergeByKind', () => {
   it('interleaves the sources inside a kind, and keeps the kinds apart', () => {
-    const fra = [at('Le Perthus', 'locality'), at('Rue de France', 'street')];
-    const esp = [at('La Jonquera', 'locality'), at('Calle Mayor', 'street')];
-    expect(mergeByKind([fra, esp]).map((r) => r.label)).toEqual([
+    const fr = [at('Le Perthus', 'locality'), at('Rue de France', 'street')];
+    const es = [at('La Jonquera', 'locality'), at('Calle Mayor', 'street')];
+    expect(mergeByKind([fr, es]).map((r) => r.label)).toEqual([
       'Le Perthus',
       'La Jonquera',
       'Rue de France',
@@ -49,9 +49,9 @@ describe('mergeByKind', () => {
   });
 
   it('lets one source fill a kind the others have nothing in', () => {
-    const fra = [at('Toulouse', 'locality'), at('Toulon', 'locality')];
-    const esp = [at('Tolosa', 'locality')];
-    expect(mergeByKind([fra, esp, []]).map((r) => r.label)).toEqual([
+    const fr = [at('Toulouse', 'locality'), at('Toulon', 'locality')];
+    const es = [at('Tolosa', 'locality')];
+    expect(mergeByKind([fr, es, []]).map((r) => r.label)).toEqual([
       'Toulouse',
       'Tolosa',
       'Toulon',

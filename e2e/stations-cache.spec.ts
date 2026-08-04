@@ -5,13 +5,13 @@ import { test, expect, gotoMap, openZoneList, seedStationsCache } from './fixtur
 // freshly fetched area the store re-uses the cached stations and skips the
 // network entirely — the data equivalent of the prefetched basemap tiles.
 
-test.use({ seed: { sourceId: 'fra', onboarded: true } })
+test.use({ seed: { sourceId: 'fr', onboarded: true } })
 
 test('a slight pan re-uses the fetched area instead of refetching', async ({ page }) => {
   let gouvCalls = 0
 
   // Deterministic gouv flux: echo three stations around the queried center.
-  await page.route('**/proxy/fra/**', async (route) => {
+  await page.route('**/proxy/fr/**', async (route) => {
     gouvCalls++
     const where = new URL(route.request().url()).searchParams.get('where') ?? ''
     const m = /POINT\(([-\d.]+) ([-\d.]+)\)/.exec(where)
@@ -33,7 +33,7 @@ test('a slight pan re-uses the fetched area instead of refetching', async ({ pag
     })
   })
   // Brand enrichment is irrelevant here — keep it deterministic and instant
-  await page.route('**/brands-fra.json', (route) =>
+  await page.route('**/brands-fr.json', (route) =>
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
 
@@ -76,7 +76,7 @@ test('a slight pan re-uses the fetched area instead of refetching', async ({ pag
 // guard bails on `refreshing` exactly like on `status === 'loading'`.
 test('a drag over a revalidating area leaves its single fetch alone', async ({ page }) => {
   let gouvCalls = 0
-  await page.route('**/proxy/fra/**', async (route) => {
+  await page.route('**/proxy/fr/**', async (route) => {
     gouvCalls++
     // Held open long enough that the drag below runs while the revalidation
     // is still in flight — the churn only ever happened during that window.
@@ -96,20 +96,20 @@ test('a drag over a revalidating area leaves its single fetch alone', async ({ p
       },
     })
   })
-  await page.route('**/brands-fra.json', (route) =>
+  await page.route('**/brands-fr.json', (route) =>
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
 
   // Past STALE_MS, well under MAX_CACHE_AGE_MS: paints from cache, refetches behind
   await seedStationsCache(page, [
     {
-      source: 'fra',
+      source: 'fr',
       center: { lat: 43.6047, lng: 1.4442 },
       fetchRadiusKm: 25,
       ageMs: 30 * 60_000,
       stations: [
         {
-          id: 'fra-reval-seeded',
+          id: 'fr-reval-seeded',
           name: 'Station · Cacheville',
           init: 'SC',
           lat: 43.6047,
@@ -163,7 +163,7 @@ test('a drag over a revalidating area leaves its single fetch alone', async ({ p
 // only a browser can prove is that the records really survive a reload.
 test('a reload paints the fetched area even with the source cut', async ({ page }) => {
   let sourceUp = true
-  await page.route('**/proxy/fra/**', async (route) => {
+  await page.route('**/proxy/fr/**', async (route) => {
     if (!sourceUp) return route.abort()
     await route.fulfill({
       json: {
@@ -180,7 +180,7 @@ test('a reload paints the fetched area even with the source cut', async ({ page 
       },
     })
   })
-  await page.route('**/brands-fra.json', (route) =>
+  await page.route('**/brands-fr.json', (route) =>
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
 
@@ -205,21 +205,21 @@ test('a reload paints the fetched area even with the source cut', async ({ page 
 // name the day the prices were read — an age nothing but a seeded area can
 // produce, since the app can only ever write `Date.now()`.
 test('an area older than the revalidation window is dated, not merely aged', async ({ page }) => {
-  await page.route('**/proxy/fra/**', (route) => route.abort())
-  await page.route('**/brands-fra.json', (route) =>
+  await page.route('**/proxy/fr/**', (route) => route.abort())
+  await page.route('**/brands-fr.json', (route) =>
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
 
   const twoDaysAgo = 2 * 24 * 3_600_000
   await seedStationsCache(page, [
     {
-      source: 'fra',
+      source: 'fr',
       center: { lat: 43.6047, lng: 1.4442 },
       fetchRadiusKm: 25,
       ageMs: twoDaysAgo,
       stations: [
         {
-          id: 'fra-seeded',
+          id: 'fr-seeded',
           name: 'Station · Vieilleville',
           init: 'SV',
           lat: 43.6047,

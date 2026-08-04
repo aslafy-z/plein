@@ -1,13 +1,13 @@
 import { test, expect } from './fixtures'
 
-// French station ids carry a `fra-` prefix, like `esp-`/`and-`, so the mixed
+// French station ids carry a `fr-` prefix, like `es-`/`ad-`, so the mixed
 // « Automatic » list stays attributable. Links and favorites created before
 // that prefix hold a bare id — both must keep working.
 
-test.use({ seed: { sourceId: 'fra', onboarded: true } })
+test.use({ seed: { sourceId: 'fr', onboarded: true } })
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/proxy/fra/**', async (route) => {
+  await page.route('**/proxy/fr/**', async (route) => {
     const where = new URL(route.request().url()).searchParams.get('where') ?? ''
     const m = /POINT\(([-\d.]+) ([-\d.]+)\)/.exec(where)
     const lng = m ? parseFloat(m[1]) : 1.44
@@ -30,14 +30,14 @@ test.beforeEach(async ({ page }) => {
     ]
     await route.fulfill({ json: { total_count: results.length, results } })
   })
-  await page.route('**/brands-fra.json', (route) =>
+  await page.route('**/brands-fr.json', (route) =>
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
   await page.route('**/proxy/osrm/**', (route) => route.abort())
 })
 
 test('a French station is reachable under its prefixed id', async ({ page }) => {
-  await page.goto('/station/fra-31000009')
+  await page.goto('/station/fr-31000009')
 
   await expect(page.getByText('Station · Prefixville').first()).toBeVisible({ timeout: 15_000 })
   await expect(page.getByText('source: prix-carburants.gouv.fr')).toBeVisible()
@@ -50,7 +50,7 @@ test('a link made before the prefix still opens the fiche', async ({ page }) => 
 })
 
 test('a favorite pinned before the prefix is still recognised', async ({ page }) => {
-  await page.goto('/station/fra-31000009')
+  await page.goto('/station/fr-31000009')
   await expect(page.getByText('Station · Prefixville').first()).toBeVisible({ timeout: 15_000 })
   // Nothing migrated yet: the star reflects an empty favorites list
   await expect(page.getByRole('button', { name: 'Add to favorites' })).toBeVisible()
