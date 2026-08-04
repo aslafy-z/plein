@@ -743,7 +743,11 @@ export default function MapCanvas({
       for (const [sig, area] of wanted) {
         if (held.has(sig)) continue;
         const sub = L.layerGroup();
-        L.circle([area.center.lat, area.center.lng], {
+        // zoneCircle for the same reason the search zone uses it: a fetch
+        // radius is metres too, so zoomed in each outline is a six-figure
+        // pixel arc — and here there is one per cached area, all of them
+        // repainted on every pan frame
+        zoneCircle([area.center.lat, area.center.lng], {
           radius: area.fetchRadiusKm * 1000,
           color: DEBUG_CACHE_COLOR,
           weight: 1.5,

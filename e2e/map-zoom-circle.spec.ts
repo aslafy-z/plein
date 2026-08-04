@@ -41,6 +41,33 @@ test('the zone circle stays cheap to draw however far the map is zoomed in', asy
 })
 
 /**
+ * The debug overlay draws every cached area as its own circle, and a fetch
+ * radius is metres too — so zoomed in, each of those outlines was a six-figure
+ * pixel arc as well, several of them, all repainted on every pan frame. The
+ * whole overlay pane has to stay bounded, not just the search zone.
+ */
+test('the cached-area outlines stay cheap to draw too', async ({ page }) => {
+  await page.goto('/?ll=43.6047,1.4442&z=19&r=25&debug=1')
+  expect(await mapZoom(page)).toBe(19)
+
+  await expect(async () => {
+    const paths = await page.evaluate(() =>
+      [...document.querySelectorAll('.leaflet-overlay-pane path')].map((el) => {
+        const box = (el as SVGPathElement).getBBox()
+        return { w: box.width, h: box.height }
+      }),
+    )
+    // The zone circle AND at least one cached area — the assertion below is
+    // worth nothing while the cache layer hasn't drawn yet
+    expect(paths.length).toBeGreaterThanOrEqual(2)
+    for (const box of paths) {
+      expect(box.w).toBeLessThan(20_000)
+      expect(box.h).toBeLessThan(20_000)
+    }
+  }).toPass({ timeout: 20_000 })
+})
+
+/**
  * The levels the app actually opens on are below the clipping threshold, where
  * Leaflet's own arc is exact and costs nothing: the circle stays a circle.
  */
