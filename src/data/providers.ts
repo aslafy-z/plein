@@ -1,6 +1,7 @@
 // Provider registry — resolves a DataSourceId to a memoized bundle of providers.
 import { withGeocodeMemo } from './geocodeMemo';
-import type { DataSourceId, ProviderBundle } from './types';
+import { isForcedOffline } from '../lib/connectivity';
+import type { DataSourceId, GeocodeProvider, ProviderBundle } from './types';
 import { FrStationsProvider } from './fr/FrStationsProvider';
 import { BanGeocodeProvider } from './fr/BanGeocodeProvider';
 import { RealRouteProvider } from './fr/OsrmRouteProvider';
@@ -65,12 +66,30 @@ function createBundle(id: DataSourceId): ProviderBundle {
   };
 }
 
+/**
+ * « Force offline mode » in front of a geocoder: the network is never asked
+ * while the switch holds. It sits INSIDE the memo, so a query answered
+ * earlier in the session still comes back — the same policy the station cache
+ * follows offline, and the failure a caller sees is the one a real offline
+ * device produces (PlaceField turns it into its « no result » state).
+ */
+function withOfflineGate(inner: GeocodeProvider): GeocodeProvider {
+  return {
+    search(query, opts) {
+      if (isForcedOffline()) return Promise.reject(new Error('forced offline'));
+      return inner.search(query, opts);
+    },
+  };
+}
+
 /** Memoized singleton bundle for a data source. */
 export function getProviders(id: DataSourceId): ProviderBundle {
   let bundle = cache.get(id);
   if (!bundle) {
     const built = createBundle(id);
-    bundle = { ...built, geocode: withGeocodeMemo(built.geocode) };
+    // The demo source resolves its places locally — nothing to take offline
+    const geocode = id === 'demo' ? built.geocode : withOfflineGate(built.geocode);
+    bundle = { ...built, geocode: withGeocodeMemo(geocode) };
     cache.set(id, bundle);
   }
   return bundle;

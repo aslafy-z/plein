@@ -10,6 +10,13 @@ import {
   type StationsCacheStats,
 } from '../data/stationsCache';
 import { setDebugEnabled, useDebugMode } from '../lib/debugMode';
+import { setForcedOffline, useForcedOffline } from '../lib/connectivity';
+import {
+  SW_ASSET_CACHE,
+  SW_DATA_CACHE,
+  SW_SHELL_CACHE,
+  SW_TILE_CACHE,
+} from '../lib/swCaches';
 import {
   cacheTier,
   collectSwCaches,
@@ -86,10 +93,10 @@ function localeName(locale: Locale): string {
  */
 /** Friendly names for the sw.js cache buckets (debug chrome, English-only) */
 const SW_CACHE_NAMES: Record<string, string> = {
-  'plein-assets-v1': 'App assets',
-  'plein-shell-v1': 'App shell',
-  'plein-tiles-v1': 'Basemap tiles',
-  'plein-data-v1': 'Brand data',
+  [SW_ASSET_CACHE]: 'App assets',
+  [SW_SHELL_CACHE]: 'App shell',
+  [SW_TILE_CACHE]: 'Basemap tiles',
+  [SW_DATA_CACHE]: 'Brand data',
 };
 
 /** Chrome's non-standard estimate() breakdown, when it offers one */
@@ -283,6 +290,71 @@ function CacheDetails() {
   );
 }
 
+/** One switch row of the Offline data card — title, hint, sliding knob */
+function SwitchRow({
+  title,
+  sub,
+  checked,
+  onToggle,
+  testId,
+}: {
+  title: string;
+  sub: string;
+  checked: boolean;
+  onToggle: () => void;
+  testId: string;
+}) {
+  return (
+    <button
+      role="switch"
+      aria-checked={checked}
+      onClick={onToggle}
+      data-testid={testId}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        padding: '14px 16px',
+        borderTop: `1px solid ${C.divider}`,
+        cursor: 'pointer',
+        width: '100%',
+        textAlign: 'left',
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>{title}</div>
+        <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>{sub}</div>
+      </div>
+      <span
+        aria-hidden="true"
+        style={{
+          width: 40,
+          height: 24,
+          borderRadius: 12,
+          background: checked ? C.accent : C.toggleOff,
+          position: 'relative',
+          flexShrink: 0,
+          transition: 'background .15s',
+        }}
+      >
+        <span
+          style={{
+            position: 'absolute',
+            top: 3,
+            left: checked ? 19 : 3,
+            width: 18,
+            height: 18,
+            borderRadius: '50%',
+            background: C.surface,
+            boxShadow: `0 1px 3px ${C.shadow40}`,
+            transition: 'left .15s',
+          }}
+        />
+      </span>
+    </button>
+  );
+}
+
 function CachedData({ onCleared }: { onCleared: () => void }) {
   const [stats, setStats] = useState<StationsCacheStats | null>(null);
   const [round, setRound] = useState(0);
@@ -389,6 +461,7 @@ export default function Settings() {
   const app = useApp();
   const desktop = useIsDesktop();
   const debugOn = useDebugMode();
+  const forcedOffline = useForcedOffline();
   const { fuel, vehicle, tank, consumption, sourceId, geoStatus, mapsSite } = app;
   // Slider ranges follow the profile (a motorcycle tank is far smaller than a car's)
   const tankRange =
@@ -863,59 +936,22 @@ export default function Settings() {
             }}
           >
             <CachedData onCleared={() => app.notify(m.toast_cache_cleared())} />
-            {/* Session-scoped on purpose (sessionStorage, never the persisted
-                blob): closing the tab turns the overlay back off. */}
-            <button
-              role="switch"
-              aria-checked={debugOn}
-              onClick={() => setDebugEnabled(!debugOn)}
-              data-testid="debug-toggle"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '14px 16px',
-                borderTop: `1px solid ${C.divider}`,
-                cursor: 'pointer',
-                width: '100%',
-                textAlign: 'left',
-              }}
-            >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>
-                  {m.settings_debug_overlay_title()}
-                </div>
-                <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>
-                  {m.settings_debug_overlay_sub()}
-                </div>
-              </div>
-              <span
-                aria-hidden="true"
-                style={{
-                  width: 40,
-                  height: 24,
-                  borderRadius: 12,
-                  background: debugOn ? C.accent : C.toggleOff,
-                  position: 'relative',
-                  flexShrink: 0,
-                  transition: 'background .15s',
-                }}
-              >
-                <span
-                  style={{
-                    position: 'absolute',
-                    top: 3,
-                    left: debugOn ? 19 : 3,
-                    width: 18,
-                    height: 18,
-                    borderRadius: '50%',
-                    background: C.surface,
-                    boxShadow: `0 1px 3px ${C.shadow40}`,
-                    transition: 'left .15s',
-                  }}
-                />
-              </span>
-            </button>
+            {/* Both switches are session-scoped on purpose (sessionStorage,
+                never the persisted blob): closing the tab releases them. */}
+            <SwitchRow
+              title={m.settings_force_offline_title()}
+              sub={m.settings_force_offline_sub()}
+              checked={forcedOffline}
+              onToggle={() => setForcedOffline(!forcedOffline)}
+              testId="force-offline-toggle"
+            />
+            <SwitchRow
+              title={m.settings_debug_overlay_title()}
+              sub={m.settings_debug_overlay_sub()}
+              checked={debugOn}
+              onToggle={() => setDebugEnabled(!debugOn)}
+              testId="debug-toggle"
+            />
           </div>
         </div>
 

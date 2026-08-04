@@ -11,6 +11,14 @@ import L from 'leaflet';
 import { IS_DEV } from './env';
 import { currentTheme, onThemeChange } from './colorScheme';
 import { registerTileDebugSource, type TileLayerDebug } from './debugState';
+import { isForcedOffline, onConnectivityChange } from './connectivity';
+import {
+  dropTileSnapshot,
+  ensureTileSnapshot,
+  isBlankTile,
+  tileGateDebug,
+  tileUrlFor,
+} from './tileGate';
 
 const cartoUrl = () =>
   `https://{s}.basemaps.cartocdn.com/${currentTheme() === 'light' ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png`;
@@ -32,6 +40,7 @@ registerTileDebugSource(
     cartoUnreachable,
     tilesLoaded,
     tilesErrored,
+    ...tileGateDebug(),
   }),
 );
 
@@ -62,6 +71,7 @@ interface GridLayerInternals {
   _pxBoundsToTileRange(bounds: L.Bounds): L.Bounds;
   getTileSize(): L.Point;
   createTile(coords: L.Coords, done: L.DoneCallback): HTMLElement;
+  getTileUrl(coords: L.Coords): string;
   /** Tile range of the real viewport (unpadded), refreshed on every update */
   _viewTileRange?: L.Bounds;
 }
@@ -82,10 +92,56 @@ const BufferedTileLayer = L.TileLayer.extend({
     }
     return tile;
   },
+  // Every basemap request in the app is born here — Leaflet asks the layer
+  // for an address and puts it on an <img>. Declining a tile while « Force
+  // offline mode » holds is therefore a matter of handing back a blank, and
+  // no request is ever issued (see lib/tileGate.ts).
+  getTileUrl(this: GridLayerInternals, coords: L.Coords): string {
+    return tileUrlFor(proto.getTileUrl.call(this, coords));
+  },
 }) as unknown as new (url: string, opts: L.TileLayerOptions) => L.TileLayer;
 
 const bufferedTileLayer = (url: string, opts: L.TileLayerOptions): L.TileLayer =>
   new BufferedTileLayer(url, opts);
+
+/** true when this event is about a tile the offline gate declined — those are
+ *  neither loads worth counting nor evidence about the CDN */
+const declined = (e: L.TileEvent): boolean => isBlankTile((e.tile as HTMLImageElement).src);
+
+// ── The offline gate, across every mounted map ───────────────────────────────
+// Layers are tracked so that RELEASING « Force offline mode » puts back the
+// tiles it blanked. Turning it ON deliberately redraws nothing: what is
+// already painted was already downloaded and costs nothing to keep — the mode
+// is about the requests that would come next.
+const liveLayers = new Set<L.TileLayer>();
+
+const redrawAll = (): void => {
+  for (const layer of liveLayers) layer.redraw();
+};
+
+function track(layer: L.TileLayer): void {
+  liveLayers.add(layer);
+  layer.on('remove', () => liveLayers.delete(layer));
+  // Mounted while the gate holds (a map opened in the mode, or a reload with
+  // the session flag still on): anything asked for before the snapshot lands
+  // is blanked, so redraw once it is in and the cached tiles paint.
+  if (isForcedOffline()) void ensureTileSnapshot().then(() => layer.redraw());
+}
+
+// Browser online/offline events come through this subscription too; they
+// change nothing here, so the previous reading is what tells a real flip of
+// the switch apart from one of those.
+let gated = isForcedOffline();
+onConnectivityChange(() => {
+  const forced = isForcedOffline();
+  if (forced === gated) return;
+  gated = forced;
+  if (forced) void ensureTileSnapshot();
+  else {
+    dropTileSnapshot();
+    redrawAll();
+  }
+});
 
 function addFallback(map: L.Map): void {
   const layer = bufferedTileLayer(FALLBACK_URL, {
@@ -96,8 +152,11 @@ function addFallback(map: L.Map): void {
     // and needs the darkening filter.
     className: IS_DEV ? 'tiles-carto' : 'tiles-dark',
   });
-  layer.on('tileload', () => tilesLoaded++);
+  layer.on('tileload', (e) => {
+    if (!declined(e)) tilesLoaded++;
+  });
   layer.on('tileerror', () => tilesErrored++);
+  track(layer);
   layer.addTo(map);
 }
 
@@ -128,12 +187,16 @@ export function addBasemap(map: L.Map): void {
   };
 
   // Zoom changes abort pending tiles without firing tileerror, so a count
-  // alone can miss the failure — the timer catches that case.
+  // alone can miss the failure — the timer catches that case. The offline
+  // gate is never grounds for the swap: « CARTO is unreachable » lasts the
+  // whole session, and releasing the switch has to find the CDN where it left
+  // it rather than on a verdict the app's own blanking produced.
   const giveUp = setTimeout(() => {
-    if (loaded === 0) swap();
+    if (loaded === 0 && !isForcedOffline()) swap();
   }, GIVE_UP_MS);
 
-  carto.on('tileload', () => {
+  carto.on('tileload', (e) => {
+    if (declined(e)) return;
     loaded++;
     tilesLoaded++;
     clearTimeout(giveUp);
@@ -141,7 +204,7 @@ export function addBasemap(map: L.Map): void {
   carto.on('tileerror', () => {
     errored++;
     tilesErrored++;
-    if (loaded === 0 && errored >= 2) swap();
+    if (loaded === 0 && errored >= 2 && !isForcedOffline()) swap();
   });
 
   // Follow a theme switch in place — the tile filters in styles.css flip on
@@ -154,5 +217,6 @@ export function addBasemap(map: L.Map): void {
     offTheme();
   });
 
+  track(carto);
   carto.addTo(map);
 }

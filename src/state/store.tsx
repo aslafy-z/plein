@@ -31,6 +31,12 @@ import {
   type Theme,
 } from '../lib/colorScheme';
 import { IS_ANDROID, IS_IOS } from '../lib/env';
+import {
+  isForcedOffline,
+  isOffline,
+  onConnectivityChange,
+  useForcedOffline,
+} from '../lib/connectivity';
 import { reportAreaLoad } from '../lib/debugState';
 import type { GeoPoint } from '../lib/geo';
 import { m } from '../paraglide/messages.js';
@@ -239,9 +245,10 @@ function mapsSiteUrl(site: MapsSiteId, lat: number, lng: number): string {
   }
 }
 
-/** Why the last stations fetch failed. `offline` only when the browser is
- *  positive about it (`navigator.onLine === false`) — anything else is blamed
- *  on the source, because `onLine === true` proves nothing (captive portals). */
+/** Why the last stations fetch failed. `offline` only when `isOffline()` is
+ *  positive about it (`navigator.onLine === false`, or the « Force offline
+ *  mode » switch) — anything else is blamed on the source, because
+ *  `onLine === true` proves nothing (captive portals). */
 export type StationsErrorKind = 'offline' | 'source';
 
 export interface StationsState {
@@ -1151,6 +1158,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
         return;
       }
+      // « Force offline mode » (Settings › Offline data): the network is
+      // never touched — the attempt fails as `offline` before the provider
+      // runs, and whatever the cache holds for this zone stays on screen.
+      // The demo source is exempt: its dataset is local by design.
+      if (isForcedOffline() && sourceId !== 'demo') {
+        if (cached) {
+          dispatchStations({
+            kind: 'cache',
+            data: cached.stations,
+            source: sourceId,
+            fetchedAt: cached.fetchedAt,
+            revalidating: false,
+          });
+        }
+        loadedArea.current = null;
+        failedArea.current = { source: sourceId, center: searchPos, radiusKm: MAX_RADIUS_KM };
+        dispatchStations({ kind: 'failure', source: sourceId, error: 'offline' });
+        reportAreaLoad('error');
+        return;
+      }
       if (cached) {
         dispatchStations({
           kind: 'cache',
@@ -1161,7 +1188,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
         reportAreaLoad('cache-revalidate');
       } else {
-        dispatchStations({ kind: 'request', offlineHint: navigator.onLine === false });
+        dispatchStations({ kind: 'request', offlineHint: isOffline() });
       }
       const bundle = getProviders(sourceId);
       try {
@@ -1186,7 +1213,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatchStations({
           kind: 'failure',
           source: sourceId,
-          error: navigator.onLine === false ? 'offline' : 'source',
+          error: isOffline() ? 'offline' : 'source',
         });
         reportAreaLoad('error');
       }
@@ -1214,6 +1241,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // any network failure — falls back to the CROW_ROAD_FACTOR estimate.
   const [roadReach, setRoadReach] = useState<Record<string, ReachInfo>>({});
   const reachKey = useRef<string | null>(null);
+  // Reactive here so the effects below re-run when the switch flips — the
+  // fetch paths themselves read `isForcedOffline()` at call time.
+  const forcedOffline = useForcedOffline();
   useEffect(() => {
     const provider = getProviders(stations.activeSource).route;
     // Nothing measurable this round → drop what the last round measured. Those
@@ -1225,6 +1255,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       reachKey.current = null;
       setRoadReach((prev) => (Object.keys(prev).length ? {} : prev));
     };
+    // Forced offline: no matrix request goes out, and crow-flies is the
+    // honest degradation, exactly as when nothing is measurable. The demo
+    // source answers its matrix locally, so it keeps measuring.
+    if (forcedOffline && stations.activeSource !== 'demo') {
+      dropReach();
+      return;
+    }
     if (!provider.getReachMatrix || !stations.data.length) {
       dropReach();
       return;
@@ -1262,14 +1299,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // refresh retry instead of pinning the failure until the user moves
         if (reachKey.current === key) reachKey.current = null;
       });
-  }, [stations.activeSource, stations.data, userPos]);
+  }, [stations.activeSource, stations.data, userPos, forcedOffline]);
 
   // ── Auto-refresh: keep prices fresh while the app is open and online ───────
   const stationsRef = useRef(stations);
   stationsRef.current = stations;
   useEffect(() => {
     const tick = () => {
-      if (document.hidden || navigator.onLine === false) return;
+      if (document.hidden || isOffline()) return;
       const st = stationsRef.current;
       if (st.status === 'loading' || st.refreshing) return;
       // A standing failure revalidates as soon as anything plausibly changed
@@ -1287,11 +1324,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const onVisible = () => {
       if (!document.hidden) tick();
     };
-    window.addEventListener('online', tick);
+    // Fires on the browser's online/offline events and on the « Force offline
+    // mode » switch — releasing the switch revalidates a standing failure the
+    // same way connectivity returning does.
+    const offConnectivity = onConnectivityChange(tick);
     document.addEventListener('visibilitychange', onVisible);
     return () => {
       clearInterval(iv);
-      window.removeEventListener('online', tick);
+      offConnectivity();
       document.removeEventListener('visibilitychange', onVisible);
     };
   }, [loadStations]);
@@ -1322,7 +1362,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const entries = await readFavoritePrices(ids);
     if (reqId !== favPricesReq.current) return;
     setFavoritePrices(Object.fromEntries(entries));
-    if (navigator.onLine === false) return;
+    if (isOffline()) return;
     // A source that answers by exact id (fr) refreshes all its favorites in
     // one request wherever they sit; the others fetch one circle per place.
     const byIdCountries = new Set(
@@ -1402,6 +1442,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const runCorridor = useCallback(
     async (key: string, route: Route, reqId: number) => {
       try {
+        // Forced offline: the stage fails where it failed, like any fetch —
+        // and its retry answers again once the switch is released.
+        if (isForcedOffline() && sourceId !== 'demo') throw new Error('forced offline');
         const raw = await getProviders(sourceId).stations.getStationsAlong(route.polyline, 5);
         if (reqId !== routeReq.current) return;
         // The route corridor is the same shape of problem as the map area: a
@@ -1427,6 +1470,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       let route: Route;
       try {
+        // Forced offline: the routing engine is never asked. The demo source
+        // computes locally and stays exempt, here as everywhere.
+        if (isForcedOffline() && sourceId !== 'demo') throw new Error('forced offline');
         route = await getProviders(sourceId).route.getRoute(from, to, {
           avoidMotorway,
           avoidToll,
@@ -1509,6 +1555,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // a widening gap, then settle on `error`.
     const attempt = (n: number) => {
       if (matrixKeyRef.current !== key) return;
+      // Forced offline: the plan settles on estimated legs without a request.
+      // The key stays put, exactly like exhausted retries — the next plan
+      // input change re-keys the stage and measures again.
+      if (isForcedOffline() && sourceId !== 'demo') {
+        setRouteState((s) => failMatrix(s, key));
+        markRoute('route:plan');
+        return;
+      }
       getTravelMatrix(points, { avoidMotorway, avoidToll, vehicle })
         .then((cells) => {
           if (matrixKeyRef.current !== key) return;
