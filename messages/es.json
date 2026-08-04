@@ -480,7 +480,7 @@
   "settings_maps_site": "Sitio para « Ir »",
   "settings_maps_site_hint": "el sitio que abre el botón « Ir »",
   "settings_data_section": "Datos",
-  "settings_source_down": "La fuente en tiempo real no está disponible actualmente — los datos de demostración siguen disponibles abajo.",
+  "settings_source_down": "La fuente en tiempo real no está disponible actualmente — los precios mostrados pueden estar desactualizados.",
   "settings_price_disclaimer_title": "Unas palabras sobre los precios",
   "settings_price_disclaimer_body": " — proceden de las declaraciones oficiales de las gasolineras y son solo orientativos, sin garantía: no podemos comprobarlos uno a uno y un precio puede haber cambiado para cuando llegues al surtidor. Échale un vistazo in situ antes de repostar — el desvío queda a tu criterio. Por ahora no es posible avisar de un precio erróneo ni corregirlo desde la aplicación — pero cuéntanoslo por correo justo debajo 💚",
   "settings_feedback_section": "Contacto",

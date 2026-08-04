@@ -349,8 +349,8 @@ export type StationsEvent =
 /**
  * Stations state machine. The invariant every transition protects: real data
  * on screen STAYS on screen. A failure flags the state (`lastError`) instead
- * of substituting anything — the demo dataset is a source the user selects,
- * never a fallback — and `status: 'loading'` is reserved for "nothing worth
+ * of substituting anything — the demo dataset is a deliberately seeded
+ * source, never a fallback — and `status: 'loading'` is reserved for "nothing worth
  * painting yet".
  */
 export function nextStationsState(prev: StationsState, ev: StationsEvent): StationsState {

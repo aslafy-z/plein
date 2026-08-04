@@ -116,8 +116,8 @@ The app has **no backend**: the browser queries these public services
 directly. Sources are pluggable (`src/data/types.ts`). Offline or when a feed
 is down, the app keeps the last loaded stations (per-area cache) with an
 explicit banner and retries as soon as the connection returns; the offline
-demo dataset never stands in silently — the settings only offer it while the
-real source is failing, as an explicit escape hatch.
+demo dataset serves development and the test suite only and is never offered
+in the app.
 
 ## 🛠️ Development
 

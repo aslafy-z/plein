@@ -480,7 +480,7 @@
   "settings_maps_site": "Site used by « Go there »",
   "settings_maps_site_hint": "the site the « Go there » button opens",
   "settings_data_section": "Data",
-  "settings_source_down": "The live source is unavailable right now — the demo dataset below stays available.",
+  "settings_source_down": "The live source is unavailable right now — the prices shown may be out of date.",
   "settings_price_disclaimer_title": "A word about the prices",
   "settings_price_disclaimer_body": " — they come from the stations' own official filings and are indicative only, with no guarantee: we cannot check them one by one, and a price may well have changed by the time you reach the pump. Have a look on site before filling up — the detour is your call. A wrong price cannot be reported or corrected from the app for now — but do tell us by e-mail right below 💚",
   "settings_feedback_section": "Contact",
