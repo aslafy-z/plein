@@ -242,14 +242,14 @@ async function collectStorageEstimate(): Promise<{ usage: number | null; quota: 
   }
 }
 
-/** One full snapshot. `roundCoords` applies the ~1 km privacy grid. */
-export async function collectDebugSnapshot(
-  app: AppDebugInput,
-  opts: { roundCoords: boolean },
-): Promise<DebugSnapshot> {
+/**
+ * One full snapshot. Coordinates ALWAYS ride the ~1 km privacy grid — a
+ * snapshot exists to be pasted into an issue, and no debugging question it
+ * answers needs the tester's position finer than the town.
+ */
+export async function collectDebugSnapshot(app: AppDebugInput): Promise<DebugSnapshot> {
   const now = Date.now();
-  const round = opts.roundCoords;
-  const point = (p: GeoPoint): GeoPoint => (round ? roundPoint(p) : p);
+  const point = roundPoint;
 
   const [sw, swCaches, estimate] = await Promise.all([
     collectSw(),
@@ -262,7 +262,7 @@ export async function collectDebugSnapshot(
 
   return {
     collectedAt: now,
-    coordsRounded: round,
+    coordsRounded: true,
     build: { version: APP_VERSION, dev: IS_DEV },
     sw,
     connectivity: { onLine: typeof navigator === 'undefined' || navigator.onLine !== false },
@@ -291,7 +291,7 @@ export async function collectDebugSnapshot(
       lastLoad: lastLoad ? { ...lastLoad, age: fmtAgeMs(now - lastLoad.at) } : null,
       areas: cache.areas.map((a) => ({
         // The key embeds the raw center — rebuild it on the privacy grid
-        key: round ? `${a.source}|${roundCoord(a.center.lat)},${roundCoord(a.center.lng)}` : a.key,
+        key: `${a.source}|${roundCoord(a.center.lat)},${roundCoord(a.center.lng)}`,
         source: a.source,
         center: point(a.center),
         fetchRadiusKm: a.fetchRadiusKm,

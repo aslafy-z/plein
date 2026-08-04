@@ -34,82 +34,105 @@ const CHIP = 40;
 const LIVE_REFRESH_MS = 2000;
 
 /**
- * Two tabs, ordered by how much a debugging eye needs them: « Live » is what
- * MOVES while reproducing a bug — errors first, then the data on screen and
- * where it came from; « Env » is the session's standing facts (build, SW,
- * storage), worth one look and then noise next to the live numbers.
+ * One column, ordered by how much a debugging eye needs each section: what
+ * MOVES while reproducing a bug first — errors, then the data on screen and
+ * where it came from — the session's standing facts (build, SW, storage)
+ * last. Compact on purpose: a section is one dense line of pairs plus one
+ * line per record, so the whole state fits a phone screen without tabs.
  */
-const TABS: { id: 'live' | 'env'; label: string; sections: (keyof DebugSnapshot)[] }[] = [
-  {
-    id: 'live',
-    label: 'Live',
-    sections: ['errors', 'stationsOnScreen', 'areaCache', 'tiles', 'position', 'connectivity'],
-  },
-  { id: 'env', label: 'Env', sections: ['build', 'sw', 'app', 'storage'] },
+const SECTION_ORDER: (keyof DebugSnapshot)[] = [
+  'errors',
+  'stationsOnScreen',
+  'areaCache',
+  'tiles',
+  'position',
+  'connectivity',
+  'build',
+  'sw',
+  'app',
+  'storage',
 ];
 
 const MONO_11 = `500 11px ${FONT.mono}`;
 
-function sectionTitleStyle(): React.CSSProperties {
-  return {
-    font: `700 10px ${FONT.mono}`,
-    letterSpacing: '.12em',
-    textTransform: 'uppercase',
-    color: C.accent,
-    margin: '14px 0 6px',
-  };
+/** A lat/lng pair — the one nested shape worth its own compact form */
+function isPoint(v: unknown): v is { lat: number; lng: number } {
+  return (
+    typeof v === 'object' &&
+    v !== null &&
+    typeof (v as { lat?: unknown }).lat === 'number' &&
+    typeof (v as { lng?: unknown }).lng === 'number'
+  );
+}
+
+function fmtValue(v: unknown): string {
+  if (v == null) return '—';
+  if (isPoint(v)) return `${v.lat},${v.lng}`;
+  if (Array.isArray(v)) return v.length === 0 ? '—' : v.map(fmtValue).join(' | ');
+  if (typeof v === 'object') return inlinePairs(v as Record<string, unknown>);
+  return String(v);
+}
+
+/** `key:value · key:value` — the panel's whole grammar */
+function inlinePairs(obj: Record<string, unknown>): string {
+  return Object.entries(obj)
+    .map(([k, v]) => `${k}:${fmtValue(v)}`)
+    .join(' · ');
 }
 
 /**
- * Generic key/value renderer: scalars as label–value rows, arrays one JSON
- * line per item, nested objects as an indented block. The snapshot is data —
- * rendering it generically keeps the panel and the copied JSON one thing.
+ * One section: its scalars share the title's line, each record of an array
+ * (a cached area, a SW cache, an error) gets one dense line, nested objects
+ * one line of pairs. Compact and generic — the panel and the copied JSON
+ * stay one thing.
  */
-function Rows({ obj, depth = 0 }: { obj: Record<string, unknown>; depth?: number }) {
-  return (
-    <div style={{ paddingLeft: depth ? 10 : 0 }}>
-      {Object.entries(obj).map(([key, value]) => {
-        if (Array.isArray(value)) {
-          return (
-            <div key={key} style={{ margin: '2px 0' }}>
-              <span style={{ color: C.mut }}>{key}</span>
-              {value.length === 0 ? (
-                <span style={{ color: C.faint }}> —</span>
-              ) : (
-                value.map((item, i) => (
-                  <div
-                    key={i}
-                    style={{ color: C.body, paddingLeft: 10, wordBreak: 'break-all' }}
-                  >
-                    {typeof item === 'object' && item !== null
-                      ? JSON.stringify(item)
-                      : String(item)}
-                  </div>
-                ))
-              )}
+function CompactSection({ title, value }: { title: string; value: Record<string, unknown> }) {
+  const scalars: string[] = [];
+  const blocks: React.ReactNode[] = [];
+  const recordLine: React.CSSProperties = {
+    color: C.body,
+    paddingLeft: 8,
+    wordBreak: 'break-word',
+  };
+  for (const [key, v] of Object.entries(value)) {
+    if (Array.isArray(v)) {
+      if (v.length === 0) scalars.push(`${key}:—`);
+      else
+        blocks.push(
+          ...v.map((item, i) => (
+            <div key={`${key}${i}`} style={recordLine}>
+              {typeof item === 'object' && item !== null
+                ? inlinePairs(item as Record<string, unknown>)
+                : String(item)}
             </div>
-          );
-        }
-        if (value !== null && typeof value === 'object') {
-          return (
-            <div key={key} style={{ margin: '2px 0' }}>
-              <span style={{ color: C.mut }}>{key}</span>
-              <Rows obj={value as Record<string, unknown>} depth={depth + 1} />
-            </div>
-          );
-        }
-        return (
-          <div
-            key={key}
-            style={{ display: 'flex', gap: 8, justifyContent: 'space-between', margin: '2px 0' }}
-          >
-            <span style={{ color: C.mut, flexShrink: 0 }}>{key}</span>
-            <span style={{ color: C.body, textAlign: 'right', wordBreak: 'break-all' }}>
-              {value == null ? '—' : String(value)}
-            </span>
-          </div>
+          )),
         );
-      })}
+    } else if (v !== null && typeof v === 'object' && !isPoint(v)) {
+      blocks.push(
+        <div key={key} style={recordLine}>
+          <span style={{ color: C.mut }}>{key}</span> {inlinePairs(v as Record<string, unknown>)}
+        </div>,
+      );
+    } else {
+      scalars.push(`${key}:${fmtValue(v)}`);
+    }
+  }
+  return (
+    <div style={{ margin: '6px 0' }}>
+      <div style={{ wordBreak: 'break-word' }}>
+        <span
+          style={{
+            color: C.accent,
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '.08em',
+          }}
+        >
+          {title}
+        </span>{' '}
+        <span style={{ color: C.body }}>{scalars.join(' · ')}</span>
+      </div>
+      {blocks}
     </div>
   );
 }
@@ -120,9 +143,7 @@ export default function DebugOverlay() {
   const errorCount = useConsoleErrorCount();
 
   const [expanded, setExpanded] = useState(false);
-  const [tab, setTab] = useState<'live' | 'env'>('live');
   const [snapshot, setSnapshot] = useState<DebugSnapshot | null>(null);
-  const [roundCoords, setRoundCoords] = useState(true);
   const [copied, setCopied] = useState(false);
   const [collecting, setCollecting] = useState(false);
 
@@ -148,8 +169,6 @@ export default function DebugOverlay() {
   appRef.current = app;
   const desktopRef = useRef(desktop);
   desktopRef.current = desktop;
-  const roundRef = useRef(roundCoords);
-  roundRef.current = roundCoords;
 
   const collect = useCallback(async () => {
     setCollecting(true);
@@ -179,7 +198,7 @@ export default function DebugOverlay() {
       fuel: cur.fuel,
     };
     try {
-      setSnapshot(await collectDebugSnapshot(input, { roundCoords: roundRef.current }));
+      setSnapshot(await collectDebugSnapshot(input));
     } finally {
       setCollecting(false);
     }
@@ -197,7 +216,7 @@ export default function DebugOverlay() {
       if (!collectingRef.current) void collect();
     }, LIVE_REFRESH_MS);
     return () => clearInterval(timer);
-  }, [expanded, roundCoords, collect]);
+  }, [expanded, collect]);
 
   const copy = async () => {
     if (!snapshot) return;
@@ -362,57 +381,19 @@ export default function DebugOverlay() {
           ✕
         </button>
       </div>
-      <label
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '8px 12px',
-          borderBottom: `1px solid ${C.divider}`,
-          color: C.mut,
-          cursor: 'pointer',
-        }}
-      >
-        <input
-          type="checkbox"
-          checked={roundCoords}
-          onChange={(e) => setRoundCoords(e.target.checked)}
-        />
-        Round coordinates (~1 km) — keeps screenshots from leaking home
-      </label>
-      <div
-        role="tablist"
-        style={{ display: 'flex', gap: 6, padding: '8px 12px 0' }}
-      >
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            role="tab"
-            aria-selected={tab === t.id}
-            onClick={() => setTab(t.id)}
-            style={{
-              ...buttonStyle,
-              background: tab === t.id ? C.accent : C.surface2,
-              color: tab === t.id ? C.onAccent : C.body,
-              border: `1px solid ${tab === t.id ? C.accent : C.border12}`,
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-      <div style={{ overflow: 'auto', padding: '2px 12px 12px', minHeight: 0 }}>
+      <div style={{ overflow: 'auto', padding: '4px 12px 10px', minHeight: 0 }}>
         {snapshot == null ? (
           <div style={{ color: C.faint, padding: '12px 0' }}>Collecting…</div>
         ) : (
-          TABS.find((t) => t.id === tab)!.sections.map((section) => {
+          SECTION_ORDER.map((section) => {
             const value = snapshot[section];
             if (value === null || typeof value !== 'object') return null;
             return (
-              <div key={section}>
-                <div style={sectionTitleStyle()}>{section}</div>
-                <Rows obj={value as unknown as Record<string, unknown>} />
-              </div>
+              <CompactSection
+                key={section}
+                title={section}
+                value={value as unknown as Record<string, unknown>}
+              />
             );
           })
         )}
