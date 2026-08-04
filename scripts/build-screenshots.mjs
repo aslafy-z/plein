@@ -75,6 +75,8 @@ async function loadMessages(locale) {
     'nav_route',
     'route_from_field_title',
     'route_to_field_title',
+    'route_from_placeholder',
+    'route_to_placeholder',
     'route_compare_cta',
     'ribbon_recommended_stop',
   ];
@@ -264,17 +266,26 @@ async function shootLocale(browser, locale) {
       // full-screen place search, and the input to fill is the search's own.
       // Type the departure rather than leaving the implicit "My position", so
       // the ribbon header reads "Toulouse → Nantes" as the README caption says.
-      // getByRole('textbox') skips the sheet's tank slider, which is also an
-      // <input> and stays visible under the opening search.
-      const searchInput = page.getByRole('textbox').first();
-      await page.locator(`button[aria-label="${msg.route_from_field_title}"]`).click();
-      await searchInput.waitFor({ timeout: 10_000 });
-      await searchInput.fill('Toulouse');
-      await page.getByText(/^Toulouse/).first().click({ timeout: 30_000 });
-      await page.locator(`button[aria-label="${msg.route_to_field_title}"]`).click();
-      await searchInput.waitFor({ timeout: 10_000 });
-      await searchInput.fill('Nantes');
-      await page.getByText(/^Nantes/).first().click({ timeout: 30_000 });
+      // Same moves as the e2e fixture's pickRoutePlace: on a phone the
+      // endpoint field is a trigger button that opens the full-screen place
+      // search, whose input carries the field's placeholder — and the row to
+      // pick lives under `search-suggestions`, not just anywhere a matching
+      // city name is painted.
+      const pickPlace = async (placeholder, trigger, text) => {
+        const input = page.getByPlaceholder(placeholder);
+        if ((await input.count()) === 0) {
+          await page.getByRole('button', { name: trigger, exact: true }).click();
+          await input.waitFor({ timeout: 10_000 });
+        }
+        await input.fill(text);
+        await page
+          .getByTestId('search-suggestions')
+          .getByText(new RegExp(`^${text}`))
+          .first()
+          .click({ timeout: 30_000 });
+      };
+      await pickPlace(msg.route_from_placeholder, msg.route_from_field_title, 'Toulouse');
+      await pickPlace(msg.route_to_placeholder, msg.route_to_field_title, 'Nantes');
       await page.getByText(msg.route_compare_cta).click();
       await page.getByText(msg.ribbon_recommended_stop).waitFor({ timeout: 60_000 });
       await page.waitForLoadState('networkidle').catch(() => {});
