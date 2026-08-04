@@ -103,6 +103,34 @@ test.describe('the bottom sheet', () => {
     await expect(handle).toHaveAttribute('aria-expanded', 'false')
   })
 
+  test('a mouse drag on the handle itself opens the list', async ({ page }) => {
+    // A mouse gets no implicit pointer capture (touch does), and the handle
+    // sits on the sheet's top edge: the first move of a real drag is already
+    // outside the element, so the gesture only survives if the shell tracks
+    // non-touch drags on the window. Two coarse steps reproduce that first
+    // long jump. This is the phone arrangement driven by a mouse — a desktop
+    // browser window narrowed under 960px.
+    const handle = page.getByRole('button', { name: /list of stations/ })
+    // The collapsed sheet still resizes as the card lands — wait for the
+    // handle to hold still or the drag starts from stale coordinates.
+    let last = await handle.boundingBox()
+    await expect(async () => {
+      const next = await handle.boundingBox()
+      const settled = next != null && last != null && next.y === last.y
+      last = next
+      expect(settled, 'the handle must settle before the drag').toBe(true)
+    }).toPass()
+    if (!last) throw new Error('handle not visible')
+
+    const x = last.x + last.width / 2
+    await page.mouse.move(x, last.y + last.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(x, last.y + last.height / 2 - 160, { steps: 2 })
+    await page.mouse.up()
+
+    await expect(handle).toHaveAttribute('aria-expanded', 'true')
+  })
+
   test('a quick upward flick on the station card opens the list', async ({ page }) => {
     const handle = page.getByRole('button', { name: /list of stations/ })
     const box = await page.getByText('The cheapest near you').boundingBox()

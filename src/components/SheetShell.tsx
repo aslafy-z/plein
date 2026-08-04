@@ -246,8 +246,32 @@ export default function SheetShell({
     }, 0);
   }, []);
 
+  const dragMove = useCallback((y: number, t: number) => {
+    const el = rootRef.current;
+    const s = g.current;
+    if (!el || !s.active) return;
+    if (!s.moved && Math.abs(y - s.startY) < DRAG_SLOP_PX) return;
+    s.moved = true;
+    // A mouse drag is tracked on the window AND on whatever element the
+    // pointer still covers — the same native event must not count twice
+    const prev = s.samples[s.samples.length - 1];
+    if (prev && prev.t === t && prev.y === y) return;
+    s.samples.push({ y, t });
+    while (s.samples.length > 1 && t - s.samples[0].t > FLING_WINDOW_MS + FLING_HOLD_MS) {
+      s.samples.shift();
+    }
+    const d = dims.current;
+    s.pendingH = Math.min(d.max, Math.max(d.min, s.startH + (s.startY - y)));
+    if (!s.raf) {
+      s.raf = requestAnimationFrame(() => {
+        s.raf = 0;
+        if (s.active && rootRef.current) rootRef.current.style.height = `${s.pendingH}px`;
+      });
+    }
+  }, []);
+
   const dragBegin = useCallback(
-    (y: number, t: number) => {
+    (y: number, t: number, pointerType = 'touch') => {
       const el = rootRef.current;
       if (!el || !dims.current.canDrag || g.current.active) return;
       // The hint animation overrides the inline height — a drag starting mid
@@ -263,8 +287,19 @@ export default function SheetShell({
         pendingH: 0,
       };
       el.style.transition = 'none';
+      // Only touch pointers get implicit capture. A mouse pressed on the
+      // handle leaves the sheet on its very first upward move (the handle
+      // sits at the top edge), the element under it never sees a pointermove,
+      // and the element handlers only request capture once the slop trips —
+      // so until release the gesture has to be fed from the window.
+      const track =
+        pointerType !== 'touch'
+          ? (e: PointerEvent) => dragMove(e.clientY, e.timeStamp)
+          : null;
+      if (track) window.addEventListener('pointermove', track);
       // The pointer may be released outside the sheet before any capture
       const done = (e: PointerEvent) => {
+        if (track) window.removeEventListener('pointermove', track);
         window.removeEventListener('pointerup', done);
         window.removeEventListener('pointercancel', done);
         dragEnd(e.type === 'pointercancel', e.timeStamp);
@@ -272,28 +307,8 @@ export default function SheetShell({
       window.addEventListener('pointerup', done);
       window.addEventListener('pointercancel', done);
     },
-    [dragEnd],
+    [dragEnd, dragMove],
   );
-
-  const dragMove = useCallback((y: number, t: number) => {
-    const el = rootRef.current;
-    const s = g.current;
-    if (!el || !s.active) return;
-    if (!s.moved && Math.abs(y - s.startY) < DRAG_SLOP_PX) return;
-    s.moved = true;
-    s.samples.push({ y, t });
-    while (s.samples.length > 1 && t - s.samples[0].t > FLING_WINDOW_MS + FLING_HOLD_MS) {
-      s.samples.shift();
-    }
-    const d = dims.current;
-    s.pendingH = Math.min(d.max, Math.max(d.min, s.startH + (s.startY - y)));
-    if (!s.raf) {
-      s.raf = requestAnimationFrame(() => {
-        s.raf = 0;
-        if (s.active && rootRef.current) rootRef.current.style.height = `${s.pendingH}px`;
-      });
-    }
-  }, []);
 
   // If React re-renders mid-drag (background refresh…), re-assert the
   // gesture height it would otherwise overwrite.
@@ -311,7 +326,7 @@ export default function SheetShell({
     if (insideNoDrag(e.target)) return;
     g.current.fromHandle = !!handleRef.current?.contains(e.target as Node);
     g.current.toggled = false;
-    dragBegin(e.clientY, e.timeStamp);
+    dragBegin(e.clientY, e.timeStamp, e.pointerType);
   };
   const cardPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!g.current.active) return;
@@ -359,7 +374,7 @@ export default function SheetShell({
     if (!arm) return;
     const dy = e.clientY - arm.y;
     if (dy > DRAG_SLOP_PX && arm.top <= 0) {
-      dragBegin(arm.y, arm.t);
+      dragBegin(arm.y, arm.t, e.pointerType);
       dragMove(e.clientY, e.timeStamp);
       e.currentTarget.setPointerCapture(e.pointerId);
     } else if (Math.abs(dy) > DRAG_SLOP_PX) {
@@ -525,7 +540,12 @@ export default function SheetShell({
       {/* ── Collapsed part (measured — the map stops above it) ── */}
       <div
         ref={headerRef}
-        style={{ flexShrink: 0, touchAction: 'none', cursor: hasBody ? 'grab' : undefined }}
+        style={{
+          flexShrink: 0,
+          touchAction: 'none',
+          userSelect: 'none',
+          cursor: hasBody ? 'grab' : undefined,
+        }}
         onPointerDown={cardPointerDown}
         onPointerMove={cardPointerMove}
         onPointerUp={cardPointerUp}
