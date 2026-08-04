@@ -142,6 +142,16 @@ test.describe('phone', () => {
     await expect(tolls).toContainText('✓')
     await tolls.click()
     await expect(tolls).not.toContainText('✓')
+
+    // The tank chip is the map tab's radius-chip idiom: it names the value
+    // (70 % is the default departure tank) and opens the sheet on the slider
+    const tank = chips.getByRole('button', { name: 'Tank 70 %' })
+    await expect(tank).toBeVisible()
+    await tank.click()
+    await expect(
+      page.getByRole('button', { name: /the route details/ }),
+    ).toHaveAttribute('aria-expanded', 'true')
+    await expect(page.getByRole('slider')).toBeVisible()
   })
 
   test('picking a place fills the field it was opened for', async ({ page }) => {

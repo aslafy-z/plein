@@ -303,6 +303,7 @@
   "route_avoid_tolls": "Evitar peajes",
   "route_start_tank": "Depósito al salir",
   "route_start_tank_hint": "sirve para calcular la autonomía y el límite de « dónde parar »",
+  "route_tank_chip": "Depósito {percent} %",
   "route_settings_recap": "depósito de {tank} L · se cambia en Ajustes",
   "route_settings_link": "Ajustes ›",
   "route_compare_cta": "Comparar las gasolineras de la ruta",

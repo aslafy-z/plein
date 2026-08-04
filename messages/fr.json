@@ -303,6 +303,7 @@
   "route_avoid_tolls": "Éviter les péages",
   "route_start_tank": "Réservoir au départ",
   "route_start_tank_hint": "sert au calcul de l'autonomie et de la limite « où s'arrêter »",
+  "route_tank_chip": "Réservoir {percent} %",
   "route_settings_recap": "réservoir {tank} L · modifiable dans Réglages",
   "route_settings_link": "Réglages ›",
   "route_compare_cta": "Comparer les stations sur le trajet",

@@ -11,6 +11,7 @@
 // a new destination over a finished route swaps the panel back to the form —
 // no silent recompute), the timeline / computing / error states otherwise.
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { C, ctaStyle, floatingPanelStyle, mono } from '../theme';
 import type { GeocodeResult } from '../data/types';
 import { fmtPrice, durationLabel } from '../lib/format';
@@ -107,13 +108,30 @@ function RouteFields() {
   );
 }
 
+/** One chip look for the route's setup controls, in its two homes: the form
+    (transparent off-state on a card) and the phone's map overlay, where the
+    `onMap` variant is the map tab's chip look — a transparent chip over map
+    tiles is unreadable. */
+function routeChipStyle(on: boolean, onMap: boolean): CSSProperties {
+  return {
+    background: on ? C.accent : onMap ? C.surface2 : 'transparent',
+    color: on ? C.onAccent : C.body,
+    fontSize: onMap ? 13 : 12.5,
+    fontWeight: on ? 700 : onMap ? 500 : 700,
+    padding: '8px 14px',
+    borderRadius: onMap ? 18 : 16,
+    border: on ? `1px solid ${C.accent}` : `1px solid ${onMap ? C.border09 : C.border15}`,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+    pointerEvents: 'auto',
+  };
+}
+
 /** The avoid-motorways / avoid-tolls toggles — one presentation, two homes.
     They sit in the setup form (desktop panel, expanded phone sheet) and, on a
     phone, ALSO ride the map overlay right under the endpoint fields: picking
     a destination starts the comparison immediately, so the preferences must
-    be reachable before that pick, not buried behind a sheet expansion. The
-    `onMap` variant is the map tab's chip look — a transparent chip over map
-    tiles is unreadable. */
+    be reachable before that pick, not buried behind a sheet expansion. */
 function RoutePrefChips({ onMap = false }: { onMap?: boolean }) {
   const app = useApp();
   return (
@@ -124,24 +142,7 @@ function RoutePrefChips({ onMap = false }: { onMap?: boolean }) {
           [m.route_avoid_tolls(), app.avoidToll, app.setAvoidToll],
         ] as const
       ).map(([label, on, set]) => (
-        <button
-          key={label}
-          onClick={() => set(!on)}
-          style={{
-            background: on ? C.accent : onMap ? C.surface2 : 'transparent',
-            color: on ? C.onAccent : C.body,
-            fontSize: onMap ? 13 : 12.5,
-            fontWeight: on ? 700 : onMap ? 500 : 700,
-            padding: '8px 14px',
-            borderRadius: onMap ? 18 : 16,
-            border: on
-              ? `1px solid ${C.accent}`
-              : `1px solid ${onMap ? C.border09 : C.border15}`,
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            pointerEvents: 'auto',
-          }}
-        >
+        <button key={label} onClick={() => set(!on)} style={routeChipStyle(on, onMap)}>
           {on ? '✓ ' : ''}
           {label}
         </button>
@@ -553,18 +554,29 @@ export default function RouteScreen() {
             >
               <RouteFields />
 
-              {/* The preference chips ride the overlay during setup — the
-                  sheet's copy of the form only shows once expanded, and
-                  picking a destination computes right away. Once a route
-                  stands they retreat into the form: toggling one here would
-                  not recompute the standing route, and a chip that silently
-                  stops matching the itinerary on screen is a lie. */}
+              {/* The setup chips ride the overlay — the sheet's copy of the
+                  form only shows once expanded, and picking a destination
+                  computes right away, so the per-trip choices must be at hand
+                  BEFORE the pick. The avoids toggle in place; the tank chip
+                  is the map tab's radius-chip idiom — it names the value and
+                  opens the sheet on the real control (the slider sits right
+                  under the chips in the form). Once a route stands they all
+                  retreat into the form: toggling one here would not recompute
+                  the standing route, and a chip that silently stops matching
+                  the itinerary on screen is a lie. */}
               {phase === 'form' && (
                 <div
                   data-testid="route-pref-chips"
                   style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}
                 >
                   <RoutePrefChips onMap />
+                  <button
+                    onClick={() => setSheetOpen(true)}
+                    title={m.route_start_tank()}
+                    style={routeChipStyle(false, true)}
+                  >
+                    {m.route_tank_chip({ percent: app.startTankPct })}
+                  </button>
                 </div>
               )}
             </div>

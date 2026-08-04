@@ -297,6 +297,7 @@
   "route_avoid_tolls": "Evitar portagens",
   "route_start_tank": "Depósito à partida",
   "route_start_tank_hint": "serve para calcular a autonomia e o limite «onde parar»",
+  "route_tank_chip": "Depósito {percent} %",
   "route_settings_recap": "depósito {tank} L · alterável nas Definições",
   "route_settings_link": "Definições ›",
   "route_compare_cta": "Comparar os postos na viagem",

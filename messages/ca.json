@@ -303,6 +303,7 @@
   "route_avoid_tolls": "Evita els peatges",
   "route_start_tank": "Dipòsit a la sortida",
   "route_start_tank_hint": "serveix per calcular l'autonomia i el límit d'« on parar »",
+  "route_tank_chip": "Dipòsit {percent} %",
   "route_settings_recap": "dipòsit de {tank} L · es canvia a Configuració",
   "route_settings_link": "Configuració ›",
   "route_compare_cta": "Compara les benzineres de la ruta",
