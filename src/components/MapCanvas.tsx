@@ -1130,7 +1130,7 @@ export default function MapCanvas({
           >
             +
           </button>
-          <div style={{ height: 1, background: C.border09 }} />
+          <div style={{ height: 1, background: C.divider }} />
           <button
             onClick={() => mapRef.current?.zoomOut()}
             aria-label={m.map_zoom_out()}
@@ -1139,7 +1139,7 @@ export default function MapCanvas({
           >
             −
           </button>
-          <div style={{ height: 1, background: C.border09 }} />
+          <div style={{ height: 1, background: C.divider }} />
           <button
             onClick={() => app.shareMapView()}
             aria-label={m.map_share_view()}
@@ -1148,7 +1148,7 @@ export default function MapCanvas({
           >
             <ShareIcon color={C.ink} size={18} />
           </button>
-          <div style={{ height: 1, background: C.border09 }} />
+          <div style={{ height: 1, background: C.divider }} />
           <button
             onClick={() => app.resetSearchToUser()}
             aria-label={locateAria}
