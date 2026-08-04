@@ -209,7 +209,10 @@ const arrivalNode = (place: string, sub: string) => (
         width: 14,
         height: 14,
         borderRadius: 4,
-        background: C.ink,
+        // The destination wears warn everywhere — the route map's arrival
+        // square, the range limit — so the timeline's square matches instead
+        // of borrowing the text color (near-black on the light theme)
+        background: C.warn,
       }}
     />
     <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>{m.ribbon_arrival({ place })}</div>
