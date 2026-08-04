@@ -291,7 +291,7 @@ async function shootLocale(browser, locale) {
       await pickPlace(msg.route_to_placeholder, msg.route_to_field_title, 'Nantes');
       // Picking the destination submits the trip by itself — no CTA click
       // (route.spec.ts leans on the same behavior)
-      await page.getByText(msg.ribbon_recommended_stop).waitFor({ timeout: 60_000 });
+      await page.getByText(msg.ribbon_recommended_stop).first().waitFor({ timeout: 60_000 });
       await page.waitForLoadState('networkidle').catch(() => {});
       await page.waitForTimeout(4000);
       await shoot(page, locale, 'route');
