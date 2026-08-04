@@ -1,6 +1,6 @@
 // Place search on the map tab. Picking a result MOVES THE SEARCH CIRCLE there
 // (stations reload around it) — it does not start a route. Each suggestion
-// also offers a secondary « Itinéraire › » shortcut that pre-fills the route
+// also offers a secondary « Directions › » shortcut that pre-fills the route
 // setup for people who did want directions.
 //
 // The field itself — debounce, spinner, history rows, dropdown on a window,

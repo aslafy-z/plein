@@ -90,7 +90,7 @@ function CachedData({ onCleared }: { onCleared: () => void }) {
 
   const clear = async () => {
     setBusy(true);
-    // Favorite prices are cache-class data too — « Effacer » drops both
+    // Favorite prices are cache-class data too — « Clear offline data » drops both
     await Promise.all([clearStationsCache(), clearFavoritePrices()]);
     setBusy(false);
     setRound((n) => n + 1);
@@ -435,7 +435,7 @@ export default function Settings() {
           }}
         >
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {/* « Langue du navigateur » is the absence of a choice, not a
+            {/* « Browser language » is the absence of a choice, not a
                 locale: picking it drops the override so detection applies
                 again — including after the user changes their browser. */}
             {[null, ...LOCALES].map((l) => {
@@ -467,7 +467,7 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* Routes — desktop only: on mobile « Y aller » opens the native GPS app */}
+      {/* Routes — desktop only: on mobile « Go there » opens the native GPS app */}
       {!HAS_NATIVE_MAPS && (
       <div style={{ marginTop: 18 }}>
         <div style={SECTION_LABEL}>{m.settings_routes_section()}</div>

@@ -71,7 +71,7 @@ export default function FiltersSheet() {
   const radiusDraftRef = useRef(radiusDraft);
   radiusDraftRef.current = radiusDraft;
 
-  // A store change from elsewhere (« Réinitialiser », a shared link) came
+  // A store change from elsewhere (« Reset », a shared link) came
   // after the drag: it wins — drop any pending commit and follow. Our own
   // debounced commit lands here too, with no timer left, as a no-op sync.
   useEffect(() => {
@@ -82,7 +82,7 @@ export default function FiltersSheet() {
     setRadiusDraft(app.radius);
   }, [app.radius]);
 
-  // Closing the sheet flushes instead of discarding: « Voir N stations »
+  // Closing the sheet flushes instead of discarding: « Show N stations »
   // right after a drag must apply the radius just chosen, not lose it.
   useEffect(
     () => () => {
@@ -112,7 +112,7 @@ export default function FiltersSheet() {
 
   // Brand groups present in the zone with their station count, most frequent
   // first; brandless stations count as the « independent » group, pinned last
-  // so the tail never buries the real enseignes. The count answers « how many
+  // so the tail never buries the real brands. The count answers « how many
   // stations do I get if I pick this brand » — it therefore honours the fuel
   // and service filters, and only ignores the brand selection itself.
   const counts = selectZoneBrandCounts(app);
@@ -159,7 +159,7 @@ export default function FiltersSheet() {
         )}
       </div>
 
-      {/* Carburant */}
+      {/* Fuel */}
       <div>
         <div style={{ ...sectionLabel, marginBottom: 10 }}>{m.filters_fuel_section()}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -187,7 +187,7 @@ export default function FiltersSheet() {
         </div>
       </div>
 
-      {/* Rayon */}
+      {/* Search radius */}
       <div>
         <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
           <span style={{ ...sectionLabel, flex: 1 }}>{m.filters_radius_section()}</span>
@@ -216,7 +216,7 @@ export default function FiltersSheet() {
         </div>
       </div>
 
-      {/* Distributeurs — accordion, collapsed by default */}
+      {/* Brands — accordion, collapsed by default */}
       <div>
         {knowsBrands ? (
           <>

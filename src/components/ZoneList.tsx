@@ -23,7 +23,7 @@ import { openStatus } from '../lib/hours';
 import BrandAvatar from './BrandAvatar';
 
 /**
- * Every station of the zone, sorted by effective price (« Recommandé », the
+ * Every station of the zone, sorted by effective price (« Recommended », the
  * default), sticker price or distance, deals highlighted.
  * A row selects its station on the map (highlighted pin, map pans onto it) —
  * the map ↔ list link.
@@ -57,7 +57,7 @@ export default function ZoneList({
   const cheapest = selectCheapest(app);
   const reco = selectRecommended(app);
   const range = selectPriceRange(app);
-  // « Bons plans » (near-identical low prices): the card still preselects a
+  // « Good deals » (near-identical low prices): the card still preselects a
   // single station, but the list highlights all of them
   const stats = selectPriceStats(app);
   const dealCount = selectDeals(app).length;
@@ -118,7 +118,7 @@ export default function ZoneList({
     >
       {/* One line, whatever the width: the compact count, the deals beside
           it, the sort at the right edge. The panel floor (PANEL_WIDTH) is
-          exactly what this row needs — « {n} stations dans la zone » wrapped
+          exactly what this row needs — « {n} stations in this area » wrapped
           onto three lines there, so the count dropped the zone suffix the
           list already IS. */}
       <div
@@ -222,7 +222,7 @@ export default function ZoneList({
           const isFocus = app.focusStationId === s.id;
           const price = effectivePrice(s, app.fuel)!.value;
           // Rows are zone stations — the zone floor applies (the cheapest
-          // of the circle is a bon plan even when the area has cheaper).
+          // of the circle is a good deal even when the area has cheaper).
           // The recommended row is highlighted like a deal whatever its
           // tier, so it matches its card — without moving the tier bounds.
           const deal = priceTier(price, stats, true) === 'deal' || recoRow;
@@ -270,7 +270,7 @@ export default function ZoneList({
                   whiteSpace: 'nowrap',
                 }}
               >
-                {/* Sub-cent deltas read « +0,00 » — at the displayed
+                {/* Sub-cent deltas read « +0.00 » — at the displayed
                     precision these prices are simply equal, say nothing */}
                 {best
                   ? m.sheet_row_best_price()

@@ -23,7 +23,7 @@ import ZoneEmpty from './ZoneEmpty';
 
 /**
  * The station the zone leads with: the best deal around (or the one selected
- * on the map), with its price, its « Y aller » and its gap to the zone floor.
+ * on the map), with its price, its « Go there » and its gap to the zone floor.
  *
  * Shared by the two arrangements of the zone — the bottom sheet's collapsed
  * head on a phone (which passes its drag handle in) and the head of the panel
@@ -44,12 +44,12 @@ export default function ZoneCard({ handle }: { handle?: ReactNode }) {
 
   // « vs the zone » chip: null when the card has no zone to compare against
   // (empty circle, or a station selected outside it) — then no chip at all,
-  // « +1,67 €/L » against a nonexistent floor is just the price again
+  // « +1.67 €/L » against a nonexistent floor is just the price again
   const zoneDelta = selectZoneDelta(app, shown);
   const shownStatus = shown ? openStatus(shown.hours) : null;
   // No trip origin — the searched area is beyond any drive from the user, or
   // no position was ever known: no trip figure is honest, so the card shows
-  // none — no distance in the meta line, no ETA on « Y aller ». Their
+  // none — no distance in the meta line, no ETA on « Go there ». Their
   // absence (with the greyed « Distance » chip in the list) IS the signal
   // that the figures no longer start from the user.
   const tripOrigin = selectTripOriginKnown(app);
@@ -160,7 +160,7 @@ export default function ZoneCard({ handle }: { handle?: ReactNode }) {
               <div style={{ font: mono(700, 22), color: C.accent, whiteSpace: 'nowrap' }}>
                 {fmtPrice(effectivePrice(shown, app.fuel)?.value)} €
               </div>
-              {/* Fuel of the SHOWN price — SP95 when E10 fell back on it */}
+              {/* Fuel of the SHOWN price — Unleaded 95 when E10 fell back on it */}
               <div style={{ color: C.mut, fontSize: 11.5, whiteSpace: 'nowrap' }}>
                 {m.sheet_per_litre({ fuel: fuelLabel(effectiveFuel(shown, app.fuel) ?? app.fuel) })}
               </div>

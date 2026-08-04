@@ -66,7 +66,7 @@ function RouteFields() {
       <PlaceField
         target="routeFrom"
         value={routeFromLabel(app)}
-        // « Ma position » is a value, not text to edit around: the field
+        // « My position » is a value, not text to edit around: the field
         // edits as empty, and an empty field means « wherever I am » again
         // as soon as it settles.
         editValue={app.fromIsCurrentPosition ? '' : undefined}

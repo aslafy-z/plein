@@ -68,7 +68,7 @@ export function tabLabel(tab: TabKey): string {
 }
 
 /**
- * Where a tab leads — « Trajet » lands on the ribbon when a route is already
+ * Where a tab leads — « Route » lands on the ribbon when a route is already
  * computed, on its setup form otherwise. Shared so the bottom bar and the
  * desktop side navigation can never send the same tab to two different places.
  */
@@ -76,7 +76,7 @@ export function tabTarget(tab: TabKey, routeReady: boolean): Screen {
   return tab === 'route' ? (routeReady ? 'route' : 'routeSetup') : tab;
 }
 
-/** The setup form and the ribbon are both « Trajet » as far as the nav shows */
+/** The setup form and the ribbon are both « Route » as far as the nav shows */
 export function tabIsActive(tab: TabKey, screen: Screen): boolean {
   return screen === tab || (tab === 'route' && screen === 'routeSetup');
 }

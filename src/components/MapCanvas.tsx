@@ -583,7 +583,7 @@ export default function MapCanvas({
     const reco = selectRecommended(app);
     // Pin & dot colors follow the price tiers of the whole loaded area —
     // the very stations drawn here — so the scale can't flip with the
-    // circle: « bons plans » in green (SEVERAL stations at near-identical
+    // circle: « good deals » in green (SEVERAL stations at near-identical
     // low prices all stand out, not just the single cheapest), the
     // priciest tier tinted orange. In-zone stations also get the zone
     // floor: the circle's cheapest stays green like its card in the sheet.
@@ -703,7 +703,7 @@ export default function MapCanvas({
   }, [app.focusStationId]);
 
   // Chip numbers: scoped to the EFFECTIVE zone — the circle intersected with
-  // the view. Circle on screen → the circle (like « Filtres · 30 »); circle
+  // the view. Circle on screen → the circle (like « Filters · 30 »); circle
   // overflowing the screen (zoomed in) → its visible part, so the count
   // matches the dots the user can actually see.
   let zoneInView = 0;

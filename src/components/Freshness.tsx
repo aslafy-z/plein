@@ -42,7 +42,7 @@ export default function Freshness() {
 
   // A standing failure makes ANY age worth flagging: the next refresh is not
   // coming on its own schedule, so the chip owns up even under STALE_MS — but
-  // then it has to SAY the refresh failed. « à l'instant » under a banner
+  // then it has to SAY the refresh failed. « just now » under a banner
   // announcing the source is down reads as reassurance, which is the one thing
   // the chip must never be.
   const level = freshnessLevel(fetchedAt, lastError != null);

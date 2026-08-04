@@ -129,8 +129,8 @@ export const floatingPanelStyle: CSSProperties = {
 };
 
 /**
- * Primary CTA button — one single look across the app (onboarding, filtres,
- * itinéraire, fiche station). Spread it and override only what a screen really
+ * Primary CTA button — one single look across the app (onboarding, filters,
+ * route, station fiche). Spread it and override only what a screen really
  * needs (a shadow, a margin), so the type never drifts screen to screen.
  */
 export const ctaStyle = (enabled = true): CSSProperties => ({

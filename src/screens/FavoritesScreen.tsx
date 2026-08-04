@@ -29,7 +29,7 @@ const FAV_GRID = 'repeat(auto-fill, minmax(440px, 1fr))';
 const FAV_MAX_WIDTH = 1000;
 
 /**
- * Favoris — the user's pinned stations (★ on a station detail or on the map
+ * Favorites — the user's pinned stations (★ on a station detail or on the map
  * card). Favorites are stored as snapshots so they render even when their
  * area isn't loaded. The price cell reads the live area when it covers the
  * favorite and the compact favorite-price store otherwise — favorites in two
@@ -56,8 +56,8 @@ export default function FavoritesScreen() {
     return { f, live, held, priceInfo, price: priceInfo?.value ?? null, distKm };
   });
 
-  // « Recommandé » ranks on the effective per-litre price: the fuel burnt on
-  // the round trip (consumption & tank size from Réglages) counted in — the
+  // « Recommended » ranks on the effective per-litre price: the fuel burnt on
+  // the round trip (consumption & tank size from Settings) counted in — the
   // same notion as the station the map card crowns.
   const favs = sortFavoriteRows(rows, sort, app);
 
@@ -90,7 +90,7 @@ export default function FavoritesScreen() {
           {m.favorites_subtitle()}
         </div>
 
-        {/* Sort chips — « Recommandé » = meilleur rapport prix / distance */}
+        {/* Sort chips — « Recommended » = best price / distance trade-off */}
         {favs.length > 0 && (
           <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
             {sorts.map(([k, label]) => {
