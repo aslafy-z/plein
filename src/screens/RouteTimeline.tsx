@@ -334,7 +334,7 @@ export default function RouteTimeline() {
         </div>
         <div
           style={{
-            background: C.surface2,
+            background: C.card,
             border: `1px solid ${C.accentBorderStrong}`,
             borderRadius: 16,
             padding: '14px 16px',
@@ -716,7 +716,7 @@ export default function RouteTimeline() {
               >
                 <div
                   style={{
-                    background: C.surface2,
+                    background: C.card,
                     border: `1px solid ${C.warn}`,
                     borderRadius: 14,
                     padding: '12px 16px',

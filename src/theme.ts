@@ -22,6 +22,10 @@ export const C = {
   surface: 'var(--c-surface)', // cards
   surface2: 'var(--c-surface-2)', // chips / secondary surfaces
   surface3: 'var(--c-surface-3)', // tertiary (avatars, bars)
+  card: 'var(--c-card)', // bordered list cards (zone rows, timeline stops) —
+  // surface2's dark value, but paper-white in light where a grey tile reads
+  // as disabled rather than as a card
+
   navBg: 'var(--c-nav-bg)',
   mapBg: 'var(--c-map-bg)',
   accent: 'var(--c-accent)', // green

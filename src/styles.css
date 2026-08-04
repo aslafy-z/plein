@@ -73,6 +73,7 @@
   --c-surface: #1a1d20;
   --c-surface-2: #1d2226;
   --c-surface-3: #22282c;
+  --c-card: #1d2226;
   --c-nav-bg: #15181b;
   --c-map-bg: #14181a;
   --c-accent: #3ddc84;
@@ -149,6 +150,7 @@
   --c-surface: #ffffff;
   --c-surface-2: #e9eeeb;
   --c-surface-3: #dfe6e2;
+  --c-card: #ffffff;
   --c-nav-bg: #f8faf9;
   --c-map-bg: #dfe5e1;
   --c-accent: #0d8f4f;
