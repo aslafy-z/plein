@@ -56,6 +56,25 @@ test.beforeEach(async ({ page }) => {
   })
 })
 
+// Both arrangements, one rule — the endpoint triggers are what differs (a
+// button on a phone, an input on a window), so the two halves are measured
+// through their slots rather than through a role.
+test('the two endpoints split one line, departure left, destination right', async ({ page }) => {
+  await gotoMap(page)
+  await page.getByText('Route', { exact: true }).click()
+
+  const departure = await page.getByTestId('route-endpoint-from').boundingBox()
+  const destination = await page.getByTestId('route-endpoint-to').boundingBox()
+  if (!departure || !destination) throw new Error('the endpoint fields are not measurable')
+
+  // ONE line, not a stack: same top edge, departure entirely left of the
+  // destination — the vertical space over the corridor belongs to the map
+  expect(Math.abs(departure.y - destination.y)).toBeLessThanOrEqual(1)
+  expect(departure.x + departure.width).toBeLessThanOrEqual(destination.x)
+  // Halves of that line: neither endpoint may take the other's width
+  expect(Math.abs(departure.width - destination.width)).toBeLessThanOrEqual(1)
+})
+
 test.describe('window', () => {
   desktopOnly('the inline fields with an attached dropdown are the desktop arrangement')
 
@@ -131,26 +150,6 @@ test.describe('phone', () => {
     await expect(
       page.getByRole('button', { name: 'Compare the stations along the route' }),
     ).toBeVisible()
-  })
-
-  test('the two endpoints split one line, departure left, destination right', async ({ page }) => {
-    await gotoMap(page)
-    await page.getByText('Route', { exact: true }).click()
-
-    const departure = await page
-      .getByRole('button', { name: 'Departure', exact: true })
-      .boundingBox()
-    const destination = await page
-      .getByRole('button', { name: 'Destination', exact: true })
-      .boundingBox()
-    if (!departure || !destination) throw new Error('the endpoint fields are not measurable')
-
-    // ONE line, not a stack: same top edge, departure entirely left of the
-    // destination — the phone's vertical space belongs to the map
-    expect(Math.abs(departure.y - destination.y)).toBeLessThanOrEqual(1)
-    expect(departure.x + departure.width).toBeLessThanOrEqual(destination.x)
-    // Halves of that line: neither endpoint may take the other's width
-    expect(Math.abs(departure.width - destination.width)).toBeLessThanOrEqual(1)
   })
 
   test('the route preferences ride the map overlay, at hand before any pick', async ({ page }) => {
