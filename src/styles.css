@@ -312,11 +312,14 @@ button {
 }
 
 /* First-run affordance: the collapsed map sheet bounces, so the newcomer sees
-   the list can be pulled up. Height (not transform) — the sheet stays glued to
-   the bottom edge and the bounce previews the gesture itself. `--sheet-h`
-   mirrors the inline height the animation overrides.
+   the list can be pulled up. The bounce rides the sheet's translateY — the
+   element keeps its expanded height and the collapsed rest state is a
+   transform (see SheetShell) — so the compositor animates it, and the bottom
+   edge stays glued because the surplus parks below the stage. `--sheet-ty`
+   mirrors the inline transform the animation overrides; every excursion
+   subtracts from it, i.e. lifts the top edge.
 
-   A ball settling on a floor, not a sine wave: the closed height is the
+   A ball settling on a floor, not a sine wave: the rest transform is the
    floor, so every excursion goes up. Each apex is decelerated into and each
    fall accelerates out of it (per-segment easing — a single ease-in-out over
    the whole thing reads as a stretch), and both the amplitude and the period
@@ -324,34 +327,34 @@ button {
 @keyframes sheet-hint {
   /* the tug — quick pickup, decelerating into the apex */
   0% {
-    height: var(--sheet-h);
+    transform: translateY(var(--sheet-ty));
     animation-timing-function: cubic-bezier(0.16, 0.68, 0.32, 1);
   }
   /* fall: gravity, accelerating all the way down */
   27% {
-    height: calc(var(--sheet-h) + 54px);
+    transform: translateY(calc(var(--sheet-ty) - 54px));
     animation-timing-function: cubic-bezier(0.55, 0.09, 0.68, 0.53);
   }
   /* first rebound — a third of the height, shorter */
   53% {
-    height: var(--sheet-h);
+    transform: translateY(var(--sheet-ty));
     animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
   68% {
-    height: calc(var(--sheet-h) + 18px);
+    transform: translateY(calc(var(--sheet-ty) - 18px));
     animation-timing-function: cubic-bezier(0.55, 0.09, 0.68, 0.53);
   }
   /* last rebound — barely there, then still */
   83% {
-    height: var(--sheet-h);
+    transform: translateY(var(--sheet-ty));
     animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
   92% {
-    height: calc(var(--sheet-h) + 5px);
+    transform: translateY(calc(var(--sheet-ty) - 5px));
     animation-timing-function: cubic-bezier(0.55, 0.09, 0.68, 0.53);
   }
   100% {
-    height: var(--sheet-h);
+    transform: translateY(var(--sheet-ty));
   }
 }
 .sheet-hint {
