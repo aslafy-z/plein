@@ -311,9 +311,25 @@ export default function SheetShell({
           ? (e: PointerEvent) => dragMove(e.clientY, e.timeStamp)
           : null;
       if (track) window.addEventListener('pointermove', track);
+      // A touch drag is fed from the RAW touchmove stream instead: Firefox
+      // Android starves pointermove down to ~5-8 events/s during a claimed
+      // drag while touchmove keeps flowing at input rate — a sheet tracking
+      // pointermove there staircases on a 120 Hz digitizer. Pointer events
+      // keep down/up (and the whole mouse path); duplicate deliveries of
+      // the same native event are dropped by dragMove's (t, y) dedup.
+      const touchTrack =
+        pointerType === 'touch'
+          ? (e: TouchEvent) => {
+              if (!g.current.active) return;
+              e.preventDefault();
+              dragMove(e.touches[0].clientY, e.timeStamp);
+            }
+          : null;
+      if (touchTrack) window.addEventListener('touchmove', touchTrack, { passive: false });
       // The pointer may be released outside the sheet before any capture
       const done = (e: PointerEvent) => {
         if (track) window.removeEventListener('pointermove', track);
+        if (touchTrack) window.removeEventListener('touchmove', touchTrack);
         window.removeEventListener('pointerup', done);
         window.removeEventListener('pointercancel', done);
         dragEnd(e.type === 'pointercancel', e.timeStamp);
