@@ -25,6 +25,7 @@ import { placeSublabel } from '../lib/labels';
 import { useIsDesktop, useVisualViewport } from '../lib/layout';
 import { useApp, type SearchTarget } from '../state/store';
 import { searchRows } from '../state/searchHistory';
+import LocateIcon from './LocateIcon';
 
 /** Shorter than this and no geocoder is called — « to » matches a country */
 const MIN_QUERY = 3;
@@ -78,6 +79,13 @@ export interface PlaceFieldProps {
   /** ✕ on a non-empty committed value (route fields: back to empty / « My
       position ») — the map's open field gets the close ✕ via onClose */
   onClear?(): void;
+  /** « My position » offered as a row above the results — where the user
+      stands is a place like any other, and the route's two endpoint fields
+      let it be picked into either end. Absent (the map's search, or an
+      endpoint that may not take it — see `selectCanPickCurrentPosition`)
+      means no row at all: an offer that cannot be honoured is worse than
+      none. Picking it closes the field exactly like picking a place does. */
+  onPickCurrentPosition?(): void;
   clearAria?: string;
   autoFocus?: boolean;
   /** Extra action button per row (the map's « Directions › ») */
@@ -199,10 +207,15 @@ export default function PlaceField(props: PlaceFieldProps) {
   const rows = searchRows(app.searchHistory, suggestions, queryText);
   const historyCount = rows.filter((row) => row.fromHistory).length;
 
-  // Both the pick and the row action feed the one place history: what matters
-  // is that the place was looked up, not what was done with it.
-  const pick = (r: GeocodeResult) => {
-    app.rememberSearchedPlace(r);
+  /** Is there anything under the field? The « My position » row counts: it is
+      the whole content of an untouched route field, and the gates below (the
+      desktop dropdown, the phone's empty state, the blur that dismisses)
+      would otherwise unmount it — including out from under its own click. */
+  const showsPosition = props.onPickCurrentPosition != null;
+  const hasList = rows.length > 0 || showsPosition;
+
+  /** What every pick does to the field itself, place or position alike */
+  const closeAfterPick = () => {
     cancelSearch();
     if (props.pickNavigates) {
       // The caller's onPick navigates via go(), which closes the search
@@ -220,7 +233,20 @@ export default function PlaceField(props: PlaceFieldProps) {
     } else if (open) {
       app.setSearchOpen(null);
     }
+  };
+
+  // Both the pick and the row action feed the one place history: what matters
+  // is that the place was looked up, not what was done with it.
+  const pick = (r: GeocodeResult) => {
+    app.rememberSearchedPlace(r);
+    closeAfterPick();
     props.onPick(r);
+  };
+  // The user's own position is not a place: nothing to remember, and no
+  // geocoder answer behind it — only the caller's own action.
+  const pickCurrentPosition = () => {
+    closeAfterPick();
+    props.onPickCurrentPosition?.();
   };
   const rowActionPick = (r: GeocodeResult) => {
     app.rememberSearchedPlace(r);
@@ -285,7 +311,7 @@ export default function PlaceField(props: PlaceFieldProps) {
           // With rows on screen the blur is a row click or the overlay —
           // both handle the close themselves, and unmounting the dropdown
           // here would kill the click before it lands.
-          if (rows.length === 0) endEditing();
+          if (!hasList) endEditing();
         }}
         onChange={(e) => onInput(e.target.value, phone)}
         // The keyboard's search key takes the first row — the one the ranking
@@ -307,6 +333,51 @@ export default function PlaceField(props: PlaceFieldProps) {
   // box where the same lines would only add noise.
   const listContent = (phone: boolean) => (
     <>
+      {/* Above everything, and never filtered by the query: it answers no
+          search — it is the one place the app already knows. */}
+      {showsPosition && (
+        <div
+          style={{
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            padding: phone ? '2px 12px 2px 18px' : '4px 8px 4px 16px',
+            // Where the app's own answer ends and the searched places begin
+            ...(rows.length > 0 ? { borderBottom: `1px solid ${C.border}` } : null),
+          }}
+        >
+          <span
+            aria-hidden
+            style={{
+              position: 'absolute',
+              left: phone ? 3 : 2,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              display: 'flex',
+              color: C.accent,
+            }}
+          >
+            <LocateIcon color={C.accent} dot size={13} />
+          </span>
+          <button
+            onClick={pickCurrentPosition}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              textAlign: 'left',
+              padding: phone ? '12px 0' : '8px 0',
+              cursor: 'pointer',
+            }}
+          >
+            <div style={{ fontSize: phone ? 15 : 14.5, fontWeight: 600, color: C.ink }}>
+              {m.route_from_current_position()}
+            </div>
+            <div style={{ fontSize: 12, color: C.faint, marginTop: 1 }}>
+              {m.search_my_position_hint()}
+            </div>
+          </button>
+        </div>
+      )}
       {historyCount > 0 && (
         <div
           style={{
@@ -596,7 +667,7 @@ export default function PlaceField(props: PlaceFieldProps) {
               </div>
             </div>
 
-            {rows.length > 0 ? (
+            {hasList ? (
               <div
                 data-testid="search-suggestions"
                 style={{
@@ -644,7 +715,7 @@ export default function PlaceField(props: PlaceFieldProps) {
   }
 
   // ── Window: the box, and a dropdown attached under it ──────────────────────
-  const showRows = rows.length > 0 && (props.onClose != null || editing);
+  const showRows = hasList && (props.onClose != null || editing);
   const clearable = editing ? text !== '' : props.value !== '' && props.onClear != null;
 
   return (

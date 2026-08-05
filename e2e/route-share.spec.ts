@@ -6,6 +6,11 @@ import { test, expect, gotoMap, openRouteSheet, pickRoutePlace } from './fixture
 // same assumptions, and a reload on the ribbon returns to the ribbon. The
 // serialization itself is covered unit-side (src/lib/routeUrl.test.ts).
 
+// lastFix: every trip here departs from « My position », which the app only
+// has where a fix landed — the runner's Chromium never answers one, so the
+// last known position is seeded.
+test.use({ seed: { sourceId: 'demo', onboarded: true, lastFix: { lat: 43.6047, lng: 1.4442 } } })
+
 const params = (page: import('@playwright/test').Page) => new URL(page.url()).searchParams
 
 /** Endpoint field content, whatever the arrangement: an input on a window, a

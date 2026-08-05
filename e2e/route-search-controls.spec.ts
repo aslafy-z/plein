@@ -6,8 +6,15 @@ import { test, expect, gotoMap, desktopOnly, phoneOnly } from './fixtures'
 // the departure carries, and the phone's full-screen search naming the field
 // it fills. The shared close/ring/dropdown behaviour is search-close.spec.ts.
 
+// lastFix: the departure only READS « My position » where the app has one —
+// a fix the runner's Chromium never grants, so the last known one is seeded.
 test.use({
-  seed: { sourceId: 'fr', onboarded: true, lastPos: { lat: 43.6047, lng: 1.4442 } },
+  seed: {
+    sourceId: 'fr',
+    onboarded: true,
+    lastPos: { lat: 43.6047, lng: 1.4442 },
+    lastFix: { lat: 43.6047, lng: 1.4442 },
+  },
 })
 
 test.beforeEach(async ({ page }) => {

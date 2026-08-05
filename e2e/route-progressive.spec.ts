@@ -12,11 +12,16 @@ import type { Page, Route as PwRoute } from '@playwright/test'
 // open by the test itself (a promise the stub awaits), so what the screen
 // shows between the commits is observable without racing a timer.
 
-test.use({ seed: { sourceId: 'fr', onboarded: true } })
-
 const TOULOUSE = { lat: 43.6045, lng: 1.4442 }
+
+// lastFix: every trip here departs from « My position » — which is a position
+// the app was actually given. The runner's Chromium never answers a fix, so
+// the last known one is seeded; without it the departure is unset and there is
+// no trip to stage.
 const BORDEAUX = { lat: 44.8378, lng: -0.5792 }
 const NANTES = { lat: 47.2184, lng: -1.5536 }
+
+test.use({ seed: { sourceId: 'fr', onboarded: true, lastFix: TOULOUSE } })
 
 /** The one region every stage transition is announced through */
 const liveRegion = (page: Page) => page.locator('.sr-only[role="status"]')

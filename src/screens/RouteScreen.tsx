@@ -21,6 +21,8 @@ import { m } from '../paraglide/messages.js';
 import {
   useApp,
   routeFromLabel,
+  routeToLabel,
+  selectCanPickCurrentPosition,
   selectRouteAnalysis,
   effectivePrice,
 } from '../state/store';
@@ -47,6 +49,10 @@ type Phase = 'form' | 'computing' | 'error' | 'ready';
 function RouteFields() {
   const app = useApp();
   const desktop = useIsDesktop();
+  // Where the user stands is a place their own search can offer — into either
+  // endpoint, and into only one at a time (a trip from here to here is not a
+  // trip). The rule is one selector, so the two fields cannot disagree.
+  const canPickPosition = selectCanPickCurrentPosition(app);
 
   const fromIcon = (
     <div
@@ -93,6 +99,9 @@ function RouteFields() {
           onClear={
             app.fromIsCurrentPosition ? undefined : () => app.useCurrentPositionAsStart()
           }
+          onPickCurrentPosition={
+            canPickPosition ? () => app.useCurrentPositionAsStart() : undefined
+          }
           clearAria={m.route_from_clear_aria()}
           emptyHint={m.route_search_hint()}
         />
@@ -100,7 +109,10 @@ function RouteFields() {
       <div style={half}>
         <PlaceField
           target="routeTo"
-          value={app.toText}
+          value={routeToLabel(app)}
+          // Same as the departure's: « My position » is a value the field
+          // carries, not text to edit around
+          editValue={app.toIsCurrentPosition ? '' : undefined}
           placeholder={m.route_to_placeholder()}
           title={m.route_to_field_title()}
           icon={toIcon}
@@ -114,7 +126,20 @@ function RouteFields() {
             app.setTo(r.label, r.point);
             app.startRoute(r);
           }}
-          onClear={app.toText.trim() ? () => app.setTo('') : undefined}
+          // Picking the user's position is picking a destination: same intent,
+          // same immediate compute. The point goes with the call — the store
+          // has not committed it yet this tick.
+          onPickCurrentPosition={
+            canPickPosition
+              ? () => {
+                  app.useCurrentPositionAsDestination();
+                  app.startRoute({ label: m.route_from_current_position(), point: app.userPos });
+                }
+              : undefined
+          }
+          onClear={
+            app.toText.trim() || app.toIsCurrentPosition ? () => app.setTo('') : undefined
+          }
           clearAria={m.route_to_clear_aria()}
           emptyHint={m.route_search_hint()}
         />
@@ -384,7 +409,7 @@ function RouteLead({ phase }: { phase: Phase }) {
         {kicker(m.ribbon_header())}
         <div style={{ fontSize: 17, fontWeight: 700, color: C.ink }}>
           {route ? app.routeState.endpoints.from : routeFromLabel(app)} →{' '}
-          {route ? app.routeState.endpoints.to : app.toText}
+          {route ? app.routeState.endpoints.to : routeToLabel(app)}
         </div>
         {route && (
           <div style={{ fontSize: 12, color: C.mut, marginTop: 2 }}>
@@ -406,7 +431,7 @@ function RouteLead({ phase }: { phase: Phase }) {
       <div>
         {kicker(m.route_setup_title())}
         <div style={{ fontSize: 17, fontWeight: 700, color: C.ink }}>
-          {routeFromLabel(app)} → {app.toText}
+          {routeFromLabel(app)} → {routeToLabel(app)}
         </div>
         <div style={{ fontSize: 12, color: C.mut, marginTop: 2 }}>
           {m.ribbon_departure_tank({ percent: app.startTankPct, km: analysis.autonomyKm })}
@@ -477,7 +502,9 @@ export default function RouteScreen() {
   // The submit acknowledges in place: the CTA goes busy while the addresses
   // geocode (the same spinner idiom as PlaceField), and `startRoute` guards
   // re-entry synchronously so a second tap cannot start a second pipeline.
-  const canGo = app.toText.trim().length > 0 && !app.geocoding;
+  // « My position » as the destination carries no text — its point is what
+  // says a destination is set.
+  const canGo = (app.toText.trim().length > 0 || app.toIsCurrentPosition) && !app.geocoding;
   const cta = (
     <button onClick={() => app.startRoute()} disabled={!canGo} style={ctaStyle(canGo)}>
       {app.geocoding ? (

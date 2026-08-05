@@ -219,6 +219,14 @@ export type SortMode = 'recommended' | 'price' | 'distance';
  */
 export type SearchTarget = 'area' | 'routeFrom' | 'routeTo';
 
+/**
+ * A destination handed to `startRoute` in the same tick it was picked, before
+ * React has committed it to the store. A geocoder answer is one, and so is
+ * « my position » — which is a point and a label, and nothing a geocoder ever
+ * returned.
+ */
+export type RouteDestinationPick = Pick<GeocodeResult, 'label' | 'point'>;
+
 export type { MapsSiteId, FavoriteStation, SearchedPlace };
 /** Web maps sites offered by « Go there » on desktop, in display order */
 export const MAPS_SITE_IDS: MapsSiteId[] = ['google', 'waze', 'apple', 'osm'];
@@ -498,12 +506,20 @@ export interface AppStore {
   /** true while the departure field means « wherever I am » rather than a typed place */
   fromIsCurrentPosition: boolean;
   toText: string;
+  /** true while the destination field means « where I am » — the position at
+      the moment it was picked, frozen into `toPoint`: an arrival is a place,
+      it must not follow the next fix the way the departure does */
+  toIsCurrentPosition: boolean;
   fromPoint: GeoPoint | null;
   toPoint: GeoPoint | null;
   setFrom(text: string, point?: GeoPoint | null): void;
   /** Put the departure field back on the user's position */
   useCurrentPositionAsStart(): void;
   setTo(text: string, point?: GeoPoint | null): void;
+  /** Send the trip to where the user stands right now. Only offered while a
+      position is known and the OTHER endpoint is not already it — a trip from
+      here to here is not a trip (`selectCanPickCurrentPosition`). */
+  useCurrentPositionAsDestination(): void;
   searchPlaces(q: string, opts?: GeocodeSearchOptions): Promise<GeocodeResult[]>;
   /** Places looked up and picked — in the map's search or a route field —
       offered back by every search field */
@@ -511,8 +527,9 @@ export interface AppStore {
   rememberSearchedPlace(place: GeocodeResult): void;
   routeReady: boolean;
   /** Submit the trip. `toPick` carries a destination picked this same tick
-      (auto-start on pick), before React has committed it to `toText`. */
-  startRoute(toPick?: GeocodeResult): void;
+      (auto-start on pick), before React has committed it to `toText` — a
+      geocoder answer, or « my position » as the place it resolves to. */
+  startRoute(toPick?: RouteDestinationPick): void;
   /** true while the submitted addresses are being geocoded, before navigating */
   geocoding: boolean;
   editRoute(): void;
@@ -748,6 +765,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       initialRoute.toLabel ??
       (initialRoute.toPoint ? coordinateLabel(initialRoute.toPoint) : ''),
   );
+  // The destination is a place, never a flag the URL carries: a link says
+  // « to these coordinates », so reopening one shows them rather than telling
+  // the reader the trip goes to wherever THEY are.
+  const [toIsCurrentPosition, setToIsCurrentPosition] = useState(false);
   const [fromPoint, setFromPoint] = useState<GeoPoint | null>(initialRoute.fromPoint);
   const [toPoint, setToPoint] = useState<GeoPoint | null>(initialRoute.toPoint);
   // A ribbon link whose endpoints need no geocoding is ready from the first
@@ -1042,7 +1063,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       fromLabel: fromIsCurrentPosition ? '' : fromText,
       fromIsCurrentPosition,
       toPoint,
-      toLabel: toText,
+      // A « my position » destination writes its COORDINATES, no label: the
+      // trip really goes there, and a link saying « to My position » would
+      // read to its recipient as their own. The departure's flag is the
+      // opposite case — it is implicit, and would leak the sender's position
+      // into every shared trip.
+      toLabel: toIsCurrentPosition ? '' : toText,
       fuel,
       mode: routeMode,
       vehicle,
@@ -1054,7 +1080,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }),
     [
       avoidMotorway, avoidToll, consumption, fromIsCurrentPosition, fromPoint, fromText, fuel,
-      routeMode, startTankPct, tank, toPoint, toText, vehicle,
+      routeMode, startTankPct, tank, toIsCurrentPosition, toPoint, toText, vehicle,
     ],
   );
   const routeQuery = useMemo(() => routeUrlQuery(routeView), [routeView]);
@@ -1853,14 +1879,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const setTo = useCallback((text: string, point: GeoPoint | null = null) => {
     setToText(text);
+    setToIsCurrentPosition(false);
     setToPoint(point);
     setRouteReady(false);
   }, []);
 
-  const startRoute = useCallback(async (toPick?: GeocodeResult) => {
+  // The point is read ONCE, here: the trip goes to where the user was when
+  // they picked it. `hasKnownPos` gates the offer (the row is not even
+  // rendered without a fix), so `userPos` is a real position at this point.
+  const useCurrentPositionAsDestination = useCallback(() => {
+    setToText('');
+    setToIsCurrentPosition(true);
+    setToPoint(userPos);
+    setRouteReady(false);
+  }, [userPos]);
+
+  const startRoute = useCallback(async (toPick?: RouteDestinationPick) => {
     // A second tap must not open a second pipeline. The ref settles
     // synchronously, unlike the `geocoding` state the button renders.
-    if (startingRef.current || !(toPick ?? toText.trim())) return;
+    // A destination is set as soon as ANY of the three says so: a pick landing
+    // this same tick, typed text, or « my position » (whose text is empty on
+    // purpose — the label is copy, the point is the value).
+    if (startingRef.current || !(toPick ?? toPoint ?? toText.trim())) return;
     startingRef.current = true;
     setGeocoding(true);
     beginRouteTiming();
@@ -1868,9 +1908,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       let from = fromPoint;
       let to = toPick?.point ?? toPoint;
       let fromLabel = fromIsCurrentPosition ? '' : fromText.trim();
-      let toLabel = toPick?.label ?? toText.trim();
+      let toLabel = toPick?.label ?? (toIsCurrentPosition ? '' : toText.trim());
       const geocode = getProviders(sourceId).geocode;
       if (!from && (fromIsCurrentPosition || !fromText.trim())) {
+        // « From wherever I am » needs a place the user has actually been
+        // located in. Without a fix `userPos` is the fallback area, and a trip
+        // computed from it would be a trip from Toulouse presented as theirs —
+        // so the tap becomes the ask instead, exactly like the recentre
+        // control's, and the user can also just name a departure.
+        if (!geoFixed) {
+          requestGeolocation();
+          showToast(m.toast_position_unknown());
+          return;
+        }
         from = userPos;
         fromLabel = '';
       }
@@ -1921,7 +1971,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       go('route');
       void computeRoute(from, to, {
         from: fromLabel || m.route_from_current_position(),
-        to: toLabel,
+        to: toLabel || m.route_from_current_position(),
       });
     } finally {
       startingRef.current = false;
@@ -1932,10 +1982,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     fromIsCurrentPosition,
     fromPoint,
     fromText,
+    geoFixed,
     go,
     rememberSearchedPlace,
+    requestGeolocation,
     showToast,
     sourceId,
+    toIsCurrentPosition,
     toPoint,
     toText,
     userPos,
@@ -1961,9 +2014,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       from: fromIsCurrentPosition
         ? m.route_from_current_position()
         : fromText.trim() || m.route_from_current_position(),
-      to: toText.trim(),
+      to: toIsCurrentPosition ? m.route_from_current_position() : toText.trim(),
     });
-  }, [computeRoute, fromIsCurrentPosition, fromPoint, fromText, toPoint, toText]);
+  }, [
+    computeRoute, fromIsCurrentPosition, fromPoint, fromText,
+    toIsCurrentPosition, toPoint, toText,
+  ]);
 
   const retryCorridor = useCallback(() => {
     const { route, key } = routeState;
@@ -2118,9 +2174,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       : fromIsCurrentPosition
         ? m.route_from_current_position()
         : fromText;
-    const to = routeState.route ? routeState.endpoints.to : toText;
+    const to = routeState.route
+      ? routeState.endpoints.to
+      : toIsCurrentPosition
+        ? m.route_from_current_position()
+        : toText;
     share(routeShareData(routeView, window.location.origin, { from, to }));
-  }, [fromIsCurrentPosition, fromText, routeState, routeView, share, toText]);
+  }, [
+    fromIsCurrentPosition, fromText, routeState, routeView, share,
+    toIsCurrentPosition, toText,
+  ]);
 
   const finishOnboarding = useCallback(
     (withGeoloc: boolean) => {
@@ -2185,16 +2248,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       fromText,
       fromIsCurrentPosition,
       toText,
+      toIsCurrentPosition,
       fromPoint,
       toPoint,
       setFrom,
       useCurrentPositionAsStart,
       setTo,
+      useCurrentPositionAsDestination,
       searchPlaces,
       searchHistory,
       rememberSearchedPlace,
       routeReady,
-      startRoute: (toPick?: GeocodeResult) => void startRoute(toPick),
+      startRoute: (toPick?: RouteDestinationPick) => void startRoute(toPick),
       geocoding,
       editRoute,
       routeMode,
@@ -2250,8 +2315,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       focusStationId, mapZoom, setMapZoom,
       favorites, toggleFavorite, favoritePrices, stations, roadReach, loadStations,
       fromText, fromIsCurrentPosition,
-      toText, fromPoint, toPoint,
-      setFrom, useCurrentPositionAsStart, setTo, searchPlaces, searchHistory,
+      toText, toIsCurrentPosition, fromPoint, toPoint,
+      setFrom, useCurrentPositionAsStart, setTo, useCurrentPositionAsDestination,
+      searchPlaces, searchHistory,
       rememberSearchedPlace, routeReady,
       startRoute, geocoding, editRoute,
       routeMode, routeState, retryRoute, retryCorridor,
@@ -2274,11 +2340,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
  * Departure shown in the route UI. « My position » is copy, not a value: the
  * store carries a flag and the label is produced here, so translating it can
  * never change what the route actually departs from.
+ *
+ * The flag means « wherever I am », and without a fix there is no such place:
+ * `userPos` is then the area the app fell back to, and naming it « My
+ * position » would present the default zone as the user — the one thing
+ * `hasKnownPos` gates everywhere else. The departure reads as unset instead
+ * (the field falls back to its placeholder), which is what it is.
  */
 export function routeFromLabel(
-  app: Pick<AppStore, 'fromText' | 'fromIsCurrentPosition'>,
+  app: Pick<AppStore, 'fromText' | 'fromIsCurrentPosition' | 'hasKnownPos'>,
 ): string {
-  return app.fromIsCurrentPosition ? m.route_from_current_position() : app.fromText;
+  if (!app.fromIsCurrentPosition) return app.fromText;
+  return app.hasKnownPos ? m.route_from_current_position() : '';
+}
+
+/**
+ * Destination shown in the route UI — same rule as the departure's, one
+ * difference: the arrival is a POINT taken when it was picked, so it stands
+ * whatever happens to the fix afterwards. No `hasKnownPos` guard here: the
+ * flag can only have been set from a real position.
+ */
+export function routeToLabel(app: Pick<AppStore, 'toText' | 'toIsCurrentPosition'>): string {
+  return app.toIsCurrentPosition ? m.route_from_current_position() : app.toText;
+}
+
+/**
+ * May « My position » be offered as a place to pick, in either endpoint field?
+ * Only where the user has actually been located, and only while NEITHER end
+ * is already it — otherwise the offer builds a trip from here to here.
+ */
+export function selectCanPickCurrentPosition(
+  app: Pick<AppStore, 'hasKnownPos' | 'fromIsCurrentPosition' | 'toIsCurrentPosition'>,
+): boolean {
+  return app.hasKnownPos && !app.fromIsCurrentPosition && !app.toIsCurrentPosition;
 }
 
 export function useApp(): AppStore {

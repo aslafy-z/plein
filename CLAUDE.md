@@ -146,6 +146,16 @@ width, never pointer type: a window gets resized and the layout has to follow.
   `'routeFrom'`, `'routeTo'`), so the system Back closes it instead of
   leaving the screen. Callers keep the policy: what a pick does, the map's
   collapsed pill and « Directions › » row shortcut, the route's icons.
+- **The user's position is a place their own search offers.** Both route
+  endpoint fields carry a « My position » row above the results
+  (`onPickCurrentPosition`), and `selectCanPickCurrentPosition` is the one
+  rule behind it: a known position, and NEITHER end already on it — a trip
+  from here to here is not a trip, and the departure defaults to it. The two
+  ends differ in what they keep: the departure is the flag
+  (`fromIsCurrentPosition`, « wherever I am », no coordinates in a shared
+  link), the arrival freezes the point it was picked at (`toIsCurrentPosition`
+  labels it, `toPoint` IS it) — an arrival that followed the next fix would
+  walk away while you drive to it.
 - **One place history** (`src/state/searchHistory.ts`, persisted as
   `searchHistory`): every field feeds and reads it — a destination picked in
   the route search is offered back by the map's search, and vice versa.
@@ -230,8 +240,11 @@ Anything that does not fit one of them does not get cached.
   geolocation actually returned. `hasKnownPos` (`lastFix` present, or a fix
   landed this session) is what gates everything that presents a position as
   the user: the map dot, the lit recentre control, the distances and ETAs,
-  the « distance » sort. Refused or still pending on a first visit, the app
-  opens on the default area and claims nothing about it.
+  the « distance » sort, the route's « My position » departure — its label
+  (`routeFromLabel`), its pin on the route map, and the trip itself, which
+  asks for a fix rather than departing from the fallback area. Refused or
+  still pending on a first visit, the app opens on the default area and
+  claims nothing about it.
 - **Prices never go in the service worker.** `fetchedAt` per fetched area is
   the single source of truth about how old the numbers on screen are; an HTTP
   cache in front of a price API would age them without anything knowing.

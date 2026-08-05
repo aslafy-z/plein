@@ -2,8 +2,17 @@ import { test, expect, gotoMap, openRouteSheet, pickRoutePlace } from './fixture
 
 // A 20 % departure tank forces a plan on the Toulouse → Bordeaux demo
 // corridor, so the whole flow — plan card, tour, fiche, history — has a
-// planned stop to hang off.
-test.use({ seed: { sourceId: 'demo', onboarded: true, startTankPct: 20 } })
+// planned stop to hang off. lastFix: the trip departs from « My position »,
+// which needs a position the app actually has (the runner's Chromium never
+// grants a fix, and without one the departure is unset).
+test.use({
+  seed: {
+    sourceId: 'demo',
+    onboarded: true,
+    lastFix: { lat: 43.6047, lng: 1.4442 },
+    startTankPct: 20,
+  },
+})
 
 test('route comparison: map-first shell, tour, station detail and history', async ({ page }) => {
   await gotoMap(page)
@@ -14,7 +23,7 @@ test('route comparison: map-first shell, tour, station detail and history', asyn
   const cta = page.getByRole('button', { name: 'Compare the stations along the route' })
   await expect(cta).toBeVisible()
 
-  // ── Compute a route: the default position IS Toulouse, so pick a real
+  // ── Compute a route: the seeded fix IS Toulouse, so pick a real
   // destination through the shared search field — picking submits ──
   await pickRoutePlace(page, 'to', 'Bordeaux', 'Bordeaux centre')
 

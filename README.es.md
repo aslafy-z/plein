@@ -68,7 +68,9 @@ Portugal.
    (precio Y distancia, desvío incluido) aparece en el panel inferior, **Cómo
    llegar** inicia la navegación.
 4. Antes de un viaje largo, pestaña **Ruta**: introduce el destino y compara
-   las estaciones a lo largo del recorrido.
+   las estaciones a lo largo del recorrido. El origen parte de **Mi posición**
+   en cuanto la ubicación da una, y la búsqueda de cualquiera de los dos
+   extremos la ofrece como fila — solo en uno de los dos a la vez.
 5. En el móvil, instala la app (banner de instalación o
    *Ajustes → Aplicación*) para tenerla como icono, a pantalla completa y sin
    conexión.
