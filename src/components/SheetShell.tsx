@@ -34,6 +34,9 @@ const FLING_VPS = 0.45;
 const FLING_WINDOW_MS = 100;
 /** Pointer parked longer than this before release → the fling is cancelled */
 const FLING_HOLD_MS = 150;
+/** Further than this from the rest height → the sheet is mid-glide, and a
+    press anywhere on it catches it (subpixel heights stay a rest) */
+const GLIDE_CATCH_PX = 4;
 const TRANSITION = 'height .3s cubic-bezier(.4,0,.2,1)';
 
 /** Pointer handlers a body region carries so it can drag the sheet. Two
@@ -206,9 +209,16 @@ export default function SheetShell({
     }
     el.style.transition = TRANSITION;
     // A motionless press is a tap, not a gesture: the height was never
-    // touched and the open/close decision belongs to the tap handlers —
+    // dragged and the open/close decision belongs to the tap handlers —
     // voting from the current height here would race the handle's toggle.
-    if (!s.moved) return;
+    // But a press that CAUGHT a gliding sheet froze it (dragBegin), so an
+    // off-rest sheet resumes its snap instead of hanging mid-air.
+    if (!s.moved) {
+      const d = dims.current;
+      const rest = d.expanded ? d.max : d.min;
+      if (Math.abs(el.getBoundingClientRect().height - rest) > 1) el.style.height = `${rest}px`;
+      return;
+    }
     // Fling velocity: displacement over the trailing samples, measured on
     // event timestamps — a busy main thread delivers moves late and
     // coalesced, and that must not turn a real flick into a slow gesture.
@@ -287,6 +297,10 @@ export default function SheetShell({
         pendingH: 0,
       };
       el.style.transition = 'none';
+      // A grab CATCHES the sheet: with the transition killed, the inline
+      // height (the previous snap's target) would apply instantly — the
+      // hand must hold the sheet where it grabbed it, mid-glide included.
+      el.style.height = `${g.current.startH}px`;
       // Only touch pointers get implicit capture. A mouse pressed on the
       // handle leaves the sheet on its very first upward move (the handle
       // sits at the top edge), the element under it never sees a pointermove,
@@ -309,6 +323,18 @@ export default function SheetShell({
     },
     [dragEnd, dragMove],
   );
+
+  /** A sheet away from its rest height is mid-glide, and a press anywhere on
+      it then catches it — notably on the BODY, whose handlers otherwise
+      belong to the list's scroll and ignore an upward pull. Without this,
+      reopening a closing sheet from the bottom of the screen lands on the
+      body and does nothing while the close finishes under the finger. */
+  const midFlight = useCallback(() => {
+    const el = rootRef.current;
+    if (!el || !dims.current.canDrag) return false;
+    const rest = dims.current.expanded ? dims.current.max : dims.current.min;
+    return Math.abs(el.getBoundingClientRect().height - rest) > GLIDE_CATCH_PX;
+  }, []);
 
   // If React re-renders mid-drag (background refresh…), re-assert the
   // gesture height it would otherwise overwrite.
@@ -361,6 +387,10 @@ export default function SheetShell({
   const listPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.pointerType !== 'mouse') return; // touch has its own path below
     if (insideNoDrag(e.target)) return;
+    if (midFlight()) {
+      dragBegin(e.clientY, e.timeStamp, e.pointerType);
+      return;
+    }
     listArm.current = { y: e.clientY, t: e.timeStamp, top: listRef.current?.scrollTop ?? 0 };
   };
   const listPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -399,6 +429,10 @@ export default function SheetShell({
     let armed = false;
     const start = (e: TouchEvent) => {
       if (insideNoDrag(e.target)) return;
+      if (midFlight()) {
+        dragBegin(e.touches[0].clientY, e.timeStamp);
+        return;
+      }
       armY = e.touches[0].clientY;
       armT = e.timeStamp;
       armTop = el.scrollTop;
@@ -435,7 +469,7 @@ export default function SheetShell({
       el.removeEventListener('touchend', end);
       el.removeEventListener('touchcancel', end);
     };
-  }, [listAttached, dragBegin, dragMove, dragEnd]);
+  }, [listAttached, dragBegin, dragMove, dragEnd, midFlight]);
 
   const height = expanded && hasBody ? expandedH : (collapsedH ?? undefined);
 
