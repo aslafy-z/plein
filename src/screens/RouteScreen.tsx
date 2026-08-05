@@ -41,6 +41,11 @@ import StationDetail from './StationDetail';
     unreadable, and the width belongs to the map */
 const OVERLAY_MAX_WIDTH = 460;
 
+/** The endpoint row holds TWO fields where the map's overlay holds one, so it
+    gets its own cap rather than the map's: half of 460 is narrower than half a
+    phone line, and the dropdown attached under a field inherits that width. */
+const ENDPOINTS_MAX_WIDTH = 720;
+
 type Phase = 'form' | 'computing' | 'error' | 'ready';
 
 /** The departure and arrival fields — the map's search field twice, with the
@@ -48,7 +53,6 @@ type Phase = 'form' | 'computing' | 'error' | 'ready';
     over the map, in both arrangements and every phase. */
 function RouteFields() {
   const app = useApp();
-  const desktop = useIsDesktop();
   // Where the user stands is a place their own search can offer — into either
   // endpoint, and into only one at a time (a trip from here to here is not a
   // trip). The rule is one selector, so the two fields cannot disagree.
@@ -69,19 +73,19 @@ function RouteFields() {
     <div style={{ width: 12, height: 12, borderRadius: 3, background: C.warn, flexShrink: 0 }} />
   );
 
-  // A phone owes its vertical space to the map: the two endpoints share ONE
-  // line — departure on the left, destination on the right — instead of
-  // stacking two boxes over the corridor. They are halves of the same line, so
-  // each takes exactly half of it (`flex: 1 1 0`, never `1 1 auto`: a long
-  // remembered label would otherwise eat the other endpoint's width) and
-  // ellipsizes its own value; the two icons are what says which is which. A
-  // window stacks them, where the overlay column is wide enough to read a full
-  // address on each line.
-  const half: CSSProperties | undefined = desktop ? undefined : { flex: '1 1 0', minWidth: 0 };
+  // The screen owes its vertical space to the map, on a phone as on a window:
+  // the two endpoints share ONE line — departure on the left, destination on
+  // the right — instead of stacking two boxes over the corridor. They are
+  // halves of the same line, so each takes exactly half of it (`flex: 1 1 0`,
+  // never `1 1 auto`: a long remembered label would otherwise eat the other
+  // endpoint's width) and ellipsizes its own value; the two icons are what
+  // says which is which. The row's WIDTH is the caller's call — the slot it
+  // sits in knows how much of the map it may cover.
+  const half: CSSProperties = { flex: '1 1 0', minWidth: 0 };
 
   return (
-    <div style={{ display: 'flex', flexDirection: desktop ? 'column' : 'row', gap: 8 }}>
-      <div style={half}>
+    <div style={{ display: 'flex', gap: 8 }}>
+      <div data-testid="route-endpoint-from" style={half}>
         <PlaceField
           target="routeFrom"
           value={routeFromLabel(app)}
@@ -106,7 +110,7 @@ function RouteFields() {
           emptyHint={m.route_search_hint()}
         />
       </div>
-      <div style={half}>
+      <div data-testid="route-endpoint-to" style={half}>
         <PlaceField
           target="routeTo"
           value={routeToLabel(app)}
@@ -566,10 +570,11 @@ export default function RouteScreen() {
           />
 
           {/* The endpoint fields — over the map's top edge, beside the panel
-              on desktop, under the status bar otherwise (where the two of
-              them split one line rather than stacking; see RouteFields).
-              1010: dropdowns cover the map's floating controls (1000) while
-              staying under the scrim (1050) and the sheet (1100). */}
+              on desktop, under the status bar otherwise. They split one line
+              in both arrangements (see RouteFields); only how wide that line
+              may run changes. 1010: dropdowns cover the map's floating
+              controls (1000) while staying under the scrim (1050) and the
+              sheet (1100). */}
           {desktop ? (
             <div
               style={{
@@ -584,7 +589,13 @@ export default function RouteScreen() {
                 pointerEvents: 'none',
               }}
             >
-              <div style={{ flex: '0 1 460px', minWidth: 240, maxWidth: OVERLAY_MAX_WIDTH }}>
+              <div
+                style={{
+                  flex: `0 1 ${ENDPOINTS_MAX_WIDTH}px`,
+                  minWidth: 240,
+                  maxWidth: ENDPOINTS_MAX_WIDTH,
+                }}
+              >
                 <RouteFields />
               </div>
             </div>

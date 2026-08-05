@@ -748,8 +748,9 @@ export default function PlaceField(props: PlaceFieldProps) {
         className="search-box"
         style={{
           position: 'relative',
-          // An open dropdown must paint over the sibling field under it (the
-          // route stacks two of these boxes)
+          // An open dropdown must paint over its sibling (the route stands two
+          // of these boxes side by side): the neighbour's own shadow spreads
+          // wide enough to reach the list hanging below this one.
           zIndex: showRows ? 2 : undefined,
           background: C.surface,
           border: `1px solid ${C.border09}`,
