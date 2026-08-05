@@ -7,10 +7,21 @@
 // collapsed height so it is always reachable.
 //
 // Gestures: the whole header drags, and the body closes by dragging down from
-// its scroll top (native scroll otherwise). During a drag the height is
+// its scroll top (native scroll otherwise). During a drag the transform is
 // written straight to the DOM (no React re-render per frame) and the release
 // snaps in the fling direction when the gesture is fast. Anything marked
 // `data-sheet-no-drag` (a horizontal slider…) keeps its own gesture.
+//
+// The sheet is revealed by transform, never by height: whenever it has a
+// body the element keeps the EXPANDED height, and collapsed is a translateY
+// that parks the surplus below the stage (whose overflow clips it). Open,
+// close, the release snap and the drag itself all move that one transform —
+// compositor-only, where an animated `height` re-lays-out and repaints the
+// whole sheet subtree on every frame. That per-frame cost is what made
+// opening the sheet stutter on Firefox (Gecko repaints it far slower than
+// Blink, which never showed it). The footer counter-translates so it stays
+// glued to the stage's bottom edge, and is opaque because the body is laid
+// out underneath it in this model.
 import {
   useCallback,
   useEffect,
@@ -35,9 +46,9 @@ const FLING_WINDOW_MS = 100;
 /** Pointer parked longer than this before release → the fling is cancelled */
 const FLING_HOLD_MS = 150;
 /** Further than this from the rest height → the sheet is mid-glide, and a
-    press anywhere on it catches it (subpixel heights stay a rest) */
+    press anywhere on it catches it (subpixel transforms stay a rest) */
 const GLIDE_CATCH_PX = 4;
-const TRANSITION = 'height .3s cubic-bezier(.4,0,.2,1)';
+const TRANSITION = 'transform .3s cubic-bezier(.4,0,.2,1)';
 
 /** Pointer handlers a body region carries so it can drag the sheet. Two
     contracts share this shape: the body's SCROLL CONTAINER gets the
@@ -109,7 +120,7 @@ export default function SheetShell({
       always stays). The zone sheet keeps the default; the route sheet opens
       full — its timeline is longer than a screen. */
   expandRatio?: number;
-  /** Content-driven height changes apply without the glide. The route sheet
+  /** Content-driven collapsed-height changes apply without the glide. The route sheet
       needs it: its collapsed header changes several times in a row while the
       pipeline loads, and gliding each change turns the flap into a moving
       target right when the user reaches for it. The zone sheet keeps the
@@ -150,6 +161,13 @@ export default function SheetShell({
     Math.min(Math.round(stageH * expandRatio), stageH - MIN_MAP_PEEK_PX),
   );
 
+  // The translate model (see the header comment): measured and with a body,
+  // the element is always `expandedH` tall and `restTy` parks the surplus
+  // below the stage when collapsed. Both the root's transform and the
+  // footer's counter-translation derive from it.
+  const layoutH = hasBody && collapsedH != null ? expandedH : (collapsedH ?? undefined);
+  const restTy = hasBody && collapsedH != null && !expanded ? expandedH - collapsedH : 0;
+
   // ── First-run pull-up hint ────────────────────────────────────────────────
   // Nothing says the header sits on top of more. So the very first time the
   // caller arms it, the collapsed sheet bounces up and settles: the gesture
@@ -171,11 +189,12 @@ export default function SheetShell({
   }, [expanded]);
 
   // ── Gesture engine ─────────────────────────────────────────────────────────
-  // During a drag the height is written straight onto the DOM node inside a
-  // rAF (no React state per pointermove — a re-rendering list makes the drag
-  // stutter, which reads as "resistance"). React state only commits on
-  // release. `dims` mirrors the current render so the stable callbacks and
-  // the native touch listeners never see stale values.
+  // During a drag the transform pair is written straight onto the DOM nodes
+  // inside a rAF (no React state per pointermove — a re-rendering list makes
+  // the drag stutter, which reads as "resistance"). React state only commits
+  // on release. `dims` mirrors the current render so the stable callbacks and
+  // the native touch listeners never see stale values; min/max are VISIBLE
+  // heights, which the transforms are derived from.
   const dims = useRef({ min: 0, max: 0, expanded: false, canDrag: false });
   dims.current = {
     min: collapsedH ?? 0,
@@ -185,6 +204,22 @@ export default function SheetShell({
   };
   const openRef = useRef(onExpandedChange);
   openRef.current = onExpandedChange;
+
+  /** Current VISIBLE height, transform included — a grab mid-glide starts
+      from where the sheet is, not where it was headed. The untranslated
+      bottom edge is the stage's (the root is `bottom: 0` in it). */
+  const visibleNow = useCallback((el: HTMLDivElement) => {
+    const stage = el.parentElement;
+    const rect = el.getBoundingClientRect();
+    return stage ? stage.getBoundingClientRect().bottom - rect.top : rect.height;
+  }, []);
+
+  /** The one writer of the transform pair a visible height means */
+  const applyVisible = useCallback((el: HTMLDivElement, visible: number) => {
+    const ty = dims.current.max - visible;
+    el.style.transform = `translateY(${ty}px)`;
+    if (footerRef.current) footerRef.current.style.transform = `translateY(${-ty}px)`;
+  }, []);
 
   const g = useRef({
     active: false,
@@ -208,15 +243,16 @@ export default function SheetShell({
       s.raf = 0;
     }
     el.style.transition = TRANSITION;
-    // A motionless press is a tap, not a gesture: the height was never
+    if (footerRef.current) footerRef.current.style.transition = TRANSITION;
+    // A motionless press is a tap, not a gesture: the transform was never
     // dragged and the open/close decision belongs to the tap handlers —
     // voting from the current height here would race the handle's toggle.
-    // But a press that CAUGHT a gliding sheet froze it (dragBegin), so an
-    // off-rest sheet resumes its snap instead of hanging mid-air.
+    // But a press that CAUGHT a gliding sheet did freeze it (dragBegin), so
+    // an off-rest sheet resumes its snap instead of hanging mid-air.
     if (!s.moved) {
       const d = dims.current;
       const rest = d.expanded ? d.max : d.min;
-      if (Math.abs(el.getBoundingClientRect().height - rest) > 1) el.style.height = `${rest}px`;
+      if (Math.abs(visibleNow(el) - rest) > 1) applyVisible(el, rest);
       return;
     }
     // Fling velocity: displacement over the trailing samples, measured on
@@ -241,20 +277,20 @@ export default function SheetShell({
       if (last.t > from.t) v = (from.y - last.y) / (last.t - from.t);
     }
     const d = dims.current;
-    const h = el.getBoundingClientRect().height;
+    const h = visibleNow(el);
     let open: boolean;
     if (!cancelled && Math.abs(v) > FLING_VPS) {
       open = v > 0; // fling: follow the gesture direction, whatever the travel
     } else {
       open = h > (d.min + d.max) / 2;
     }
-    el.style.height = `${open ? d.max : d.min}px`;
+    applyVisible(el, open ? d.max : d.min);
     openRef.current(open);
     // keep `moved` up until the trailing click has been swallowed
     setTimeout(() => {
       g.current.moved = false;
     }, 0);
-  }, []);
+  }, [visibleNow, applyVisible]);
 
   const dragMove = useCallback((y: number, t: number) => {
     const el = rootRef.current;
@@ -275,32 +311,34 @@ export default function SheetShell({
     if (!s.raf) {
       s.raf = requestAnimationFrame(() => {
         s.raf = 0;
-        if (s.active && rootRef.current) rootRef.current.style.height = `${s.pendingH}px`;
+        if (s.active && rootRef.current) applyVisible(rootRef.current, s.pendingH);
       });
     }
-  }, []);
+  }, [applyVisible]);
 
   const dragBegin = useCallback(
     (y: number, t: number, pointerType = 'touch') => {
       const el = rootRef.current;
       if (!el || !dims.current.canDrag || g.current.active) return;
-      // The hint animation overrides the inline height — a drag starting mid
-      // bounce would look stuck, so the hand always wins over the demo
+      // The hint animation overrides the inline transform — a drag starting
+      // mid bounce would look stuck, so the hand always wins over the demo
       setHinting(false);
+      const startH = visibleNow(el);
       g.current = {
         ...g.current,
         active: true,
         moved: false,
         startY: y,
-        startH: el.getBoundingClientRect().height,
+        startH,
         samples: [{ y, t }],
         pendingH: 0,
       };
       el.style.transition = 'none';
-      // A grab CATCHES the sheet: with the transition killed, the inline
-      // height (the previous snap's target) would apply instantly — the
-      // hand must hold the sheet where it grabbed it, mid-glide included.
-      el.style.height = `${g.current.startH}px`;
+      if (footerRef.current) footerRef.current.style.transition = 'none';
+      // A grab CATCHES the sheet: with the transition killed, the element
+      // would otherwise snap to its inline rest transform — the hand must
+      // hold the sheet where it grabbed it, mid-glide included.
+      applyVisible(el, startH);
       // Only touch pointers get implicit capture. A mouse pressed on the
       // handle leaves the sheet on its very first upward move (the handle
       // sits at the top edge), the element under it never sees a pointermove,
@@ -311,9 +349,26 @@ export default function SheetShell({
           ? (e: PointerEvent) => dragMove(e.clientY, e.timeStamp)
           : null;
       if (track) window.addEventListener('pointermove', track);
+      // A touch drag is fed from the RAW touchmove stream instead: Firefox
+      // Android starves pointermove down to ~5-8 events/s during a claimed
+      // drag while touchmove keeps flowing at input rate — a sheet tracking
+      // pointermove there staircases however fast the compositor is.
+      // Pointer events keep down/up (and the whole mouse path). Duplicate
+      // deliveries of the same native event are dropped by dragMove's
+      // (t, y) dedup, so the element-level touch listeners can coexist.
+      const touchTrack =
+        pointerType === 'touch'
+          ? (e: TouchEvent) => {
+              if (!g.current.active) return;
+              e.preventDefault();
+              dragMove(e.touches[0].clientY, e.timeStamp);
+            }
+          : null;
+      if (touchTrack) window.addEventListener('touchmove', touchTrack, { passive: false });
       // The pointer may be released outside the sheet before any capture
       const done = (e: PointerEvent) => {
         if (track) window.removeEventListener('pointermove', track);
+        if (touchTrack) window.removeEventListener('touchmove', touchTrack);
         window.removeEventListener('pointerup', done);
         window.removeEventListener('pointercancel', done);
         dragEnd(e.type === 'pointercancel', e.timeStamp);
@@ -321,7 +376,7 @@ export default function SheetShell({
       window.addEventListener('pointerup', done);
       window.addEventListener('pointercancel', done);
     },
-    [dragEnd, dragMove],
+    [dragEnd, dragMove, visibleNow, applyVisible],
   );
 
   /** A sheet away from its rest height is mid-glide, and a press anywhere on
@@ -333,16 +388,17 @@ export default function SheetShell({
     const el = rootRef.current;
     if (!el || !dims.current.canDrag) return false;
     const rest = dims.current.expanded ? dims.current.max : dims.current.min;
-    return Math.abs(el.getBoundingClientRect().height - rest) > GLIDE_CATCH_PX;
-  }, []);
+    return Math.abs(visibleNow(el) - rest) > GLIDE_CATCH_PX;
+  }, [visibleNow]);
 
   // If React re-renders mid-drag (background refresh…), re-assert the
-  // gesture height it would otherwise overwrite.
+  // gesture transforms it would otherwise overwrite.
   useLayoutEffect(() => {
     const el = rootRef.current;
     if (el && g.current.active && g.current.pendingH) {
       el.style.transition = 'none';
-      el.style.height = `${g.current.pendingH}px`;
+      if (footerRef.current) footerRef.current.style.transition = 'none';
+      applyVisible(el, g.current.pendingH);
     }
   });
 
@@ -471,23 +527,33 @@ export default function SheetShell({
     };
   }, [listAttached, dragBegin, dragMove, dragEnd, midFlight]);
 
-  const height = expanded && hasBody ? expandedH : (collapsedH ?? undefined);
-
-  // `instantContentResize`: a content-driven height change lands without the
+  // `instantContentResize`: a content-driven rest change lands without the
   // glide (see the prop's doc) — only the expand/collapse toggle animates.
-  const lastExpandedRef = useRef(expanded);
+  // Any LAYOUT-height change is instant for BOTH sheets: height never
+  // transitions in the translate model, so when it jumps (stage resize, the
+  // body appearing when data lands) the transform must jump with it — a
+  // transform gliding to catch up with an already-snapped height shows the
+  // sheet fully expanded and sliding down over the map. The designed glide
+  // (a collapsed card resizing under a constant layout height) is untouched.
+  const lastRef = useRef({ expanded, layoutH });
   useLayoutEffect(() => {
-    if (!instantContentResize) return;
     const el = rootRef.current;
-    const toggled = lastExpandedRef.current !== expanded;
-    lastExpandedRef.current = expanded;
+    const toggled = lastRef.current.expanded !== expanded;
+    const heightJumped = lastRef.current.layoutH !== layoutH;
+    lastRef.current = { expanded, layoutH };
     if (!el || toggled || g.current.active) return;
+    if (!instantContentResize && !heightJumped) return;
+    // Kill the transition, FLUSH the new base state, restore — synchronously.
+    // A rAF restore is too early: rAF callbacks run BEFORE the frame's style
+    // recalc, so the browser would still see this commit's transform change
+    // under an active transition and glide it anyway (seen as the sheet
+    // sliding down from fully expanded when the body appears at boot).
     el.style.transition = 'none';
-    const raf = requestAnimationFrame(() => {
-      if (rootRef.current && !g.current.active) rootRef.current.style.transition = TRANSITION;
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [height, expanded, instantContentResize]);
+    if (footerRef.current) footerRef.current.style.transition = 'none';
+    void el.getBoundingClientRect();
+    el.style.transition = TRANSITION;
+    if (footerRef.current) footerRef.current.style.transition = TRANSITION;
+  }, [restTy, expanded, layoutH, instantContentResize]);
 
   const bodyGestures: SheetGestures = {
     onPointerDown: listPointerDown,
@@ -565,9 +631,11 @@ export default function SheetShell({
         background: C.surface,
         borderRadius: '24px 24px 0 0',
         boxShadow: `0 -10px 30px ${C.shadow45}`,
-        height,
-        // The hint keyframes bounce off this, the height they override
-        ...(hinting ? { ['--sheet-h' as string]: `${height ?? 0}px` } : null),
+        height: layoutH,
+        transform: `translateY(${restTy}px)`,
+        willChange: 'transform',
+        // The hint keyframes bounce off this, the transform they override
+        ...(hinting ? { ['--sheet-ty' as string]: `${restTy}px` } : null),
         transition: TRANSITION,
       }}
     >
@@ -593,7 +661,25 @@ export default function SheetShell({
       {listAttached && body?.(listRef, bodyGestures, staticBarGestures)}
 
       {/* ── Footer pinned to the bottom edge, always visible ── */}
-      {footer && <div ref={footerRef} style={{ flexShrink: 0, marginTop: 'auto' }}>{footer}</div>}
+      {/* It sits at the element's REAL bottom — below the stage when
+          collapsed — so it counter-translates back onto the visible edge,
+          and its background is opaque because the body is laid out under
+          it in the translate model. */}
+      {footer && (
+        <div
+          ref={footerRef}
+          style={{
+            flexShrink: 0,
+            marginTop: 'auto',
+            background: C.surface,
+            transform: `translateY(${-restTy}px)`,
+            willChange: 'transform',
+            transition: TRANSITION,
+          }}
+        >
+          {footer}
+        </div>
+      )}
     </div>
   );
 }

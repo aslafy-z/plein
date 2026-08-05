@@ -16,7 +16,7 @@
 //   enumeration is async IO with no one looking.
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { C, FONT } from '../theme';
+import { C, FONT, glassBlur } from '../theme';
 import { useIsDesktop } from '../lib/layout';
 import { useConsoleErrorCount } from '../lib/debugMode';
 import {
@@ -404,8 +404,7 @@ export default function DebugOverlay() {
         borderRadius: 14,
         overflow: 'hidden',
         background: C.glassBgStrong,
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
+        ...glassBlur(16),
         border: `1px solid ${C.glassBorder}`,
         boxShadow: `0 18px 50px ${C.shadow50}`,
         font: MONO_11,
@@ -516,8 +515,7 @@ export default function DebugOverlay() {
         alignItems: 'center',
         justifyContent: 'center',
         background: C.glassBgSoft,
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
+        ...glassBlur(12),
         border: `1px solid ${C.glassBorder}`,
         boxShadow: `0 6px 18px ${C.shadow45}`,
         color: C.accent,
