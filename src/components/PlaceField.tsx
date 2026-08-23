@@ -800,6 +800,7 @@ export default function PlaceField(props: PlaceFieldProps) {
           // list from reaching the map underneath.
           <div
             data-testid="search-suggestions"
+            className="anim-fade"
             style={{
               position: 'absolute',
               top: '100%',

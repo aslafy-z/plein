@@ -139,6 +139,44 @@
   --c-pin-dot-high-bg: #3a2b27;
   --c-pin-dot-high-border: rgba(224, 122, 95, 0.6);
   --c-origin-line: #9aa7b0;
+  /* Glass inner edge — the 1px top light that makes a pane read as a pane
+     rather than as a rectangle of tint (theme.ts `glass` spends it) */
+  --c-glass-edge: rgba(255, 255, 255, 0.08);
+  /* Atmosphere: a faint accent bloom at the top of the shell — depth without
+     an element. Barely-there ON PURPOSE: past ~6% alpha it reads as a stain. */
+  --c-glow-top: rgba(61, 220, 132, 0.05);
+}
+
+/* ── Motion ───────────────────────────────────────────────────────────────
+   THE easing vocabulary — three curves, used everywhere, keyword easings
+   nowhere. One physical personality for the whole app: things ARRIVE with a
+   decisive decelerate (--ease-out), SHIFT with a smooth in-out
+   (--ease-in-out), and RESPOND under the pointer with a fast snap
+   (--ease-snap). Inline styles reference them the same way they reference
+   the palette (`transition: transform .3s var(--ease-snap)`), so a curve
+   retuned here retunes the app.
+
+   These are honest tokens, not per-theme values — they live outside the
+   palette blocks. */
+:root {
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-snap: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Where the browser can plot a real spring, the primary curve becomes one:
+   mass 1 / stiffness 400 / damping 30 — an explosive start, a ~2% overshoot
+   and a soft settle, so sheets and dialogs land like objects with weight
+   instead of decelerating like a cursor. Only --ease-out upgrades: hover and
+   press feedback must not wobble, and position shifts keep their symmetry. */
+@supports (transition-timing-function: linear(0, 1)) {
+  :root {
+    --ease-out: linear(
+      0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.4%,
+      1.067 22.5%, 1.089 26%, 1.079 30.3%, 1.049 36%, 1.024 42.6%, 1.011 50.3%,
+      1.004 59.2%, 1.001 69.3%, 1
+    );
+  }
 }
 
 /* « Cap jour » — the dark system flipped, and NOT a bleached copy of it.
@@ -248,6 +286,9 @@
   --c-pin-dot-high-bg: #f6d9cd;
   --c-pin-dot-high-border: rgba(168, 66, 28, 0.8);
   --c-origin-line: #5d6a64;
+  /* Near-white glass takes a stronger top light to show its edge at all */
+  --c-glass-edge: rgba(255, 255, 255, 0.65);
+  --c-glow-top: rgba(14, 113, 70, 0.05);
 }
 
 * {
@@ -259,6 +300,14 @@ body,
 #root {
   height: 100%;
   overflow: hidden;
+}
+
+/* The app draws its own press feedback (the brightness dip and the .press
+   compress), so the browser's translucent tap flash on top of it reads as a
+   glitch, not an affordance. Inherited from the root — it must also cover
+   the [role=button] handles and the divIcon pins the maps build. */
+html {
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -298,6 +347,15 @@ button {
   text-align: inherit;
 }
 
+/* Controls, not documents: a press held through the compress animation must
+   not start selecting the label as if it were body text. Scoped to controls
+   only — station names and prices in plain text stay copyable. */
+button,
+[role='button'] {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 /* Map bottom-sheet content swap (station card ↔ loading ↔ empty) */
 @keyframes sheet-swap {
   from {
@@ -308,7 +366,7 @@ button {
   }
 }
 .sheet-swap {
-  animation: sheet-swap 0.22s ease;
+  animation: sheet-swap 0.25s var(--ease-out);
 }
 
 /* First-run affordance: the collapsed map sheet bounces, so the newcomer sees
@@ -370,6 +428,9 @@ button {
   background: var(--c-border-12);
   border-radius: 4px;
 }
+::-webkit-scrollbar-thumb:hover {
+  background: var(--c-border-20);
+}
 ::-webkit-scrollbar-track {
   background: transparent;
 }
@@ -396,7 +457,12 @@ button {
   position: relative;
   width: 100%;
   height: 100%;
-  background: var(--c-bg);
+  /* The bloom rides ON the base color (background-color stays --c-bg): the
+     screens that show the shell — settings, favorites, onboarding, the route
+     form — get a breath of depth at the top, and the map simply paints over
+     it. Static, so it costs nothing to composite. */
+  background-image: radial-gradient(120% 55% at 50% -10%, var(--c-glow-top), transparent 60%);
+  background-color: var(--c-bg);
   display: flex;
   /* flex-direction comes from React: `column` under the tab bar, `row`
      next to the side navigation (src/App.tsx) */
@@ -423,13 +489,68 @@ button {
   .app-shell [role='button']:hover {
     filter: brightness(1.15);
   }
+  /* Brightening is a DARK-theme move: on paper-white cards +15% clips at
+     white and the hover vanishes. Light hovers darken instead. */
+  [data-theme='light'] .app-shell button:not(:disabled):hover,
+  [data-theme='light'] .app-shell [role='button']:hover {
+    filter: brightness(0.96);
+  }
   /* The map draws its own controls, its price pins and their tier colours
-     inside this subtree — nothing in there gets re-toned by a hover. */
-  .leaflet-container button:hover,
+     inside this subtree — nothing in there gets re-toned by a hover.
+     `:not(:disabled)` matches the rules above so the exemption ties their
+     specificity and wins on source order, theme prefix included. */
+  .leaflet-container button:not(:disabled):hover,
   .leaflet-container [role='button']:hover,
-  .leaflet-container a:hover {
+  .leaflet-container a:hover,
+  [data-theme='light'] .leaflet-container button:not(:disabled):hover,
+  [data-theme='light'] .leaflet-container [role='button']:hover,
+  [data-theme='light'] .leaflet-container a:hover {
     filter: none;
   }
+
+  /* Station rows (zone list, favorites) get card physics: a 1px lift and a
+     soft shadow, mouse only. The transition lives outside :hover so the
+     release settles at the same speed. */
+  .app-shell button[data-station-id] {
+    transition:
+      transform 0.25s var(--ease-snap),
+      box-shadow 0.25s var(--ease-snap);
+  }
+  .app-shell button[data-station-id]:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px var(--c-shadow-35);
+  }
+}
+
+/* Press feedback, everywhere and on every pointer: the surface visibly dims
+   the instant it is held, so a tap reads as REGISTERED before its action
+   answers. Filter-only — safe on buttons that carry their own transform. */
+.app-shell button:not(:disabled):active,
+.app-shell [role='button']:active {
+  filter: brightness(0.92);
+}
+/* Outranks the light hover rule above, which is one attribute more specific */
+[data-theme='light'] .app-shell button:not(:disabled):active,
+[data-theme='light'] .app-shell [role='button']:active {
+  filter: brightness(0.9);
+}
+.leaflet-container button:not(:disabled):active,
+.leaflet-container [role='button']:active,
+[data-theme='light'] .leaflet-container button:not(:disabled):active,
+[data-theme='light'] .leaflet-container [role='button']:active {
+  filter: none;
+}
+
+/* Physical press for the controls that carry the app's weight (CTAs, chips,
+   tabs, map controls — they opt in with the class): the surface compresses
+   under the finger and springs back on release. Opt-in ON PURPOSE: a global
+   :active transform would fight the buttons whose inline transform is
+   load-bearing (the search field's ✕ centering, the pins). */
+.press {
+  transition: transform 0.16s var(--ease-snap);
+}
+.press:not(:disabled):active {
+  transform: scale(0.97);
 }
 
 /* A click leaves no ring, a Tab does — the map keeps its own inset ring below */
@@ -469,7 +590,7 @@ button {
    the attribution control rides up with the sheet like the other controls */
 .leaflet-bottom {
   bottom: var(--map-bottom-inset, 0px);
-  transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: bottom 0.3s var(--ease-in-out);
 }
 .leaflet-control-attribution {
   background: var(--c-attribution-bg) !important;
@@ -643,7 +764,7 @@ button {
 /* Simple fade/slide for sheets and toast */
 @keyframes sheet-up {
   from {
-    transform: translateY(24px);
+    transform: translateY(26px);
     opacity: 0;
   }
   to {
@@ -660,25 +781,82 @@ button {
   }
 }
 /* Desktop dialogs (filters, station detail): a sheet slides up from an edge,
-   a dialog arrives where it will stay — so it settles rather than travels. */
+   a dialog arrives where it will stay — so it settles rather than travels.
+   scale() from 0.97, never lower: below that an arriving surface reads as
+   materializing out of nothing instead of settling into place. */
 @keyframes dialog-in {
   from {
     opacity: 0;
-    transform: translateY(10px) scale(0.985);
+    transform: translateY(12px) scale(0.97);
   }
   to {
     opacity: 1;
     transform: none;
   }
 }
+/* The toast owns its keyframes: its resting transform IS translateX(-50%)
+   (it self-centers), so the travel has to carry that X along — a shared
+   translateY keyframe would snap it off-center for the animation's length. */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+/* First-run entrance (onboarding): fade-up-deblur, staggered per element
+   through --stagger. `backwards` holds the from-state through the delay so
+   late elements don't flash in place before their turn. Rare-screen budget:
+   the everyday screens mount instantly on purpose — speed is their
+   experience. */
+@keyframes enter-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+    filter: blur(5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+.enter-up {
+  /* `backwards`, not `both`: a forwards fill would pin the final keyframe's
+     transform over any later hover/press transition on the same element */
+  animation: enter-up 0.5s var(--ease-out) backwards;
+  animation-delay: var(--stagger, 0ms);
+}
+/* Station rows arriving in a fresh zone list — same idea, no blur (dozens of
+   rows), stagger capped by the caller so a long list never queues. */
+@keyframes list-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.list-enter {
+  animation: list-enter 0.4s var(--ease-out) backwards;
+  animation-delay: var(--stagger, 0ms);
+}
 .anim-sheet {
-  animation: sheet-up 0.22s ease-out;
+  animation: sheet-up 0.34s var(--ease-out);
 }
 .anim-fade {
-  animation: fade-in 0.18s ease-out;
+  animation: fade-in 0.18s var(--ease-out);
 }
 .anim-dialog {
-  animation: dialog-in 0.18s cubic-bezier(0.2, 0.8, 0.3, 1);
+  animation: dialog-in 0.3s var(--ease-out);
+}
+.anim-toast {
+  animation: toast-in 0.34s var(--ease-out);
 }
 
 /* Theme switch: colorScheme.ts flips `data-theme` inside a view transition,
@@ -690,21 +868,32 @@ button {
    selector would silently kill that rule too. */
 ::view-transition-old(root) {
   animation-duration: 0.35s;
-  animation-timing-function: ease;
+  animation-timing-function: var(--ease-in-out);
 }
 ::view-transition-new(root) {
   animation-duration: 0.35s;
-  animation-timing-function: ease;
+  animation-timing-function: var(--ease-in-out);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .anim-sheet,
   .anim-fade,
   .anim-dialog,
+  .anim-toast,
+  .enter-up,
+  .list-enter,
   .sheet-hint,
   .skeleton-row::after,
   .spin {
     animation: none;
+  }
+  /* Feedback stays (the brightness dip), the movement goes */
+  .press:not(:disabled):active {
+    transform: none;
+  }
+  .app-shell button[data-station-id]:hover {
+    transform: none;
+    box-shadow: none;
   }
   /* colorScheme.ts already skips the view transition under reduced motion;
      this covers a preference that flips while one is mid-flight. */

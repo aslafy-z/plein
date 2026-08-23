@@ -77,6 +77,7 @@ export const C = {
   glassBgSoft: 'var(--c-glass-bg-soft)', // map control pills
   glassBgStrong: 'var(--c-glass-bg-strong)', // anchored popovers
   glassBorder: 'var(--c-glass-border)',
+  glassEdge: 'var(--c-glass-edge)', // 1px inner top light on glass surfaces
   // Shadow COLORS (the geometry stays at the call site) — softer in light
   shadow35: 'var(--c-shadow-35)',
   shadow40: 'var(--c-shadow-40)',
@@ -119,7 +120,11 @@ export const glass: CSSProperties = {
   background: C.glassBg,
   ...glassBlur(16),
   border: `1px solid ${C.glassBorder}`,
-  boxShadow: `0 18px 50px ${C.shadow45}`,
+  // Three layers, one material: the inset top light is what makes the pane
+  // read as GLASS (an edge catching the light) rather than a tinted
+  // rectangle; the long throw seats it over the map and the short one keeps
+  // its edge crisp where the long throw is too diffuse to hold it.
+  boxShadow: `inset 0 1px 0 ${C.glassEdge}, 0 18px 50px ${C.shadow45}, 0 2px 10px ${C.shadow35}`,
 };
 
 /**
@@ -154,10 +159,19 @@ export const ctaStyle = (enabled = true): CSSProperties => ({
   color: enabled ? C.onAccent : C.faint,
   fontSize: 15.5,
   fontWeight: 800,
+  letterSpacing: '.01em',
   borderRadius: 26,
   padding: '16px 0',
   textAlign: 'center',
   cursor: enabled ? 'pointer' : 'default',
+  // The one control allowed to glow: an accent-tinted throw seats the CTA
+  // above the page the way the panels sit above the map. Callers add
+  // className="press" for the compress-on-press half of the physics.
+  boxShadow: enabled ? `0 10px 26px ${C.accentGlow25}` : 'none',
+  // transform is listed here because an inline transition REPLACES the
+  // .press class's own — without it the compress would snap instead of ease
+  transition:
+    'transform 0.16s var(--ease-snap), box-shadow 0.25s var(--ease-snap), filter 0.2s var(--ease-snap)',
 });
 
 /**

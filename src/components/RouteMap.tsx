@@ -376,6 +376,7 @@ export default function RouteMap({
           has no control column to join (no zoom, no share), so the phone
           arrangement's standalone button is what both arrangements wear. */}
       <button
+        className="press"
         onClick={recenterOnUser}
         aria-label={locating ? m.map_locating() : m.map_recenter_aria()}
         aria-busy={locating}
@@ -385,14 +386,16 @@ export default function RouteMap({
           position: 'absolute',
           right: 14,
           bottom: 26 + bottomInset,
-          transition: 'bottom .3s cubic-bezier(.4,0,.2,1)',
+          // transform is listed because this inline transition replaces the
+          // .press class's own — without it the compress would snap
+          transition: 'bottom .3s var(--ease-in-out), transform .16s var(--ease-snap)',
           width: 44,
           height: 44,
           borderRadius: '50%',
           background: C.glassBgSoft,
           ...glassBlur(12),
           border: `1px solid ${userView.onScreen ? C.accentBorderStrong : C.glassBorder}`,
-          boxShadow: `0 6px 18px ${C.shadow45}`,
+          boxShadow: `inset 0 1px 0 ${C.glassEdge}, 0 6px 18px ${C.shadow45}`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',

@@ -48,7 +48,10 @@ const FLING_HOLD_MS = 150;
 /** Further than this from the rest height → the sheet is mid-glide, and a
     press anywhere on it catches it (subpixel transforms stay a rest) */
 const GLIDE_CATCH_PX = 4;
-const TRANSITION = 'transform .3s cubic-bezier(.4,0,.2,1)';
+// The release snap rides the app's primary curve (styles.css --ease-out):
+// where the browser supports linear() springs the sheet lands with a
+// hair of overshoot and settle — an object with weight, not a cursor.
+const TRANSITION = 'transform .38s var(--ease-out)';
 
 /** Pointer handlers a body region carries so it can drag the sheet. Two
     contracts share this shape: the body's SCROLL CONTAINER gets the

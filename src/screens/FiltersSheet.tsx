@@ -168,6 +168,7 @@ export default function FiltersSheet() {
             return (
               <button
                 key={f}
+                className="press"
                 onClick={() => app.setFuel(f)}
                 style={{
                   background: on ? C.accent : 'transparent',
@@ -178,6 +179,8 @@ export default function FiltersSheet() {
                   borderRadius: 18,
                   border: `1px solid ${on ? C.accent : C.border12}`,
                   whiteSpace: 'nowrap',
+                  transition:
+                    'background .25s var(--ease-snap), border-color .25s var(--ease-snap), color .25s var(--ease-snap), transform .16s var(--ease-snap)',
                 }}
               >
                 {fuelLabel(f)}
@@ -246,7 +249,7 @@ export default function FiltersSheet() {
                   color: C.mut,
                   fontSize: 12,
                   transform: brandsOpen ? 'rotate(180deg)' : 'none',
-                  transition: 'transform .15s',
+                  transition: 'transform .25s var(--ease-snap)',
                 }}
               >
                 ▾
@@ -280,6 +283,8 @@ export default function FiltersSheet() {
                             borderRadius: 6,
                             background: on ? C.accent : 'transparent',
                             border: `2px solid ${on ? C.accent : C.border25}`,
+                            transition:
+                              'background .2s var(--ease-snap), border-color .2s var(--ease-snap)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -337,6 +342,7 @@ export default function FiltersSheet() {
                         return (
                           <button
                             key={brand}
+                            className="press"
                             onClick={() => app.toggleBrand(brand)}
                             style={{
                               display: 'flex',
@@ -350,6 +356,8 @@ export default function FiltersSheet() {
                               borderRadius: 15,
                               border: `1px solid ${on ? C.accentBorderStrong : C.border12}`,
                               whiteSpace: 'nowrap',
+                              transition:
+                                'background .25s var(--ease-snap), border-color .25s var(--ease-snap), color .25s var(--ease-snap), transform .16s var(--ease-snap)',
                             }}
                           >
                             {icon && (
@@ -393,6 +401,7 @@ export default function FiltersSheet() {
             return (
               <button
                 key={t}
+                className="press"
                 onClick={() => app.toggleServiceTag(t)}
                 aria-pressed={on}
                 style={{
@@ -404,6 +413,8 @@ export default function FiltersSheet() {
                   borderRadius: 18,
                   border: `1px solid ${on ? C.accent : C.border12}`,
                   whiteSpace: 'nowrap',
+                  transition:
+                    'background .25s var(--ease-snap), border-color .25s var(--ease-snap), color .25s var(--ease-snap), transform .16s var(--ease-snap)',
                 }}
               >
                 {t === 'open24h' ? m.service_open24h_filter() : serviceTagLabel(t)}
@@ -431,7 +442,8 @@ export default function FiltersSheet() {
 
       <button
         onClick={close}
-        style={{ ...ctaStyle(), boxShadow: `0 6px 16px ${C.accentGlow25}` }}
+        className="press"
+        style={ctaStyle()}
       >
         {m.filters_apply({ count: nbVisible })}
       </button>

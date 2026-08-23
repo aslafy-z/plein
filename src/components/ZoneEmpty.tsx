@@ -49,7 +49,7 @@ export default function ZoneEmpty() {
         <div style={chipRow}>
           <span style={{ color: C.mut, fontSize: 13 }}>{m.sheet_sold_here()}</span>
           {soldFuels.map((f) => (
-            <button key={f} onClick={() => app.setFuel(f)} style={fuelChipStyle}>
+            <button key={f} className="press" onClick={() => app.setFuel(f)} style={fuelChipStyle}>
               {fuelLabel(f)}
             </button>
           ))}
@@ -63,7 +63,7 @@ export default function ZoneEmpty() {
   if (lastError != null) {
     return (
       <Block title={lastError === 'offline' ? m.sheet_offline_empty() : m.sheet_source_empty()}>
-        <button onClick={() => app.reloadStations()} style={actionStyle}>
+        <button className="press" onClick={() => app.reloadStations()} style={actionStyle}>
           {m.banner_retry()}
         </button>
       </Block>
@@ -75,7 +75,7 @@ export default function ZoneEmpty() {
   if (app.stations.data.length === 0) {
     return (
       <Block title={m.sheet_empty_radius()}>
-        <button onClick={() => app.setFiltersOpen(true)} style={actionStyle}>
+        <button className="press" onClick={() => app.setFiltersOpen(true)} style={actionStyle}>
           {m.sheet_adjust_filters()}
         </button>
       </Block>
@@ -85,7 +85,7 @@ export default function ZoneEmpty() {
   return (
     <Block title={m.sheet_no_match()}>
       <ActiveFilters />
-      <button onClick={() => app.setFiltersOpen(true)} style={actionStyle}>
+      <button className="press" onClick={() => app.setFiltersOpen(true)} style={actionStyle}>
         {m.sheet_adjust_filters()}
       </button>
     </Block>
@@ -192,6 +192,7 @@ const actionStyle: CSSProperties = {
   fontWeight: 700,
   borderRadius: 22,
   padding: '12px 22px',
+  boxShadow: `0 8px 20px ${C.accentGlow25}`,
 };
 
 /** A fuel the zone does sell: one tap switches to it */

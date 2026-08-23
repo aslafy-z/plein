@@ -399,6 +399,7 @@ export default function RouteTimeline() {
           </button>
           <div style={{ display: 'flex', gap: 10, marginTop: 12, alignItems: 'center' }}>
             <button
+              className="press"
               onClick={() => app.openInMaps(st)}
               style={{
                 flex: 1,
@@ -410,11 +411,13 @@ export default function RouteTimeline() {
                 padding: '11px 0',
                 textAlign: 'center',
                 cursor: 'pointer',
+                boxShadow: `0 8px 20px ${C.accentGlow25}`,
               }}
             >
               {m.ribbon_go_there()}
             </button>
             <button
+              className="press"
               onClick={() => app.togglePlannedStop(st.id)}
               title={m.ribbon_add_stop_title()}
               aria-label={inRun ? m.ribbon_remove_stop_aria() : m.ribbon_add_stop_aria()}
@@ -471,6 +474,7 @@ export default function RouteTimeline() {
             {fmtPrice(effectivePrice(st, fuel)?.value)} €
           </div>
           <button
+            className="press"
             onClick={() => app.togglePlannedStop(st.id)}
             title={m.ribbon_add_stop_title()}
             aria-label={inRun ? m.ribbon_remove_stop_aria() : m.ribbon_add_stop_aria()}
@@ -610,6 +614,7 @@ export default function RouteTimeline() {
             return (
               <button
                 key={k}
+                className="press"
                 onClick={() => app.setRouteMode(k)}
                 style={{
                   background: active ? C.accent : 'transparent',
@@ -621,6 +626,8 @@ export default function RouteTimeline() {
                   border: active ? `1px solid ${C.accent}` : `1px solid ${C.border15}`,
                   cursor: 'pointer',
                   whiteSpace: 'nowrap',
+                  transition:
+                    'background .25s var(--ease-snap), border-color .25s var(--ease-snap), color .25s var(--ease-snap), transform .16s var(--ease-snap)',
                 }}
               >
                 {strategyLabel(k)}

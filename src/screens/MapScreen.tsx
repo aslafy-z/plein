@@ -98,6 +98,7 @@ export default function MapScreen() {
   const controls = (
     <>
       <button
+        className="press"
         onClick={() => app.cycleFuel()}
         title={m.map_cycle_fuel_title()}
         style={{
@@ -110,6 +111,7 @@ export default function MapScreen() {
         {fuelLabel(app.fuel)} ↻
       </button>
       <button
+        className="press"
         onClick={() => app.setFiltersOpen(true)}
         title={m.filters_title()}
         style={{
@@ -123,6 +125,7 @@ export default function MapScreen() {
         {m.map_radius_chip({ km: app.radius })}
       </button>
       <button
+        className="press"
         onClick={() => app.setFiltersOpen(true)}
         aria-label={m.map_filters_aria({ count: nbVisible })}
         title={m.filters_title()}
@@ -135,6 +138,7 @@ export default function MapScreen() {
           color: C.body,
           fontWeight: 500,
           border: `1px solid ${filtersActive ? C.accent : C.border09}`,
+          transition: 'border-color .25s var(--ease-snap)',
         }}
       >
         {filtersActive && (

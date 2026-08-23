@@ -52,6 +52,7 @@ export default function SideNav() {
         return (
           <button
             key={tab}
+            className="press"
             onClick={() => app.go(tabTarget(tab, app.routeReady))}
             aria-current={active ? 'page' : undefined}
             style={{
@@ -68,6 +69,7 @@ export default function SideNav() {
               fontWeight: active ? 800 : 600,
               textAlign: 'left',
               cursor: 'pointer',
+              transition: 'background .25s var(--ease-snap), color .25s var(--ease-snap)',
             }}
           >
             {/* The active tab hangs its bar on the rail's edge, outside the
