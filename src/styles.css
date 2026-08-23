@@ -302,6 +302,14 @@ body,
   overflow: hidden;
 }
 
+/* The app draws its own press feedback (the brightness dip and the .press
+   compress), so the browser's translucent tap flash on top of it reads as a
+   glitch, not an affordance. Inherited from the root — it must also cover
+   the [role=button] handles and the divIcon pins the maps build. */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   margin: 0;
   background: var(--c-page-bg);
@@ -337,6 +345,15 @@ button {
   color: inherit;
   cursor: pointer;
   text-align: inherit;
+}
+
+/* Controls, not documents: a press held through the compress animation must
+   not start selecting the label as if it were body text. Scoped to controls
+   only — station names and prices in plain text stay copyable. */
+button,
+[role='button'] {
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Map bottom-sheet content swap (station card ↔ loading ↔ empty) */
