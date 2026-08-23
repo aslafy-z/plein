@@ -29,7 +29,7 @@ export default function LocateIcon({
           takes the accent back the moment the fix lands. */}
       <g
         fill="none"
-        style={{ stroke: color, transition: 'stroke .25s ease' }}
+        style={{ stroke: color, transition: 'stroke .25s var(--ease-snap)' }}
         strokeWidth={1.7}
         strokeLinecap="round"
       >
@@ -40,7 +40,7 @@ export default function LocateIcon({
         <path d="M16.4 10 H18.4" />
       </g>
       {dot && (
-        <circle cx="10" cy="10" r="2.1" style={{ fill: color, transition: 'fill .25s ease' }} />
+        <circle cx="10" cy="10" r="2.1" style={{ fill: color, transition: 'fill .25s var(--ease-snap)' }} />
       )}
     </svg>
   );

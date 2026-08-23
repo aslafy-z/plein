@@ -171,6 +171,7 @@ export default function ZoneList({
           return (
             <button
               key={k}
+              className="press"
               onClick={disabled ? undefined : () => app.setSort(k)}
               disabled={disabled}
               aria-label={disabled ? m.sheet_sort_distance_unavailable_aria() : undefined}
@@ -184,6 +185,7 @@ export default function ZoneList({
                 borderRadius: 14,
                 whiteSpace: 'nowrap',
                 flexShrink: 0,
+                transition: 'background .25s var(--ease-snap), color .25s var(--ease-snap)',
                 ...(disabled ? { opacity: 0.4, cursor: 'default' } : null),
               }}
             >
@@ -214,7 +216,7 @@ export default function ZoneList({
             {m.sheet_empty_radius()}
           </div>
         )}
-        {rows.map((s) => {
+        {rows.map((s, i) => {
           const best = cheapest?.id === s.id;
           // Recommended over the sticker-cheapest (closer, better
           // effective price) — flagged so its row explains the card
@@ -299,6 +301,11 @@ export default function ZoneList({
             border: isFocus
               ? `1.5px solid ${C.accent}`
               : `1px solid ${deal ? C.accentBorderStrong : C.border}`,
+            // A fresh zone's rows cascade in (list-enter, styles.css); the
+            // stagger caps at 8 so a long list never queues below the fold.
+            // Re-sorts and refreshes keep their DOM nodes (stable keys), so
+            // the animation only plays when rows actually MOUNT.
+            ['--stagger' as string]: `${Math.min(i, 8) * 30}ms`,
           };
 
           // A phone row does one thing: it locates the station on the map
@@ -312,6 +319,7 @@ export default function ZoneList({
             return (
               <button
                 key={s.id}
+                className="list-enter"
                 data-station-id={s.id}
                 data-testid="zone-row"
                 onClick={() => {
@@ -330,6 +338,7 @@ export default function ZoneList({
           return (
             <button
               key={s.id}
+              className="list-enter"
               data-station-id={s.id}
               data-testid="zone-row"
               onClick={() => app.openStation(s.id)}

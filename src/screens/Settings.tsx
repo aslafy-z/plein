@@ -336,7 +336,7 @@ function SwitchRow({
           background: checked ? C.accent : C.toggleOff,
           position: 'relative',
           flexShrink: 0,
-          transition: 'background .15s',
+          transition: 'background .2s var(--ease-snap)',
         }}
       >
         <span
@@ -349,7 +349,7 @@ function SwitchRow({
             borderRadius: '50%',
             background: C.surface,
             boxShadow: `0 1px 3px ${C.shadow40}`,
-            transition: 'left .15s',
+            transition: 'left .2s var(--ease-snap)',
           }}
         />
       </span>
@@ -428,7 +428,7 @@ function CachedData({ onCleared }: { onCleared: () => void }) {
           style={{
             color: C.faint,
             transform: detailsOpen ? 'rotate(90deg)' : 'none',
-            transition: 'transform .15s',
+            transition: 'transform .25s var(--ease-snap)',
             flexShrink: 0,
           }}
         >
@@ -551,6 +551,7 @@ export default function Settings() {
                 return (
                   <button
                     key={v}
+                    className="press"
                     onClick={() => app.setVehicle(v)}
                     style={{
                       flex: 1,
@@ -563,6 +564,8 @@ export default function Settings() {
                       border: active ? `1px solid ${C.accent}` : `1px solid ${C.border12}`,
                       cursor: 'pointer',
                       textAlign: 'center',
+                      transition:
+                        'background .25s var(--ease-snap), border-color .25s var(--ease-snap), color .25s var(--ease-snap), transform .16s var(--ease-snap)',
                     }}
                   >
                     {vehicleLabel(v)}
@@ -586,6 +589,7 @@ export default function Settings() {
                 return (
                   <button
                     key={f}
+                    className="press"
                     onClick={() => app.setFuel(f)}
                     style={{
                       background: active ? C.accent : 'transparent',
@@ -597,6 +601,8 @@ export default function Settings() {
                       border: active ? `1px solid ${C.accent}` : `1px solid ${C.border12}`,
                       cursor: 'pointer',
                       whiteSpace: 'nowrap',
+                      transition:
+                        'background .25s var(--ease-snap), border-color .25s var(--ease-snap), color .25s var(--ease-snap), transform .16s var(--ease-snap)',
                     }}
                   >
                     {fuelLabel(f)}
@@ -733,6 +739,7 @@ export default function Settings() {
                 return (
                   <button
                     key={t ?? 'auto'}
+                    className="press"
                     onClick={() => app.setTheme(t)}
                     style={{
                       background: active ? C.accent : 'transparent',
@@ -744,6 +751,8 @@ export default function Settings() {
                       border: active ? `1px solid ${C.accent}` : `1px solid ${C.border12}`,
                       cursor: 'pointer',
                       whiteSpace: 'nowrap',
+                      transition:
+                        'background .25s var(--ease-snap), border-color .25s var(--ease-snap), color .25s var(--ease-snap), transform .16s var(--ease-snap)',
                     }}
                   >
                     {t == null ? m.settings_theme_auto() : themeLabel(t)}
@@ -777,6 +786,7 @@ export default function Settings() {
                 return (
                   <button
                     key={l ?? 'auto'}
+                    className="press"
                     onClick={() => app.setLocale(l)}
                     style={{
                       background: active ? C.accent : 'transparent',
@@ -788,6 +798,8 @@ export default function Settings() {
                       border: active ? `1px solid ${C.accent}` : `1px solid ${C.border12}`,
                       cursor: 'pointer',
                       whiteSpace: 'nowrap',
+                      transition:
+                        'background .25s var(--ease-snap), border-color .25s var(--ease-snap), color .25s var(--ease-snap), transform .16s var(--ease-snap)',
                     }}
                   >
                     {l == null ? m.settings_language_auto() : localeName(l)}
@@ -822,6 +834,7 @@ export default function Settings() {
                 return (
                   <button
                     key={site}
+                    className="press"
                     onClick={() => app.setMapsSite(site)}
                     style={{
                       background: active ? C.accent : 'transparent',
@@ -833,6 +846,8 @@ export default function Settings() {
                       border: active ? `1px solid ${C.accent}` : `1px solid ${C.border12}`,
                       cursor: 'pointer',
                       whiteSpace: 'nowrap',
+                      transition:
+                        'background .25s var(--ease-snap), border-color .25s var(--ease-snap), color .25s var(--ease-snap), transform .16s var(--ease-snap)',
                     }}
                   >
                     {mapsSiteLabel(site)}
@@ -884,6 +899,7 @@ export default function Settings() {
                       height: 18,
                       borderRadius: '50%',
                       border: `2px solid ${selected ? C.accent : C.border25}`,
+                      transition: 'border-color .2s var(--ease-snap)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',

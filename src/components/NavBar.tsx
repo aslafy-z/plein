@@ -9,8 +9,11 @@ export type TabKey = 'map' | 'favs' | 'route' | 'settings';
 export function TabIcon({ tab, color, size = 15 }: { tab: TabKey; color: string; size?: number }) {
   // Colors ride the style prop: a var() token resolves in CSS, not in an
   // SVG presentation attribute.
+  // The tint eases between the active and idle inks — SVG presentation
+  // attributes can't hold a var(), but a transition on the style can.
+  const tint = { transition: 'stroke .25s var(--ease-snap), fill .25s var(--ease-snap)' };
   const stroke = {
-    style: { stroke: color },
+    style: { stroke: color, ...tint },
     strokeWidth: 2,
     strokeLinecap: 'round' as const,
     fill: 'none',
@@ -20,7 +23,7 @@ export function TabIcon({ tab, color, size = 15 }: { tab: TabKey; color: string;
       // the brand drop-pin
       return (
         <svg viewBox="0 0 64 64" width={size} height={size} aria-hidden>
-          <path d={LOGO_PATH} style={{ fill: color }} fillRule="evenodd" />
+          <path d={LOGO_PATH} style={{ fill: color, ...tint }} fillRule="evenodd" />
         </svg>
       );
     case 'favs':
@@ -28,7 +31,7 @@ export function TabIcon({ tab, color, size = 15 }: { tab: TabKey; color: string;
         <svg viewBox="0 0 16 16" width={size} height={size} aria-hidden>
           <path
             d="M8 1.7 L9.9 5.6 L14.2 6.2 L11.1 9.2 L11.8 13.5 L8 11.4 L4.2 13.5 L4.9 9.2 L1.8 6.2 L6.1 5.6 Z"
-            style={{ fill: color }}
+            style={{ fill: color, ...tint }}
             strokeLinejoin="round"
           />
         </svg>
@@ -36,8 +39,8 @@ export function TabIcon({ tab, color, size = 15 }: { tab: TabKey; color: string;
     case 'route':
       return (
         <svg viewBox="0 0 16 16" width={size} height={size} aria-hidden>
-          <circle cx="3" cy="13" r="2" style={{ fill: color }} />
-          <rect x="11" y="1" width="4" height="4" rx="1.2" style={{ fill: color }} />
+          <circle cx="3" cy="13" r="2" style={{ fill: color, ...tint }} />
+          <rect x="11" y="1" width="4" height="4" rx="1.2" style={{ fill: color, ...tint }} />
           <path d="M4.5 11.5 C8 8, 8 8, 11.5 4.5" {...stroke} strokeDasharray="2.4 2.2" />
         </svg>
       );
@@ -45,8 +48,8 @@ export function TabIcon({ tab, color, size = 15 }: { tab: TabKey; color: string;
       return (
         <svg viewBox="0 0 16 16" width={size} height={size} aria-hidden>
           <path d="M1.5 5h13M1.5 11h13" {...stroke} />
-          <circle cx="10.5" cy="5" r="2.1" style={{ fill: C.navBg, stroke: color }} strokeWidth="2" />
-          <circle cx="5.5" cy="11" r="2.1" style={{ fill: C.navBg, stroke: color }} strokeWidth="2" />
+          <circle cx="10.5" cy="5" r="2.1" style={{ fill: C.navBg, stroke: color, ...tint }} strokeWidth="2" />
+          <circle cx="5.5" cy="11" r="2.1" style={{ fill: C.navBg, stroke: color, ...tint }} strokeWidth="2" />
         </svg>
       );
   }
@@ -101,6 +104,7 @@ export default function NavBar() {
         return (
           <button
             key={tab}
+            className="press"
             onClick={() => app.go(tabTarget(tab, app.routeReady))}
             aria-label={label}
             aria-current={active ? 'page' : undefined}
@@ -116,6 +120,7 @@ export default function NavBar() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                transition: 'background .25s var(--ease-snap)',
               }}
             >
               <TabIcon tab={tab} color={active ? C.accent : C.faint} />
@@ -125,6 +130,7 @@ export default function NavBar() {
                 fontSize: 11,
                 color: active ? C.accent : C.mut,
                 fontWeight: active ? 800 : 600,
+                transition: 'color .25s var(--ease-snap)',
               }}
             >
               {label}

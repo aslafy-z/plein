@@ -609,7 +609,7 @@ export default function StationDetail() {
           bottom edge by margin-top: auto when the fiche is shorter than the
           screen. No NavBar below it, so the bar carries the safe-area inset. */}
       <div style={stickyBarStyle()}>
-        <button onClick={() => app.openInMaps(s)} style={ctaStyle()}>
+        <button className="press" onClick={() => app.openInMaps(s)} style={ctaStyle()}>
           {m.detail_go_there()}
         </button>
       </div>

@@ -169,6 +169,7 @@ export default function ZoneCard({ handle }: { handle?: ReactNode }) {
 
           <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
             <button
+              className="press"
               onClick={() => app.openInMaps(shown)}
               style={{
                 flex: 1,
@@ -179,6 +180,7 @@ export default function ZoneCard({ handle }: { handle?: ReactNode }) {
                 borderRadius: 24,
                 padding: '13px 0',
                 textAlign: 'center',
+                boxShadow: `0 8px 20px ${C.accentGlow25}`,
               }}
             >
               {tripOrigin

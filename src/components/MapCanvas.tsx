@@ -989,14 +989,18 @@ export default function MapCanvas({
   }
   const zoneDots = Math.max(0, zoneInView - PIN_CAP);
 
-  // Everything riding the map's bottom edge slides up with the sheet
+  // Everything riding the map's bottom edge slides up with the sheet.
+  // transform rides along for the buttons wearing .press — their inline
+  // transition replaces the class's own; a no-op for the inert pills.
   const bottomEdge = {
     bottom: 26 + bottomInset,
-    transition: 'bottom .3s cubic-bezier(.4,0,.2,1)',
+    transition: 'bottom .3s var(--ease-in-out), transform .16s var(--ease-snap)',
   };
 
   // Floating pills and control clusters share the glass of the panels
-  // (theme.ts) with a lighter shadow — they are small and many
+  // (theme.ts) with a lighter shadow — they are small and many. Their box
+  // shadows stay at the call sites (geometry is the site's), each opening
+  // with the same inset top light so the material reads as ONE glass.
   const pillGlass = {
     background: C.glassBgSoft,
     ...glassBlur(12),
@@ -1071,7 +1075,7 @@ export default function MapCanvas({
               fontWeight: 600,
               padding: '7px 14px',
               borderRadius: 16,
-              boxShadow: `0 8px 24px ${C.shadow50}`,
+              boxShadow: `inset 0 1px 0 ${C.glassEdge}, 0 8px 24px ${C.shadow50}`,
               textAlign: 'center',
             }}
           >
@@ -1102,7 +1106,7 @@ export default function MapCanvas({
               fontWeight: 600,
               padding: '8px 16px',
               borderRadius: 18,
-              boxShadow: `0 8px 24px ${C.shadow50}`,
+              boxShadow: `inset 0 1px 0 ${C.glassEdge}, 0 8px 24px ${C.shadow50}`,
             }}
           >
             {m.map_loading_stations()}
@@ -1127,7 +1131,7 @@ export default function MapCanvas({
             width: 44,
             borderRadius: 22,
             ...pillGlass,
-            boxShadow: `0 6px 18px ${C.shadow45}`,
+            boxShadow: `inset 0 1px 0 ${C.glassEdge}, 0 6px 18px ${C.shadow45}`,
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
@@ -1135,6 +1139,7 @@ export default function MapCanvas({
           }}
         >
           <button
+            className="press"
             onClick={() => mapRef.current?.zoomIn()}
             aria-label={m.map_zoom_in()}
             title={m.map_zoom_in()}
@@ -1144,6 +1149,7 @@ export default function MapCanvas({
           </button>
           <div style={{ height: 1, background: C.divider }} />
           <button
+            className="press"
             onClick={() => mapRef.current?.zoomOut()}
             aria-label={m.map_zoom_out()}
             title={m.map_zoom_out()}
@@ -1153,6 +1159,7 @@ export default function MapCanvas({
           </button>
           <div style={{ height: 1, background: C.divider }} />
           <button
+            className="press"
             onClick={() => app.shareMapView()}
             aria-label={m.map_share_view()}
             title={m.map_share_view()}
@@ -1162,6 +1169,7 @@ export default function MapCanvas({
           </button>
           <div style={{ height: 1, background: C.divider }} />
           <button
+            className="press"
             onClick={() => app.resetSearchToUser()}
             aria-label={locateAria}
             aria-busy={locating}
@@ -1186,6 +1194,7 @@ export default function MapCanvas({
               has no address bar to copy it from. Rides the map's control
               column so it stays clear of the sheet whatever its height. */}
           <button
+            className="press"
             onClick={() => app.shareMapView()}
             aria-label={m.map_share_view()}
             title={m.map_share_view()}
@@ -1198,7 +1207,7 @@ export default function MapCanvas({
               height: 44,
               borderRadius: '50%',
               ...pillGlass,
-              boxShadow: `0 6px 18px ${C.shadow45}`,
+              boxShadow: `inset 0 1px 0 ${C.glassEdge}, 0 6px 18px ${C.shadow45}`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -1214,6 +1223,7 @@ export default function MapCanvas({
               user; plain tappable ink (the share button's look) once the
               tie is gone. */}
           <button
+            className="press"
             onClick={() => app.resetSearchToUser()}
             aria-label={locateAria}
             aria-busy={locating}
@@ -1228,7 +1238,7 @@ export default function MapCanvas({
               borderRadius: '50%',
               ...pillGlass,
               border: `1px solid ${locateActive ? C.accentBorderStrong : C.glassBorder}`,
-              boxShadow: `0 6px 18px ${C.shadow45}`,
+              boxShadow: `inset 0 1px 0 ${C.glassEdge}, 0 6px 18px ${C.shadow45}`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

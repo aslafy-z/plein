@@ -9,7 +9,7 @@ export default function Toast() {
   return (
     <div
       role="status"
-      className="anim-fade"
+      className="anim-toast"
       style={{
         position: 'absolute',
         left: '50%',
@@ -26,7 +26,7 @@ export default function Toast() {
         fontWeight: 700,
         padding: '11px 18px',
         borderRadius: 22,
-        boxShadow: `0 10px 28px ${C.shadow50}`,
+        boxShadow: `0 10px 28px ${C.shadow50}, 0 2px 8px ${C.shadow35}`,
         whiteSpace: 'nowrap',
         maxWidth: '90%',
         overflow: 'hidden',

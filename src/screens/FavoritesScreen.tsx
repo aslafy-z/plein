@@ -98,6 +98,7 @@ export default function FavoritesScreen() {
               return (
                 <button
                   key={k}
+                  className="press"
                   onClick={() => setSort(k)}
                   style={{
                     fontSize: 12.5,
@@ -107,6 +108,7 @@ export default function FavoritesScreen() {
                     padding: '7px 13px',
                     borderRadius: 15,
                     whiteSpace: 'nowrap',
+                    transition: 'background .25s var(--ease-snap), color .25s var(--ease-snap)',
                   }}
                 >
                   {label}
@@ -135,6 +137,7 @@ export default function FavoritesScreen() {
               {m.favorites_empty_body()}
             </span>
             <button
+              className="press"
               onClick={() => app.go('map')}
               style={{
                 marginTop: 6,
@@ -144,6 +147,7 @@ export default function FavoritesScreen() {
                 fontWeight: 700,
                 borderRadius: 22,
                 padding: '11px 22px',
+                boxShadow: `0 8px 20px ${C.accentGlow25}`,
               }}
             >
               {m.favorites_explore_map()}

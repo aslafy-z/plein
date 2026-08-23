@@ -37,23 +37,34 @@ export default function Onboarding() {
             { padding: '26px 26px calc(22px + env(safe-area-inset-bottom, 0px))' }),
       }}
     >
-      {/* Logo row — « 2a Goutte-repère » */}
-      <LogoLockup />
+      {/* Logo row — « 2a Goutte-repère ». The screen is the app's one
+          first-impression moment, so it gets the one choreographed entrance
+          (enter-up + --stagger, styles.css): logo → headline → intro →
+          steps → actions, whole sequence done under 800ms. Every other
+          screen mounts instantly on purpose. */}
+      <div className="enter-up" style={{ ['--stagger' as string]: '0ms' }}>
+        <LogoLockup />
+      </div>
 
       {/* Headline */}
       <div
+        className="enter-up"
         style={{
           marginTop: 40,
           fontSize: 36,
-          lineHeight: 1.12,
+          lineHeight: 1.1,
           fontWeight: 800,
           color: C.ink,
-          letterSpacing: '-.01em',
+          // Display-size tracking: Archivo at 36/800 needs to be set tighter
+          // than the body or it reads as inflated body text
+          letterSpacing: '-.025em',
+          ['--stagger' as string]: '60ms',
         }}
       >
         {m.onboarding_headline()}
       </div>
       <div
+        className="enter-up"
         style={{
           marginTop: 14,
           fontSize: 15,
@@ -63,13 +74,23 @@ export default function Onboarding() {
           // card is already a narrow column, and 300px inside it left the
           // intro wrapping three times under a headline twice as wide
           maxWidth: desktop ? undefined : 300,
+          ['--stagger' as string]: '120ms',
         }}
       >
         {m.onboarding_intro()}
       </div>
 
       {/* Steps */}
-      <div style={{ marginTop: 34, display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div
+        className="enter-up"
+        style={{
+          marginTop: 34,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 20,
+          ['--stagger' as string]: '180ms',
+        }}
+      >
         {steps.map((s) => (
           <div key={s.n} style={{ display: 'flex', gap: 16, alignItems: 'baseline' }}>
             <span style={{ font: mono(700, 15), color: C.accent }}>{s.n}</span>
@@ -83,7 +104,9 @@ export default function Onboarding() {
 
       {/* Bottom */}
       <div
+        className="enter-up"
         style={{
+          ['--stagger' as string]: '260ms',
           // Pushed to the bottom edge on a phone; part of the centered card
           // on a window, where `auto` would strand it a screen further down
           marginTop: desktop ? 34 : 'auto',
@@ -127,12 +150,14 @@ export default function Onboarding() {
         </div>
 
         <button
+          className="press"
           onClick={() => app.finishOnboarding(true)}
           style={ctaStyle()}
         >
           {m.onboarding_start()}
         </button>
         <button
+          className="press"
           onClick={() => app.finishOnboarding(false)}
           style={{
             // Secondary pill mirroring the CTA's geometry: it must READ as a

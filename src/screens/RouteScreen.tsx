@@ -170,6 +170,10 @@ function routeChipStyle(on: boolean, onMap: boolean): CSSProperties {
     cursor: 'pointer',
     whiteSpace: 'nowrap',
     pointerEvents: 'auto',
+    // transform rides along for .press — an inline transition replaces the
+    // class's own (same note as ctaStyle in theme.ts)
+    transition:
+      'background .25s var(--ease-snap), border-color .25s var(--ease-snap), color .25s var(--ease-snap), transform .16s var(--ease-snap)',
   };
 }
 
@@ -192,6 +196,7 @@ function RoutePrefChips({ onMap = false }: { onMap?: boolean }) {
         // a « ✓ » prefix grows the chip on toggle and the row jumps
         <button
           key={label}
+          className="press"
           onClick={() => set(!on)}
           aria-pressed={on}
           style={routeChipStyle(on, onMap)}
@@ -510,7 +515,12 @@ export default function RouteScreen() {
   // says a destination is set.
   const canGo = (app.toText.trim().length > 0 || app.toIsCurrentPosition) && !app.geocoding;
   const cta = (
-    <button onClick={() => app.startRoute()} disabled={!canGo} style={ctaStyle(canGo)}>
+    <button
+      className="press"
+      onClick={() => app.startRoute()}
+      disabled={!canGo}
+      style={ctaStyle(canGo)}
+    >
       {app.geocoding ? (
         <span
           className="spin"
