@@ -18,7 +18,7 @@
 // (« Directions › ») and the wording of the empty state.
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { C } from '../theme';
+import { C, kicker } from '../theme';
 import { m } from '../paraglide/messages.js';
 import type { GeocodeCountry, GeocodeResult } from '../data/types';
 import { listLabel } from '../lib/format';
@@ -454,16 +454,7 @@ export default function PlaceField(props: PlaceFieldProps) {
         </div>
       )}
       {historyCount > 0 && (
-        <div
-          style={{
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: '.1em',
-            textTransform: 'uppercase',
-            color: C.mut,
-            padding: '10px 16px 2px',
-          }}
-        >
+        <div style={{ ...kicker(), padding: '10px 16px 2px' }}>
           {m.search_recents_title()}
         </div>
       )}
@@ -671,12 +662,8 @@ export default function PlaceField(props: PlaceFieldProps) {
               // the app, a bare input no longer says which one this is.
               <div
                 style={{
+                  ...kicker(),
                   padding: 'calc(12px + env(safe-area-inset-top, 0px)) 20px 0',
-                  fontSize: 12,
-                  fontWeight: 700,
-                  letterSpacing: '.1em',
-                  textTransform: 'uppercase',
-                  color: C.mut,
                 }}
               >
                 {props.title}

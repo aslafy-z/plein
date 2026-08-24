@@ -1,5 +1,5 @@
 import { useApp } from '../state/store';
-import { C, ctaStyle, mono } from '../theme';
+import { C, ctaStyle, display, mono } from '../theme';
 import { useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
 import { LogoLockup } from '../components/Logo';
@@ -50,14 +50,14 @@ export default function Onboarding() {
       <div
         className="enter-up"
         style={{
+          // The display treatment (theme.ts) — this headline is where the
+          // app first learned that Archivo at 36/800 needs tighter tracking
+          // than the body, and the helper now carries that for every title
+          ...display(36),
           marginTop: 40,
-          fontSize: 36,
-          lineHeight: 1.1,
-          fontWeight: 800,
-          color: C.ink,
-          // Display-size tracking: Archivo at 36/800 needs to be set tighter
-          // than the body or it reads as inflated body text
-          letterSpacing: '-.025em',
+          // The browser evens the headline's lines out rather than stranding
+          // an orphan word (ignored where unsupported)
+          textWrap: 'balance',
           ['--stagger' as string]: '60ms',
         }}
       >
