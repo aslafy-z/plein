@@ -95,6 +95,78 @@ export const mono = (weight: number, sizePx: number) =>
   `${weight} ${sizePx}px ${FONT.mono}`;
 
 /**
+ * Display type — every screen-level title (Settings, Favorites, the route
+ * setup, the trip header, a fiche's name). Archivo at display sizes must be
+ * set tighter than the body or it reads as inflated body text — the
+ * onboarding headline learned this first, and the other titles had not
+ * followed. One helper, so the tracking and leading cannot drift per screen.
+ */
+export const display = (sizePx: number, weight = 800): CSSProperties => ({
+  fontSize: sizePx,
+  fontWeight: weight,
+  letterSpacing: sizePx >= 28 ? '-.025em' : '-.02em',
+  lineHeight: sizePx >= 28 ? 1.1 : 1.15,
+  color: C.ink,
+});
+
+/**
+ * The uppercase kicker — the small label that opens a section or crowns a
+ * card (« Cheapest nearby », « Your route », the Settings section labels).
+ * The tracking had wandered .08–.14em per screen before it was pulled here;
+ * callers spread it and override only placement (margins, flex) and color.
+ */
+export const kicker = (color: string = C.mut): CSSProperties => ({
+  fontSize: 11.5,
+  fontWeight: 700,
+  letterSpacing: '.1em',
+  textTransform: 'uppercase',
+  color,
+});
+
+/**
+ * Compact accent pill — ctaStyle's smaller relatives (the zone card's « Go
+ * there », the empty states' way out, a timeline stop's CTA). One skin —
+ * accent fill, 800 weight, one radius, the CTA's glow — where four sites had
+ * grown four geometries. Callers keep only their type size and placement.
+ */
+export const accentPill = (fontSizePx: number, padding: string): CSSProperties => ({
+  background: C.accent,
+  color: C.onAccent,
+  fontSize: fontSizePx,
+  fontWeight: 800,
+  letterSpacing: '.01em',
+  borderRadius: 22,
+  padding,
+  textAlign: 'center',
+  cursor: 'pointer',
+  boxShadow: `0 8px 20px ${C.accentGlow25}`,
+  // transform is listed for the same reason as in ctaStyle: an inline
+  // transition REPLACES the .press class's own, and without it the compress
+  // would snap instead of ease
+  transition:
+    'transform 0.16s var(--ease-snap), box-shadow 0.25s var(--ease-snap), filter 0.2s var(--ease-snap)',
+});
+
+/**
+ * Sort chip — the « Recommended · Price · Distance » toggle above the zone
+ * list and the favorites grid: the same control wore two geometries. Kept at
+ * the zone list's compact size on purpose — its count/sort row must hold ONE
+ * line at the panel floor (see ZoneList).
+ */
+export const sortChipStyle = (active: boolean): CSSProperties => ({
+  fontSize: 12,
+  fontWeight: 700,
+  color: active ? C.onAccent : C.mut,
+  background: active ? C.accent : C.surface2,
+  padding: '5px 11px',
+  borderRadius: 14,
+  whiteSpace: 'nowrap',
+  // transform rides along for .press — same note as accentPill
+  transition:
+    'background .25s var(--ease-snap), color .25s var(--ease-snap), transform .16s var(--ease-snap)',
+});
+
+/**
  * Backdrop blur, everywhere a glass surface asks for one — skipped wholesale
  * in lite-effects mode (Gecko, see lib/fx.ts): re-blurring the backdrop on
  * every frame a Leaflet animation dirties it is one of the two effects that

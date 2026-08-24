@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { C } from '../theme';
+import { C, accentPill } from '../theme';
 import { SERVICE_TAGS } from '../data/types';
 import { useIsDesktop } from '../lib/layout';
 import { useApp, selectZoneFuels, selectZoneLoading } from '../state/store';
@@ -185,15 +185,7 @@ const chipRow: CSSProperties = {
 };
 
 /** The way out — the only accent the block spends, so it reads as the action */
-const actionStyle: CSSProperties = {
-  background: C.accent,
-  color: C.onAccent,
-  fontSize: 14.5,
-  fontWeight: 700,
-  borderRadius: 22,
-  padding: '12px 22px',
-  boxShadow: `0 8px 20px ${C.accentGlow25}`,
-};
+const actionStyle: CSSProperties = accentPill(14.5, '12px 22px');
 
 /** A fuel the zone does sell: one tap switches to it */
 const fuelChipStyle: CSSProperties = {

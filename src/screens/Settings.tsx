@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { C, mono } from '../theme';
+import { C, display, kicker, mono } from '../theme';
 import { ALL_FUELS, type DataSourceId, type VehicleId } from '../data/types';
 import { useApp, MAPS_SITE_IDS, mapsSiteLabel, VEHICLE_PRESETS } from '../state/store';
 import {
@@ -37,14 +37,7 @@ import LocateIcon from '../components/LocateIcon';
 import { APP_VERSION, REPO_URL } from '../lib/appUpdate';
 import { bugReportUrl, environmentLines } from '../lib/issueReport';
 
-const SECTION_LABEL: React.CSSProperties = {
-  fontSize: 12,
-  fontWeight: 700,
-  letterSpacing: '.1em',
-  textTransform: 'uppercase',
-  color: C.mut,
-  marginBottom: 10,
-};
+const SECTION_LABEL: React.CSSProperties = { ...kicker(), marginBottom: 10 };
 
 /** Credits links — dimmer than the body text, they sit in the footer */
 const CREDIT_LINK: React.CSSProperties = { color: C.ghost, textDecoration: 'underline' };
@@ -343,13 +336,17 @@ function SwitchRow({
           style={{
             position: 'absolute',
             top: 3,
-            left: checked ? 19 : 3,
+            left: 3,
             width: 18,
             height: 18,
             borderRadius: '50%',
             background: C.surface,
             boxShadow: `0 1px 3px ${C.shadow40}`,
-            transition: 'left .2s var(--ease-snap)',
+            // The knob travels on transform, never on `left`: a layout
+            // property re-lays-out on every animation frame where the
+            // compositor moves a transform for free
+            transform: checked ? 'translateX(16px)' : 'none',
+            transition: 'transform .2s var(--ease-snap)',
           }}
         />
       </span>
@@ -529,7 +526,7 @@ export default function Settings() {
           <LogoLockup tile={52} glyph={34} fontSize={26} tagline={m.settings_brand_tagline()} glow />
         </div>
 
-        <div style={{ fontSize: 24, fontWeight: 800, color: C.ink }}>{m.settings_title()}</div>
+        <div style={display(24)}>{m.settings_title()}</div>
 
         {/* Vehicle */}
         <div style={{ marginTop: 18 }}>
@@ -908,7 +905,10 @@ export default function Settings() {
                     }}
                   >
                     {selected && (
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.accent }} />
+                      <div
+                        className="anim-pop"
+                        style={{ width: 8, height: 8, borderRadius: '50%', background: C.accent }}
+                      />
                     )}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>

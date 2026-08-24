@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
-import { C, ctaStyle, mono, stickyBarStyle } from '../theme';
+import { C, ctaStyle, display, kicker, mono, stickyBarStyle } from '../theme';
 import {
   ALL_FUELS,
   MAIN_FUELS,
@@ -401,7 +401,7 @@ export default function StationDetail() {
       <div style={{ padding: '18px 20px 8px', display: 'flex', flexDirection: 'column', gap: 18 }}>
         {/* Title + chips */}
         <div>
-          <div style={{ color: C.ink, fontSize: 21, fontWeight: 700 }}>{s.name}</div>
+          <div style={display(21, 700)}>{s.name}</div>
           {s.address && (
             <div style={{ color: C.mut, fontSize: 13, marginTop: 4 }}>
               {s.address}
@@ -531,18 +531,7 @@ export default function StationDetail() {
 
         {/* Services */}
         <div>
-          <div
-            style={{
-              color: C.mut,
-              fontSize: 11.5,
-              fontWeight: 700,
-              letterSpacing: '.12em',
-              textTransform: 'uppercase',
-              marginBottom: 10,
-            }}
-          >
-            {m.detail_services()}
-          </div>
+          <div style={{ ...kicker(), marginBottom: 10 }}>{m.detail_services()}</div>
           {s.services.length > 0 ? (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {s.services.map((sv, i) => {

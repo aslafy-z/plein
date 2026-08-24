@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { C, mono } from '../theme';
+import { C, accentPill, display, mono, sortChipStyle } from '../theme';
 import {
   useApp,
   effectivePrice,
@@ -79,7 +79,7 @@ export default function FavoritesScreen() {
       >
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-          <span style={{ fontSize: 24, fontWeight: 800, color: C.ink, flex: 1 }}>{m.favorites_title()}</span>
+          <span style={{ ...display(24), flex: 1 }}>{m.favorites_title()}</span>
           {favs.length > 0 && (
             <span style={{ fontSize: 13, color: C.mut, fontWeight: 600 }}>
               {m.favorites_count({ count: favs.length })}
@@ -100,16 +100,7 @@ export default function FavoritesScreen() {
                   key={k}
                   className="press"
                   onClick={() => setSort(k)}
-                  style={{
-                    fontSize: 12.5,
-                    fontWeight: 700,
-                    color: active ? C.onAccent : C.mut,
-                    background: active ? C.accent : C.surface2,
-                    padding: '7px 13px',
-                    borderRadius: 15,
-                    whiteSpace: 'nowrap',
-                    transition: 'background .25s var(--ease-snap), color .25s var(--ease-snap)',
-                  }}
+                  style={sortChipStyle(active)}
                 >
                   {label}
                 </button>
@@ -129,25 +120,38 @@ export default function FavoritesScreen() {
               textAlign: 'center',
             }}
           >
-            <Star filled={false} color={C.faint} size={34} />
-            <span style={{ fontSize: 15, fontWeight: 700, color: C.body }}>
+            {/* A rare, first-time screen — the one kind that gets the
+                choreographed entrance (the onboarding's fade-up-deblur), so
+                the emptiness reads as a welcome rather than as a miss. The
+                everyday grid below mounts instantly on purpose. */}
+            <span className="enter-up" style={{ display: 'flex', ['--stagger' as string]: '0ms' }}>
+              <Star filled={false} color={C.faint} size={34} />
+            </span>
+            <span
+              className="enter-up"
+              style={{ fontSize: 15, fontWeight: 700, color: C.body, ['--stagger' as string]: '60ms' }}
+            >
               {m.favorites_empty_title()}
             </span>
-            <span style={{ fontSize: 13.5, color: C.mut, lineHeight: 1.5, maxWidth: 300 }}>
+            <span
+              className="enter-up"
+              style={{
+                fontSize: 13.5,
+                color: C.mut,
+                lineHeight: 1.5,
+                maxWidth: 300,
+                ['--stagger' as string]: '120ms',
+              }}
+            >
               {m.favorites_empty_body()}
             </span>
             <button
-              className="press"
+              className="press enter-up"
               onClick={() => app.go('map')}
               style={{
+                ...accentPill(14, '11px 22px'),
                 marginTop: 6,
-                background: C.accent,
-                color: C.onAccent,
-                fontSize: 14,
-                fontWeight: 700,
-                borderRadius: 22,
-                padding: '11px 22px',
-                boxShadow: `0 8px 20px ${C.accentGlow25}`,
+                ['--stagger' as string]: '180ms',
               }}
             >
               {m.favorites_explore_map()}
@@ -175,6 +179,10 @@ export default function FavoritesScreen() {
               return (
                 <div
                   key={f.id}
+                  // The zone rows' card physics (styles.css): a favorites
+                  // card is two buttons in one box, so the lift rides the
+                  // box rather than a data-station-id button
+                  className="row-lift"
                   style={{
                     display: 'flex',
                     alignItems: 'center',

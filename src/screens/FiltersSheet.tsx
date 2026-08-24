@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { C, ctaStyle, glass, mono } from '../theme';
+import { C, ctaStyle, display, glass, kicker, mono } from '../theme';
 import { ALL_FUELS, SERVICE_TAGS } from '../data/types';
 import {
   useApp,
@@ -21,13 +21,7 @@ import {
 // re-fits the map — far too much work to run on every pixel of a drag.
 const RADIUS_COMMIT_MS = 200;
 
-const sectionLabel = {
-  fontSize: 12,
-  fontWeight: 700,
-  letterSpacing: '.1em',
-  textTransform: 'uppercase' as const,
-  color: C.mut,
-};
+const sectionLabel = kicker();
 
 export default function FiltersSheet() {
   const app = useApp();
@@ -139,7 +133,7 @@ export default function FiltersSheet() {
   const body = (
     <>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <span style={{ fontSize: 20, fontWeight: 800, color: C.ink, flex: 1 }}>{m.filters_title()}</span>
+        <span style={{ ...display(20), flex: 1 }}>{m.filters_title()}</span>
         <button
           onClick={() => app.resetFilters()}
           style={{ fontSize: 13, fontWeight: 700, color: C.accent }}
@@ -256,7 +250,10 @@ export default function FiltersSheet() {
               </span>
             </button>
             {brandsOpen && (
-              <div style={{ marginTop: 8 }}>
+              // The revealed list fades in on the shared curve — everything
+              // else in the app arrives with one, so an instant pop reads as
+              // a glitch here
+              <div className="anim-fade" style={{ marginTop: 8 }}>
                 <div style={{ fontSize: 12, color: C.faint, marginBottom: 6 }}>
                   {m.filters_brands_hint()}
                 </div>

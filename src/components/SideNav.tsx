@@ -77,6 +77,7 @@ export default function SideNav() {
             {active && (
               <span
                 aria-hidden
+                className="anim-navmark"
                 style={{
                   position: 'absolute',
                   left: -12,

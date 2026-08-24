@@ -12,7 +12,7 @@
 // no silent recompute), the timeline / computing / error states otherwise.
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { C, ctaStyle, floatingPanelStyle, mono } from '../theme';
+import { C, ctaStyle, display, floatingPanelStyle, kicker, mono } from '../theme';
 import type { GeocodeResult } from '../data/types';
 import { fmtPrice, durationLabel } from '../lib/format';
 import { fuelLabel } from '../lib/labels';
@@ -218,9 +218,7 @@ function RouteForm({ withTitle }: { withTitle: boolean }) {
     <div style={{ padding: withTitle ? '20px 22px 8px' : '4px 22px 8px' }}>
       {withTitle && (
         <>
-          <div style={{ fontSize: 24, fontWeight: 800, color: C.ink }}>
-            {m.route_setup_title()}
-          </div>
+          <div style={display(24)}>{m.route_setup_title()}</div>
           <div style={{ fontSize: 13, color: C.mut, marginTop: 4 }}>
             {m.route_setup_subtitle()}
           </div>
@@ -330,19 +328,8 @@ function RouteLead({ phase }: { phase: Phase }) {
   const app = useApp();
   const analysis = selectRouteAnalysis(app);
 
-  const kicker = (text: string, accent = false) => (
-    <div
-      style={{
-        fontSize: 11.5,
-        fontWeight: 700,
-        letterSpacing: '.12em',
-        textTransform: 'uppercase',
-        color: accent ? C.accent : C.mut,
-        marginBottom: 6,
-      }}
-    >
-      {text}
-    </div>
+  const kickerLine = (text: string, accent = false) => (
+    <div style={{ ...kicker(accent ? C.accent : C.mut), marginBottom: 6 }}>{text}</div>
   );
 
   if (phase === 'ready') {
@@ -355,7 +342,7 @@ function RouteLead({ phase }: { phase: Phase }) {
       const count = analysis.planStops.length;
       return (
         <div>
-          {kicker(
+          {kickerLine(
             count > 1
               ? m.ribbon_plan_stop_index({ index: 1, count })
               : m.ribbon_recommended_stop(),
@@ -393,7 +380,7 @@ function RouteLead({ phase }: { phase: Phase }) {
       const infeasible = plan.status === 'infeasible';
       return (
         <div>
-          {kicker(m.ribbon_header())}
+          {kickerLine(m.ribbon_header())}
           <div style={{ fontSize: 17, fontWeight: 700, color: C.ink }}>
             {app.routeState.endpoints.from} → {app.routeState.endpoints.to}
           </div>
@@ -415,7 +402,7 @@ function RouteLead({ phase }: { phase: Phase }) {
     // computed for (a recompute keeps the previous trip under its own labels).
     return (
       <div>
-        {kicker(m.ribbon_header())}
+        {kickerLine(m.ribbon_header())}
         <div style={{ fontSize: 17, fontWeight: 700, color: C.ink }}>
           {route ? app.routeState.endpoints.from : routeFromLabel(app)} →{' '}
           {route ? app.routeState.endpoints.to : routeToLabel(app)}
@@ -438,7 +425,7 @@ function RouteLead({ phase }: { phase: Phase }) {
     // distance, no duration, no station.
     return (
       <div>
-        {kicker(m.route_setup_title())}
+        {kickerLine(m.route_setup_title())}
         <div style={{ fontSize: 17, fontWeight: 700, color: C.ink }}>
           {routeFromLabel(app)} → {routeToLabel(app)}
         </div>
@@ -451,7 +438,7 @@ function RouteLead({ phase }: { phase: Phase }) {
 
   return (
     <div>
-      {kicker(m.route_setup_title())}
+      {kickerLine(m.route_setup_title())}
       <div style={{ fontSize: 13.5, color: phase === 'error' ? C.warn : C.mut }}>
         {phase === 'error'
           ? (app.routeState.geometryError ?? m.ribbon_error_fallback())

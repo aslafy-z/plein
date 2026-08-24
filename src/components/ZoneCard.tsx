@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { C, mono } from '../theme';
+import { C, accentPill, kicker, mono } from '../theme';
 import {
   useApp,
   selectCheapest,
@@ -79,16 +79,7 @@ export default function ZoneCard({ handle }: { handle?: ReactNode }) {
           {handle}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <span
-              style={{
-                flex: 1,
-                fontSize: 11.5,
-                fontWeight: 700,
-                letterSpacing: '.12em',
-                textTransform: 'uppercase',
-                color: C.accent,
-              }}
-            >
+            <span style={{ ...kicker(C.accent), flex: 1 }}>
               {/* Four whole sentences, never two glued fragments: word
                   order and adjective agreement differ per language, and
                   « La moins chère » + « près de vous » only happens to
@@ -171,17 +162,7 @@ export default function ZoneCard({ handle }: { handle?: ReactNode }) {
             <button
               className="press"
               onClick={() => app.openInMaps(shown)}
-              style={{
-                flex: 1,
-                background: C.accent,
-                color: C.onAccent,
-                fontSize: 15,
-                fontWeight: 700,
-                borderRadius: 24,
-                padding: '13px 0',
-                textAlign: 'center',
-                boxShadow: `0 8px 20px ${C.accentGlow25}`,
-              }}
+              style={{ ...accentPill(15, '13px 0'), flex: 1 }}
             >
               {tripOrigin
                 ? m.sheet_go_there({ duration: durationLabel(shown.driveMin) })
@@ -196,7 +177,8 @@ export default function ZoneCard({ handle }: { handle?: ReactNode }) {
                   color: C.body,
                   fontSize: 14,
                   fontWeight: 600,
-                  borderRadius: 24,
+                  // Matches its neighbour, the accentPill « Go there »
+                  borderRadius: 22,
                   padding: '13px 0',
                   textAlign: 'center',
                   border: `1px solid ${C.border09}`,
