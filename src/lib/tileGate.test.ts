@@ -53,8 +53,8 @@ describe('tileUrlFor', () => {
     setForcedOffline(true);
     await ensureTileSnapshot();
 
-    expect(tileUrlFor(withCartoKey(CACHED))).toBe(withCartoKey(CACHED));
-    expect(tileUrlFor(withCartoKey(UNCACHED))).toBe(BLANK_TILE);
+    expect(tileUrlFor(withCartoKey(CACHED, 'cb1_key'))).toBe(withCartoKey(CACHED, 'cb1_key'));
+    expect(tileUrlFor(withCartoKey(UNCACHED, 'cb1_key'))).toBe(BLANK_TILE);
   });
 
   it('blanks everything when the origin has no Cache Storage at all', async () => {

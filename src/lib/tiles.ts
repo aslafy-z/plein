@@ -1,9 +1,10 @@
 // Themed basemap with automatic fallback.
 // Primary: CARTO CDN — dark_all or light_all following the app theme, re-toned
 // to the palette via `.tiles-carto` (whose filter is per-theme in styles.css).
-// Every request to it carries the account key (lib/cartoKey.ts); keyless, the
-// CDN answers with tiles stamped « API key required » rather than failing, so
-// no fallback would ever trigger.
+// Every request to it carries the build's account key (lib/cartoKey.ts —
+// `VITE_CARTO_KEY`, or the shipped default); keyless, the CDN answers with
+// tiles stamped « API key required » rather than failing, so no fallback
+// would ever trigger.
 // A theme switch swaps the layer's URL in place, so every mounted map follows
 // without remounting. When the CDN can't load (offline, firewalled network),
 // the map swaps to OpenStreetMap tiles (through the dev-server proxy in dev),
@@ -21,13 +22,13 @@
 // cover the visible center (src/lib/tilePyramid.ts) — a whole pyramid, world
 // view to street level, costs less than one screenful of panning.
 import L from 'leaflet';
-import { IS_DEV } from './env';
+import { CARTO_KEY_OVERRIDE, IS_DEV } from './env';
 import { currentTheme, onThemeChange } from './colorScheme';
 import { registerTileDebugSource, type TileLayerDebug } from './debugState';
 import { isForcedOffline, isOffline, onConnectivityChange } from './connectivity';
 import { pyramidTiles, tileUrl } from './tilePyramid';
 import { cachedTileUrls } from './tileCache';
-import { tileCacheKey, withCartoKey } from './cartoKey';
+import { resolveCartoKey, tileCacheKey, withCartoKey } from './cartoKey';
 import {
   dropTileSnapshot,
   ensureTileSnapshot,
@@ -36,9 +37,14 @@ import {
   tileUrlFor,
 } from './tileGate';
 
+/** This build's key: `VITE_CARTO_KEY` when it set one, the shipped one
+    otherwise (lib/cartoKey.ts) */
+const CARTO_KEY = resolveCartoKey(CARTO_KEY_OVERRIDE);
+
 const cartoUrl = () =>
   withCartoKey(
     `https://{s}.basemaps.cartocdn.com/${currentTheme() === 'light' ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png`,
+    CARTO_KEY,
   );
 const CARTO_SUBDOMAINS = 'abcd';
 const FALLBACK_URL = IS_DEV ? '/tiles/{z}/{x}/{y}.png' : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
@@ -330,7 +336,7 @@ async function attemptRecovery(): Promise<void> {
     // intercepts tile URLs carrying nothing but the CARTO key) and, with
     // no-store, the HTTP cache — a cached tile answering the probe would say
     // nothing about the network.
-    await fetch(withCartoKey(`${PROBE_URL}?probe=${now}`), {
+    await fetch(withCartoKey(`${PROBE_URL}?probe=${now}`, CARTO_KEY), {
       mode: 'no-cors',
       cache: 'no-store',
     });

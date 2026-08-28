@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { execFile, execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
@@ -7,7 +7,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { cloudflare } from "@cloudflare/vite-plugin";
 import { paraglideVitePlugin } from '@inlang/paraglide-js'
 
-import { withCartoKey } from './src/lib/cartoKey'
+import { resolveCartoKey, withCartoKey } from './src/lib/cartoKey'
 
 // ── Build version ─────────────────────────────────────────────────────────────
 // Stamped into the bundle (`__APP_VERSION__`) and into `/version.json`, which the
@@ -80,38 +80,44 @@ function fetchTile(url: string): Promise<Buffer> {
   })
 }
 
-function tileHandler(req: IncomingMessage, res: ServerResponse): void {
-  const m = (req.url ?? '').match(/^\/(\d{1,2})\/(\d+)\/(\d+)(?:@2x)?\.png$/)
-  if (!m) {
-    res.statusCode = 404
-    res.end()
-    return
-  }
-  const key = `${m[1]}/${m[2]}/${m[3]}`
-  const cached = tileCache.get(key)
-  const send = (buf: Buffer) => {
-    res.setHeader('Content-Type', 'image/png')
-    res.setHeader('Cache-Control', 'public, max-age=86400')
-    res.end(buf)
-  }
-  if (cached) {
-    send(cached)
-    return
-  }
-  fetchTile(withCartoKey(`${CARTO}/${key}.png`))
-    .catch(() => fetchTile(`${OSM}/${key}.png`))
-    .then((buf) => {
-      if (tileCache.size >= CACHE_MAX) {
-        const first = tileCache.keys().next().value
-        if (first) tileCache.delete(first)
-      }
-      tileCache.set(key, buf)
-      send(buf)
-    })
-    .catch(() => {
-      res.statusCode = 502
+type TileHandler = (req: IncomingMessage, res: ServerResponse) => void
+
+/** Serves `/tiles/{z}/{x}/{y}.png` from CARTO with `cartoKey` on it, the way
+    the app's own requests carry it. */
+function tileHandler(cartoKey: string): TileHandler {
+  return (req, res) => {
+    const m = (req.url ?? '').match(/^\/(\d{1,2})\/(\d+)\/(\d+)(?:@2x)?\.png$/)
+    if (!m) {
+      res.statusCode = 404
       res.end()
-    })
+      return
+    }
+    const key = `${m[1]}/${m[2]}/${m[3]}`
+    const cached = tileCache.get(key)
+    const send = (buf: Buffer) => {
+      res.setHeader('Content-Type', 'image/png')
+      res.setHeader('Cache-Control', 'public, max-age=86400')
+      res.end(buf)
+    }
+    if (cached) {
+      send(cached)
+      return
+    }
+    fetchTile(withCartoKey(`${CARTO}/${key}.png`, cartoKey))
+      .catch(() => fetchTile(`${OSM}/${key}.png`))
+      .then((buf) => {
+        if (tileCache.size >= CACHE_MAX) {
+          const first = tileCache.keys().next().value
+          if (first) tileCache.delete(first)
+        }
+        tileCache.set(key, buf)
+        send(buf)
+      })
+      .catch(() => {
+        res.statusCode = 502
+        res.end()
+      })
+  }
 }
 
 // ── Dev/preview API proxy ─────────────────────────────────────────────────────
@@ -172,9 +178,9 @@ function apiHandler(req: IncomingMessage, res: ServerResponse): void {
     })
 }
 
-function devProxies(): Plugin {
-  const mount = (middlewares: { use(path: string, fn: typeof tileHandler): void }) => {
-    middlewares.use('/tiles', tileHandler)
+function devProxies(cartoKey: string): Plugin {
+  const mount = (middlewares: { use(path: string, fn: TileHandler): void }) => {
+    middlewares.use('/tiles', tileHandler(cartoKey))
     middlewares.use('/proxy', apiHandler)
   }
   return {
@@ -209,8 +215,17 @@ const paraglide = () =>
     strategy: ['custom-appSettings', 'preferredLanguage', 'baseLocale'],
   })
 
-export default defineConfig({
-  plugins: [paraglide(), react(), devProxies(), versionStamp(APP_VERSION), cloudflare()],
+// `loadEnv` rather than `process.env`: the app reads VITE_CARTO_KEY through
+// `import.meta.env`, which Vite fills from the `.env` files too, and the dev
+// tile proxy has to serve tiles from the same account as the browser does.
+export default defineConfig(({ mode }) => ({
+  plugins: [
+    paraglide(),
+    react(),
+    devProxies(resolveCartoKey(loadEnv(mode, process.cwd(), 'VITE_').VITE_CARTO_KEY)),
+    versionStamp(APP_VERSION),
+    cloudflare(),
+  ],
   define: {
     __APP_VERSION__: JSON.stringify(APP_VERSION),
     __REPO_URL__: JSON.stringify(repoUrl()),
@@ -219,4 +234,4 @@ export default defineConfig({
     host: true,
     port: 5173,
   },
-})
+}))
