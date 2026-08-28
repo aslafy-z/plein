@@ -37,21 +37,24 @@ import { C } from '../theme';
 const EXPAND_RATIO = 0.75;
 /** Whatever the ratio, this strip of map always stays visible on top */
 const MIN_MAP_PEEK_PX = 64;
+// The physics vocabulary is exported: ModalSheet (the phone's scrimmed
+// dismissable sheet) runs its own engine — dismissal, not snap points — but a
+// drag must feel identical whichever sheet is under the finger.
 /** Pointer must travel this far before a tap becomes a drag */
-const DRAG_SLOP_PX = 6;
+export const DRAG_SLOP_PX = 6;
 /** Release speed (px/ms) above which the sheet snaps in the fling direction */
-const FLING_VPS = 0.45;
+export const FLING_VPS = 0.45;
 /** Fling speed is averaged over the samples of this trailing window */
-const FLING_WINDOW_MS = 100;
+export const FLING_WINDOW_MS = 100;
 /** Pointer parked longer than this before release → the fling is cancelled */
-const FLING_HOLD_MS = 150;
+export const FLING_HOLD_MS = 150;
 /** Further than this from the rest height → the sheet is mid-glide, and a
     press anywhere on it catches it (subpixel transforms stay a rest) */
-const GLIDE_CATCH_PX = 4;
+export const GLIDE_CATCH_PX = 4;
 // The release snap rides the app's primary curve (styles.css --ease-out):
 // where the browser supports linear() springs the sheet lands with a
 // hair of overshoot and settle — an object with weight, not a cursor.
-const TRANSITION = 'transform .38s var(--ease-out)';
+export const SHEET_TRANSITION = 'transform .38s var(--ease-out)';
 
 /** Pointer handlers a body region carries so it can drag the sheet. Two
     contracts share this shape: the body's SCROLL CONTAINER gets the
@@ -68,7 +71,7 @@ export interface SheetGestures {
 }
 
 /** A control opting out of the sheet drag (horizontal sliders fight it) */
-function insideNoDrag(target: EventTarget | null): boolean {
+export function insideNoDrag(target: EventTarget | null): boolean {
   return target instanceof Element && target.closest('[data-sheet-no-drag]') != null;
 }
 
@@ -245,8 +248,8 @@ export default function SheetShell({
       cancelAnimationFrame(s.raf);
       s.raf = 0;
     }
-    el.style.transition = TRANSITION;
-    if (footerRef.current) footerRef.current.style.transition = TRANSITION;
+    el.style.transition = SHEET_TRANSITION;
+    if (footerRef.current) footerRef.current.style.transition = SHEET_TRANSITION;
     // A motionless press is a tap, not a gesture: the transform was never
     // dragged and the open/close decision belongs to the tap handlers —
     // voting from the current height here would race the handle's toggle.
@@ -554,8 +557,8 @@ export default function SheetShell({
     el.style.transition = 'none';
     if (footerRef.current) footerRef.current.style.transition = 'none';
     void el.getBoundingClientRect();
-    el.style.transition = TRANSITION;
-    if (footerRef.current) footerRef.current.style.transition = TRANSITION;
+    el.style.transition = SHEET_TRANSITION;
+    if (footerRef.current) footerRef.current.style.transition = SHEET_TRANSITION;
   }, [restTy, expanded, layoutH, instantContentResize]);
 
   const bodyGestures: SheetGestures = {
@@ -639,7 +642,7 @@ export default function SheetShell({
         willChange: 'transform',
         // The hint keyframes bounce off this, the transform they override
         ...(hinting ? { ['--sheet-ty' as string]: `${restTy}px` } : null),
-        transition: TRANSITION,
+        transition: SHEET_TRANSITION,
       }}
     >
       {/* ── Collapsed part (measured — the map stops above it) ── */}
@@ -677,7 +680,7 @@ export default function SheetShell({
             background: C.surface,
             transform: `translateY(${-restTy}px)`,
             willChange: 'transform',
-            transition: TRANSITION,
+            transition: SHEET_TRANSITION,
           }}
         >
           {footer}

@@ -9,6 +9,7 @@ import {
 } from '../state/store';
 import { brandGroupLabel, fuelLabel, serviceTagLabel } from '../lib/labels';
 import { useIsDesktop } from '../lib/layout';
+import ModalSheet from '../components/ModalSheet';
 import { m } from '../paraglide/messages.js';
 import {
   brandIconSrc,
@@ -196,8 +197,10 @@ export default function FiltersSheet() {
           <span style={{ ...sectionLabel, flex: 1 }}>{m.filters_radius_section()}</span>
           <span style={{ font: mono(700, 15), color: C.ink }}>{radiusDraft} km</span>
         </div>
+        {/* Horizontal slider: its drag must never become the sheet's */}
         <input
           type="range"
+          data-sheet-no-drag=""
           min={1}
           max={25}
           step={1}
@@ -491,43 +494,17 @@ export default function FiltersSheet() {
     );
   }
 
+  // The same drag-to-dismiss frame as the zone sheet's feel: the handle and
+  // a pull down from the body's scroll top lower the sheet, a tap on the
+  // handle or the scrim still closes it outright.
   return (
-    <div style={{ position: 'absolute', inset: 0, zIndex: 1100 }}>
-      <button
-        onClick={close}
-        aria-label={m.filters_close_overlay_aria()}
-        style={{ position: 'absolute', inset: 0, background: C.scrim, width: '100%' }}
-      />
-      <div
-        className="anim-sheet"
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: C.navBg,
-          borderRadius: '26px 26px 0 0',
-          padding: '12px 20px 18px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 18,
-          maxHeight: '88%',
-          overflow: 'auto',
-        }}
-      >
-        <button
-          onClick={close}
-          aria-label={m.filters_close_aria()}
-          style={{
-            width: 36,
-            height: 4,
-            borderRadius: 2,
-            background: C.border20,
-            margin: '0 auto',
-          }}
-        />
-        {body}
-      </div>
-    </div>
+    <ModalSheet
+      onClose={close}
+      label={m.filters_title()}
+      handleAria={m.filters_close_aria()}
+      scrimAria={m.filters_close_overlay_aria()}
+    >
+      {body}
+    </ModalSheet>
   );
 }

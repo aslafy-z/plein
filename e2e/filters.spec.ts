@@ -1,4 +1,5 @@
-import { test, expect, gotoMap, openZoneList, closeZoneList } from './fixtures'
+import { test, expect, gotoMap, openZoneList, closeZoneList, phoneOnly } from './fixtures'
+import type { Page } from '@playwright/test'
 
 // The zone-count math is unit-tested (selectVisible) — these tests check the
 // sheet's WIRING: counts land on the buttons and the map chip, and the
@@ -7,6 +8,49 @@ import { test, expect, gotoMap, openZoneList, closeZoneList } from './fixtures'
 
 test.beforeEach(async ({ page }) => {
   await gotoMap(page)
+})
+
+/** A paced pull on the sheet handle that parks before releasing, so the
+    release votes on position alone — a fast final step would read as a fling
+    and decide the direction regardless of how far the sheet travelled. */
+async function dragHandle(page: Page, dy: number) {
+  const handle = page
+    .getByRole('dialog', { name: 'Filters' })
+    .getByRole('button', { name: 'Close', exact: true })
+  const box = (await handle.boundingBox())!
+  const x = box.x + box.width / 2
+  const y = box.y + box.height / 2
+  await page.mouse.move(x, y)
+  await page.mouse.down()
+  for (let i = 1; i <= 12; i++) {
+    await page.mouse.move(x, y + (dy * i) / 12)
+  }
+  await page.waitForTimeout(250)
+  await page.mouse.up()
+}
+
+// The station-list sheet's gesture, on the filter sheet: the handle drags it
+// down. A short pull springs back; past halfway the sheet slides off and
+// closes (ModalSheet's engine — the desktop popover has no handle at all).
+test.describe('handle drag', () => {
+  phoneOnly('the desktop filters are a popover, not a draggable sheet')
+
+  test('a short pull springs back, a long one dismisses the sheet', async ({ page }) => {
+    await page.getByText('Filters · 6').click()
+    const sheet = page.getByRole('dialog', { name: 'Filters' })
+    await expect(sheet).toBeVisible()
+    const height = (await sheet.boundingBox())!.height
+
+    // Well short of halfway: released, the sheet springs back and stays
+    await dragHandle(page, Math.min(60, height / 4))
+    await expect(sheet).toBeVisible()
+    await expect(page.getByText('Show 6 stations')).toBeVisible()
+
+    // Past halfway: the release slides it off and hands back the map
+    await dragHandle(page, height * 0.7)
+    await expect(sheet).toBeHidden()
+    await expect(page.getByText('Filters · 6')).toBeVisible()
+  })
 })
 
 test('service filters narrow the live count and « Reset » restores it', async ({ page }) => {
