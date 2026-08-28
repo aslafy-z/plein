@@ -13,7 +13,12 @@
 // would make them older without anything knowing.
 const ASSET_CACHE = 'plein-assets-v1';
 const SHELL_CACHE = 'plein-shell-v1';
-const TILE_CACHE = 'plein-tiles-v1';
+// v2: v1 was warmed while the app requested tiles keyless, and CARTO answers
+// keyless requests with tiles stamped « API key required » — under the keyless
+// cache identity below those would keep answering forever. The bump sweeps
+// that generation on activation; the keyed requests refill the cache clean.
+// The name is mirrored in src/lib/swCaches.ts, which nothing here can import.
+const TILE_CACHE = 'plein-tiles-v2';
 // Build-time data the app enriches its stations with. Separate from the assets
 // because it is not content-hashed: it is revalidated, not immutable.
 const DATA_CACHE = 'plein-data-v2';

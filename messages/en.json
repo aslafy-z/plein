@@ -516,6 +516,22 @@
       }
     }
   ],
+  "settings_cache_tiles_summary": [
+    {
+      "declarations": [
+        "input count",
+        "input size",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} map tile · ≈ {size}",
+        "countPlural=other": "{count} map tiles · ≈ {size}"
+      }
+    }
+  ],
   "settings_cache_volatile": "Persistent storage unavailable — the cache is lost on reload",
   "settings_cache_clear": "Clear offline data",
   "settings_cache_details_toggle": "Technical details",

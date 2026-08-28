@@ -232,7 +232,7 @@ Anything that does not fit one of them does not get cached.
 | durable, app-owned | settings, filters, favorites, `searchHistory`, `lastPos`, `lastFix` | localStorage `plein.settings.v1` | none; shape migrations in `persist.ts` `migrate()` |
 | durable, app-owned | station arrays per fetched area | IndexedDB `plein.cache` (`src/data/cacheStore.ts`) | three tiers, below |
 | memory | province/district memos, `roadReach`, selector memos, brand POI index, geocode + route LRUs | JS maps | the session |
-| static, SW-owned | bundles, icons, fonts, shell, tiles, `/brands-fr.json`, `/brand-icons/*` | Cache Storage (`public/sw.js`) | cache-name version bump + FIFO caps |
+| static, SW-owned | bundles, icons, fonts, shell, tiles, `/brands-fr.json`, `/brand-icons/*` | Cache Storage (`public/sw.js`) | cache-name version bump + FIFO caps; the tiles also fall to « Clear offline data » |
 
 - **Where the map looks and where the user is are two different values.**
   `lastPos` is the area the map opened on — a searched place included — and
@@ -263,8 +263,14 @@ Anything that does not fit one of them does not get cached.
   open, a private window or a refusing browser yields the in-memory store, and
   the app behaves as before minus persistence. A `QuotaExceededError` sheds
   the oldest area and retries once; a second failure stops persisting for the
-  session. `cacheStats()` is what the Settings « Data » section renders — the
-  instrumentation is data, since the e2e fixture fails on a console error.
+  session. `cacheStats()` plus `tileCacheStats()` (`src/lib/tileCache.ts`) are
+  what the Settings « Data » section renders — the instrumentation is data,
+  since the e2e fixture fails on a console error. The tile figure is entries ×
+  a flat per-tile average: the tiles are opaque no-cors responses whose bodies
+  the page cannot weigh. « Clear offline data » drops the station areas, the
+  favorite prices AND every `plein-tiles-*` cache generation; the service
+  worker's other caches (shell, assets, brand data) are the app itself, not
+  user data, and stay.
 - Seeding a cached area in e2e goes through `seedStationsCache()`
   (`e2e/fixtures.ts`), which writes IndexedDB from a loaded page and expects a
   reload; its record shape mirrors `AreaMeta` and the two have to agree.

@@ -9,8 +9,16 @@
 // spelled out at each reader.
 export const SW_ASSET_CACHE = 'plein-assets-v1';
 export const SW_SHELL_CACHE = 'plein-shell-v1';
-export const SW_TILE_CACHE = 'plein-tiles-v1';
+export const SW_TILE_CACHE = 'plein-tiles-v2';
 export const SW_DATA_CACHE = 'plein-data-v2';
+
+/**
+ * Every tile cache generation, current and abandoned. An abandoned one lives
+ * until the next service worker activates (its keep-list drops it), so the
+ * readers that answer « what is this app storing » — and the sweep behind
+ * « Clear offline data » — go by prefix rather than by the current name.
+ */
+export const SW_TILE_CACHE_PREFIX = 'plein-tiles-';
 
 /** Entry cap sw.js trims each cache to — null where it keeps everything */
 export const SW_CACHE_CAPS: Record<string, number | null> = {

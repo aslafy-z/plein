@@ -25,6 +25,7 @@ import {
   type DebugSnapshot,
 } from '../lib/debugSnapshot';
 import { clearFavoritePrices } from '../data/favoritePrices';
+import { clearTileCache, tileCacheStats, type TileCacheStats } from '../lib/tileCache';
 import { agoLabelFrom, fmtDecimal, sizeLabel } from '../lib/format';
 import { fuelLabel, sourceSublabel, sourceTitle, themeLabel, vehicleLabel } from '../lib/labels';
 import { THEMES } from '../lib/colorScheme';
@@ -359,6 +360,7 @@ function SwitchRow({
 
 function CachedData({ onCleared }: { onCleared: () => void }) {
   const [stats, setStats] = useState<StationsCacheStats | null>(null);
+  const [tiles, setTiles] = useState<TileCacheStats | null>(null);
   const [round, setRound] = useState(0);
   const [busy, setBusy] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -366,10 +368,14 @@ function CachedData({ onCleared }: { onCleared: () => void }) {
   // reader stays — the summary must follow a clear or a background fetch.
   useEffect(() => {
     let live = true;
-    const load = () =>
+    const load = () => {
       void cacheStats().then((next) => {
         if (live) setStats(next);
       });
+      void tileCacheStats().then((next) => {
+        if (live) setTiles(next);
+      });
+    };
     load();
     const timer = setInterval(load, 2000);
     return () => {
@@ -378,10 +384,14 @@ function CachedData({ onCleared }: { onCleared: () => void }) {
     };
   }, [round]);
 
+  const tileCount = tiles?.tiles ?? 0;
+  const hasAnything = (stats?.areas ?? 0) > 0 || tileCount > 0;
+
   const clear = async () => {
     setBusy(true);
-    // Favorite prices are cache-class data too — « Clear offline data » drops both
-    await Promise.all([clearStationsCache(), clearFavoritePrices()]);
+    // Favorite prices and the basemap tiles are cache-class data too —
+    // « Clear offline data » drops all three
+    await Promise.all([clearStationsCache(), clearFavoritePrices(), clearTileCache()]);
     setBusy(false);
     setRound((n) => n + 1);
     onCleared();
@@ -418,6 +428,14 @@ function CachedData({ onCleared }: { onCleared: () => void }) {
                   size: sizeLabel(stats.bytes),
                   age: stats.oldestFetchedAt != null ? agoLabelFrom(stats.oldestFetchedAt) : '',
                 })}
+            {tiles != null && tiles.tiles > 0 && (
+              <div>
+                {m.settings_cache_tiles_summary({
+                  count: tiles.tiles,
+                  size: sizeLabel(tiles.bytes),
+                })}
+              </div>
+            )}
           </div>
           {stats != null && !stats.durable && (
             <div style={{ color: C.warn, marginTop: 2 }}>{m.settings_cache_volatile()}</div>
@@ -438,16 +456,16 @@ function CachedData({ onCleared }: { onCleared: () => void }) {
       {detailsOpen && <CacheDetails key={round} />}
       <button
         onClick={() => void clear()}
-        disabled={busy || stats == null || stats.areas === 0}
+        disabled={busy || stats == null || !hasAnything}
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 12,
           padding: '14px 16px',
-          cursor: stats?.areas ? 'pointer' : 'default',
+          cursor: hasAnything ? 'pointer' : 'default',
           width: '100%',
           textAlign: 'left',
-          opacity: stats?.areas ? 1 : 0.5,
+          opacity: hasAnything ? 1 : 0.5,
         }}
       >
         <span style={{ flex: 1, fontSize: 14.5, fontWeight: 600, color: C.ink }}>
