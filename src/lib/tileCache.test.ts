@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cachedTileUrls, parseTileUrl, readCachedTiles, summarizeCachedTiles } from './tileCache'
+import {
+  cachedTileUrls,
+  clearTileCache,
+  parseTileUrl,
+  readCachedTiles,
+  summarizeCachedTiles,
+  tileCacheStats,
+  TILE_BYTES_ESTIMATE,
+} from './tileCache'
 
 describe('parseTileUrl', () => {
   it('parses CARTO tiles with style, subdomain, and retina suffix', () => {
@@ -94,6 +102,72 @@ describe('cachedTileUrls', () => {
     // Degrades to « nothing is cached »: every candidate looks missing and is
     // fetched, which is the behaviour from before the cache-aware planning.
     expect(await cachedTileUrls()).toEqual(new Set())
+  })
+})
+
+/** A CacheStorage double with named stores, enough for the stats and sweep */
+const fakeCacheStorage = (stores: Record<string, number>) => ({
+  keys: async () => Object.keys(stores),
+  open: async (name: string) => ({
+    keys: async () =>
+      Array.from({ length: stores[name] ?? 0 }, (_, i) => ({ url: `https://t.example/${i}.png` })),
+  }),
+  delete: vi.fn(async (name: string) => delete stores[name]),
+})
+
+describe('tileCacheStats', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('counts every plein-tiles-* generation and estimates the weight', async () => {
+    // An abandoned generation lives until the next worker activates — what
+    // the app is storing includes it, so the counter must too.
+    vi.stubGlobal(
+      'caches',
+      fakeCacheStorage({ 'plein-tiles-v1': 2, 'plein-tiles-v2': 3, 'plein-assets-v1': 40 }),
+    )
+    expect(await tileCacheStats()).toEqual({ tiles: 5, bytes: 5 * TILE_BYTES_ESTIMATE })
+  })
+
+  it('reads empty where Cache Storage is missing or refuses', async () => {
+    expect(await tileCacheStats()).toEqual({ tiles: 0, bytes: 0 })
+
+    vi.stubGlobal('caches', {
+      keys: async () => {
+        throw new Error('denied')
+      },
+    })
+    expect(await tileCacheStats()).toEqual({ tiles: 0, bytes: 0 })
+  })
+})
+
+describe('clearTileCache', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('sweeps every tile generation and nothing else', async () => {
+    const storage = fakeCacheStorage({
+      'plein-tiles-v1': 2,
+      'plein-tiles-v2': 3,
+      'plein-assets-v1': 40,
+    })
+    vi.stubGlobal('caches', storage)
+
+    await clearTileCache()
+
+    expect(storage.delete.mock.calls.map(([name]) => name).sort()).toEqual([
+      'plein-tiles-v1',
+      'plein-tiles-v2',
+    ])
+  })
+
+  it('is a no-op where Cache Storage is missing or refuses', async () => {
+    await expect(clearTileCache()).resolves.toBeUndefined()
+
+    vi.stubGlobal('caches', {
+      keys: async () => {
+        throw new Error('denied')
+      },
+    })
+    await expect(clearTileCache()).resolves.toBeUndefined()
   })
 })
 

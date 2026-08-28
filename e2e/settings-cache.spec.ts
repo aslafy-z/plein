@@ -37,3 +37,38 @@ test('Settings reports the cached zones and clears them', async ({ page }) => {
   await expect(page.getByText('The cheapest near you')).toBeVisible({ timeout: 15_000 })
   await openZoneList(page)
 })
+
+test('the counter includes the basemap tiles, and « Clear » sweeps them too', async ({ page }) => {
+  await gotoMap(page)
+  // Let the area flush land before Settings opens, so nothing rewrites the
+  // stations cache behind the clear below (same window as the test above)
+  await page.waitForTimeout(1500)
+
+  // The dev server never registers the worker, so Cache Storage starts empty
+  // here: seed the tile cache the worker would have filled. The names mirror
+  // src/lib/swCaches.ts — the current generation plus an abandoned one, which
+  // survives until the next worker activates and must still be counted.
+  await page.evaluate(async () => {
+    const current = await caches.open('plein-tiles-v2')
+    await current.put('https://a.basemaps.cartocdn.com/dark_all/5/16/11.png', new Response('t'))
+    await current.put('https://a.basemaps.cartocdn.com/dark_all/5/17/11.png', new Response('t'))
+    const stale = await caches.open('plein-tiles-v1')
+    await stale.put('https://a.basemaps.cartocdn.com/dark_all/5/18/11.png', new Response('t'))
+  })
+
+  await openSettings(page)
+
+  // « 3 map tiles · ≈ 59 kB » under the areas line
+  await expect(page.getByTestId('cache-stats')).toContainText('3 map tiles')
+
+  const clear = page.getByRole('button', { name: /Clear offline data/ })
+  await expect(clear).toBeEnabled()
+  await clear.click()
+
+  await expect(page.getByTestId('cache-stats')).not.toContainText('map tile')
+  await expect(clear).toBeDisabled()
+  // Both generations are gone from Cache Storage itself, not just the readout
+  expect(
+    await page.evaluate(async () => (await caches.keys()).filter((n) => n.startsWith('plein-tiles-'))),
+  ).toEqual([])
+})

@@ -40,7 +40,10 @@ async function seedTilePyramid(
   center: { lat: number; lng: number },
 ): Promise<number> {
   return page.evaluate(async ({ lat, lng }) => {
-    const cache = await caches.open('plein-tiles-v1')
+    // The CURRENT generation (SW_TILE_CACHE in src/lib/swCaches.ts) — the
+    // debug layer reads only that one, unlike the Settings counter's
+    // prefix-wide sweep.
+    const cache = await caches.open('plein-tiles-v2')
     let n = 0
     for (let z = 4; z <= 19; z += 1) {
       const c = 2 ** z

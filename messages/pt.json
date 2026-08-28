@@ -509,6 +509,22 @@
       }
     }
   ],
+  "settings_cache_tiles_summary": [
+    {
+      "declarations": [
+        "input count",
+        "input size",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} mosaico do mapa · ≈ {size}",
+        "countPlural=other": "{count} mosaicos do mapa · ≈ {size}"
+      }
+    }
+  ],
   "settings_cache_volatile": "Armazenamento persistente indisponível — a cache perde-se ao recarregar",
   "settings_cache_clear": "Apagar os dados offline",
   "settings_cache_details_toggle": "Detalhes técnicos",

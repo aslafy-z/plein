@@ -48,6 +48,12 @@ test('the route map shows where the user is, and takes the view back to them', a
   // they search elsewhere: the view sits on them and the control says so
   await expect(centeredDot(page)).toHaveCount(1)
 
+  // The entry fit may still be flying: Leaflet swallows any drag that starts
+  // while the map pane wears leaflet-zoom-anim (Draggable#_onDown bails on
+  // that class), so on a fast machine the pan below would silently do nothing
+  // and the dot would rightly stay lit. Let the flight land first.
+  await expect(page.locator('.leaflet-map-pane')).not.toHaveClass(/leaflet-zoom-anim/)
+
   // Pan the user out of the center — the control stops claiming otherwise
   const stage = await page.locator('.leaflet-container').boundingBox()
   expect(stage).not.toBeNull()

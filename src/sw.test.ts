@@ -382,7 +382,7 @@ describe('service worker — tiles and activation', () => {
       await sw.fetchEvent(request(`https://basemaps.cartocdn.com/dark_all/10/0/${i}.png`))
     }
 
-    const tiles = sw.caches.stores.get('plein-tiles-v1')
+    const tiles = sw.caches.stores.get('plein-tiles-v2')
     expect(tiles?.entries.size).toBe(max)
     expect(tiles?.entries.has('https://basemaps.cartocdn.com/dark_all/10/0/0.png')).toBe(false)
   })
@@ -399,7 +399,7 @@ describe('service worker — tiles and activation', () => {
     await sw.fetchEvent(request('https://basemaps.cartocdn.com/dark_all/10/0/0.png'))
     await sw.fetchEvent(request(`https://basemaps.cartocdn.com/dark_all/10/0/${max}.png`))
 
-    const tiles = sw.caches.stores.get('plein-tiles-v1')
+    const tiles = sw.caches.stores.get('plein-tiles-v2')
     expect(tiles?.entries.size).toBe(max)
     expect(tiles?.entries.has('https://basemaps.cartocdn.com/dark_all/10/0/0.png')).toBe(true)
     expect(tiles?.entries.has('https://basemaps.cartocdn.com/dark_all/10/0/1.png')).toBe(false)
@@ -415,7 +415,7 @@ describe('service worker — tiles and activation', () => {
     const first = await sw.fetchEvent(request(`${url}?key=cb1_key`))
     expect(await first.res?.text()).toBe(`${url}?key=cb1_key`)
 
-    const tiles = sw.caches.stores.get('plein-tiles-v1')
+    const tiles = sw.caches.stores.get('plein-tiles-v2')
     expect([...(tiles?.entries.keys() ?? [])]).toEqual([url])
 
     // Both the rotated key and no key at all hit that one entry
@@ -428,7 +428,7 @@ describe('service worker — tiles and activation', () => {
 
   it('lets a queried tile URL — the reachability probe — pass by untouched', async () => {
     const sw = loadSw(async (req) => new Response(req.url, { status: 200 }))
-    const tiles = await sw.caches.open('plein-tiles-v1')
+    const tiles = await sw.caches.open('plein-tiles-v2')
     await tiles.put(
       'https://a.basemaps.cartocdn.com/dark_all/3/4/2.png',
       new Response('cached tile'),
@@ -450,16 +450,19 @@ describe('service worker — tiles and activation', () => {
     const sw = loadSw(async () => new Response('', { status: 200 }))
     await sw.caches.open('plein-assets-v1')
     await sw.caches.open('plein-shell-v1')
-    await sw.caches.open('plein-tiles-v1')
+    await sw.caches.open('plein-tiles-v2')
     await sw.caches.open('plein-data-v2')
     await sw.caches.open('plein-assets-v0')
+    // The previous tile generation: warmed by keyless requests, so it may
+    // hold tiles CARTO stamped « API key required » — the bump must sweep it.
+    await sw.caches.open('plein-tiles-v1')
 
     await sw.activate()
 
     expect(await sw.caches.keys()).toEqual([
       'plein-assets-v1',
       'plein-shell-v1',
-      'plein-tiles-v1',
+      'plein-tiles-v2',
       'plein-data-v2',
     ])
   })

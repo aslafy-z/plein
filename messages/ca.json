@@ -516,6 +516,22 @@
       }
     }
   ],
+  "settings_cache_tiles_summary": [
+    {
+      "declarations": [
+        "input count",
+        "input size",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} tessel·la de mapa · ≈ {size}",
+        "countPlural=other": "{count} tessel·les de mapa · ≈ {size}"
+      }
+    }
+  ],
   "settings_cache_volatile": "Emmagatzematge persistent no disponible — la memòria cau es perd en recarregar",
   "settings_cache_clear": "Esborra les dades sense connexió",
   "settings_cache_details_toggle": "Detalls tècnics",

@@ -516,6 +516,22 @@
       }
     }
   ],
+  "settings_cache_tiles_summary": [
+    {
+      "declarations": [
+        "input count",
+        "input size",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} tuile de carte · ≈ {size}",
+        "countPlural=other": "{count} tuiles de carte · ≈ {size}"
+      }
+    }
+  ],
   "settings_cache_volatile": "Stockage persistant indisponible — le cache est perdu au rechargement",
   "settings_cache_clear": "Effacer les données hors ligne",
   "settings_cache_details_toggle": "Détails techniques",

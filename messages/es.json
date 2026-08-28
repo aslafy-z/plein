@@ -516,6 +516,22 @@
       }
     }
   ],
+  "settings_cache_tiles_summary": [
+    {
+      "declarations": [
+        "input count",
+        "input size",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{count} tesela de mapa · ≈ {size}",
+        "countPlural=other": "{count} teselas de mapa · ≈ {size}"
+      }
+    }
+  ],
   "settings_cache_volatile": "Almacenamiento persistente no disponible — la caché se pierde al recargar",
   "settings_cache_clear": "Borrar los datos sin conexión",
   "settings_cache_details_toggle": "Detalles técnicos",
