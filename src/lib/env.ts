@@ -5,6 +5,15 @@ export const IS_DEV: boolean =
   typeof import.meta !== 'undefined' &&
   Boolean((import.meta as { env?: { DEV?: boolean } }).env?.DEV);
 
+// The build's own CARTO basemap key, substituted by Vite wherever a
+// `VITE_CARTO_KEY` is set (`.env.local`, or the environment of the machine
+// running the build). Undefined everywhere else — including under vitest and
+// in the Node bundle — and lib/cartoKey.ts falls back to the shipped key.
+export const CARTO_KEY_OVERRIDE: string | undefined =
+  typeof import.meta !== 'undefined'
+    ? (import.meta as { env?: { VITE_CARTO_KEY?: string } }).env?.VITE_CARTO_KEY
+    : undefined;
+
 // Platform detection for the « Go there » handoff (guarded: this module is
 // also bundled for Node, where `navigator` doesn't exist).
 const UA = typeof navigator !== 'undefined' ? navigator.userAgent : '';

@@ -29,6 +29,8 @@ npm run dev          # http://localhost:5173
 
 Behind a corporate proxy or in a sandbox without direct internet access, the dev server proxies the APIs (`/proxy/*`) and the tiles (`/tiles/*`) honoring `HTTPS_PROXY` — see `vite.config.ts`.
 
+Nothing to configure: the app ships with the CARTO basemap key it deploys with, so a fresh clone draws a real map. To build against your own CARTO account instead, set `VITE_CARTO_KEY` in `.env.local` or in the environment the build runs in — `.env.example` documents it, and an unset or blank value falls back to the shipped key. It is baked into the client bundle like any `VITE_*` value, so it is public by construction: no secret goes in those files.
+
 | command | what it does |
 | --- | --- |
 | `npm run dev` | Vite dev server, messages compiled by the plugin |

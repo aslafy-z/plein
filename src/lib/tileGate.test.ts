@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { withCartoKey } from './cartoKey';
 import { setForcedOffline } from './connectivity';
 import { BLANK_TILE, dropTileSnapshot, ensureTileSnapshot, tileUrlFor } from './tileGate';
 
@@ -42,6 +43,18 @@ describe('tileUrlFor', () => {
     // Cache Storage answers this one without a network round trip
     expect(tileUrlFor(CACHED)).toBe(CACHED);
     expect(tileUrlFor(UNCACHED)).toBe(BLANK_TILE);
+  });
+
+  it('matches a keyed tile against the keyless entry the cache holds', async () => {
+    // What Leaflet asks for carries the CARTO key; what the worker stored
+    // does not (lib/cartoKey.ts) — a raw comparison would blank a tile the
+    // device is holding, which is precisely what the mode is for.
+    stubCacheStorage([CACHED]);
+    setForcedOffline(true);
+    await ensureTileSnapshot();
+
+    expect(tileUrlFor(withCartoKey(CACHED, 'cb1_key'))).toBe(withCartoKey(CACHED, 'cb1_key'));
+    expect(tileUrlFor(withCartoKey(UNCACHED, 'cb1_key'))).toBe(BLANK_TILE);
   });
 
   it('blanks everything when the origin has no Cache Storage at all', async () => {

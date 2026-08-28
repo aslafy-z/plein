@@ -15,6 +15,7 @@
 // Leaflet-free on purpose: lib/tiles.ts imports Leaflet, and this decision is
 // the part worth unit-testing.
 import { isForcedOffline } from './connectivity';
+import { tileCacheKey } from './cartoKey';
 import { SW_TILE_CACHE } from './swCaches';
 
 /** 1×1 transparent GIF — Leaflet's own `emptyImageUrl`, inlined here so that
@@ -62,7 +63,9 @@ export function dropTileSnapshot(): void {
  */
 export function tileUrlFor(url: string): string {
   if (!isForcedOffline()) return url;
-  if (cachedUrls?.has(url)) return url;
+  // Tiles are cached under their keyless address (lib/cartoKey.ts), so the
+  // lookup drops the CARTO key the layer just put on this one.
+  if (cachedUrls?.has(tileCacheKey(url))) return url;
   skipped++;
   return BLANK_TILE;
 }
