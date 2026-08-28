@@ -8,7 +8,7 @@
 // The stop cards keep their own presentation on purpose: they are a timeline
 // with a « add to my run » toggle, not the scannable rows ZoneList draws.
 import { type ReactNode } from 'react';
-import { C, mono } from '../theme';
+import { C, accentPill, display, kicker, mono } from '../theme';
 import { clockLabel, fmtDecimal, fmtPrice, durationLabel } from '../lib/format';
 import { fuelLabel } from '../lib/labels';
 import { useIsDesktop } from '../lib/layout';
@@ -347,16 +347,7 @@ export default function RouteTimeline() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span
-              style={{
-                fontSize: 11,
-                fontWeight: 800,
-                letterSpacing: '.1em',
-                textTransform: 'uppercase',
-                color: C.accent,
-                flex: 1,
-              }}
-            >
+            <span style={{ ...kicker(C.accent), flex: 1 }}>
               {count > 1
                 ? m.ribbon_plan_stop_index({ index: index + 1, count })
                 : m.ribbon_recommended_stop()}
@@ -401,18 +392,7 @@ export default function RouteTimeline() {
             <button
               className="press"
               onClick={() => app.openInMaps(st)}
-              style={{
-                flex: 1,
-                background: C.accent,
-                color: C.onAccent,
-                fontSize: 13.5,
-                fontWeight: 800,
-                borderRadius: 20,
-                padding: '11px 0',
-                textAlign: 'center',
-                cursor: 'pointer',
-                boxShadow: `0 8px 20px ${C.accentGlow25}`,
-              }}
+              style={{ ...accentPill(13.5, '11px 0'), flex: 1 }}
             >
               {m.ribbon_go_there()}
             </button>
@@ -513,18 +493,7 @@ export default function RouteTimeline() {
       {/* Header */}
       <div style={{ padding: '0 22px' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-          <span
-            style={{
-              fontSize: 12,
-              fontWeight: 700,
-              letterSpacing: '.14em',
-              textTransform: 'uppercase',
-              color: C.mut,
-              flex: 1,
-            }}
-          >
-            {m.ribbon_header()}
-          </span>
+          <span style={{ ...kicker(), flex: 1 }}>{m.ribbon_header()}</span>
           {/* The URL already carries the trip, but an installed PWA has no
               address bar to copy it from — same share path as the map view */}
           <button
@@ -549,7 +518,7 @@ export default function RouteTimeline() {
             {m.ribbon_edit()}
           </button>
         </div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: C.ink, marginTop: 4 }}>
+        <div style={{ ...display(22), marginTop: 4 }}>
           {fromLabel} → {arrivalPlace}
         </div>
         <div
@@ -792,16 +761,7 @@ export default function RouteTimeline() {
         {/* Alternatives — candidates worth a look, never « the » plan */}
         {analysis.alternatives.length > 0 && (
           <div style={{ paddingTop: 22 }} data-testid="plan-alternatives">
-            <div
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: '.12em',
-                textTransform: 'uppercase',
-                color: C.mut,
-                paddingBottom: 10,
-              }}
-            >
+            <div style={{ ...kicker(), paddingBottom: 10 }}>
               {m.ribbon_alternatives_title()}
             </div>
             {analysis.alternatives.map(plainNode)}

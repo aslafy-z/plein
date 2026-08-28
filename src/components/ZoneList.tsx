@@ -1,5 +1,5 @@
 import { useEffect, useRef, type DOMAttributes, type MutableRefObject, type Ref } from 'react';
-import { C, mono } from '../theme';
+import { C, kicker, mono, sortChipStyle } from '../theme';
 import type { SheetGestures } from './SheetShell';
 import {
   useApp,
@@ -131,16 +131,7 @@ export default function ZoneList({
           ...(staticBarGestures ? { touchAction: 'none', cursor: 'grab' } : null),
         }}
       >
-        <span
-          style={{
-            fontSize: 11.5,
-            fontWeight: 700,
-            letterSpacing: '.08em',
-            textTransform: 'uppercase',
-            color: C.mut,
-            whiteSpace: 'nowrap',
-          }}
-        >
+        <span style={{ ...kicker(), whiteSpace: 'nowrap' }}>
           {m.sheet_zone_count_compact({ count: rows.length })}
         </span>
         {dealCount > 1 && (
@@ -177,15 +168,8 @@ export default function ZoneList({
               aria-label={disabled ? m.sheet_sort_distance_unavailable_aria() : undefined}
               title={disabled ? m.sheet_sort_distance_unavailable_aria() : undefined}
               style={{
-                fontSize: 12,
-                fontWeight: 700,
-                color: active ? C.onAccent : C.mut,
-                background: active ? C.accent : C.surface2,
-                padding: '5px 11px',
-                borderRadius: 14,
-                whiteSpace: 'nowrap',
+                ...sortChipStyle(active),
                 flexShrink: 0,
-                transition: 'background .25s var(--ease-snap), color .25s var(--ease-snap)',
                 ...(disabled ? { opacity: 0.4, cursor: 'default' } : null),
               }}
             >

@@ -145,6 +145,13 @@
   /* Atmosphere: a faint accent bloom at the top of the shell — depth without
      an element. Barely-there ON PURPOSE: past ~6% alpha it reads as a stain. */
   --c-glow-top: rgba(61, 220, 132, 0.05);
+  /* Atmosphere: a static film grain tiled under the shell surfaces — texture
+     felt rather than seen (the map and every card paint over it). A data URI
+     per theme because a background layer has no opacity of its own: the
+     alpha is baked into the SVG rect — a hair stronger on the dark ground,
+     where noise reads weaker than on paper. A static image composites once;
+     none of the per-frame cost lite-effects mode exists for. */
+  --c-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
 }
 
 /* ── Motion ───────────────────────────────────────────────────────────────
@@ -289,6 +296,7 @@
   /* Near-white glass takes a stronger top light to show its edge at all */
   --c-glass-edge: rgba(255, 255, 255, 0.65);
   --c-glow-top: rgba(14, 113, 70, 0.05);
+  --c-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
 }
 
 * {
@@ -324,6 +332,12 @@ a {
 }
 a:hover {
   color: var(--c-accent-hover);
+}
+
+/* Selected text wears the accent — the one hue the app highlights with */
+::selection {
+  background: var(--c-accent);
+  color: var(--c-on-accent);
 }
 
 input[type='range'] {
@@ -434,6 +448,11 @@ button,
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+/* Firefox draws its scrollbars from here (the property inherits) — the same
+   subtle thumb the WebKit rules above paint */
+html {
+  scrollbar-color: var(--c-border-12) transparent;
+}
 
 /* ── App shell ────────────────────────────────────────────────────────
    The app fills the window at EVERY width — there is no phone frame on
@@ -457,11 +476,14 @@ button,
   position: relative;
   width: 100%;
   height: 100%;
-  /* The bloom rides ON the base color (background-color stays --c-bg): the
-     screens that show the shell — settings, favorites, onboarding, the route
-     form — get a breath of depth at the top, and the map simply paints over
-     it. Static, so it costs nothing to composite. */
-  background-image: radial-gradient(120% 55% at 50% -10%, var(--c-glow-top), transparent 60%);
+  /* The bloom and the grain ride ON the base color (background-color stays
+     --c-bg): the screens that show the shell — settings, favorites,
+     onboarding, the route form — get a breath of depth at the top and a
+     texture underfoot, and the map simply paints over both. Static, so it
+     costs nothing to composite. */
+  background-image:
+    var(--c-grain),
+    radial-gradient(120% 55% at 50% -10%, var(--c-glow-top), transparent 60%);
   background-color: var(--c-bg);
   display: flex;
   /* flex-direction comes from React: `column` under the tab bar, `row`
@@ -508,15 +530,19 @@ button,
     filter: none;
   }
 
-  /* Station rows (zone list, favorites) get card physics: a 1px lift and a
-     soft shadow, mouse only. The transition lives outside :hover so the
-     release settles at the same speed. */
-  .app-shell button[data-station-id] {
+  /* Station rows get card physics: a 1px lift and a soft shadow, mouse only.
+     The zone list's rows opt in through their data attribute; a card that is
+     not a single button (a favorites card wraps two) carries .row-lift
+     instead. The transition lives outside :hover so the release settles at
+     the same speed. */
+  .app-shell button[data-station-id],
+  .app-shell .row-lift {
     transition:
       transform 0.25s var(--ease-snap),
       box-shadow 0.25s var(--ease-snap);
   }
-  .app-shell button[data-station-id]:hover {
+  .app-shell button[data-station-id]:hover,
+  .app-shell .row-lift:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 14px var(--c-shadow-35);
   }
@@ -858,6 +884,38 @@ button,
 .anim-toast {
   animation: toast-in 0.34s var(--ease-out);
 }
+/* Mount feedback for the tiny state marks that appear on a choice (the
+   Settings source dot, the side rail's active bar): they arrive on the app's
+   curve instead of teleporting in. Fast and nearly imperceptible ON PURPOSE
+   — these are tens-of-times-a-day controls, so the motion budget is feedback,
+   never theater. Never from scale(0): a mark materializing out of nothing
+   reads as a glitch, not an arrival. */
+@keyframes pop-in {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.anim-pop {
+  animation: pop-in 0.25s var(--ease-out);
+}
+@keyframes navmark-in {
+  from {
+    transform: scaleY(0.3);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.anim-navmark {
+  animation: navmark-in 0.3s var(--ease-out);
+}
 
 /* Theme switch: colorScheme.ts flips `data-theme` inside a view transition,
    so the whole re-color lands as one whole-page cross-fade instead of an
@@ -880,6 +938,8 @@ button,
   .anim-fade,
   .anim-dialog,
   .anim-toast,
+  .anim-pop,
+  .anim-navmark,
   .enter-up,
   .list-enter,
   .sheet-hint,
@@ -891,7 +951,8 @@ button,
   .press:not(:disabled):active {
     transform: none;
   }
-  .app-shell button[data-station-id]:hover {
+  .app-shell button[data-station-id]:hover,
+  .app-shell .row-lift:hover {
     transform: none;
     box-shadow: none;
   }
