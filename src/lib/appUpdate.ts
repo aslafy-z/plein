@@ -2,11 +2,12 @@
 //
 // The app is installable and lives most of its life backgrounded on a phone, so
 // it can keep running a bundle from days ago: nothing re-requests index.html
-// until the tab is actually reloaded, and no cache header changes that. On every
-// return to the foreground we compare the deployed version against our own and
-// offer a reload when they differ.
+// until the tab is actually reloaded, and no cache header changes that. At
+// startup, on every return to the foreground and when connectivity returns we
+// compare the deployed version against our own and offer a reload when they
+// differ.
 import { IS_DEV } from './env';
-import { isOffline } from './connectivity';
+import { isOffline, onConnectivityChange } from './connectivity';
 
 export const APP_VERSION: string = __APP_VERSION__;
 
@@ -38,26 +39,39 @@ export function watchForUpdate(onUpdate: () => void): () => void {
   let lastCheck = 0;
   let pending: ReturnType<typeof setTimeout> | undefined;
   let stopped = false;
+  let unwatchConnectivity: () => void = () => {};
 
   const stop = () => {
     stopped = true;
     clearTimeout(pending);
     document.removeEventListener('visibilitychange', schedule);
+    unwatchConnectivity();
   };
 
   const check = async () => {
     pending = undefined;
     if (stopped || document.visibilityState !== 'visible') return;
-    // The poll is a `no-store` request the app makes on its own on every
-    // return to the foreground, so it waits while « Force offline mode »
-    // holds — and while the browser is sure there is no network, where it
-    // could only fail. `lastCheck` deliberately stays put: the watch is still
-    // armed, and the next foreground checks as soon as it may.
+    // The poll is a `no-store` request the app makes on its own, so it waits
+    // while « Force offline mode » holds — and while the browser is sure
+    // there is no network, where it could only fail. `lastCheck` deliberately
+    // stays put: the watch is still armed, and it re-checks the moment
+    // connectivity returns.
     if (isOffline()) return;
+    // Stamped before the fetch so a visibility flap during the request defers
+    // instead of starting a second one — but rolled back when the request
+    // fails (the radio is often not up yet at the very instant a phone
+    // foregrounds the app), or one lost race would mute the next return for
+    // a whole interval.
+    const before = lastCheck;
     lastCheck = Date.now();
 
     const live = await deployedVersion();
-    if (stopped || live === null || live === APP_VERSION) return;
+    if (stopped) return;
+    if (live === null) {
+      lastCheck = before;
+      return;
+    }
+    if (live === APP_VERSION) return;
     stop();
     onUpdate();
   };
@@ -71,5 +85,11 @@ export function watchForUpdate(onUpdate: () => void): () => void {
   }
 
   document.addEventListener('visibilitychange', schedule);
+  unwatchConnectivity = onConnectivityChange(schedule);
+  // A cold start is an « open » too. The shell usually comes fresh off the
+  // network, but a stale one (offline fallback, a restored session) would
+  // otherwise run unnoticed until the first background/foreground cycle —
+  // the « I had to open it twice to be told » failure.
+  schedule();
   return stop;
 }
