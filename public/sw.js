@@ -31,12 +31,26 @@ const TILE_MAX_ENTRIES = 600;
 // worth of chunks for an offline list to keep its avatars.
 const ASSET_MAX_ENTRIES = 160;
 
-// Real tile URLs never carry a query string; one marks a request that must
-// NOT be answered from this cache — src/lib/tiles.ts probes CDN reachability
-// with `?probe=<ts>`, and a cached tile would say nothing about the network.
+// The CARTO CDN takes the account key as `?key=…` (src/lib/cartoKey.ts), and
+// that is the ONLY parameter a real tile URL carries; any other marks a
+// request that must NOT be answered from this cache — src/lib/tiles.ts probes
+// CDN reachability with `?probe=<ts>`, and a cached tile would say nothing
+// about the network.
+const CARTO_KEY_PARAM = 'key';
 const isTileRequest = (url) =>
-  url.search === '' &&
+  [...url.searchParams.keys()].every((p) => p === CARTO_KEY_PARAM) &&
   TILE_HOSTS.some((h) => url.hostname === h || url.hostname.endsWith('.' + h));
+
+// The key authorizes the request; it is not part of the tile's identity, so
+// entries go in under the keyless URL (the rule is mirrored in
+// src/lib/cartoKey.ts, which nothing here can import). Rotating the key then
+// leaves every warmed tile answering, and the tiles cached before CARTO
+// required one still hit.
+const tileCacheKey = (url) => {
+  const keyless = new URL(url);
+  keyless.searchParams.delete(CARTO_KEY_PARAM);
+  return keyless.href;
+};
 
 // cache.keys() preserves insertion order → dropping the head is FIFO eviction
 async function trimCache(cache, max) {
@@ -45,16 +59,18 @@ async function trimCache(cache, max) {
   if (excess > 0) await Promise.all(keys.slice(0, excess).map((k) => cache.delete(k)));
 }
 
-async function tileFromCacheFirst(event, req) {
+// `key` is the cache identity (keyless — see tileCacheKey); `req` is what
+// goes on the wire, key included.
+async function tileFromCacheFirst(event, req, key) {
   const cache = await caches.open(TILE_CACHE);
-  const hit = await cache.match(req);
+  const hit = await cache.match(key);
   if (hit) {
     // Refresh the entry's recency: cache.keys() is insertion-ordered, so
     // delete+put moves a hit to the tail and the cap below evicts the least
     // recently USED tile instead of the first ever seen — without this,
     // panning a new region evicts the home pyramid the session uses most.
     const copy = hit.clone();
-    event.waitUntil(cache.delete(req).then(() => cache.put(req, copy)));
+    event.waitUntil(cache.delete(key).then(() => cache.put(key, copy)));
     return hit;
   }
   const res = await fetch(req);
@@ -62,7 +78,7 @@ async function tileFromCacheFirst(event, req) {
   // those are the ones we actually get in prod, so cache them too.
   if (res.ok || res.type === 'opaque') {
     const copy = res.clone();
-    event.waitUntil(cache.put(req, copy).then(() => trimCache(cache, TILE_MAX_ENTRIES)));
+    event.waitUntil(cache.put(key, copy).then(() => trimCache(cache, TILE_MAX_ENTRIES)));
   }
   return res;
 }
@@ -148,7 +164,7 @@ self.addEventListener('fetch', (event) => {
   // Basemap tiles: lazy cache-first, so a slight map move (or coming back to
   // an area) reuses tiles instead of hitting the CDN again.
   if (isTileRequest(url)) {
-    event.respondWith(tileFromCacheFirst(event, req));
+    event.respondWith(tileFromCacheFirst(event, req, tileCacheKey(url)));
     return;
   }
 

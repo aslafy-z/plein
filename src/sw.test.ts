@@ -405,6 +405,27 @@ describe('service worker — tiles and activation', () => {
     expect(tiles?.entries.has('https://basemaps.cartocdn.com/dark_all/10/0/1.png')).toBe(false)
   })
 
+  it('caches a keyed tile under its keyless URL, and answers either form', async () => {
+    // The CARTO key authorizes the request; it is not part of the tile's
+    // identity. Cached with it, a rotated key (or the tiles warmed before
+    // CARTO required one) would miss on every single tile.
+    const sw = loadSw(async (req) => new Response(req.url, { status: 200 }))
+    const url = 'https://a.basemaps.cartocdn.com/dark_all/10/2/3.png'
+
+    const first = await sw.fetchEvent(request(`${url}?key=cb1_key`))
+    expect(await first.res?.text()).toBe(`${url}?key=cb1_key`)
+
+    const tiles = sw.caches.stores.get('plein-tiles-v1')
+    expect([...(tiles?.entries.keys() ?? [])]).toEqual([url])
+
+    // Both the rotated key and no key at all hit that one entry
+    for (const asked of [`${url}?key=rotated`, url]) {
+      const { res } = await sw.fetchEvent(request(asked))
+      expect(await res?.text()).toBe(`${url}?key=cb1_key`)
+    }
+    expect(tiles?.entries.size).toBe(1)
+  })
+
   it('lets a queried tile URL — the reachability probe — pass by untouched', async () => {
     const sw = loadSw(async (req) => new Response(req.url, { status: 200 }))
     const tiles = await sw.caches.open('plein-tiles-v1')
@@ -413,8 +434,10 @@ describe('service worker — tiles and activation', () => {
       new Response('cached tile'),
     )
 
+    // The probe carries the CARTO key like any other tile request — what
+    // must keep it out of the cache is the `probe` parameter next to it.
     const { res } = await sw.fetchEvent(
-      request('https://a.basemaps.cartocdn.com/dark_all/3/4/2.png?probe=123'),
+      request('https://a.basemaps.cartocdn.com/dark_all/3/4/2.png?probe=123&key=cb1_key'),
     )
 
     // Not intercepted at all: the probe must reach the network (or fail),

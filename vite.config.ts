@@ -7,6 +7,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { cloudflare } from "@cloudflare/vite-plugin";
 import { paraglideVitePlugin } from '@inlang/paraglide-js'
 
+import { withCartoKey } from './src/lib/cartoKey'
+
 // ── Build version ─────────────────────────────────────────────────────────────
 // Stamped into the bundle (`__APP_VERSION__`) and into `/version.json`, which the
 // running app polls to notice it is outdated (see src/lib/appUpdate.ts). A dirty
@@ -52,7 +54,8 @@ function versionStamp(version: string): Plugin {
 // internet (via HTTPS_PROXY) while the browser itself cannot. The app first
 // tries the CARTO dark CDN directly; when those tiles fail it falls back to
 // `/tiles/{z}/{x}/{y}.png`, which this middleware serves from CARTO too (same
-// minimalist style as the design), with OSM as a last resort.
+// minimalist style as the design, same account key — src/lib/cartoKey.ts),
+// with OSM as a last resort.
 const CARTO = 'https://a.basemaps.cartocdn.com/dark_all'
 const OSM = 'https://tile.openstreetmap.org'
 const UA = 'plein-dev-tile-proxy/1 (local development)'
@@ -95,7 +98,7 @@ function tileHandler(req: IncomingMessage, res: ServerResponse): void {
     send(cached)
     return
   }
-  fetchTile(`${CARTO}/${key}.png`)
+  fetchTile(withCartoKey(`${CARTO}/${key}.png`))
     .catch(() => fetchTile(`${OSM}/${key}.png`))
     .then((buf) => {
       if (tileCache.size >= CACHE_MAX) {
