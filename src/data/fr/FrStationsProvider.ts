@@ -54,6 +54,66 @@ function toStr(v: unknown): string | undefined {
   return undefined;
 }
 
+// ── Timestamps ───────────────────────────────────────────────────────────────
+// The flux writes Paris wall clocks with no zone (`maj="2026-11-08 00:01:00"`
+// in the XML), and the ODS republication types those columns as datetimes
+// WITHOUT converting them: it renders the same digits as UTC
+// (`2026-11-08T00:01:00+00:00`), an instant one hour late in winter and two
+// in summer — the dataset carries prices « updated » after its own
+// `data_processed`. So the digits are the truth and the offset is noise:
+// read whatever arrives as a UTC instant, take its wall clock, and place that
+// wall clock in Europe/Paris. Rendered in another `timezone`, the ODS value is
+// still the same mislabelled instant, so this holds whatever offset it wears.
+
+const PARIS_PARTS = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'Europe/Paris',
+  hourCycle: 'h23',
+  year: 'numeric',
+  month: 'numeric',
+  day: 'numeric',
+  hour: 'numeric',
+  minute: 'numeric',
+  second: 'numeric',
+});
+
+/** Paris UTC offset in ms at a given instant (+1 h in winter, +2 h in summer) */
+function parisOffsetMs(t: number): number {
+  const p: Record<string, number> = {};
+  for (const part of PARIS_PARTS.formatToParts(new Date(t))) {
+    if (part.type !== 'literal') p[part.type] = Number(part.value);
+  }
+  const wall = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+  return wall - Math.floor(t / 1000) * 1000;
+}
+
+const STAMP = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/;
+
+/**
+ * A flux timestamp → ISO UTC instant, its digits read as Paris wall clock.
+ * Absent or unparseable → undefined.
+ * @internal exported for unit tests
+ */
+export function parseFluxTimestamp(v: unknown): string | undefined {
+  const s = toStr(v)?.trim();
+  if (!s) return undefined;
+  const hasZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(s);
+  let wall: number;
+  if (hasZone) {
+    // The UTC rendering of the instant ODS stored IS the Paris wall clock
+    wall = Date.parse(s);
+    if (!Number.isFinite(wall)) return undefined;
+  } else {
+    const m = STAMP.exec(s);
+    if (!m) return undefined;
+    wall = Date.UTC(+m[1], +m[2] - 1, +m[3], +(m[4] ?? 0), +(m[5] ?? 0), +(m[6] ?? 0));
+  }
+  // Two passes: the offset at the wall clock's UTC reading can be the wrong
+  // side of a DST switch; the offset at the first estimate is not
+  let t = wall - parisOffsetMs(wall);
+  t = wall - parisOffsetMs(t);
+  return new Date(t).toISOString();
+}
+
 function inPriceRange(v: number): boolean {
   return v >= MIN_PRICE && v <= MAX_PRICE;
 }
@@ -152,14 +212,16 @@ export function parsePrices(rec: Raw): Partial<Record<FuelId, FuelPrice>> {
   const out: Partial<Record<FuelId, FuelPrice>> = {};
   for (const [fuel, col, majCol] of FUEL_COLS) {
     const v = toNum(rec[col]);
-    if (v != null && inPriceRange(v)) out[fuel] = { value: v, updatedAt: toStr(rec[majCol]) };
+    if (v != null && inPriceRange(v)) {
+      out[fuel] = { value: v, updatedAt: parseFluxTimestamp(rec[majCol]) };
+    }
   }
   if (Object.keys(out).length > 0) return out;
   // Fallback: parse the aggregated `prix` field.
   for (const p of parsePriceField(rec.prix)) {
     const fuel = fuelFromName(p.name);
     if (fuel && inPriceRange(p.value) && !out[fuel]) {
-      out[fuel] = { value: p.value, updatedAt: p.maj };
+      out[fuel] = { value: p.value, updatedAt: parseFluxTimestamp(p.maj) };
     }
   }
   return out;
