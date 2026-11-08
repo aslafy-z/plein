@@ -48,6 +48,7 @@ import {
   selectZoneBrandCounts,
   selectZoneDelta,
   selectZoneFuels,
+  selectZoneOutageCount,
   sortFavoriteRows,
   effectiveFavSort,
   type AppStore,
@@ -301,6 +302,28 @@ describe('selectVisible', () => {
     // …and the brand/service filters narrow it like any other zone selector
     expect(selectZoneFuels(app({ ...base, brandSel: ['Shell'] }))).toEqual(['diesel', 'e85'])
     expect(selectZoneFuels(app({ ...base, serviceTags: { carWash: true } }))).toEqual(['unleaded98'])
+  })
+
+  it('selectZoneOutageCount counts live shortages of the selected fuel in the zone', () => {
+    const recent = { since: new Date(Date.now() - 3600_000).toISOString() }
+    const weeksAgo = { since: new Date(Date.now() - 40 * 24 * 3600_000).toISOString() }
+    const data = [
+      // Out of diesel, still selling E85: counts
+      station({ id: 'fr-1', ...north(1), prices: { e85: { value: 0.9 } }, outages: { diesel: recent } }),
+      // Out of everything since today: a shortage, counts
+      station({ id: 'fr-2', ...north(2), outages: { diesel: recent, e10: weeksAgo } }),
+      // Out of everything for weeks: dormant, not counted
+      station({ id: 'fr-3', ...north(3), outages: { diesel: weeksAgo, e10: weeksAgo } }),
+      // Priced diesel wins over a stale outage entry
+      station({ id: 'fr-4', ...north(4), prices: { diesel: { value: 1.8 } }, outages: { diesel: recent } }),
+      // Out of the radius
+      station({ id: 'fr-5', ...north(30), outages: { diesel: recent } }),
+      station({ id: 'fr-6', ...north(1), prices: { e10: { value: 1.9 } }, outages: { e85: recent } }),
+    ]
+    const base = app({ fuel: 'diesel', stations: { status: 'ready', data, activeSource: 'fr', refreshing: false } })
+    expect(selectZoneOutageCount(base)).toBe(2)
+    expect(selectZoneOutageCount(app({ ...base, fuel: 'e85' }))).toBe(1)
+    expect(selectZoneOutageCount(app({ ...base, fuel: 'lpg' }))).toBe(0)
   })
 })
 

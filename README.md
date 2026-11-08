@@ -47,6 +47,8 @@ Want what is coming next? [staging-plein.zadkiel.workers.dev](https://staging-pl
   brands, services and AdBlue.
 - 🕐 **Real opening hours** — "Open 24/7", "Closed · opens at 6:30 am" — with
   price freshness flagged.
+- 🚫 **Shortages flagged** — a dry pump reads "out of stock since Nov 3"
+  instead of "not sold here", and an area counts its dry stations (France).
 - 🏷️ **Recognized brands** — station names and logos from the official feeds
   and OpenStreetMap.
 - 🧭 **Directions** — opens the station in your GPS app.

@@ -50,6 +50,9 @@ Quer ver o que vem a seguir? [staging-plein.zadkiel.workers.dev](https://staging
   raio, marcas, serviços e AdBlue.
 - 🕐 **Horários reais** — «Aberto 24 h», «Fechado · abre às 6h30» — com a
   frescura dos preços assinalada.
+- 🚫 **Ruturas assinaladas** — uma bomba vazia mostra «em rutura desde 3 de
+  nov.» em vez de «não vendido», e a zona conta os seus postos em rutura
+  (França).
 - 🏷️ **Marcas reconhecidas** — nomes e logótipos dos postos a partir dos
   fluxos oficiais e do OpenStreetMap.
 - 🧭 **«Direções»** — abre o posto na sua app de GPS.

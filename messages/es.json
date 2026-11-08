@@ -194,6 +194,22 @@
   "sheet_loading": "Buscando gasolineras a tu alrededor…",
   "sheet_fuel_not_sold": "Ninguna gasolinera vende {fuel} en esta zona.",
   "sheet_sold_here": "Se vende aquí:",
+  "sheet_fuel_out_count": [
+    {
+      "declarations": [
+        "input count",
+        "input fuel",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{fuel}: sin existencias en {count} estación de la zona.",
+        "countPlural=other": "{fuel}: sin existencias en {count} estaciones de la zona."
+      }
+    }
+  ],
   "sheet_no_match": "Ninguna gasolinera coincide con tus filtros.",
   "sheet_adjust_filters": "Ajustar los filtros",
   "sheet_active_filters": "Filtros activos:",
@@ -302,6 +318,7 @@
     }
   ],
   "favorites_subtitle": "Tus gasolineras de siempre, al precio de hoy.",
+  "favorites_out_of_stock": "Sin existencias",
   "favorites_sort_recommended": "Recomendado",
   "favorites_sort_price": "Precio",
   "favorites_sort_distance": "Distancia",
@@ -463,6 +480,10 @@
   "detail_add_favorite_aria": "Añadir a favoritas",
   "detail_remove_favorite_aria": "Quitar de favoritas",
   "detail_fuel_not_sold": "no disponible",
+  "detail_fuel_out_today": "sin existencias desde las {time}",
+  "detail_fuel_out_day": "sin existencias desde el {date}",
+  "detail_fuel_out": "sin existencias",
+  "detail_dormant": "Ningún carburante disponible desde el {date}.",
   "detail_price_above_min": "+{delta} frente al más bajo",
   "detail_updated_ago": "Act. {ago}",
   "detail_footer_source": "Actualizado {ago} · fuente: {source}",

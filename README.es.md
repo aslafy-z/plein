@@ -51,6 +51,9 @@ Portugal.
   radio, rótulos, servicios y AdBlue.
 - 🕐 **Horarios reales** — «Abierto 24 h», «Cerrado · abre a las 6:30» — con
   la frescura de los precios señalada.
+- 🚫 **Desabastecimientos señalados** — un surtidor vacío muestra «sin
+  existencias desde el 3 nov» en vez de «no disponible», y la zona cuenta
+  sus estaciones sin existencias (Francia).
 - 🏷️ **Marcas reconocidas** — nombres y logotipos de las estaciones desde los
   flujos oficiales y OpenStreetMap.
 - 🧭 **«Cómo llegar»** — abre la estación en tu app de GPS.

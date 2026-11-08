@@ -20,8 +20,9 @@ import {
 } from '../state/store';
 import { routeBusy } from '../state/routePipeline';
 import { stationCountry } from '../data/stationIds';
-import { fmtPrice, distLabel, agoLabel, durationLabel } from '../lib/format';
-import { fuelLabel, openStatusLabel, serviceLabel } from '../lib/labels';
+import { fmtPrice, distLabel, agoLabel, dayMonthLabel, durationLabel } from '../lib/format';
+import { fuelLabel, openStatusLabel, outageNote, serviceLabel } from '../lib/labels';
+import { dormantSince, fuelOutage } from '../lib/outages';
 import { useIsDesktop } from '../lib/layout';
 import { pinInitialsHtml } from '../lib/text';
 import { m } from '../paraglide/messages.js';
@@ -184,8 +185,12 @@ export default function StationDetail() {
         })
       : null;
 
-  // Fuels to display: any priced fuel + always the main fuels
-  const shownFuels = ALL_FUELS.filter((f) => s.prices[f] != null || MAIN_FUELS.includes(f));
+  // Fuels to display: any priced or out-of-stock fuel + always the main fuels
+  const shownFuels = ALL_FUELS.filter(
+    (f) => s.prices[f] != null || fuelOutage(s, f) != null || MAIN_FUELS.includes(f),
+  );
+  // Out of everything for a week: say it once above the rows
+  const dormant = dormantSince(s);
 
   // Comparison set per fuel: stations along the route, or the stations
   // passing the current filters around the user — the SAME set the list
@@ -463,6 +468,22 @@ export default function StationDetail() {
           </div>
         </div>
 
+        {dormant != null && (
+          <div
+            role="note"
+            style={{
+              background: C.warnSoft,
+              color: C.warnText,
+              borderRadius: 12,
+              padding: '10px 14px',
+              fontSize: 13,
+              fontWeight: 600,
+            }}
+          >
+            {m.detail_dormant({ date: dayMonthLabel(dormant) })}
+          </div>
+        )}
+
         {/* Prices card */}
         <div
           style={{
@@ -477,7 +498,11 @@ export default function StationDetail() {
             const min = rangeFor(f)?.min ?? null;
             let note = '';
             let noteColor: string = C.mut;
-            if (price == null) {
+            const outage = fuelOutage(s, f);
+            if (outage) {
+              note = outageNote(outage);
+              noteColor = C.warn;
+            } else if (price == null) {
               note = m.detail_fuel_not_sold();
             } else if (min != null && priceCents(price) <= priceCents(min)) {
               // Cent precision, like everywhere: a station reading the same

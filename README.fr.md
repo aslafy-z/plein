@@ -49,6 +49,9 @@ Envie de voir la suite ? [staging-plein.zadkiel.workers.dev](https://staging-ple
   rayon, enseignes, services et AdBlue.
 - 🕐 **Horaires réels** — « Ouvert 24/24 », « Fermé · ouvre à 6 h 30 » — avec
   la fraîcheur des prix signalée.
+- 🚫 **Ruptures signalées** — une pompe à sec affiche « en rupture depuis le
+  3 nov. » au lieu de « non distribué », et la zone compte ses stations à sec
+  (France).
 - 🏷️ **Enseignes reconnues** — noms et logos des stations depuis les flux
   officiels et OpenStreetMap.
 - 🧭 **« Y aller »** — ouvre la station dans votre app GPS.

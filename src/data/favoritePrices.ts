@@ -25,11 +25,14 @@ import { haversineKm } from '../lib/geo';
 import { openCacheStore, type CacheStore } from './cacheStore';
 import { MAX_CACHE_AGE_MS, STALE_MS } from './stationsCache';
 import { stationCountry, type StationCountry } from './stationIds';
-import type { FuelId, FuelPrice, Station } from './types';
+import type { FuelId, FuelOutage, FuelPrice, Station } from './types';
 
 export interface FavoritePriceEntry {
   id: string;
   prices: Partial<Record<FuelId, FuelPrice>>;
+  /** The station's outages at that read; absent on entries written before
+   *  outages were read, which reads as « none known » like on a station */
+  outages?: Partial<Record<FuelId, FuelOutage>>;
   fetchedAt: number;
 }
 
@@ -190,7 +193,12 @@ export function recordFavoritePrices(
     if (!favoriteIds.has(s.id)) continue;
     const held = entries.get(s.id);
     if (held && held.fetchedAt > fetchedAt) continue;
-    entries.set(s.id, { id: s.id, prices: s.prices, fetchedAt });
+    entries.set(s.id, {
+      id: s.id,
+      prices: s.prices,
+      ...(s.outages ? { outages: s.outages } : {}),
+      fetchedAt,
+    });
     pendingDeletes.delete(s.id);
     pendingPuts.add(s.id);
     touched = true;

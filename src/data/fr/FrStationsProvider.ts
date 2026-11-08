@@ -11,6 +11,7 @@ import type { DayHours, StationHours } from '../../lib/hours';
 import { titleCase } from '../../lib/text';
 import type {
   FuelId,
+  FuelOutage,
   FuelPrice,
   ServiceTag,
   SourceCapabilities,
@@ -176,17 +177,8 @@ function fuelFromName(name: string): FuelId | null {
   return null;
 }
 
-export interface RawPrice {
-  name: string;
-  value: number;
-  maj?: string;
-}
-
-/**
- * `prix` may be a JSON string, a single object, or an already-parsed array.
- * @internal exported for unit tests
- */
-export function parsePriceField(v: unknown): RawPrice[] {
+/** A JSON string, a single object or an array → its objects */
+function parseRawList(v: unknown): Raw[] {
   let data: unknown = v;
   if (typeof v === 'string') {
     const s = v.trim();
@@ -198,10 +190,22 @@ export function parsePriceField(v: unknown): RawPrice[] {
     }
   }
   const arr = Array.isArray(data) ? data : data && typeof data === 'object' ? [data] : [];
+  return arr.filter((item): item is Raw => item != null && typeof item === 'object');
+}
+
+export interface RawPrice {
+  name: string;
+  value: number;
+  maj?: string;
+}
+
+/**
+ * `prix` may be a JSON string, a single object, or an already-parsed array.
+ * @internal exported for unit tests
+ */
+export function parsePriceField(v: unknown): RawPrice[] {
   const out: RawPrice[] = [];
-  for (const item of arr) {
-    if (!item || typeof item !== 'object') continue;
-    const o = item as Raw;
+  for (const o of parseRawList(v)) {
     const name = toStr(o['@nom'] ?? o.nom);
     const value = toNum(o['@valeur'] ?? o.valeur);
     const maj = toStr(o['@maj'] ?? o.maj);
@@ -228,6 +232,70 @@ export function parsePrices(rec: Raw): Partial<Record<FuelId, FuelPrice>> {
     }
   }
   return out;
+}
+
+// ── Outages (« ruptures ») ───────────────────────────────────────────────────
+// The ODS dataset republishes `instantane_ruptures`, flattened: per fuel a
+// `<col>_rupture_type` (« temporaire » | « definitive ») and a
+// `<col>_rupture_debut`, plus the raw `rupture` list as a JSON string. The
+// raw list can name a fuel twice (an old definitive outage, then a recent
+// temporary one) and carries `@type=""` leftovers; the columns are the
+// already-reduced answer, latest entry per fuel, so they come first.
+const OUTAGE_COL: ReadonlyArray<readonly [FuelId, string]> = [
+  ['diesel', 'gazole'],
+  ['e10', 'e10'],
+  ['unleaded98', 'sp98'],
+  ['unleaded95', 'sp95'],
+  ['e85', 'e85'],
+  ['lpg', 'gplc'],
+];
+
+const TEMPORARY = /^temporaire$/i;
+
+/**
+ * Temporary outages of a record. Definitive ones are left out (the station
+ * stopped selling the fuel — a missing price already says so), and a fuel that
+ * still has a price is not out of stock whatever the outage list claims.
+ * @internal exported for unit tests
+ */
+export function parseOutages(
+  rec: Raw,
+  prices: Partial<Record<FuelId, FuelPrice>>,
+): Partial<Record<FuelId, FuelOutage>> | undefined {
+  const out: Partial<Record<FuelId, FuelOutage>> = {};
+  const hasColumns = OUTAGE_COL.some(([, col]) => `${col}_rupture_type` in rec);
+  if (hasColumns) {
+    for (const [fuel, col] of OUTAGE_COL) {
+      const type = toStr(rec[`${col}_rupture_type`]);
+      if (!type || !TEMPORARY.test(type.trim())) continue;
+      out[fuel] = { since: parseFluxTimestamp(rec[`${col}_rupture_debut`]) };
+    }
+  } else {
+    // Latest entry per fuel decides, as the columns do
+    const latest = new Map<FuelId, { type: string; debut: string; fin: string }>();
+    for (const r of parseRawList(rec.rupture)) {
+      const name = toStr(r['@nom'] ?? r.nom);
+      const fuel = name ? fuelFromName(name) : null;
+      if (!fuel) continue;
+      const debut = toStr(r['@debut'] ?? r.debut) ?? '';
+      const prev = latest.get(fuel);
+      if (prev && prev.debut > debut) continue;
+      latest.set(fuel, {
+        type: toStr(r['@type'] ?? r.type) ?? '',
+        debut,
+        fin: toStr(r['@fin'] ?? r.fin) ?? '',
+      });
+    }
+    for (const [fuel, r] of latest) {
+      // An outage with an end date is over
+      if (!TEMPORARY.test(r.type.trim()) || r.fin.trim()) continue;
+      out[fuel] = { since: parseFluxTimestamp(r.debut) };
+    }
+  }
+  for (const fuel of Object.keys(out) as FuelId[]) {
+    if (prices[fuel] != null) delete out[fuel];
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 // ── Services + tags ──────────────────────────────────────────────────────────
@@ -382,6 +450,7 @@ function parseRecord(rec: Raw): Station | null {
     city: ville,
     postalCode: toStr(rec.cp),
     prices,
+    outages: parseOutages(rec, prices),
     tags: deriveTags(services, rec),
     services,
     highway: isHighway(rec),

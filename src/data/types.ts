@@ -80,6 +80,18 @@ export interface FuelPrice {
   updatedAt?: string; // ISO timestamp
 }
 
+/**
+ * A fuel the station normally sells but has run out of. Only the French flux
+ * publishes these, and only its « temporary » kind lands here: its
+ * « definitive » kind means the station stopped selling the fuel, which is
+ * what a missing price already says. A fuel in outage never carries a price
+ * at the same time — the price wins when a source sends both.
+ */
+export interface FuelOutage {
+  /** ISO instant the outage was declared, when the source says */
+  since?: string;
+}
+
 export interface Station {
   id: string;
   /** Display name, e.g. "Station U · Croix-Blanche" or "Station · Roanne" (gouv flux has no names) */
@@ -93,6 +105,12 @@ export interface Station {
   city: string;
   postalCode?: string;
   prices: Partial<Record<FuelId, FuelPrice>>;
+  /**
+   * Fuels temporarily out of stock. Absent: no outage known — the Spanish,
+   * Andorran and Portuguese fluxes publish none, and an area cached before
+   * outages were read carries none until it revalidates.
+   */
+  outages?: Partial<Record<FuelId, FuelOutage>>;
   /** Normalized filterable tags */
   tags: ServiceTag[];
   /**

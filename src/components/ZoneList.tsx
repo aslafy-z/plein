@@ -14,9 +14,10 @@ import {
   priceCents,
   selectEffectiveSort,
   selectTripOriginKnown,
+  selectZoneOutageCount,
 } from '../state/store';
 import { fmtPrice, distLabel } from '../lib/format';
-import { openStatusShort } from '../lib/labels';
+import { fuelLabel, openStatusShort } from '../lib/labels';
 import { useIsDesktop } from '../lib/layout';
 import { prefersReducedMotion } from '../lib/motion';
 import { m } from '../paraglide/messages.js';
@@ -62,6 +63,9 @@ export default function ZoneList({
   // single station, but the list highlights all of them
   const stats = selectPriceStats(app);
   const dealCount = selectDeals(app).length;
+  // Stations of the zone out of the selected fuel — absent from the rows (an
+  // empty pump has no price), so said once under them
+  const outageCount = selectZoneOutageCount(app);
   const min = range?.min ?? 0;
   // No trip origin (area out of reach, or no position ever known): rows show
   // no distance — none would start from the user — and « Distance » greys
@@ -353,6 +357,14 @@ export default function ZoneList({
             </button>
           );
         })}
+        {rows.length > 0 && outageCount > 0 && (
+          <div
+            data-testid="zone-outage-count"
+            style={{ textAlign: 'center', color: C.mut, fontSize: 12.5, padding: '6px 0 2px' }}
+          >
+            {m.sheet_fuel_out_count({ count: outageCount, fuel: fuelLabel(app.fuel) })}
+          </div>
+        )}
       </div>
     </div>
   );

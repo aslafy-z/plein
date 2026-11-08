@@ -50,6 +50,9 @@ Voleu veure què ve? [staging-plein.zadkiel.workers.dev](https://staging-plein.z
   radi, marques, serveis i AdBlue.
 - 🕐 **Horaris reals** — «Obert 24 h», «Tancat · obre a les 6.30» — amb la
   frescor dels preus assenyalada.
+- 🚫 **Esgotaments assenyalats** — un sortidor buit mostra «sense existències
+  des del 3 de nov.» en lloc de «no disponible», i la zona compta les seves
+  estacions sense existències (França).
 - 🏷️ **Marques reconegudes** — noms i logotips de les estacions des dels
   fluxos oficials i OpenStreetMap.
 - 🧭 **«Com arribar-hi»** — obre l'estació a la vostra app de GPS.
