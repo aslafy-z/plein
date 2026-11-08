@@ -179,6 +179,31 @@ width, never pointer type: a window gets resized and the layout has to follow.
   the geolocation notice and the app version — permanent chrome, so it never
   covers the map it is offering to install.
 
+## What's new: a hand-written log, announced on return
+
+`src/lib/changelog.ts` holds `CHANGELOG`, newest first — the one place users
+are told what changed. Nothing is derived from commits or deploys: most
+deploys change nothing worth announcing, so an entry exists because someone
+wrote it, **in the same commit as the user-visible change it announces**.
+
+- An entry is an id (`YYYY-MM-DD`, a `.2` suffix for a second one that day —
+  it is both the shown date and what the « seen » mark compares) plus catalog
+  keys: `changelog_<id>_title` and one `changelog_<id>_item_<what>` per
+  bullet, each a whole sentence, in all five catalogs. Never edit a shipped id.
+- `changelogSeen` in `plein.settings.v1` is the newest id the user was shown.
+  Onboarding stamps it (a newcomer is never told about the app they just
+  met); a blob without it predates the log and gets the latest entry only;
+  `unseenChangelog()` caps a long absence at `MAX_ANNOUNCED`.
+- The flow rides the update bar: `UpdatePrompt` says a newer build exists,
+  its reload (or any later cold start) runs that build, and `WhatsNewPrompt` —
+  the next bar down, both arrangements — names what it changed. « See » opens
+  `WhatsNewSheet` (phone `ModalSheet`, desktop centered glass card); opening
+  it or ✕ marks the log seen. Being open is nav state (`whatsNewOpen`), so
+  Back closes it. Settings › App › « What's new » reopens the whole log.
+- e2e: `BASE_SEED` marks the log read (`changelogSeen: '9999-12-31'`) so the
+  bar never shifts another spec's layout; `whats-new.spec.ts` drops it with
+  `changelogSeen: null`.
+
 ## Route: three stages, committed as they land
 
 A route is not one async call. `src/state/routePipeline.ts` is a pure state

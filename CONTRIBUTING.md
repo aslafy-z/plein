@@ -85,6 +85,7 @@ Two things that are easy to forget:
 ## Adding things
 
 - **A data source**: implement the `StationsProvider` / `GeocodeProvider` / `RouteProvider` interfaces and register it in `src/data/providers.ts`.
+- **A What's new entry**: for a change users would notice, add an entry at the top of `CHANGELOG` in `src/lib/changelog.ts` (id `YYYY-MM-DD`) and its `changelog_<id>_*` copy in all five catalogs, in the same PR. Returning users get a bar naming it the next time they open the app.
 - **A locale**: add it to `project.inlang/settings.json`, add `messages/<locale>.json`, add its name to `localeName()` in `Settings.tsx`, add `README.<locale>.md` and its entry in every README's language-switcher line.
 
 ## License

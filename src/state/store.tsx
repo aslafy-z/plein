@@ -73,6 +73,12 @@ import {
   type SearchedPlace,
 } from './persist';
 import { pushSearchIn } from './searchHistory';
+import {
+  CHANGELOG,
+  latestChangelogId,
+  unseenChangelog,
+  type ChangelogEntry,
+} from '../lib/changelog';
 import { beginRouteTiming, markRoute } from '../lib/perf';
 import {
   CROW_ROAD_FACTOR,
@@ -656,6 +662,20 @@ export interface AppStore {
   /** true until the map sheet has played its « you can pull me up » bounce */
   sheetHint: boolean;
   consumeSheetHint(): void;
+
+  // what's new
+  /** Changelog entries this user has not been shown yet, newest first —
+      empty once seen (and for a newcomer, whom onboarding stamps) */
+  whatsNew: ChangelogEntry[];
+  /** Marks the whole log as seen: the bar goes, and it stays gone */
+  dismissWhatsNew(): void;
+  /** The What's new sheet — nav state like the filters, so Back closes it.
+      Opening it counts as having seen the news. */
+  whatsNewOpen: boolean;
+  setWhatsNewOpen(open: boolean): void;
+  /** Ids the log had to announce when this session started — the sheet
+      flags them « New » even after opening it stamped them seen */
+  whatsNewFresh: ReadonlySet<string>;
 }
 
 // ── URL routing (tabs survive a refresh) ────────────────────────────────────
@@ -712,6 +732,7 @@ export type NavHistoryState = {
   screen?: Screen;
   detailId?: string | null;
   filtersOpen?: boolean;
+  whatsNewOpen?: boolean;
   /** Which search field the entry holds open — entries written before the
       route shared the search carried a boolean, hence the union */
   searchOpen?: SearchTarget | boolean | null;
@@ -805,6 +826,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
   usePersisted('serviceTags', activeServiceTags);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState<SearchTarget | null>(null);
   const [routeMode, setRouteMode] = useState<RouteMode>(initialRoute.mode ?? 'balanced');
   const [plannedStops, setPlannedStops] = useState<Record<string, boolean>>({});
@@ -1097,12 +1119,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setScreen(st.screen);
         setDetailId(st.detailId ?? null);
         setFiltersOpen(!!st.filtersOpen);
+        setWhatsNewOpen(!!st.whatsNewOpen);
         setSearchOpen(navSearchTarget(st));
       } else {
         const nav = navFromPath(window.location.pathname);
         setScreen(nav.screen);
         setDetailId(nav.detailId);
         setFiltersOpen(false);
+        setWhatsNewOpen(false);
         setSearchOpen(null);
       }
     };
@@ -1184,6 +1208,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       cur.screen === screen &&
       (cur.detailId ?? null) === detailId &&
       !!cur.filtersOpen === filtersOpen &&
+      !!cur.whatsNewOpen === whatsNewOpen &&
       navSearchTarget(cur) === searchOpen;
     const url =
       pathFor(screen, detailId) +
@@ -1232,6 +1257,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       screen,
       detailId,
       filtersOpen,
+      whatsNewOpen,
       searchOpen,
       idx,
     };
@@ -1243,7 +1269,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const wait = sameNav ? MAP_URL_MIN_MS - (Date.now() - urlWrite.current.at) : 0;
     if (wait <= 0) write();
     else urlWrite.current.timer = setTimeout(write, wait);
-  }, [screen, detailId, filtersOpen, searchOpen, mapQuery, routeQuery]);
+  }, [screen, detailId, filtersOpen, whatsNewOpen, searchOpen, mapQuery, routeQuery]);
 
   // ── Stations near me (fetch at MAX radius, filter client-side) ─────────────
   // Stale-while-revalidate: a cached area paints instantly (refreshing: true)
@@ -1872,6 +1898,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
     else setFiltersOpen(open);
   }, []);
 
+  // The What's new sheet works the same way. Opening it IS reading the news,
+  // so it also stamps the log as seen — the bar that led there goes with it.
+  const [changelogSeen, setChangelogSeen] = useState<string | undefined>(persisted.changelogSeen);
+  const whatsNew = useMemo(() => unseenChangelog(CHANGELOG, changelogSeen), [changelogSeen]);
+  const whatsNewFresh = useRef<ReadonlySet<string>>(
+    new Set(
+      persisted.onboarded ? unseenChangelog(CHANGELOG, persisted.changelogSeen).map((e) => e.id) : [],
+    ),
+  ).current;
+  const dismissWhatsNew = useCallback(() => {
+    const latest = latestChangelogId(CHANGELOG);
+    if (latest === undefined) return;
+    setChangelogSeen(latest);
+    savePersisted({ changelogSeen: latest });
+  }, []);
+  const setWhatsNewOpenNav = useCallback(
+    (open: boolean) => {
+      const cur = window.history.state as NavHistoryState | null;
+      if (open) dismissWhatsNew();
+      if (!open && cur?.plein && cur.whatsNewOpen) window.history.back();
+      else setWhatsNewOpen(open);
+    },
+    [dismissWhatsNew],
+  );
+
   // Same for the place search: closing it from the UI (✕, Escape, a picked
   // place) pops the entry its opening pushed, instead of stacking a second
   // one that Back would then have to walk.
@@ -2384,8 +2435,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const finishOnboarding = useCallback(
     (withGeoloc: boolean) => {
-      savePersisted({ onboarded: true, sheetHint: true });
+      // Everything already in the log is simply how the app is to a newcomer
+      const latest = latestChangelogId(CHANGELOG);
+      savePersisted({ onboarded: true, sheetHint: true, changelogSeen: latest });
       setSheetHint(true);
+      setChangelogSeen(latest);
       if (withGeoloc) requestGeolocation();
       else setGeoStatus('denied');
       // Land on whatever the opened URL asked for — the map is just the
@@ -2505,6 +2559,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       finishOnboarding,
       sheetHint,
       consumeSheetHint,
+      whatsNew,
+      dismissWhatsNew,
+      whatsNewOpen,
+      setWhatsNewOpen: setWhatsNewOpenNav,
+      whatsNewFresh,
     }),
     [
       screen, prevScreen, go, back, openStation, fuel, setFuel, cycleFuel, sort, radius, setRadius,
@@ -2529,6 +2588,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       canInstall, installDismissed, promptInstall, dismissInstallBanner, geoFixed,
       openInMaps, openPlannedStopsInMaps, shareStation, shareMapView, shareRoute,
       finishOnboarding, sheetHint, consumeSheetHint,
+      whatsNew, dismissWhatsNew, whatsNewOpen, setWhatsNewOpenNav,
     ],
   );
 

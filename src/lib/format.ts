@@ -112,6 +112,18 @@ export function dayMonthLabel(ms: number): string {
   return f.format(new Date(ms));
 }
 
+const calendarFormats = new Map<string, Intl.DateTimeFormat>();
+
+/** Full calendar date for a What's new entry — « 7 novembre 2026 » in French */
+export function calendarDateLabel(d: Date): string {
+  let f = calendarFormats.get(getLocale());
+  if (!f) {
+    f = new Intl.DateTimeFormat(getLocale(), { day: 'numeric', month: 'long', year: 'numeric' });
+    calendarFormats.set(getLocale(), f);
+  }
+  return f.format(d);
+}
+
 const relativeFormats = new Map<string, Intl.RelativeTimeFormat>();
 
 function relative(): Intl.RelativeTimeFormat {
