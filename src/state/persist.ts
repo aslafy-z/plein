@@ -50,6 +50,9 @@ export interface PersistedSettings {
   /** Explicit theme choice — absent means « follow the browser » (validated
       on the way out by lib/colorScheme.ts, like `locale` by lib/locale.ts) */
   theme: string;
+  /** Accent preset — absent means the brand green (validated on the way out
+      by lib/colorScheme.ts, like `theme`) */
+  accent: string;
   /** Last position the app was centered on — restored on reload so the
       station cache hits instantly instead of flashing Toulouse/demo data.
       It is wherever the map was looking, a searched place included: it says

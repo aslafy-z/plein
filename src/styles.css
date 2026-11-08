@@ -77,6 +77,7 @@
   --c-nav-bg: #15181b;
   --c-map-bg: #14181a;
   --c-accent: #3ddc84;
+  --c-accent-rgb: 61, 220, 132; /* --c-accent as a triplet: every accent alpha below derives from it */
   --c-accent-hover: #7ce9ac;
   --c-on-accent: #08120c;
   --c-ink: #e8eaed;
@@ -95,22 +96,22 @@
   --c-border-20: rgba(255, 255, 255, 0.2);
   --c-border-25: rgba(255, 255, 255, 0.25);
   --c-divider: rgba(255, 255, 255, 0.06);
-  --c-accent-border: rgba(61, 220, 132, 0.25);
-  --c-accent-border-strong: rgba(61, 220, 132, 0.35);
-  --c-accent-border-30: rgba(61, 220, 132, 0.3);
-  --c-accent-border-40: rgba(61, 220, 132, 0.4);
-  --c-accent-soft: rgba(61, 220, 132, 0.12);
-  --c-accent-soft-05: rgba(61, 220, 132, 0.05);
-  --c-accent-soft-09: rgba(61, 220, 132, 0.09);
-  --c-accent-soft-10: rgba(61, 220, 132, 0.1);
-  --c-accent-soft-14: rgba(61, 220, 132, 0.14);
-  --c-accent-soft-15: rgba(61, 220, 132, 0.15);
+  --c-accent-border: rgba(var(--c-accent-rgb), 0.25);
+  --c-accent-border-strong: rgba(var(--c-accent-rgb), 0.35);
+  --c-accent-border-30: rgba(var(--c-accent-rgb), 0.3);
+  --c-accent-border-40: rgba(var(--c-accent-rgb), 0.4);
+  --c-accent-soft: rgba(var(--c-accent-rgb), 0.12);
+  --c-accent-soft-05: rgba(var(--c-accent-rgb), 0.05);
+  --c-accent-soft-09: rgba(var(--c-accent-rgb), 0.09);
+  --c-accent-soft-10: rgba(var(--c-accent-rgb), 0.1);
+  --c-accent-soft-14: rgba(var(--c-accent-rgb), 0.14);
+  --c-accent-soft-15: rgba(var(--c-accent-rgb), 0.15);
   --c-accent-pale: #eafff3;
   --c-accent-deep: #0c2116;
-  --c-accent-glow-25: rgba(61, 220, 132, 0.25);
-  --c-accent-glow-28: rgba(61, 220, 132, 0.28);
-  --c-accent-glow-35: rgba(61, 220, 132, 0.35);
-  --c-accent-glow-55: rgba(61, 220, 132, 0.55);
+  --c-accent-glow-25: rgba(var(--c-accent-rgb), 0.25);
+  --c-accent-glow-28: rgba(var(--c-accent-rgb), 0.28);
+  --c-accent-glow-35: rgba(var(--c-accent-rgb), 0.35);
+  --c-accent-glow-55: rgba(var(--c-accent-rgb), 0.55);
   --c-warn-soft: rgba(224, 122, 95, 0.12);
   --c-warn-soft-14: rgba(224, 122, 95, 0.14);
   --c-warn-border-30: rgba(224, 122, 95, 0.3);
@@ -144,7 +145,7 @@
   --c-glass-edge: rgba(255, 255, 255, 0.08);
   /* Atmosphere: a faint accent bloom at the top of the shell — depth without
      an element. Barely-there ON PURPOSE: past ~6% alpha it reads as a stain. */
-  --c-glow-top: rgba(61, 220, 132, 0.05);
+  --c-glow-top: rgba(var(--c-accent-rgb), 0.05);
 }
 
 /* ── Motion ───────────────────────────────────────────────────────────────
@@ -222,6 +223,7 @@
   --c-nav-bg: #f6f9f7;
   --c-map-bg: #d7ded9;
   --c-accent: #0e7146;
+  --c-accent-rgb: 14, 113, 70;
   --c-accent-hover: #0a5836;
   --c-on-accent: #ffffff;
   --c-ink: #161d1a;
@@ -242,22 +244,22 @@
   --c-border-18: rgba(12, 30, 22, 0.62);
   --c-border-20: rgba(12, 30, 22, 0.66);
   --c-border-25: rgba(12, 30, 22, 0.74);
-  --c-accent-border: rgba(14, 113, 70, 0.7);
-  --c-accent-border-strong: rgba(14, 113, 70, 0.9);
-  --c-accent-border-30: rgba(14, 113, 70, 0.75);
-  --c-accent-border-40: rgba(14, 113, 70, 0.85);
-  --c-accent-soft: rgba(14, 113, 70, 0.1);
-  --c-accent-soft-05: rgba(14, 113, 70, 0.06);
-  --c-accent-soft-09: rgba(14, 113, 70, 0.08);
-  --c-accent-soft-10: rgba(14, 113, 70, 0.09);
-  --c-accent-soft-14: rgba(14, 113, 70, 0.12);
-  --c-accent-soft-15: rgba(14, 113, 70, 0.13);
+  --c-accent-border: rgba(var(--c-accent-rgb), 0.7);
+  --c-accent-border-strong: rgba(var(--c-accent-rgb), 0.9);
+  --c-accent-border-30: rgba(var(--c-accent-rgb), 0.75);
+  --c-accent-border-40: rgba(var(--c-accent-rgb), 0.85);
+  --c-accent-soft: rgba(var(--c-accent-rgb), 0.1);
+  --c-accent-soft-05: rgba(var(--c-accent-rgb), 0.06);
+  --c-accent-soft-09: rgba(var(--c-accent-rgb), 0.08);
+  --c-accent-soft-10: rgba(var(--c-accent-rgb), 0.09);
+  --c-accent-soft-14: rgba(var(--c-accent-rgb), 0.12);
+  --c-accent-soft-15: rgba(var(--c-accent-rgb), 0.13);
   --c-accent-pale: #05301a;
   --c-accent-deep: #ffffff;
-  --c-accent-glow-25: rgba(14, 113, 70, 0.2);
-  --c-accent-glow-28: rgba(14, 113, 70, 0.22);
-  --c-accent-glow-35: rgba(14, 113, 70, 0.28);
-  --c-accent-glow-55: rgba(14, 113, 70, 0.4);
+  --c-accent-glow-25: rgba(var(--c-accent-rgb), 0.2);
+  --c-accent-glow-28: rgba(var(--c-accent-rgb), 0.22);
+  --c-accent-glow-35: rgba(var(--c-accent-rgb), 0.28);
+  --c-accent-glow-55: rgba(var(--c-accent-rgb), 0.4);
   --c-warn-soft: rgba(168, 66, 28, 0.1);
   --c-warn-soft-14: rgba(168, 66, 28, 0.12);
   --c-warn-border-30: rgba(168, 66, 28, 0.45);
@@ -288,7 +290,88 @@
   --c-origin-line: #5d6a64;
   /* Near-white glass takes a stronger top light to show its edge at all */
   --c-glass-edge: rgba(255, 255, 255, 0.65);
-  --c-glow-top: rgba(14, 113, 70, 0.05);
+  --c-glow-top: rgba(var(--c-accent-rgb), 0.05);
+}
+
+/* ── Accent presets ───────────────────────────────────────────────────────
+   The accent is a second, independent axis on <html>: `data-accent`, set
+   pre-paint by index.html and kept live by src/lib/colorScheme.ts. Green is
+   the base palette above (no attribute needed); each preset below overrides
+   ONLY the solid accent tones, per theme — every alpha token derives from
+   `--c-accent-rgb`, so the borders, tints and glows follow on their own.
+   The `:not([data-theme='light'])` guard keeps a dark preset from winning
+   over the light block at equal specificity.
+
+   The presets are the hues that stay apart from `--c-warn`: the accent is
+   also the « cheap » tier, opposite the coral « expensive » one, so a yellow,
+   orange, red or pink would make the two price signals argue. Blue is the
+   pair a red-green colour-blind eye separates best from the coral.
+
+   Each preset holds the same floors as the green: the accent on the page and
+   on its own soft tint, and the on-accent label on the accent, all ≥ 4.5:1
+   in both themes (dark: 7.0–10.5, light: 5.2–6.6). */
+:root:not([data-theme='light'])[data-accent='turquoise'] {
+  --c-accent: #2fd0dc;
+  --c-accent-rgb: 47, 208, 220;
+  --c-accent-hover: #7fe3ea;
+  --c-on-accent: #061316;
+  --c-accent-pale: #e8fdff;
+  --c-accent-deep: #0a1f22;
+}
+:root[data-theme='light'][data-accent='turquoise'] {
+  --c-accent: #03697f;
+  --c-accent-rgb: 3, 105, 127;
+  --c-accent-hover: #025265;
+  --c-on-accent: #ffffff;
+  --c-accent-pale: #022a33;
+  --c-accent-deep: #ffffff;
+}
+:root:not([data-theme='light'])[data-accent='blue'] {
+  --c-accent: #5aa9ff;
+  --c-accent-rgb: 90, 169, 255;
+  --c-accent-hover: #9ac9ff;
+  --c-on-accent: #06101c;
+  --c-accent-pale: #ebf4ff;
+  --c-accent-deep: #0b1a2e;
+}
+:root[data-theme='light'][data-accent='blue'] {
+  --c-accent: #1d5fc2;
+  --c-accent-rgb: 29, 95, 194;
+  --c-accent-hover: #164a98;
+  --c-on-accent: #ffffff;
+  --c-accent-pale: #0a2148;
+  --c-accent-deep: #ffffff;
+}
+:root:not([data-theme='light'])[data-accent='violet'] {
+  --c-accent: #a98bff;
+  --c-accent-rgb: 169, 139, 255;
+  --c-accent-hover: #c7b4ff;
+  --c-on-accent: #110a1f;
+  --c-accent-pale: #f3eeff;
+  --c-accent-deep: #1a1230;
+}
+:root[data-theme='light'][data-accent='violet'] {
+  --c-accent: #6941c6;
+  --c-accent-rgb: 105, 65, 198;
+  --c-accent-hover: #52309f;
+  --c-on-accent: #ffffff;
+  --c-accent-pale: #23124a;
+  --c-accent-deep: #ffffff;
+}
+
+/* The picker's swatches: each preset's own accent in the theme on screen,
+   whatever accent is active — the only place two accents paint at once. */
+:root {
+  --c-swatch-green: #3ddc84;
+  --c-swatch-turquoise: #2fd0dc;
+  --c-swatch-blue: #5aa9ff;
+  --c-swatch-violet: #a98bff;
+}
+:root[data-theme='light'] {
+  --c-swatch-green: #0e7146;
+  --c-swatch-turquoise: #03697f;
+  --c-swatch-blue: #1d5fc2;
+  --c-swatch-violet: #6941c6;
 }
 
 * {

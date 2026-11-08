@@ -7,14 +7,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#101214" />
     <!-- Resolve the theme BEFORE first paint: the persisted choice if there is
-         one, the browser's preference otherwise. The palette in styles.css
-         keys on this attribute; src/lib/colorScheme.ts keeps it live after
-         boot (and keeps the theme-color meta above in step). -->
+         one, the browser's preference otherwise — and the accent preset. The
+         palette in styles.css keys on these attributes; src/lib/colorScheme.ts
+         keeps them live after boot (and keeps the theme-color meta above in
+         step). -->
     <script>
       (function () {
         var theme;
+        var accent;
         try {
-          theme = JSON.parse(localStorage.getItem('plein.settings.v1') || '{}').theme;
+          var saved = JSON.parse(localStorage.getItem('plein.settings.v1') || '{}');
+          theme = saved.theme;
+          accent = saved.accent;
         } catch (e) {
           /* unreadable blob — fall through to the browser preference */
         }
@@ -24,6 +28,9 @@
             : 'dark';
         }
         document.documentElement.dataset.theme = theme;
+        // The accent preset, same blob — styles.css ignores an unknown value,
+        // which leaves the brand green, so no validation is needed here
+        document.documentElement.dataset.accent = accent || 'green';
       })();
     </script>
     <meta name="description" content="Plein. — Payez votre plein au juste prix. Les prix des stations-service en France, en Espagne, en Andorre et au Portugal, comparés autour de vous et sur vos trajets." />

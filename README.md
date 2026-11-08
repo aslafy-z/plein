@@ -47,7 +47,8 @@ you and along your routes, in France, Spain, Andorra and Portugal.
 - 🧭 **Directions** — opens the station in your GPS app.
 - 🔗 **Shareable links** — the URL follows the map and the route; a link
   reopens the same view.
-- 🌗 **Light and dark themes** — follows your browser, switchable in Settings.
+- 🌗 **Light and dark themes** — follows your browser, switchable in Settings,
+  with a choice of accent color (green, turquoise, blue or violet).
 - 🌍 **Five languages** — French, English, Spanish, Catalan and Portuguese.
 - 🖥️ **Phone and desktop** — full-screen map and sheet on mobile, side panels
   on a wide screen.
