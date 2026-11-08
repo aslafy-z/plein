@@ -9,6 +9,7 @@ import {
   parsePrices,
   parsePriceField,
   parseServices,
+  parseFluxTimestamp,
 } from './FrStationsProvider';
 
 // The gouv flux is schema-loose: the same column arrives as a number, a
@@ -124,17 +125,55 @@ describe('parsePriceField', () => {
   });
 });
 
+describe('parseFluxTimestamp', () => {
+  it('reads the ODS « +00:00 » stamp as the Paris wall clock it really is', () => {
+    // Winter: Paris is UTC+1
+    expect(parseFluxTimestamp('2026-11-08T00:01:00+00:00')).toBe('2026-11-07T23:01:00.000Z');
+    // Summer: Paris is UTC+2
+    expect(parseFluxTimestamp('2026-07-19T05:00:00+00:00')).toBe('2026-07-19T03:00:00.000Z');
+  });
+
+  it('reads the zoneless XML / prix-field form the same way', () => {
+    expect(parseFluxTimestamp('2026-11-08 00:01:00')).toBe('2026-11-07T23:01:00.000Z');
+    expect(parseFluxTimestamp('2026-07-19T05:00')).toBe('2026-07-19T03:00:00.000Z');
+    // A bare day is midnight in Paris
+    expect(parseFluxTimestamp('2026-07-19')).toBe('2026-07-18T22:00:00.000Z');
+  });
+
+  it('keeps the digits whatever offset the instant is rendered in', () => {
+    // The same mislabelled instant, asked for with timezone=Europe/Paris
+    expect(parseFluxTimestamp('2026-11-08T01:01:00+01:00')).toBe('2026-11-07T23:01:00.000Z');
+  });
+
+  it('lands each side of the DST switches on the right offset', () => {
+    // 2026-03-29: 02:00 CET jumps to 03:00 CEST
+    expect(parseFluxTimestamp('2026-03-29 01:30:00')).toBe('2026-03-29T00:30:00.000Z');
+    expect(parseFluxTimestamp('2026-03-29 03:30:00')).toBe('2026-03-29T01:30:00.000Z');
+    // 2026-10-25: 03:00 CEST falls back to 02:00 CET
+    expect(parseFluxTimestamp('2026-10-25 01:30:00')).toBe('2026-10-24T23:30:00.000Z');
+    expect(parseFluxTimestamp('2026-10-25 03:30:00')).toBe('2026-10-25T02:30:00.000Z');
+  });
+
+  it('returns undefined for an absent or unreadable stamp', () => {
+    expect(parseFluxTimestamp(undefined)).toBeUndefined();
+    expect(parseFluxTimestamp('')).toBeUndefined();
+    expect(parseFluxTimestamp('hier')).toBeUndefined();
+    expect(parseFluxTimestamp(null)).toBeUndefined();
+  });
+});
+
 describe('parsePrices', () => {
   it('reads the per-fuel columns with their update stamps', () => {
     expect(
       parsePrices({
         gazole_prix: '1.789',
-        gazole_maj: '2026-07-19T05:00:00+02:00',
+        // ODS renders the Paris wall clock as UTC: 05:00 in July is 03:00Z
+        gazole_maj: '2026-07-19T05:00:00+00:00',
         sp98_prix: 1.929,
         e10_prix: null,
       }),
     ).toEqual({
-      diesel: { value: 1.789, updatedAt: '2026-07-19T05:00:00+02:00' },
+      diesel: { value: 1.789, updatedAt: '2026-07-19T03:00:00.000Z' },
       unleaded98: { value: 1.929, updatedAt: undefined },
     });
   });
