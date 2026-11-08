@@ -85,9 +85,41 @@ describe('accent presets', () => {
               theme === 'dark'
                 ? tokens(`:root:not([data-theme='light'])[data-accent='${accent}']`)
                 : tokens(`:root[data-theme='light'][data-accent='${accent}']`)
-            expect(Object.keys(own).sort()).toEqual([...SOLID].sort())
+            for (const name of SOLID) expect(own, name).toHaveProperty(name)
           }
           expect(p['--c-accent-rgb']).toBe(hex(p['--c-accent']).join(', '))
+        })
+
+        if (theme === 'light' && accent !== DEFAULT_ACCENT) {
+          it('re-tints every green-leaning neutral of the paper without moving its lightness', () => {
+            const own = tokens(`:root[data-theme='light'][data-accent='${accent}']`)
+            // The base light block's neutrals are the ones the preset must carry
+            const neutrals = Object.keys(own).filter((k) => !SOLID.includes(k))
+            for (const name of ['--c-bg', '--c-surface-2', '--c-ink', '--c-border-09', '--c-glass-bg']) {
+              expect(neutrals, name).toContain(name)
+            }
+            for (const name of neutrals) {
+              const before = /#([0-9a-f]{6})/.exec(LIGHT[name])
+              const after = /#([0-9a-f]{6})/.exec(own[name])
+              if (!before || !after) continue
+              // A hue swap only: luminance — and with it every contrast pair — holds
+              expect(
+                Math.abs(luminance(hex(before[0])) - luminance(hex(after[0]))),
+                name,
+              ).toBeLessThan(0.02)
+            }
+          })
+        }
+
+        // The light text ramp is the one the re-tint touches (the dark greys
+        // are shared, and the dark `--c-faint` is a placeholder tone by design)
+        it('keeps the text tones readable on the page', () => {
+          const ramp = theme === 'light' ? ['--c-ink', '--c-body', '--c-mut', '--c-faint'] : ['--c-ink', '--c-body', '--c-mut']
+          for (const text of ramp) {
+            for (const surface of ['--c-bg', '--c-surface']) {
+              expect(contrast(hex(p[text]), hex(p[surface])), `${text} on ${surface}`).toBeGreaterThanOrEqual(4.5)
+            }
+          }
         })
 
         it('has a swatch in the picker equal to its own accent', () => {

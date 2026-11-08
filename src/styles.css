@@ -307,6 +307,13 @@
    orange, red or pink would make the two price signals argue. Blue is the
    pair a red-green colour-blind eye separates best from the coral.
 
+   The light paper leans toward the green (its greys sit at the green's hue),
+   so each light preset also carries its own copy of those neutrals, rotated
+   to the preset's hue at the SAME OKLCH lightness and chroma: a violet
+   accent on green-grey chips read as a mismatch, and keeping the lightness
+   keeps every contrast pair the green block was tuned for. The dark greys
+   are a cool blue-grey that sits with every preset and stay shared.
+
    Each preset holds the same floors as the green: the accent on the page and
    on its own soft tint, and the on-accent label on the accent, all ≥ 4.5:1
    in both themes (dark: 7.0–10.5, light: 5.2–6.6). */
@@ -325,6 +332,46 @@
   --c-on-accent: #ffffff;
   --c-accent-pale: #022a33;
   --c-accent-deep: #ffffff;
+  /* the paper and greys, re-tinted to this hue (same OKLCH lightness and chroma) */
+  --c-page-bg: #dae2e4;
+  --c-bg: #e8eff1;
+  --c-bg-0: rgba(232, 239, 241, 0);
+  --c-surface-2: #dae4e7;
+  --c-surface-3: #cad5d9;
+  --c-nav-bg: #f5f9fa;
+  --c-map-bg: #d5dee0;
+  --c-ink: #151d1f;
+  --c-body: #2e3739;
+  --c-body-2: #3a4345;
+  --c-mut: #4c5557;
+  --c-faint: #596264;
+  --c-ghost: #636c6e;
+  --c-border: rgba(8, 29, 35, 0.14);
+  --c-border-08: rgba(8, 29, 35, 0.16);
+  --c-divider: rgba(8, 29, 35, 0.12);
+  --c-border-09: rgba(8, 29, 35, 0.48);
+  --c-border-12: rgba(8, 29, 35, 0.52);
+  --c-border-15: rgba(8, 29, 35, 0.58);
+  --c-border-18: rgba(8, 29, 35, 0.62);
+  --c-border-20: rgba(8, 29, 35, 0.66);
+  --c-border-25: rgba(8, 29, 35, 0.74);
+  --c-toggle-off: #7f8a8e;
+  --c-overlay: rgba(232, 239, 241, 0.9);
+  --c-scrim: rgba(13, 22, 24, 0.45);
+  --c-scrim-soft: rgba(13, 22, 24, 0.25);
+  --c-glass-bg: rgba(246, 250, 251, 0.92);
+  --c-glass-bg-soft: rgba(246, 250, 251, 0.88);
+  --c-glass-bg-strong: rgba(250, 252, 253, 0.97);
+  --c-glass-border: rgba(8, 29, 35, 0.26);
+  --c-shadow-35: rgba(16, 29, 33, 0.14);
+  --c-shadow-40: rgba(16, 29, 33, 0.16);
+  --c-shadow-45: rgba(16, 29, 33, 0.18);
+  --c-shadow-50: rgba(16, 29, 33, 0.2);
+  --c-shadow-55: rgba(16, 29, 33, 0.22);
+  --c-skeleton: #d3dde0;
+  --c-attribution-bg: rgba(246, 250, 251, 0.85);
+  --c-pin-dot-border: rgba(8, 29, 35, 0.55);
+  --c-origin-line: #5b696e;
 }
 :root:not([data-theme='light'])[data-accent='blue'] {
   --c-accent: #5aa9ff;
@@ -341,6 +388,46 @@
   --c-on-accent: #ffffff;
   --c-accent-pale: #0a2148;
   --c-accent-deep: #ffffff;
+  /* the paper and greys, re-tinted to this hue (same OKLCH lightness and chroma) */
+  --c-page-bg: #dce0e6;
+  --c-bg: #eaedf3;
+  --c-bg-0: rgba(234, 237, 243, 0);
+  --c-surface-2: #dde2e9;
+  --c-surface-3: #ced4dc;
+  --c-nav-bg: #f6f8fb;
+  --c-map-bg: #d8dce3;
+  --c-ink: #181b21;
+  --c-body: #31353c;
+  --c-body-2: #3d4148;
+  --c-mut: #4f535a;
+  --c-faint: #5c6067;
+  --c-ghost: #666a71;
+  --c-border: rgba(18, 26, 39, 0.14);
+  --c-border-08: rgba(18, 26, 39, 0.16);
+  --c-divider: rgba(18, 26, 39, 0.12);
+  --c-border-09: rgba(18, 26, 39, 0.48);
+  --c-border-12: rgba(18, 26, 39, 0.52);
+  --c-border-15: rgba(18, 26, 39, 0.58);
+  --c-border-18: rgba(18, 26, 39, 0.62);
+  --c-border-20: rgba(18, 26, 39, 0.66);
+  --c-border-25: rgba(18, 26, 39, 0.74);
+  --c-toggle-off: #838991;
+  --c-overlay: rgba(234, 237, 243, 0.9);
+  --c-scrim: rgba(16, 20, 26, 0.45);
+  --c-scrim-soft: rgba(16, 20, 26, 0.25);
+  --c-glass-bg: rgba(247, 249, 252, 0.92);
+  --c-glass-bg-soft: rgba(247, 249, 252, 0.88);
+  --c-glass-bg-strong: rgba(250, 252, 253, 0.97);
+  --c-glass-border: rgba(18, 26, 39, 0.26);
+  --c-shadow-35: rgba(21, 27, 37, 0.14);
+  --c-shadow-40: rgba(21, 27, 37, 0.16);
+  --c-shadow-45: rgba(21, 27, 37, 0.18);
+  --c-shadow-50: rgba(21, 27, 37, 0.2);
+  --c-shadow-55: rgba(21, 27, 37, 0.22);
+  --c-skeleton: #d6dbe2;
+  --c-attribution-bg: rgba(247, 249, 252, 0.85);
+  --c-pin-dot-border: rgba(18, 26, 39, 0.55);
+  --c-origin-line: #606771;
 }
 :root:not([data-theme='light'])[data-accent='violet'] {
   --c-accent: #a98bff;
@@ -357,6 +444,46 @@
   --c-on-accent: #ffffff;
   --c-accent-pale: #23124a;
   --c-accent-deep: #ffffff;
+  /* the paper and greys, re-tinted to this hue (same OKLCH lightness and chroma) */
+  --c-page-bg: #e0dfe6;
+  --c-bg: #edecf3;
+  --c-bg-0: rgba(237, 236, 243, 0);
+  --c-surface-2: #e2e1e9;
+  --c-surface-3: #d3d2dc;
+  --c-nav-bg: #f8f8fb;
+  --c-map-bg: #dcdbe2;
+  --c-ink: #1b1a20;
+  --c-body: #35343b;
+  --c-body-2: #414047;
+  --c-mut: #535259;
+  --c-faint: #605f66;
+  --c-ghost: #6a6970;
+  --c-border: rgba(26, 23, 38, 0.14);
+  --c-border-08: rgba(26, 23, 38, 0.16);
+  --c-divider: rgba(26, 23, 38, 0.12);
+  --c-border-09: rgba(26, 23, 38, 0.48);
+  --c-border-12: rgba(26, 23, 38, 0.52);
+  --c-border-15: rgba(26, 23, 38, 0.58);
+  --c-border-18: rgba(26, 23, 38, 0.62);
+  --c-border-20: rgba(26, 23, 38, 0.66);
+  --c-border-25: rgba(26, 23, 38, 0.74);
+  --c-toggle-off: #888791;
+  --c-overlay: rgba(237, 236, 243, 0.9);
+  --c-scrim: rgba(20, 19, 26, 0.45);
+  --c-scrim-soft: rgba(20, 19, 26, 0.25);
+  --c-glass-bg: rgba(249, 249, 252, 0.92);
+  --c-glass-bg-soft: rgba(249, 249, 252, 0.88);
+  --c-glass-bg-strong: rgba(251, 251, 253, 0.97);
+  --c-glass-border: rgba(26, 23, 38, 0.26);
+  --c-shadow-35: rgba(27, 25, 36, 0.14);
+  --c-shadow-40: rgba(27, 25, 36, 0.16);
+  --c-shadow-45: rgba(27, 25, 36, 0.18);
+  --c-shadow-50: rgba(27, 25, 36, 0.2);
+  --c-shadow-55: rgba(27, 25, 36, 0.22);
+  --c-skeleton: #dbdae2;
+  --c-attribution-bg: rgba(249, 249, 252, 0.85);
+  --c-pin-dot-border: rgba(26, 23, 38, 0.55);
+  --c-origin-line: #666570;
 }
 
 /* The picker's swatches: each preset's own accent in the theme on screen,
