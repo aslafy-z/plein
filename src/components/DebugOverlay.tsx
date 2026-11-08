@@ -244,6 +244,7 @@ export default function DebugOverlay() {
       sourceId: cur.sourceId,
       locale: cur.locale,
       theme: cur.theme,
+      accent: cur.accent,
       arrangement: desktopRef.current ? 'desktop' : 'phone',
       stations: {
         status: cur.stations.status,

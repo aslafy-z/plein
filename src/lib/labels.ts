@@ -12,7 +12,7 @@ import type {
 } from '../data/types';
 import { EXTRA_PRODUCT_IDS, SERVICE_TAGS } from '../data/types';
 import { INDEPENDENT_BRAND_ID } from './brandIcons';
-import type { Theme } from './colorScheme';
+import type { Accent, Theme } from './colorScheme';
 import { minutesLabel } from './format';
 import type { OpenStatus } from './hours';
 
@@ -58,6 +58,19 @@ export function vehicleLabel(id: VehicleId): string {
 
 export function themeLabel(theme: Theme): string {
   return theme === 'light' ? m.settings_theme_light() : m.settings_theme_dark();
+}
+
+export function accentLabel(accent: Accent): string {
+  switch (accent) {
+    case 'green':
+      return m.settings_accent_green();
+    case 'turquoise':
+      return m.settings_accent_turquoise();
+    case 'blue':
+      return m.settings_accent_blue();
+    case 'violet':
+      return m.settings_accent_violet();
+  }
 }
 
 /**

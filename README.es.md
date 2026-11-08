@@ -51,7 +51,7 @@ Portugal.
 - 🔗 **Enlaces compartibles** — la dirección sigue al mapa y a la ruta; un
   enlace reabre la misma vista.
 - 🌗 **Tema claro y oscuro** — sigue a tu navegador, modificable en los
-  Ajustes.
+  Ajustes, con un color de acento a elegir (verde, turquesa, azul o violeta).
 - 🌍 **Cinco idiomas** — francés, inglés, español, catalán y portugués.
 - 🖥️ **Móvil y escritorio** — mapa a pantalla completa y panel en el móvil,
   paneles laterales en pantalla grande.

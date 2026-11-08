@@ -76,6 +76,7 @@ export interface AppDebugInput {
   sourceId: DataSourceId;
   locale: string;
   theme: string;
+  accent: string;
   arrangement: 'phone' | 'desktop';
   stations: {
     status: string;
@@ -130,6 +131,7 @@ export interface DebugSnapshot {
     sourceId: DataSourceId;
     locale: string;
     theme: string;
+    accent: string;
     arrangement: 'phone' | 'desktop';
     viewport: { width: number; height: number };
   };
@@ -265,6 +267,7 @@ export async function collectDebugSnapshot(app: AppDebugInput): Promise<DebugSna
       sourceId: app.sourceId,
       locale: app.locale,
       theme: app.theme,
+      accent: app.accent,
       arrangement: app.arrangement,
       viewport:
         typeof window === 'undefined'

@@ -50,7 +50,8 @@ e Portugal.
 - 🧭 **«Direções»** — abre o posto na sua app de GPS.
 - 🔗 **Ligações partilháveis** — o endereço segue o mapa e o trajeto; uma
   ligação reabre a mesma vista.
-- 🌗 **Tema claro e escuro** — segue o navegador, alterável nas Definições.
+- 🌗 **Tema claro e escuro** — segue o navegador, alterável nas Definições,
+  com uma cor de destaque à escolha (verde, turquesa, azul ou violeta).
 - 🌍 **Cinco línguas** — francês, inglês, espanhol, catalão e português.
 - 🖥️ **Telemóvel e computador** — mapa em ecrã inteiro e painel no telemóvel,
   painéis laterais no ecrã grande.

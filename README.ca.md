@@ -50,7 +50,8 @@ Portugal.
 - 🧭 **«Com arribar-hi»** — obre l'estació a la vostra app de GPS.
 - 🔗 **Enllaços compartibles** — l'adreça segueix el mapa i el trajecte; un
   enllaç reobre la mateixa vista.
-- 🌗 **Tema clar i fosc** — segueix el navegador, modificable als Ajustos.
+- 🌗 **Tema clar i fosc** — segueix el navegador, modificable a la Configuració,
+  amb un color d’accent a triar (verd, turquesa, blau o violeta).
 - 🌍 **Cinc llengües** — francès, anglès, espanyol, català i portuguès.
 - 🖥️ **Mòbil i escriptori** — mapa a pantalla completa i plafó al mòbil,
   plafons laterals a la pantalla gran.

@@ -77,6 +77,7 @@
   --c-nav-bg: #15181b;
   --c-map-bg: #14181a;
   --c-accent: #3ddc84;
+  --c-accent-rgb: 61, 220, 132; /* --c-accent as a triplet: every accent alpha below derives from it */
   --c-accent-hover: #7ce9ac;
   --c-on-accent: #08120c;
   --c-ink: #e8eaed;
@@ -95,22 +96,22 @@
   --c-border-20: rgba(255, 255, 255, 0.2);
   --c-border-25: rgba(255, 255, 255, 0.25);
   --c-divider: rgba(255, 255, 255, 0.06);
-  --c-accent-border: rgba(61, 220, 132, 0.25);
-  --c-accent-border-strong: rgba(61, 220, 132, 0.35);
-  --c-accent-border-30: rgba(61, 220, 132, 0.3);
-  --c-accent-border-40: rgba(61, 220, 132, 0.4);
-  --c-accent-soft: rgba(61, 220, 132, 0.12);
-  --c-accent-soft-05: rgba(61, 220, 132, 0.05);
-  --c-accent-soft-09: rgba(61, 220, 132, 0.09);
-  --c-accent-soft-10: rgba(61, 220, 132, 0.1);
-  --c-accent-soft-14: rgba(61, 220, 132, 0.14);
-  --c-accent-soft-15: rgba(61, 220, 132, 0.15);
+  --c-accent-border: rgba(var(--c-accent-rgb), 0.25);
+  --c-accent-border-strong: rgba(var(--c-accent-rgb), 0.35);
+  --c-accent-border-30: rgba(var(--c-accent-rgb), 0.3);
+  --c-accent-border-40: rgba(var(--c-accent-rgb), 0.4);
+  --c-accent-soft: rgba(var(--c-accent-rgb), 0.12);
+  --c-accent-soft-05: rgba(var(--c-accent-rgb), 0.05);
+  --c-accent-soft-09: rgba(var(--c-accent-rgb), 0.09);
+  --c-accent-soft-10: rgba(var(--c-accent-rgb), 0.1);
+  --c-accent-soft-14: rgba(var(--c-accent-rgb), 0.14);
+  --c-accent-soft-15: rgba(var(--c-accent-rgb), 0.15);
   --c-accent-pale: #eafff3;
   --c-accent-deep: #0c2116;
-  --c-accent-glow-25: rgba(61, 220, 132, 0.25);
-  --c-accent-glow-28: rgba(61, 220, 132, 0.28);
-  --c-accent-glow-35: rgba(61, 220, 132, 0.35);
-  --c-accent-glow-55: rgba(61, 220, 132, 0.55);
+  --c-accent-glow-25: rgba(var(--c-accent-rgb), 0.25);
+  --c-accent-glow-28: rgba(var(--c-accent-rgb), 0.28);
+  --c-accent-glow-35: rgba(var(--c-accent-rgb), 0.35);
+  --c-accent-glow-55: rgba(var(--c-accent-rgb), 0.55);
   --c-warn-soft: rgba(224, 122, 95, 0.12);
   --c-warn-soft-14: rgba(224, 122, 95, 0.14);
   --c-warn-border-30: rgba(224, 122, 95, 0.3);
@@ -144,7 +145,7 @@
   --c-glass-edge: rgba(255, 255, 255, 0.08);
   /* Atmosphere: a faint accent bloom at the top of the shell — depth without
      an element. Barely-there ON PURPOSE: past ~6% alpha it reads as a stain. */
-  --c-glow-top: rgba(61, 220, 132, 0.05);
+  --c-glow-top: rgba(var(--c-accent-rgb), 0.05);
 }
 
 /* ── Motion ───────────────────────────────────────────────────────────────
@@ -222,6 +223,7 @@
   --c-nav-bg: #f6f9f7;
   --c-map-bg: #d7ded9;
   --c-accent: #0e7146;
+  --c-accent-rgb: 14, 113, 70;
   --c-accent-hover: #0a5836;
   --c-on-accent: #ffffff;
   --c-ink: #161d1a;
@@ -242,22 +244,22 @@
   --c-border-18: rgba(12, 30, 22, 0.62);
   --c-border-20: rgba(12, 30, 22, 0.66);
   --c-border-25: rgba(12, 30, 22, 0.74);
-  --c-accent-border: rgba(14, 113, 70, 0.7);
-  --c-accent-border-strong: rgba(14, 113, 70, 0.9);
-  --c-accent-border-30: rgba(14, 113, 70, 0.75);
-  --c-accent-border-40: rgba(14, 113, 70, 0.85);
-  --c-accent-soft: rgba(14, 113, 70, 0.1);
-  --c-accent-soft-05: rgba(14, 113, 70, 0.06);
-  --c-accent-soft-09: rgba(14, 113, 70, 0.08);
-  --c-accent-soft-10: rgba(14, 113, 70, 0.09);
-  --c-accent-soft-14: rgba(14, 113, 70, 0.12);
-  --c-accent-soft-15: rgba(14, 113, 70, 0.13);
+  --c-accent-border: rgba(var(--c-accent-rgb), 0.7);
+  --c-accent-border-strong: rgba(var(--c-accent-rgb), 0.9);
+  --c-accent-border-30: rgba(var(--c-accent-rgb), 0.75);
+  --c-accent-border-40: rgba(var(--c-accent-rgb), 0.85);
+  --c-accent-soft: rgba(var(--c-accent-rgb), 0.1);
+  --c-accent-soft-05: rgba(var(--c-accent-rgb), 0.06);
+  --c-accent-soft-09: rgba(var(--c-accent-rgb), 0.08);
+  --c-accent-soft-10: rgba(var(--c-accent-rgb), 0.09);
+  --c-accent-soft-14: rgba(var(--c-accent-rgb), 0.12);
+  --c-accent-soft-15: rgba(var(--c-accent-rgb), 0.13);
   --c-accent-pale: #05301a;
   --c-accent-deep: #ffffff;
-  --c-accent-glow-25: rgba(14, 113, 70, 0.2);
-  --c-accent-glow-28: rgba(14, 113, 70, 0.22);
-  --c-accent-glow-35: rgba(14, 113, 70, 0.28);
-  --c-accent-glow-55: rgba(14, 113, 70, 0.4);
+  --c-accent-glow-25: rgba(var(--c-accent-rgb), 0.2);
+  --c-accent-glow-28: rgba(var(--c-accent-rgb), 0.22);
+  --c-accent-glow-35: rgba(var(--c-accent-rgb), 0.28);
+  --c-accent-glow-55: rgba(var(--c-accent-rgb), 0.4);
   --c-warn-soft: rgba(168, 66, 28, 0.1);
   --c-warn-soft-14: rgba(168, 66, 28, 0.12);
   --c-warn-border-30: rgba(168, 66, 28, 0.45);
@@ -288,7 +290,215 @@
   --c-origin-line: #5d6a64;
   /* Near-white glass takes a stronger top light to show its edge at all */
   --c-glass-edge: rgba(255, 255, 255, 0.65);
-  --c-glow-top: rgba(14, 113, 70, 0.05);
+  --c-glow-top: rgba(var(--c-accent-rgb), 0.05);
+}
+
+/* ── Accent presets ───────────────────────────────────────────────────────
+   The accent is a second, independent axis on <html>: `data-accent`, set
+   pre-paint by index.html and kept live by src/lib/colorScheme.ts. Green is
+   the base palette above (no attribute needed); each preset below overrides
+   ONLY the solid accent tones, per theme — every alpha token derives from
+   `--c-accent-rgb`, so the borders, tints and glows follow on their own.
+   The `:not([data-theme='light'])` guard keeps a dark preset from winning
+   over the light block at equal specificity.
+
+   The presets are the hues that stay apart from `--c-warn`: the accent is
+   also the « cheap » tier, opposite the coral « expensive » one, so a yellow,
+   orange, red or pink would make the two price signals argue. Blue is the
+   pair a red-green colour-blind eye separates best from the coral.
+
+   The light paper leans toward the green (its greys sit at the green's hue),
+   so each light preset also carries its own copy of those neutrals, rotated
+   to the preset's hue at the SAME OKLCH lightness and chroma: a violet
+   accent on green-grey chips read as a mismatch, and keeping the lightness
+   keeps every contrast pair the green block was tuned for. The dark greys
+   are a cool blue-grey that sits with every preset and stay shared.
+
+   Each preset holds the same floors as the green: the accent on the page and
+   on its own soft tint, and the on-accent label on the accent, all ≥ 4.5:1
+   in both themes (dark: 7.0–10.5, light: 5.2–6.6). */
+:root:not([data-theme='light'])[data-accent='turquoise'] {
+  --c-accent: #2fd0dc;
+  --c-accent-rgb: 47, 208, 220;
+  --c-accent-hover: #7fe3ea;
+  --c-on-accent: #061316;
+  --c-accent-pale: #e8fdff;
+  --c-accent-deep: #0a1f22;
+}
+:root[data-theme='light'][data-accent='turquoise'] {
+  --c-accent: #03697f;
+  --c-accent-rgb: 3, 105, 127;
+  --c-accent-hover: #025265;
+  --c-on-accent: #ffffff;
+  --c-accent-pale: #022a33;
+  --c-accent-deep: #ffffff;
+  /* the paper and greys, re-tinted to this hue (same OKLCH lightness and chroma) */
+  --c-page-bg: #dae2e4;
+  --c-bg: #e8eff1;
+  --c-bg-0: rgba(232, 239, 241, 0);
+  --c-surface-2: #dae4e7;
+  --c-surface-3: #cad5d9;
+  --c-nav-bg: #f5f9fa;
+  --c-map-bg: #d5dee0;
+  --c-ink: #151d1f;
+  --c-body: #2e3739;
+  --c-body-2: #3a4345;
+  --c-mut: #4c5557;
+  --c-faint: #596264;
+  --c-ghost: #636c6e;
+  --c-border: rgba(8, 29, 35, 0.14);
+  --c-border-08: rgba(8, 29, 35, 0.16);
+  --c-divider: rgba(8, 29, 35, 0.12);
+  --c-border-09: rgba(8, 29, 35, 0.48);
+  --c-border-12: rgba(8, 29, 35, 0.52);
+  --c-border-15: rgba(8, 29, 35, 0.58);
+  --c-border-18: rgba(8, 29, 35, 0.62);
+  --c-border-20: rgba(8, 29, 35, 0.66);
+  --c-border-25: rgba(8, 29, 35, 0.74);
+  --c-toggle-off: #7f8a8e;
+  --c-overlay: rgba(232, 239, 241, 0.9);
+  --c-scrim: rgba(13, 22, 24, 0.45);
+  --c-scrim-soft: rgba(13, 22, 24, 0.25);
+  --c-glass-bg: rgba(246, 250, 251, 0.92);
+  --c-glass-bg-soft: rgba(246, 250, 251, 0.88);
+  --c-glass-bg-strong: rgba(250, 252, 253, 0.97);
+  --c-glass-border: rgba(8, 29, 35, 0.26);
+  --c-shadow-35: rgba(16, 29, 33, 0.14);
+  --c-shadow-40: rgba(16, 29, 33, 0.16);
+  --c-shadow-45: rgba(16, 29, 33, 0.18);
+  --c-shadow-50: rgba(16, 29, 33, 0.2);
+  --c-shadow-55: rgba(16, 29, 33, 0.22);
+  --c-skeleton: #d3dde0;
+  --c-attribution-bg: rgba(246, 250, 251, 0.85);
+  --c-pin-dot-border: rgba(8, 29, 35, 0.55);
+  --c-origin-line: #5b696e;
+}
+:root:not([data-theme='light'])[data-accent='blue'] {
+  --c-accent: #5aa9ff;
+  --c-accent-rgb: 90, 169, 255;
+  --c-accent-hover: #9ac9ff;
+  --c-on-accent: #06101c;
+  --c-accent-pale: #ebf4ff;
+  --c-accent-deep: #0b1a2e;
+}
+:root[data-theme='light'][data-accent='blue'] {
+  --c-accent: #1d5fc2;
+  --c-accent-rgb: 29, 95, 194;
+  --c-accent-hover: #164a98;
+  --c-on-accent: #ffffff;
+  --c-accent-pale: #0a2148;
+  --c-accent-deep: #ffffff;
+  /* the paper and greys, re-tinted to this hue (same OKLCH lightness and chroma) */
+  --c-page-bg: #dce0e6;
+  --c-bg: #eaedf3;
+  --c-bg-0: rgba(234, 237, 243, 0);
+  --c-surface-2: #dde2e9;
+  --c-surface-3: #ced4dc;
+  --c-nav-bg: #f6f8fb;
+  --c-map-bg: #d8dce3;
+  --c-ink: #181b21;
+  --c-body: #31353c;
+  --c-body-2: #3d4148;
+  --c-mut: #4f535a;
+  --c-faint: #5c6067;
+  --c-ghost: #666a71;
+  --c-border: rgba(18, 26, 39, 0.14);
+  --c-border-08: rgba(18, 26, 39, 0.16);
+  --c-divider: rgba(18, 26, 39, 0.12);
+  --c-border-09: rgba(18, 26, 39, 0.48);
+  --c-border-12: rgba(18, 26, 39, 0.52);
+  --c-border-15: rgba(18, 26, 39, 0.58);
+  --c-border-18: rgba(18, 26, 39, 0.62);
+  --c-border-20: rgba(18, 26, 39, 0.66);
+  --c-border-25: rgba(18, 26, 39, 0.74);
+  --c-toggle-off: #838991;
+  --c-overlay: rgba(234, 237, 243, 0.9);
+  --c-scrim: rgba(16, 20, 26, 0.45);
+  --c-scrim-soft: rgba(16, 20, 26, 0.25);
+  --c-glass-bg: rgba(247, 249, 252, 0.92);
+  --c-glass-bg-soft: rgba(247, 249, 252, 0.88);
+  --c-glass-bg-strong: rgba(250, 252, 253, 0.97);
+  --c-glass-border: rgba(18, 26, 39, 0.26);
+  --c-shadow-35: rgba(21, 27, 37, 0.14);
+  --c-shadow-40: rgba(21, 27, 37, 0.16);
+  --c-shadow-45: rgba(21, 27, 37, 0.18);
+  --c-shadow-50: rgba(21, 27, 37, 0.2);
+  --c-shadow-55: rgba(21, 27, 37, 0.22);
+  --c-skeleton: #d6dbe2;
+  --c-attribution-bg: rgba(247, 249, 252, 0.85);
+  --c-pin-dot-border: rgba(18, 26, 39, 0.55);
+  --c-origin-line: #606771;
+}
+:root:not([data-theme='light'])[data-accent='violet'] {
+  --c-accent: #a98bff;
+  --c-accent-rgb: 169, 139, 255;
+  --c-accent-hover: #c7b4ff;
+  --c-on-accent: #110a1f;
+  --c-accent-pale: #f3eeff;
+  --c-accent-deep: #1a1230;
+}
+:root[data-theme='light'][data-accent='violet'] {
+  --c-accent: #6941c6;
+  --c-accent-rgb: 105, 65, 198;
+  --c-accent-hover: #52309f;
+  --c-on-accent: #ffffff;
+  --c-accent-pale: #23124a;
+  --c-accent-deep: #ffffff;
+  /* the paper and greys, re-tinted to this hue (same OKLCH lightness and chroma) */
+  --c-page-bg: #e0dfe6;
+  --c-bg: #edecf3;
+  --c-bg-0: rgba(237, 236, 243, 0);
+  --c-surface-2: #e2e1e9;
+  --c-surface-3: #d3d2dc;
+  --c-nav-bg: #f8f8fb;
+  --c-map-bg: #dcdbe2;
+  --c-ink: #1b1a20;
+  --c-body: #35343b;
+  --c-body-2: #414047;
+  --c-mut: #535259;
+  --c-faint: #605f66;
+  --c-ghost: #6a6970;
+  --c-border: rgba(26, 23, 38, 0.14);
+  --c-border-08: rgba(26, 23, 38, 0.16);
+  --c-divider: rgba(26, 23, 38, 0.12);
+  --c-border-09: rgba(26, 23, 38, 0.48);
+  --c-border-12: rgba(26, 23, 38, 0.52);
+  --c-border-15: rgba(26, 23, 38, 0.58);
+  --c-border-18: rgba(26, 23, 38, 0.62);
+  --c-border-20: rgba(26, 23, 38, 0.66);
+  --c-border-25: rgba(26, 23, 38, 0.74);
+  --c-toggle-off: #888791;
+  --c-overlay: rgba(237, 236, 243, 0.9);
+  --c-scrim: rgba(20, 19, 26, 0.45);
+  --c-scrim-soft: rgba(20, 19, 26, 0.25);
+  --c-glass-bg: rgba(249, 249, 252, 0.92);
+  --c-glass-bg-soft: rgba(249, 249, 252, 0.88);
+  --c-glass-bg-strong: rgba(251, 251, 253, 0.97);
+  --c-glass-border: rgba(26, 23, 38, 0.26);
+  --c-shadow-35: rgba(27, 25, 36, 0.14);
+  --c-shadow-40: rgba(27, 25, 36, 0.16);
+  --c-shadow-45: rgba(27, 25, 36, 0.18);
+  --c-shadow-50: rgba(27, 25, 36, 0.2);
+  --c-shadow-55: rgba(27, 25, 36, 0.22);
+  --c-skeleton: #dbdae2;
+  --c-attribution-bg: rgba(249, 249, 252, 0.85);
+  --c-pin-dot-border: rgba(26, 23, 38, 0.55);
+  --c-origin-line: #666570;
+}
+
+/* The picker's swatches: each preset's own accent in the theme on screen,
+   whatever accent is active — the only place two accents paint at once. */
+:root {
+  --c-swatch-green: #3ddc84;
+  --c-swatch-turquoise: #2fd0dc;
+  --c-swatch-blue: #5aa9ff;
+  --c-swatch-violet: #a98bff;
+}
+:root[data-theme='light'] {
+  --c-swatch-green: #0e7146;
+  --c-swatch-turquoise: #03697f;
+  --c-swatch-blue: #1d5fc2;
+  --c-swatch-violet: #6941c6;
 }
 
 * {

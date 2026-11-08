@@ -23,11 +23,14 @@ import {
 // Applies the pre-paint theme attribute's live half: browser-preference
 // changes and the choice made in Settings.
 import {
+  applyAccent,
   applyTheme,
+  currentAccent,
   currentTheme,
   explicitTheme,
   followBrowserTheme,
   onThemeChange,
+  type Accent,
   type Theme,
 } from '../lib/colorScheme';
 import { IS_ANDROID, IS_IOS } from '../lib/env';
@@ -573,6 +576,9 @@ export interface AppStore {
   theme: Theme;
   themeIsExplicit: boolean;
   setTheme(t: Theme | null): void;
+  /** Accent preset — the brand green unless one was picked in Settings */
+  accent: Accent;
+  setAccent(a: Accent): void;
 
   // detail
   detailId: string | null;
@@ -824,6 +830,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // holding it in state re-renders what branches on it (Settings, the maps).
   const [theme, setThemeState] = useState<Theme>(() => currentTheme());
   const [themeIsExplicit, setThemeIsExplicit] = useState(() => explicitTheme() != null);
+  // Same for the accent: the variables re-color alone, the picker needs state
+  const [accent, setAccentState] = useState<Accent>(() => currentAccent());
   const [toast, setToast] = useState<string | null>(null);
   // Start from the last centered position so the per-area cache hits instantly
   const initialPos = persisted.lastPos ?? DEFAULT_POS;
@@ -1844,6 +1852,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setThemeState(currentTheme());
   }, []);
 
+  /** Pick an accent preset. Like the theme, colorScheme owns persistence
+      and the document attribute; the mirror re-renders the picker. */
+  const setAccent = useCallback((next: Accent) => {
+    applyAccent(next);
+    setAccentState(currentAccent());
+  }, []);
+
   // While « auto », the browser preference can flip at dusk — follow it live
   useEffect(() => onThemeChange(() => setThemeState(currentTheme())), []);
 
@@ -2291,6 +2306,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       theme,
       themeIsExplicit,
       setTheme,
+      accent,
+      setAccent,
       detailId,
       installReady: canInstall && !isStandalone(),
       installBannerVisible: canInstall && !isStandalone() && !installDismissed,
@@ -2326,7 +2343,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       avoidMotorway, avoidToll, setAvoidMotorway, setAvoidToll, startTankPct, setStartTankPct,
       setFiltersOpenNav, sourceId, setSourceId, mapsSite, setMapsSite,
       locale, localeIsExplicit, setLocale, theme, themeIsExplicit, setTheme,
-      detailId, toast, showToast,
+      accent, setAccent, detailId, toast, showToast,
       canInstall, installDismissed, promptInstall, dismissInstallBanner, geoFixed,
       openInMaps, openPlannedStopsInMaps, shareStation, shareMapView, shareRoute,
       finishOnboarding, sheetHint, consumeSheetHint,

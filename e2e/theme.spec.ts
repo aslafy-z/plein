@@ -55,3 +55,54 @@ test.describe('seeded choice', () => {
     )
   })
 })
+
+// The accent is a second attribute on the same document. Asserting the
+// resolved variable (not a pixel) covers every surface that paints it, and
+// the light/dark pair proves the preset composes with the theme axis.
+const accentVar = (page: import('@playwright/test').Page) =>
+  page.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue('--c-accent').trim(),
+  )
+
+test('an accent preset re-colors in place, composes with the theme and survives a reload', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await expect(page.getByText('The cheapest near you')).toBeVisible({ timeout: 15_000 })
+  await expect(page.locator('html')).toHaveAttribute('data-accent', 'green')
+  expect(await accentVar(page)).toBe('#3ddc84')
+
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  const blue = page.getByRole('button', { name: 'Blue', exact: true })
+  await blue.click()
+  await expect(blue).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.locator('html')).toHaveAttribute('data-accent', 'blue')
+  expect(await accentVar(page)).toBe('#5aa9ff')
+
+  // Same preset, the light theme's own tone of it
+  await page.getByRole('button', { name: 'Light', exact: true }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+  expect(await accentVar(page)).toBe('#1d5fc2')
+
+  await page.reload()
+  await expect(page.locator('html')).toHaveAttribute('data-accent', 'blue')
+  await expect(page.getByRole('button', { name: 'Blue', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+
+  // Back to the brand green
+  await page.getByRole('button', { name: 'Green', exact: true }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-accent', 'green')
+  expect(await accentVar(page)).toBe('#0e7146')
+})
+
+test.describe('seeded accent', () => {
+  test.use({ seed: { sourceId: 'demo', onboarded: true, accent: 'violet' } })
+
+  test('paints the preset from the first load', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.locator('html')).toHaveAttribute('data-accent', 'violet')
+    expect(await accentVar(page)).toBe('#a98bff')
+  })
+})

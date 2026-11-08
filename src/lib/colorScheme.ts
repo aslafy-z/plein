@@ -10,6 +10,11 @@
 //
 // Resolution order mirrors the locale's: explicit choice → browser
 // preference → dark (the app's native look).
+//
+// The accent is a second, independent axis on the same document: a preset
+// picked in Settings (`accent` in the blob — absent means green, the brand
+// color), applied as `data-accent` next to `data-theme`. styles.css holds
+// each preset's tones per theme, so the two attributes compose freely.
 import { loadPersisted, savePersisted } from '../state/persist';
 
 export type Theme = 'dark' | 'light';
@@ -19,6 +24,18 @@ export const THEMES: readonly Theme[] = ['dark', 'light'];
 
 export function isTheme(raw: unknown): raw is Theme {
   return raw === 'dark' || raw === 'light';
+}
+
+export type Accent = 'green' | 'turquoise' | 'blue' | 'violet';
+
+/** Every accent preset, the brand green first — the picker's order */
+export const ACCENTS: readonly Accent[] = ['green', 'turquoise', 'blue', 'violet'];
+
+/** The brand color, and what an absent or unknown choice resolves to */
+export const DEFAULT_ACCENT: Accent = 'green';
+
+export function isAccent(raw: unknown): raw is Accent {
+  return typeof raw === 'string' && (ACCENTS as readonly string[]).includes(raw);
 }
 
 const media: MediaQueryList | null =
@@ -49,6 +66,12 @@ export function currentTheme(): Theme {
   return explicitTheme() ?? detectedTheme();
 }
 
+/** Accent in force right now — the saved preset, or the brand green */
+export function currentAccent(): Accent {
+  const saved = loadPersisted().accent;
+  return isAccent(saved) ? saved : DEFAULT_ACCENT;
+}
+
 /**
  * Put the resolved theme on the document. The attribute flip is the whole
  * switch — every color is a CSS variable keyed on it — plus the
@@ -60,6 +83,7 @@ function syncDocumentTheme(): void {
   if (typeof document === 'undefined') return;
   const theme = currentTheme();
   document.documentElement.dataset.theme = theme;
+  document.documentElement.dataset.accent = currentAccent();
   const meta = document.querySelector('meta[name="theme-color"]');
   const bg = getComputedStyle(document.documentElement).getPropertyValue('--c-bg').trim();
   if (meta && bg) meta.setAttribute('content', bg);
@@ -71,21 +95,22 @@ function notify(): void {
 }
 
 /**
- * notify(), cross-faded. A theme flip re-colors every surface at once — CSS
+ * notify(), cross-faded. A theme or accent flip re-colors every surface at once — CSS
  * variables, tile filters, gradients, inline styles — so animating the
  * properties one by one would leave the non-interpolable ones (gradients, the
  * basemap swap) snapping mid-fade. The View Transitions API animates the flip
  * as ONE whole-page cross-fade instead: the attribute change inside the
  * callback stays the entire switch. Browsers without the API, a user asking
  * for reduced motion, and a notify() that would not re-color anything (the
- * resolved theme is already on the document) all take the plain instant path.
+ * resolved theme and accent are already on the document) all take the plain instant path.
  */
 function animatedNotify(): void {
   if (
     typeof document === 'undefined' ||
     typeof document.startViewTransition !== 'function' ||
     reducedMotion?.matches === true ||
-    document.documentElement.dataset.theme === currentTheme()
+    (document.documentElement.dataset.theme === currentTheme() &&
+      document.documentElement.dataset.accent === currentAccent())
   ) {
     notify();
     return;
@@ -104,6 +129,13 @@ export function followBrowserTheme(): Theme {
   savePersisted({ theme: undefined });
   animatedNotify();
   return detectedTheme();
+}
+
+/** Persist an accent preset and apply it — the brand green is stored as
+    absent, so the blob only carries a choice that differs from the default */
+export function applyAccent(accent: Accent): void {
+  savePersisted({ accent: accent === DEFAULT_ACCENT ? undefined : accent });
+  animatedNotify();
 }
 
 /**

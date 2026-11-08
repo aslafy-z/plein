@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { C, mono } from '../theme';
+import { ACCENT_SWATCH, C, mono } from '../theme';
 import { ALL_FUELS, type DataSourceId, type VehicleId } from '../data/types';
 import { useApp, MAPS_SITE_IDS, mapsSiteLabel, VEHICLE_PRESETS } from '../state/store';
 import {
@@ -27,8 +27,15 @@ import {
 import { clearFavoritePrices } from '../data/favoritePrices';
 import { clearTileCache, tileCacheStats, type TileCacheStats } from '../lib/tileCache';
 import { agoLabelFrom, fmtDecimal, sizeLabel } from '../lib/format';
-import { fuelLabel, sourceSublabel, sourceTitle, themeLabel, vehicleLabel } from '../lib/labels';
-import { THEMES } from '../lib/colorScheme';
+import {
+  accentLabel,
+  fuelLabel,
+  sourceSublabel,
+  sourceTitle,
+  themeLabel,
+  vehicleLabel,
+} from '../lib/labels';
+import { ACCENTS, THEMES } from '../lib/colorScheme';
 import { CONTENT_MAX_WIDTH, useIsDesktop } from '../lib/layout';
 import { LOCALES, type Locale } from '../lib/locale';
 import { m } from '../paraglide/messages.js';
@@ -748,6 +755,9 @@ export default function Settings() {
               padding: 16,
             }}
           >
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 10 }}>
+              {m.settings_theme_title()}
+            </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {/* « Browser theme » is the absence of a choice, not a
                   theme: picking it drops the override so the browser's light or
@@ -780,6 +790,57 @@ export default function Settings() {
             </div>
             <div style={{ fontSize: 11.5, color: C.faint, marginTop: 10 }}>
               {m.settings_theme_hint({ auto: m.settings_theme_auto() })}
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginTop: 18, marginBottom: 10 }}>
+              {m.settings_accent_title()}
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {/* Each chip carries its OWN preset's swatch, so the row reads
+                  as a palette; the active one is outlined in the accent it
+                  set, rather than filled — a filled chip would swallow its
+                  own swatch. */}
+              {ACCENTS.map((a) => {
+                const active = app.accent === a;
+                return (
+                  <button
+                    key={a}
+                    className="press"
+                    aria-pressed={active}
+                    onClick={() => app.setAccent(a)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      background: active ? C.accentSoft : 'transparent',
+                      color: active ? C.ink : C.body,
+                      fontSize: 13,
+                      fontWeight: 700,
+                      padding: '8px 14px 8px 10px',
+                      borderRadius: 16,
+                      border: active ? `1px solid ${C.accent}` : `1px solid ${C.border12}`,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      transition:
+                        'background .25s var(--ease-snap), border-color .25s var(--ease-snap), color .25s var(--ease-snap), transform .16s var(--ease-snap)',
+                    }}
+                  >
+                    <span
+                      aria-hidden
+                      style={{
+                        width: 14,
+                        height: 14,
+                        borderRadius: '50%',
+                        background: ACCENT_SWATCH[a],
+                        flexShrink: 0,
+                      }}
+                    />
+                    {accentLabel(a)}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 11.5, color: C.faint, marginTop: 10 }}>
+              {m.settings_accent_hint()}
             </div>
           </div>
         </div>

@@ -15,6 +15,7 @@
 // other theme's look.
 
 import type { CSSProperties } from 'react';
+import type { Accent } from './lib/colorScheme';
 import { LITE_FX } from './lib/fx';
 import { PANEL_GAP, PANEL_WIDTH } from './lib/layout';
 
@@ -29,8 +30,8 @@ export const C = {
 
   navBg: 'var(--c-nav-bg)',
   mapBg: 'var(--c-map-bg)',
-  accent: 'var(--c-accent)', // green
-  onAccent: 'var(--c-on-accent)', // text on the accent green
+  accent: 'var(--c-accent)', // green by default — a preset picked in Settings
+  onAccent: 'var(--c-on-accent)', // text on the accent
   ink: 'var(--c-ink)', // primary text
   body: 'var(--c-body)', // secondary text on chips
   body2: 'var(--c-body-2)', // between body and mut (fiche secondary lines)
@@ -85,6 +86,18 @@ export const C = {
   shadow50: 'var(--c-shadow-50)',
   shadow55: 'var(--c-shadow-55)',
 } as const;
+
+/**
+ * The accent picker's swatches — each preset's own accent in the theme on
+ * screen, whatever accent is active (styles.css `--c-swatch-*`). Every other
+ * surface paints `C.accent`; only the picker shows the presets side by side.
+ */
+export const ACCENT_SWATCH: Record<Accent, string> = {
+  green: 'var(--c-swatch-green)',
+  turquoise: 'var(--c-swatch-turquoise)',
+  blue: 'var(--c-swatch-blue)',
+  violet: 'var(--c-swatch-violet)',
+};
 
 export const FONT = {
   mono: "'Spline Sans Mono', ui-monospace, monospace",

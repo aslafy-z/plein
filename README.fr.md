@@ -49,7 +49,8 @@ au Portugal.
 - 🔗 **Liens partageables** — l'adresse suit la carte et le trajet ; un lien
   rouvre la même vue.
 - 🌗 **Thème clair et sombre** — suit votre navigateur, modifiable dans les
-  Réglages.
+  Réglages, avec une couleur d’accent au choix (vert, turquoise, bleu ou
+  violet).
 - 🌍 **Cinq langues** — français, anglais, espagnol, catalan et portugais.
 - 🖥️ **Téléphone et grand écran** — carte plein écran et volet sur mobile,
   panneaux latéraux sur grand écran.
