@@ -1110,7 +1110,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     replaceNavRef.current = false;
     // A pending map-params write must never land on the entry we just moved to
     clearTimeout(urlWrite.current.timer);
-    if (fromPop) return;
     // Onboarding parks the URL instead of rewriting it to `/`: a refresh in the
     // middle of the walkthrough must not cost the link the user followed. The
     // first nav after it replaces this entry (`cameFrom === 'onboarding'`).
@@ -1133,6 +1132,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ? routeQuery
           : '');
     if (sameNav && url === window.location.pathname + window.location.search) return;
+    if (fromPop) {
+      // A pop never stacks an entry, but the one it lands on can carry a stale
+      // query: params changed while an overlay was open (a fuel picked in the
+      // filters, a searched place) were written onto the overlay's own entry,
+      // and closing it pops back to the URL from before. Re-sync that entry in
+      // place — same history state, same idx — or a reload would read the old
+      // params back over what is on screen. Only when the popped entry IS the
+      // nav on screen: anything else is not this effect's entry to rewrite.
+      if (sameNav) {
+        urlWrite.current.at = Date.now();
+        window.history.replaceState(cur, '', url);
+      }
+      return;
+    }
     // Swapping one open search field for another (departure ↔ arrival) reads
     // as a swap on screen, so it swaps the entry too — Back must close the
     // search, not walk every field it filled.
