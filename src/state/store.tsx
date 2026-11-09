@@ -153,6 +153,9 @@ export const MAX_RADIUS_KM = 25;
 const GEO_SPINNER_DELAY_MS = 350;
 /** Give up on a fix after this — past it the last known area is what we have */
 const GEO_TIMEOUT_MS = 10000;
+/** How long a shared trip departing from « My position » waits for a FRESH fix
+    when last session's is already known — past it, that one is what we have */
+const ROUTE_AUTOSTART_FIX_GRACE_MS = 4000;
 /** Vehicle profile presets (tank L, consumption L/100 km, default fuel) — adjustable in Settings */
 export const VEHICLE_PRESETS: Record<
   VehicleId,
@@ -1878,7 +1881,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [sourceId],
   );
 
+  // A ribbon link's compute is owed until it starts (see the auto-start
+  // effect below `startRoute`). Editing an endpoint by hand cancels the debt:
+  // the trip on screen is no longer the link's.
+  const pendingAutoStart = useRef(initialNav.screen === 'route');
+
   const setFrom = useCallback((text: string, point: GeoPoint | null = null) => {
+    pendingAutoStart.current = false;
     setFromText(text);
     setFromIsCurrentPosition(false);
     setFromPoint(point);
@@ -1886,6 +1895,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const useCurrentPositionAsStart = useCallback(() => {
+    pendingAutoStart.current = false;
     setFromText('');
     setFromIsCurrentPosition(true);
     setFromPoint(null);
@@ -1893,6 +1903,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setTo = useCallback((text: string, point: GeoPoint | null = null) => {
+    pendingAutoStart.current = false;
     setToText(text);
     setToIsCurrentPosition(false);
     setToPoint(point);
@@ -1903,6 +1914,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // they picked it. `hasKnownPos` gates the offer (the row is not even
   // rendered without a fix), so `userPos` is a real position at this point.
   const useCurrentPositionAsDestination = useCallback(() => {
+    pendingAutoStart.current = false;
     setToText('');
     setToIsCurrentPosition(true);
     setToPoint(userPos);
@@ -1939,6 +1951,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         from = userPos;
         fromLabel = '';
       }
+      // Past the position check this run IS the trip's compute, whoever asked
+      // for it — a link's auto-start still waiting on a fix must not add a
+      // second one behind it.
+      pendingAutoStart.current = false;
       // An endpoint typed but never picked geocodes here — and a place the
       // user looked up joins the search history like a picked one would.
       // « My position » is not a place, so a current-position departure
@@ -2014,12 +2030,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // identically. One-shot by construction (the ref spends itself): the
   // URL rewrite that follows the compute must never re-trigger it — a route
   // is OSRM plus a corridor fetch, far too expensive to run twice.
-  const pendingAutoStart = useRef(initialNav.screen === 'route');
+  //
+  // A link departing from « My position » carries no coordinates, so its
+  // compute needs the READER's fix — and the request for it is still out when
+  // the screen mounts (or has just been made, when onboarding ends on the
+  // link). Starting right away would either bail on « position unknown » with
+  // the awaited-trip skeleton left standing for good, or compute the trip
+  // from last session's position a moment before the real one lands. So the
+  // start waits for the request to settle, for a bounded time: a permission
+  // prompt left unanswered never calls back at all.
+  const autoStartNeedsFix = fromIsCurrentPosition && fromPoint == null;
+  const [autoStartWaitOver, setAutoStartWaitOver] = useState(false);
   useEffect(() => {
     if (!pendingAutoStart.current || screen !== 'route') return;
+    if (!autoStartNeedsFix || geoStatus !== 'pending') return;
+    const t = setTimeout(
+      () => setAutoStartWaitOver(true),
+      geoFixed ? ROUTE_AUTOSTART_FIX_GRACE_MS : GEO_TIMEOUT_MS,
+    );
+    return () => clearTimeout(t);
+  }, [autoStartNeedsFix, geoFixed, geoStatus, screen]);
+  useEffect(() => {
+    if (!pendingAutoStart.current) return;
+    if (screen !== 'route') {
+      // Leaving the link's screen drops its compute; the walkthrough is the
+      // one screen that comes BEFORE it.
+      if (screen !== 'onboarding') pendingAutoStart.current = false;
+      return;
+    }
+    if (autoStartNeedsFix) {
+      if (geoStatus === 'pending' && !autoStartWaitOver) return;
+      if (!geoFixed) {
+        // Refused, unavailable or unanswered, and no earlier fix to fall back
+        // on: there is no trip to wait for. The setup form takes over, where
+        // the reader can name a departure or ask for the fix again.
+        pendingAutoStart.current = false;
+        setRouteReady(false);
+        showToast(m.toast_position_unknown());
+        return;
+      }
+    }
     pendingAutoStart.current = false;
     void startRoute();
-  }, [screen, startRoute]);
+  }, [autoStartNeedsFix, autoStartWaitOver, geoFixed, geoStatus, screen, showToast, startRoute]);
 
   /** Re-run both stages for the endpoints already resolved. */
   const retryRoute = useCallback(() => {
