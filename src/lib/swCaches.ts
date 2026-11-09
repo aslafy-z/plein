@@ -9,7 +9,7 @@
 // spelled out at each reader.
 export const SW_ASSET_CACHE = 'plein-assets-v1';
 export const SW_SHELL_CACHE = 'plein-shell-v1';
-export const SW_TILE_CACHE = 'plein-tiles-v2';
+export const SW_TILE_CACHE = 'plein-tiles-v3';
 export const SW_DATA_CACHE = 'plein-data-v2';
 
 /**
