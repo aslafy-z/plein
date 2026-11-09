@@ -14,6 +14,7 @@ import { m } from '../paraglide/messages.js';
 import { fmtPrice } from '../lib/format';
 import { cumulativeKm, radiusBounds, type GeoPoint } from '../lib/geo';
 import { useLeafletMap } from '../lib/leafletMap';
+import { setMarkerLabel } from '../lib/markerLabel';
 import { pricePinHtml } from '../lib/pricePin';
 import { USER_DOT_CLASS, USER_DOT_SIZE, userDotHtml } from '../lib/userDot';
 import LocateIcon from './LocateIcon';
@@ -211,12 +212,14 @@ export default function RouteMap({
       L.marker([from.lat, from.lng], {
         icon: L.divIcon({ className: '', html: endpointHtml('from'), iconSize: [16, 16], iconAnchor: [8, 8] }),
         interactive: false,
+        keyboard: false,
       }).addTo(layer);
     }
     if (to) {
       L.marker([to.lat, to.lng], {
         icon: L.divIcon({ className: '', html: endpointHtml('to'), iconSize: [16, 16], iconAnchor: [8, 8] }),
         interactive: false,
+        keyboard: false,
       }).addTo(layer);
     }
 
@@ -273,10 +276,12 @@ export default function RouteMap({
     L.marker([start.lat, start.lng], {
       icon: L.divIcon({ className: '', html: endpointHtml('from'), iconSize: [16, 16], iconAnchor: [8, 8] }),
       interactive: false,
+      keyboard: false,
     }).addTo(layer);
     L.marker([end.lat, end.lng], {
       icon: L.divIcon({ className: '', html: endpointHtml('to'), iconSize: [16, 16], iconAnchor: [8, 8] }),
       interactive: false,
+      keyboard: false,
     }).addTo(layer);
 
     // Autonomy limit
@@ -291,6 +296,7 @@ export default function RouteMap({
         L.marker([limit.lat, limit.lng], {
           icon: L.divIcon({ className: '', html, iconSize: [14, 14], iconAnchor: [7, 7] }),
           interactive: false,
+          keyboard: false,
         }).addTo(layer);
       }
     }
@@ -315,6 +321,7 @@ export default function RouteMap({
         zIndexOffset: focused ? 2000 : recommended ? 1000 : 0,
       });
       marker.on('click', () => app.openStation(st.id));
+      setMarkerLabel(marker, m.map_pin_label({ name: st.name, price: fmtPrice(price) }));
       marker.addTo(layer);
     }
 

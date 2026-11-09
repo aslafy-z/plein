@@ -69,6 +69,7 @@ function StationMiniMap({ station }: { station: Station }) {
     L.marker([station.lat, station.lng], {
       icon: L.divIcon({ className: '', html, iconSize: [0, 0], iconAnchor: [0, 0] }),
       interactive: false,
+      keyboard: false,
     }).addTo(map);
     mapRef.current = map;
     return () => {

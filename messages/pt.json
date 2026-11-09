@@ -119,6 +119,7 @@
       }
     }
   ],
+  "map_pin_label": "{name}, {price} € por litro",
   "map_pin_cap_hint": [
     {
       "declarations": [
