@@ -66,7 +66,7 @@ test('the share button hands the fiche deep link to the native sheet', async ({ 
   const data = sheet[0] as { title: string; text: string; url: string }
   expect(data.url).toBe(`${new URL(page.url()).origin}/station/su`)
   expect(data.title).toBe('Plein. — Station U · Croix-Blanche')
-  expect(data.text).toContain('Diesel à 1.67 €/L')
+  expect(data.text).toContain('Diesel at 1.67 €/L')
   // The sheet carries the link; nothing is copied behind the user's back
   expect(await copied(page)).toEqual([])
 })
@@ -127,7 +127,7 @@ test('the map share button hands the current view to the native sheet', async ({
   // The link is the very one the address bar carries
   expect(data.url).toBe(page.url())
   expect(data.url).toContain('f=diesel')
-  expect(data.title).toBe('Plein. — Diesel dans cette zone')
+  expect(data.title).toBe('Plein. — Diesel in this area')
   expect(await copied(page)).toEqual([])
 })
 
