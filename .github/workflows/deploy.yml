@@ -1,9 +1,20 @@
-# Deploys the Worker with Wrangler:
-# - push on main  → production deploy (custom domain plein.zadkiel.fr)
-# - pull requests → preview version (URL pr-<n>-plein.<subdomain>.workers.dev,
-#   requires `preview_urls: true` in wrangler.jsonc), posted as a PR comment.
+# Deploys the Worker with Wrangler. Merging is not releasing — main goes to
+# staging, and production only moves when someone promotes a commit to it:
+# - push on main  → staging: a version uploaded under the `staging` alias
+#   (staging-plein.<subdomain>.workers.dev). It serves no production traffic.
+# - manual run    → production (custom domain plein.zadkiel.fr): Actions →
+#   Deploy → Run workflow, with the commit to promote in `ref` (default: the
+#   tip of main). An older commit is a rollback — same button. The commit has
+#   to be on main: what reaches production went through staging first.
+# - pull requests → preview version (URL pr-<n>-plein.<subdomain>.workers.dev),
+#   posted as a PR comment.
 # - closed PRs    → their preview versions are deleted by deploy-cleanup.yml,
-#   which stays a workflow apart so its run can't cancel a production deploy.
+#   which stays a workflow apart so its run can't cancel a deploy.
+#
+# Staging and the previews are versions of the SAME Worker as production
+# (`preview_urls: true` in wrangler.jsonc): nothing to provision, and a version
+# only takes production traffic through `wrangler deploy`, which the promotion
+# job alone runs. What is live where shows under the repository's Environments.
 #
 # Required repository secrets:
 #   CLOUDFLARE_API_TOKEN   — API token with the "Edit Cloudflare Workers" template
@@ -16,25 +27,98 @@ on:
   push:
     branches: [main]
   pull_request:
-  # Manual re-deploy of production (Actions → Deploy → Run workflow), for the
-  # rare cases where an event is lost or a deploy must be re-kicked as-is.
   workflow_dispatch:
+    inputs:
+      ref:
+        description: Commit to put in production — a SHA, a tag or a branch. It must be on main.
+        required: true
+        default: main
 
 permissions:
   contents: read
 
-concurrency:
-  group: deploy-${{ github.workflow }}-${{ github.ref }}
-  # Never cancel a production deploy mid-flight; superseded PR previews can be.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
+# Concurrency is per job, not per workflow: a staging upload and a promotion
+# both run on main, and in one shared group a queued promotion would be dropped
+# by the next merge.
 jobs:
-  deploy-production:
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+  deploy-staging:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    concurrency:
+      # Queued, never cancelled mid-upload; of several waiting, the newest wins.
+      group: deploy-staging
+      cancel-in-progress: false
+    environment:
+      name: staging
+      url: ${{ steps.url.outputs.url }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Upload the staging version
+        id: upload
+        uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Stable alias → staging-plein.<subdomain>.workers.dev
+          command: versions upload --preview-alias staging --tag ${{ github.sha }}
+      - name: Report the staging URL
+        id: url
+        env:
+          COMMAND_OUTPUT: ${{ steps.upload.outputs.command-output }}
+        run: |
+          url=$(grep -oE 'https://staging-[^[:space:])]*workers\.dev' <<<"$COMMAND_OUTPUT" | head -n 1 || true)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Staging is on \`${GITHUB_SHA::7}\`"
+            echo
+            echo "${url:-No alias URL found in the wrangler output — check the upload step.}"
+            echo
+            echo "Promote it: Actions → Deploy → Run workflow, \`ref\` = \`$GITHUB_SHA\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy-production:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      # Never cancel a production deploy mid-flight.
+      group: deploy-production
+      cancel-in-progress: false
+    environment:
+      name: production
+      url: https://plein.zadkiel.fr
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          # Full history: the promoted commit is resolved and checked against
+          # main below, and it may be any age.
+          fetch-depth: 0
+      - name: Check out the promoted commit
+        env:
+          REF: ${{ inputs.ref }}
+        run: |
+          sha=$(git rev-parse --verify --quiet "origin/$REF^{commit}" \
+            || git rev-parse --verify --quiet "$REF^{commit}") || {
+            echo "::error::'$REF' is not a commit, tag or branch of this repository"
+            exit 1
+          }
+          if ! git merge-base --is-ancestor "$sha" origin/main; then
+            echo "::error::$sha is not on main — only merged commits are promoted"
+            exit 1
+          fi
+          git checkout --detach "$sha"
+          {
+            echo "### Promoting \`${sha::7}\` to production"
+            echo
+            git log -1 --format='%s (%cs)' "$sha"
+          } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
@@ -55,6 +139,10 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    concurrency:
+      # A superseded preview can be cancelled: the next push uploads its own.
+      group: deploy-preview-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     permissions:
       contents: read
       pull-requests: write

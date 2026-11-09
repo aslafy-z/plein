@@ -40,7 +40,7 @@ Nothing to configure: the app ships with the CARTO basemap key it deploys with, 
 | `npm run e2e` | Playwright, `e2e/` — starts the dev server itself |
 | `npm run build` | production build into `dist/` |
 | `npm run verify:live` | hits the real providers and geocoders, to see whether an upstream moved |
-| `npm run deploy` | build + `wrangler deploy` — maintainers only; PRs get a preview deploy from CI |
+| `npm run deploy` | build + `wrangler deploy`, straight to production — maintainers only, and normally CI's job: PRs get a preview, `main` goes to staging, production is promoted by hand |
 
 Three more regenerate committed assets, so run them when what they generate changed rather than on every change: `build:brands` (the OpenStreetMap brand index behind `public/brands-fr.json`), `build:icons` (the brand icons) and `build:screenshots` (the per-locale screenshots in `docs/screenshots/`, whose selector strings come from the catalogs).
 
@@ -71,7 +71,7 @@ The debug overlay and the cache diagnostics are the exemption: developer tooling
 
 ## Sending a change
 
-Branch, commit, open a pull request — **early**. CI runs typecheck, unit tests and the Playwright suite on every PR (a branch push alone triggers nothing), so a PR opened as soon as the change compiles and carries its tests gets the full verification running alongside the rest of your work instead of at the end. Keep pushing to the same PR. Each push also deploys a preview on Cloudflare Workers and comments its URL.
+Branch, commit, open a pull request — **early**. CI runs typecheck, unit tests and the Playwright suite on every PR (a branch push alone triggers nothing), so a PR opened as soon as the change compiles and carries its tests gets the full verification running alongside the rest of your work instead of at the end. Keep pushing to the same PR. Each push also deploys a preview on Cloudflare Workers and comments its URL. Merging does not release: `main` lands on staging, and a maintainer promotes a commit to production from Actions → Deploy → Run workflow.
 
 `npm run typecheck` and `npm test` are cheap locally and worth running as you go; `npm run e2e` is worth it before asking for a review.
 
