@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { capNearest, mergeAsTheyLand } from './AutoProviders'
+import { capNearest, frCoversAlong, frCoversNear, mergeAsTheyLand } from './AutoProviders'
 import { haversineKm } from '../../lib/geo'
 import type { GeocodeResult, Station } from '../types'
 
@@ -18,6 +18,49 @@ const station = (id: string, dLat: number): Station => ({
   tags: [],
   services: [],
   highway: false,
+})
+
+describe('French flux coverage', () => {
+  const ZONE_KM = 10
+
+  it.each([
+    ['Ajaccio', { lat: 41.927, lng: 8.737 }],
+    ['Bastia', { lat: 42.697, lng: 9.45 }],
+    ['Calvi', { lat: 42.567, lng: 8.757 }],
+    ['Bonifacio', { lat: 41.387, lng: 9.159 }],
+    ['the tip of Cap Corse', { lat: 43.01, lng: 9.4 }],
+    ['Marigot, Saint-Martin', { lat: 18.067, lng: -63.083 }],
+    ['Gustavia, Saint-Barthélemy', { lat: 17.896, lng: -62.85 }],
+    ['Toulouse', { lat: 43.6, lng: 1.44 }],
+    ['Pointe-à-Pitre', { lat: 16.24, lng: -61.53 }],
+    ['Fort-de-France', { lat: 14.6, lng: -61.07 }],
+  ])('queries the French flux around %s', (_name, point) => {
+    expect(frCoversNear(point, ZONE_KM)).toBe(true)
+  })
+
+  it.each([
+    ['Cagliari, Sardinia', { lat: 39.22, lng: 9.12 }],
+    ['the open Atlantic', { lat: 30, lng: -40 }],
+    ['the Virgin Islands', { lat: 18.34, lng: -64.93 }],
+  ])('leaves the French flux alone around %s', (_name, point) => {
+    expect(frCoversNear(point, ZONE_KM)).toBe(false)
+  })
+
+  it('queries the French flux along a route that stays in Corsica', () => {
+    const ajaccioToBonifacio = [
+      { lat: 41.927, lng: 8.737 },
+      { lat: 41.387, lng: 9.159 },
+    ]
+    expect(frCoversAlong(ajaccioToBonifacio, 5)).toBe(true)
+  })
+
+  it('leaves the French flux alone along a route in southern Sardinia', () => {
+    const cagliariToOristano = [
+      { lat: 39.22, lng: 9.12 },
+      { lat: 39.9, lng: 8.59 },
+    ]
+    expect(frCoversAlong(cagliariToOristano, 5)).toBe(false)
+  })
 })
 
 describe('capNearest', () => {
