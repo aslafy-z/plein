@@ -126,6 +126,15 @@ const BufferedTileLayer = L.TileLayer.extend({
   },
 }) as unknown as new (url: string, opts: L.TileLayerOptions) => L.TileLayer;
 
+// Tiles are requested in CORS mode (both CDNs send
+// `Access-Control-Allow-Origin: *`), never as plain no-cors <img> loads: a
+// no-cors response is opaque, its status hidden, and the service worker
+// could not tell a tile from a 403/429/5xx — it would cache the error and
+// serve it cache-first from then on. With CORS the worker sees the status
+// and stores only successes (sw.js, tileFromCacheFirst). The pyramid
+// prefetch below fetches in the same mode, for the same reason.
+const TILE_CROSS_ORIGIN = 'anonymous';
+
 const bufferedTileLayer = (url: string, opts: L.TileLayerOptions): L.TileLayer =>
   new BufferedTileLayer(url, opts);
 
@@ -191,6 +200,7 @@ function mountFallback(handle: BasemapHandle): void {
     ...TILE_RETENTION,
     attribution: '© OpenStreetMap · © CARTO',
     maxZoom: 19,
+    crossOrigin: TILE_CROSS_ORIGIN,
     // The dev proxy serves CARTO (already dark); the prod fallback is raw OSM
     // and needs the darkening filter.
     className: IS_DEV ? 'tiles-carto' : 'tiles-dark',
@@ -215,6 +225,7 @@ function mountCarto(handle: BasemapHandle): void {
     attribution: '© OpenStreetMap · © CARTO',
     subdomains: CARTO_SUBDOMAINS,
     maxZoom: 19,
+    crossOrigin: TILE_CROSS_ORIGIN,
     className: 'tiles-carto',
   });
   handle.layer = carto;
@@ -361,8 +372,8 @@ async function attemptRecovery(): Promise<void> {
 // zooming out never falls off the cached slice, and up to the layers' max so
 // zooming in on the center keeps drawing too. The fetches take the exact
 // URLs Leaflet would request (subdomain rule, retina suffix — tilePyramid.ts)
-// and the same no-cors mode as its <img> loads, so sw.js caches them on its
-// normal lazy path.
+// and the same CORS mode as its <img> loads (TILE_CROSS_ORIGIN), so sw.js
+// caches them on its normal lazy path — successes only.
 //
 // Each run plans against the cache itself (one key enumeration) rather than
 // against a session memory of what was fetched before: what the LRU cap
@@ -453,6 +464,6 @@ async function prefetchPyramid(handle: BasemapHandle): Promise<void> {
     // settled move simply tries again. priority:'low' keeps the burst behind
     // anything the page needs even when the idle timeout forced the run
     // (browsers without the Fetch Priority API ignore the field).
-    fetch(url, { mode: 'no-cors', priority: 'low' }).catch(() => {});
+    fetch(url, { mode: 'cors', credentials: 'omit', priority: 'low' }).catch(() => {});
   }
 }

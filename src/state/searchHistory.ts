@@ -74,3 +74,33 @@ export function searchRows(
       .map((place) => ({ place, fromHistory: false })),
   ];
 }
+
+/** What the keyboard's Enter does in the search field — data, the field acts */
+export type EnterChoice =
+  | { kind: 'pick'; place: GeocodeResult }
+  /** the answer for the text on screen is still on its way: pick when it lands */
+  | { kind: 'wait' }
+  | { kind: 'none' };
+
+/**
+ * Enter takes the top row — but only a row that answers the text on screen.
+ * The panel keeps the previous query's suggestions up through the debounce and
+ * the request in flight (a list blanked on every keystroke would flicker), so
+ * `suggestions` may still answer `answeredQuery`, an older text: typing
+ * « Toulon » over the answer to « Tou » and pressing Enter at once must not go
+ * to Toul. Stale suggestions are left out; the history rows are filtered by
+ * the current text already and stay pickable. With nothing left to take while
+ * a search is under way, the pick waits for its answer.
+ */
+export function enterChoice(
+  history: SearchedPlace[],
+  suggestions: GeocodeResult[],
+  answeredQuery: string | null,
+  query: string,
+  searching: boolean,
+): EnterChoice {
+  const current = answeredQuery != null && answeredQuery.trim() === query.trim();
+  const top = searchRows(history, current ? suggestions : [], query)[0];
+  if (top) return { kind: 'pick', place: top.place };
+  return searching ? { kind: 'wait' } : { kind: 'none' };
+}

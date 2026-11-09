@@ -46,6 +46,17 @@ test('an off-screen tile ring is prefetched so a slight pan shows no tile loadin
     expect(done, 'all requested tiles must finish loading').toBe(true)
   }).toPass({ timeout: 20_000 })
 
+  // Every tile is asked for in CORS mode: a no-cors <img> load is opaque to
+  // the service worker, which could then not tell a tile from a CDN error and
+  // would cache both (public/sw.js stores only readable successes).
+  const noCors = await page.evaluate(
+    () =>
+      [...document.querySelectorAll<HTMLImageElement>('img.leaflet-tile')].filter(
+        (t) => t.crossOrigin !== 'anonymous',
+      ).length,
+  )
+  expect(noCors, 'every basemap tile must be requested with crossorigin=anonymous').toBe(0)
+
   // The prefetched ring exists and stays behind the visible tiles
   const before = await tileStats(page)
   expect(before.outside, 'tiles beyond the viewport must be prefetched').toBeGreaterThan(0)

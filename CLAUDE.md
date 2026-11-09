@@ -266,8 +266,10 @@ Anything that does not fit one of them does not get cached.
   session. `cacheStats()` plus `tileCacheStats()` (`src/lib/tileCache.ts`) are
   what the Settings « Data » section renders — the instrumentation is data,
   since the e2e fixture fails on a console error. The tile figure is entries ×
-  a flat per-tile average: the tiles are opaque no-cors responses whose bodies
-  the page cannot weigh. « Clear offline data » drops the station areas, the
+  a flat per-tile average: weighing them would mean reading every cached body.
+  The tiles are requested in CORS mode and the worker stores only `ok`
+  responses — a no-cors tile is opaque, its status hidden, and a cached CDN
+  error would answer cache-first from then on. « Clear offline data » drops the station areas, the
   favorite prices AND every `plein-tiles-*` cache generation; the service
   worker's other caches (shell, assets, brand data) are the app itself, not
   user data, and stay.

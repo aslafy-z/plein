@@ -28,20 +28,27 @@ import { mergeByKind } from '../geocodeRank';
 
 // ── French flux coverage ─────────────────────────────────────────────────────
 // The gouv flux serves métropole + DOM; the ODS API filters geographically
-// server-side, so gating here only avoids pointless requests. [lat, lng, r km]
+// server-side, so gating here only avoids pointless requests — but a zone the
+// circles miss gets NO French request at all, and its empty answer is cached as
+// a success. Every territory the flux serves needs its own circle: the
+// mainland one stops ~50 km short of Calvi and ~170 km short of Bonifacio, and
+// Saint-Martin / Saint-Barthélemy sit ~340 km north-west of the Guadeloupe ·
+// Martinique one. [lat, lng, r km]
 const FRA_COVERAGE: ReadonlyArray<readonly [number, number, number]> = [
-  [46.6, 2.4, 620], // métropole + Corse
-  [15.5, -61.3, 220], // Antilles
+  [46.6, 2.4, 620], // mainland
+  [42.15, 9.1, 110], // Corsica
+  [15.5, -61.3, 220], // Guadeloupe · Martinique
+  [18.0, -62.95, 40], // Saint-Martin · Saint-Barthélemy
   [4.5, -53.0, 320], // Guyane
   [-21.1, 55.5, 80], // La Réunion
   [-12.8, 45.15, 60], // Mayotte
 ];
 
-function frCoversNear(center: GeoPoint, radiusKm: number): boolean {
+export function frCoversNear(center: GeoPoint, radiusKm: number): boolean {
   return FRA_COVERAGE.some(([lat, lng, r]) => haversineKm(center, { lat, lng }) <= r + radiusKm);
 }
 
-function frCoversAlong(polyline: GeoPoint[], corridorKm: number): boolean {
+export function frCoversAlong(polyline: GeoPoint[], corridorKm: number): boolean {
   return FRA_COVERAGE.some(
     ([lat, lng, r]) => nearestOnPolyline({ lat, lng }, polyline).distKm <= r + corridorKm,
   );
