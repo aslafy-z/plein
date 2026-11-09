@@ -295,6 +295,7 @@
   "favorites_sort_recommended": "Recommended",
   "favorites_sort_price": "Price",
   "favorites_sort_distance": "Distance",
+  "favorites_sort_distance_unavailable_aria": "Distance sort unavailable: your position is unknown",
   "favorites_empty_title": "No favorites yet",
   "favorites_empty_body": "Tap the star on a station page to pin it here and compare the stations you use at a glance.",
   "favorites_explore_map": "Explore the map",

@@ -295,6 +295,7 @@
   "favorites_sort_recommended": "Recomanat",
   "favorites_sort_price": "Preu",
   "favorites_sort_distance": "Distància",
+  "favorites_sort_distance_unavailable_aria": "Ordenació per distància no disponible: la teva posició és desconeguda",
   "favorites_empty_title": "Encara no tens preferides",
   "favorites_empty_body": "Toca l'estrella d'una fitxa de benzinera per fixar-la aquí i comparar d'un cop d'ull les que fas servir sempre.",
   "favorites_explore_map": "Explora el mapa",
