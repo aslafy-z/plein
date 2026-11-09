@@ -17,7 +17,7 @@ import { useLeafletMap } from '../lib/leafletMap';
 import { pricePinHtml } from '../lib/pricePin';
 import { USER_DOT_CLASS, USER_DOT_SIZE, userDotHtml } from '../lib/userDot';
 import LocateIcon from './LocateIcon';
-import { useApp, selectRouteAnalysis, effectivePrice } from '../state/store';
+import { useApp, selectRouteAnalysis, effectivePrice, routeDeparturePoint } from '../state/store';
 
 /** Vertex at a given km along the polyline (vertex precision is plenty here) */
 function pointAtKm(polyline: GeoPoint[], cum: number[], km: number): GeoPoint | null {
@@ -203,7 +203,9 @@ export default function RouteMap({
     // without a fix `userPos` is the fallback area, and a departure pin on it
     // would mark a trip starting from a place the user has never been located
     // in — the same claim the dot above refuses to make.
-    const from = app.fromPoint ?? (app.hasKnownPos ? app.userPos : null);
+    // …and a « My position » departure is the fix of the moment, not the point
+    // the previous trip left in `fromPoint`.
+    const from = routeDeparturePoint(app) ?? (app.hasKnownPos ? app.userPos : null);
     const to = app.toPoint;
     if (from) {
       L.marker([from.lat, from.lng], {
@@ -242,8 +244,8 @@ export default function RouteMap({
     // resizes, so the shell's re-fit doesn't fire either).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    route, app.fromPoint, app.toPoint, app.userPos, app.hasKnownPos, app.searchPos, app.radius,
-    bottomInset, leftInset,
+    route, app.fromPoint, app.fromIsCurrentPosition, app.toPoint, app.userPos, app.hasKnownPos,
+    app.searchPos, app.radius, bottomInset, leftInset,
   ]);
 
   // Picking a new endpoint re-arms the framing the way a new route does
