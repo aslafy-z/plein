@@ -77,6 +77,7 @@ import {
   CROW_ROAD_FACTOR,
   VALUE_OF_TIME_CENTS_PER_MIN,
   effectiveLiterPrice,
+  speedConsumptionFactor,
   usableRangeKm,
 } from '../lib/fuelEconomics';
 import {
@@ -301,7 +302,11 @@ function planCandidatesFor(
   const cap = Math.min(MATRIX_MAX_POINTS, matrixMaxPoints ?? MATRIX_MAX_POINTS) - 2;
   return selectRouteCandidates(route, routeState.stations, (s) => effectivePrice(s, fuel), {
     maxCandidates: cap,
-    firstWindowKm: usableRangeKm((vehicle.tank * vehicle.startTankPct) / 100, vehicle.consumption),
+    // Scaled like the optimizer's legs (motorway pace burns more), or the
+    // window keeps stations the departure fuel cannot actually reach.
+    firstWindowKm:
+      usableRangeKm((vehicle.tank * vehicle.startTankPct) / 100, vehicle.consumption) /
+      speedConsumptionFactor(route.durationMin > 0 ? (route.distanceKm / route.durationMin) * 60 : 0),
     requiredIds: Object.keys(plannedStops).filter((id) => plannedStops[id]),
   });
 }
