@@ -24,7 +24,7 @@ import type { GeocodeResult } from '../data/types';
 import { placeSublabel } from '../lib/labels';
 import { useIsDesktop, useVisualViewport } from '../lib/layout';
 import { useApp, type SearchTarget } from '../state/store';
-import { searchRows } from '../state/searchHistory';
+import { enterChoice, searchRows } from '../state/searchHistory';
 import LocateIcon from './LocateIcon';
 
 /** Shorter than this and no geocoder is called — « to » matches a country */
@@ -104,7 +104,12 @@ export default function PlaceField(props: PlaceFieldProps) {
 
   // ── The one debounce + request guard of the app ────────────────────────────
   const [suggestions, setSuggestions] = useState<GeocodeResult[]>([]);
+  /** The text `suggestions` answers — they outlive it on screen until the
+      next answer lands, and Enter must not take a row from an older query */
+  const [answeredQuery, setAnsweredQuery] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
+  /** Enter came before the answer for the current text: pick when it lands */
+  const [enterPending, setEnterPending] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const reqId = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -115,6 +120,7 @@ export default function PlaceField(props: PlaceFieldProps) {
     clearTimeout(timer.current);
     if (text.trim().length < MIN_QUERY) {
       setSuggestions([]);
+      setAnsweredQuery(null);
       setSearching(false);
       return;
     }
@@ -128,17 +134,21 @@ export default function PlaceField(props: PlaceFieldProps) {
         // as they land, and keep spinning until the last one has answered.
         .searchPlaces(text, {
           onPartial: (res) => {
-            if (id === reqId.current) setSuggestions(res);
+            if (id !== reqId.current) return;
+            setSuggestions(res);
+            setAnsweredQuery(text);
           },
         })
         .then((res) => {
           if (id !== reqId.current) return;
           setSuggestions(res);
+          setAnsweredQuery(text);
           setSearching(false);
         })
         .catch(() => {
           if (id !== reqId.current) return;
           setSuggestions([]);
+          setAnsweredQuery(text);
           setSearching(false);
         });
     }, 300);
@@ -149,7 +159,9 @@ export default function PlaceField(props: PlaceFieldProps) {
     clearTimeout(timer.current);
     reqId.current++;
     setSuggestions([]);
+    setAnsweredQuery(null);
     setSearching(false);
+    setEnterPending(false);
   };
 
   // Desktop editing state — the dropdown only exists under a focused field.
@@ -253,7 +265,20 @@ export default function PlaceField(props: PlaceFieldProps) {
     props.rowAction?.pick(r);
   };
 
+  // An Enter pressed ahead of the geocoder: the pick lands with the first row
+  // that answers the text on screen, and is dropped when the search concludes
+  // without one. Typing again, closing or clearing withdraws it.
+  useEffect(() => {
+    if (!enterPending) return;
+    const choice = enterChoice(app.searchHistory, suggestions, answeredQuery, queryText, searching);
+    if (choice.kind === 'wait') return;
+    setEnterPending(false);
+    if (choice.kind === 'pick') pick(choice.place);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enterPending, suggestions, answeredQuery, queryText, searching]);
+
   const onInput = (nextText: string, phone: boolean) => {
+    setEnterPending(false);
     if (phone) setPanelText(nextText);
     else setText(nextText);
     props.onChangeText?.(nextText);
@@ -315,11 +340,21 @@ export default function PlaceField(props: PlaceFieldProps) {
         }}
         onChange={(e) => onInput(e.target.value, phone)}
         // The keyboard's search key takes the first row — the one the ranking
-        // already put on top — instead of doing nothing at all.
+        // already put on top — instead of doing nothing at all. Never a row
+        // left over from an older query: that pick waits for its own answer.
         onKeyDown={(e) => {
-          if (e.key !== 'Enter' || rows.length === 0) return;
+          if (e.key !== 'Enter') return;
+          const choice = enterChoice(
+            app.searchHistory,
+            suggestions,
+            answeredQuery,
+            queryText,
+            searching,
+          );
+          if (choice.kind === 'none') return;
           e.preventDefault();
-          pick(rows[0].place);
+          if (choice.kind === 'pick') pick(choice.place);
+          else setEnterPending(true);
         }}
         style={inputStyle}
       />

@@ -14,9 +14,9 @@
 //   CLAUDE.md, Language).
 // – `tileCacheStats` is the Settings « Data » counter's share of the tiles:
 //   how many are held, and roughly what they weigh — roughly, because the
-//   tiles are cached as no-cors (opaque) responses whose bodies the page
-//   cannot read, so the size is entries × a per-tile average rather than a
-//   sum of measured blobs.
+//   size is entries × a per-tile average rather than a sum of measured
+//   blobs: weighing them would mean reading every cached body (up to the
+//   worker's cap) each time the section opens.
 // – `clearTileCache` is « Clear offline data »'s sweep of the same: every
 //   `plein-tiles-*` generation goes, the current one and any an older worker
 //   left behind. The worker recreates its cache on the next tile it serves.
@@ -95,13 +95,15 @@ export async function readCachedTiles(): Promise<CachedTile[]> {
   return [...urls].map(parseTileUrl).filter((t): t is CachedTile => t != null);
 }
 
-// What one cached tile is counted as. The entries are opaque responses —
-// status 0, unreadable body, empty blob — so the page cannot weigh them; a
-// plain CARTO/OSM 256px PNG runs ~10–30 kB and the @2x tiles retina screens
-// load run heavier, so the counter charges a flat average and the UI presents
-// the result as approximate. (`navigator.storage.estimate()` is no
-// alternative: Chromium pads each opaque response by ~7 MB there — the debug
-// details show that figure, with the caveat spelled out next to it.)
+// What one cached tile is counted as. The entries are CORS responses, so
+// their bodies could be read — but summing hundreds of blobs for a counter
+// is not worth the IO; a plain CARTO/OSM 256px PNG runs ~10–30 kB and the
+// @2x tiles retina screens load run heavier, so the counter charges a flat
+// average and the UI presents the result as approximate.
+// (`navigator.storage.estimate()` is no alternative: it covers the whole
+// origin, and Chromium pads any opaque response a previous tile cache
+// generation still holds by ~7 MB — the debug details show that figure, with
+// the caveat spelled out next to it.)
 export const TILE_BYTES_ESTIMATE = 20_000;
 
 export interface TileCacheStats {

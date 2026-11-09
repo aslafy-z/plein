@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { GeocodeResult } from '../data/types'
 import type { SearchedPlace } from './persist'
-import { MAX_SEARCH_HISTORY, pushSearchIn, searchRows } from './searchHistory'
+import { MAX_SEARCH_HISTORY, enterChoice, pushSearchIn, searchRows } from './searchHistory'
 
 const place = (label: string, kind: GeocodeResult['kind'] = 'locality'): GeocodeResult => ({
   label,
@@ -94,5 +94,48 @@ describe('searchRows', () => {
     const history = [searched('Albi', 1), searched('Pau', 3)]
     searchRows(history, [], '')
     expect(history.map((p) => p.label)).toEqual(['Albi', 'Pau'])
+  })
+})
+
+describe('enterChoice', () => {
+  it('takes the top row when the suggestions answer the text on screen', () => {
+    const choice = enterChoice([], [place('Toulon'), place('Toulonjac')], 'Toulon', 'Toulon', false)
+    expect(choice).toEqual({ kind: 'pick', place: place('Toulon') })
+  })
+
+  it('waits instead of taking a row left over from an older query', () => {
+    expect(enterChoice([], [place('Toul')], 'Tou', 'Toulon', true)).toEqual({ kind: 'wait' })
+  })
+
+  it('does nothing on leftover rows once no search is under way', () => {
+    expect(enterChoice([], [place('Toul')], 'Tou', 'Toulon', false)).toEqual({ kind: 'none' })
+  })
+
+  it('takes a partial answer to the current text while other sources still search', () => {
+    const choice = enterChoice([], [place('Toulon')], 'Toulon', 'Toulon', true)
+    expect(choice).toEqual({ kind: 'pick', place: place('Toulon') })
+  })
+
+  it('waits when the current text has no row yet and the search still runs', () => {
+    expect(enterChoice([], [], 'Toulon', 'Toulon', true)).toEqual({ kind: 'wait' })
+    expect(enterChoice([], [], null, 'Toulon', true)).toEqual({ kind: 'wait' })
+  })
+
+  it('does nothing when the search concluded without a row', () => {
+    expect(enterChoice([], [], 'Zzzzzz', 'Zzzzzz', false)).toEqual({ kind: 'none' })
+  })
+
+  it('takes a remembered place matching the text without waiting for the geocoder', () => {
+    const choice = enterChoice([searched('Toulon', 1)], [place('Toul')], 'Tou', 'Toulon', true)
+    expect(choice).toEqual({ kind: 'pick', place: searched('Toulon', 1) })
+  })
+
+  it('takes the most recent remembered place on an empty query', () => {
+    const choice = enterChoice([searched('Albi', 1), searched('Pau', 2)], [], null, '', false)
+    expect(choice).toEqual({ kind: 'pick', place: searched('Pau', 2) })
+  })
+
+  it('ignores whitespace around the text when matching it to its answer', () => {
+    expect(enterChoice([], [place('Toulon')], 'Toulon', 'Toulon ', false).kind).toBe('pick')
   })
 })

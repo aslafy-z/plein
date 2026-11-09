@@ -270,13 +270,15 @@ function CacheDetails() {
               {estimate.indexedDB != null ? `IndexedDB ${sizeLabel(estimate.indexedDB)}` : ''}
             </div>
           )}
-          {/* Opaque padding: the tiles are cached as no-cors (opaque)
-              responses, and Chromium charges each one ~7 MB against the
-              quota to keep cross-origin sizes unguessable — the « used »
-              figure balloons by gigabytes while the disk barely notices. */}
+          {/* Opaque padding: tiles used to be cached as no-cors (opaque)
+              responses, and Chromium charges each of those ~7 MB against
+              the quota to keep cross-origin sizes unguessable — the « used »
+              figure balloons by gigabytes while the disk barely notices.
+              Tiles are CORS responses now, so this only describes a tile
+              cache generation an older service worker left behind. */}
           <div style={{ color: C.faint, fontSize: 11.5, lineHeight: 1.5, padding: '2px 0' }}>
-            Includes ~7 MB of browser padding per cached map tile (opaque responses) — actual
-            disk use is far smaller.
+            May include ~7 MB of browser padding per map tile cached by an older version (opaque
+            responses) — actual disk use is far smaller.
           </div>
         </>
       )}

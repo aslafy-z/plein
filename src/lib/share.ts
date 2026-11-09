@@ -1,5 +1,8 @@
 // Sharing — the payloads handed to the Web Share API (or, when it is missing,
 // to the clipboard): a station fiche, the map view itself, and a planned trip.
+// The wording is catalog copy like any other: one whole sentence per variant
+// (`share_*`), so each language keeps its own word order.
+import { m } from '../paraglide/messages.js';
 import { fmtPrice } from './format';
 import { mapUrlQuery, type MapUrlView } from './mapUrl';
 import { routeUrlQuery, type RouteUrlView } from './routeUrl';
@@ -32,11 +35,17 @@ export function stationShareData(
   price?: { fuelLabel: string; value: number } | null,
 ): ShareData {
   const url = `${base(origin)}/station/${encodeURIComponent(station.id)}`;
-  const where = station.city ? ` (${station.city})` : '';
-  const text = price
-    ? `${station.name}${where} — ${price.fuelLabel} à ${fmtPrice(price.value)} €/L sur Plein.`
-    : `${station.name}${where} sur Plein.`;
-  return { title: `Plein. — ${station.name}`, text, url };
+  const { name, city } = station;
+  const title = m.share_station_title({ name });
+  if (!price) {
+    const text = city ? m.share_station_plain_city({ name, city }) : m.share_station_plain({ name });
+    return { title, text, url };
+  }
+  const priced = { name, fuel: price.fuelLabel, price: fmtPrice(price.value) };
+  const text = city
+    ? m.share_station_priced_city({ ...priced, city })
+    : m.share_station_priced(priced);
+  return { title, text, url };
 }
 
 /**
@@ -50,12 +59,12 @@ export function mapViewShareData(
   ctx: { fuelLabel: string; place?: string | null },
 ): ShareData {
   const url = `${base(origin)}/${mapUrlQuery(view)}`;
-  const where = ctx.place ? `autour de ${ctx.place}` : 'dans cette zone';
-  return {
-    title: `Plein. — ${ctx.fuelLabel} ${where}`,
-    text: `Les prix du ${ctx.fuelLabel} ${where} sur Plein.`,
-    url,
-  };
+  const fuel = ctx.fuelLabel;
+  if (ctx.place) {
+    const named = { fuel, place: ctx.place };
+    return { title: m.share_map_around_title(named), text: m.share_map_around(named), url };
+  }
+  return { title: m.share_map_area_title({ fuel }), text: m.share_map_area({ fuel }), url };
 }
 
 /**
@@ -71,9 +80,5 @@ export function routeShareData(
   ctx: { from: string; to: string },
 ): ShareData {
   const url = `${base(origin)}/route/results${routeUrlQuery(view)}`;
-  return {
-    title: `Plein. — ${ctx.from} → ${ctx.to}`,
-    text: `Le trajet ${ctx.from} → ${ctx.to}, avec où faire le plein au meilleur prix, sur Plein.`,
-    url,
-  };
+  return { title: m.share_route_title(ctx), text: m.share_route(ctx), url };
 }
