@@ -455,7 +455,13 @@ export interface AppStore {
    * drawing a dot, lighting a control or showing a distance.
    */
   userPos: GeoPoint;
-  geoStatus: 'pending' | 'granted' | 'denied' | 'unavailable';
+  /**
+   * How the last geolocation request ended. `denied` is a permission refusal
+   * and nothing else; `failed` is a request that ended without a fix while
+   * the permission stands (timeout, position unavailable) — location is not
+   * off, so nothing may say it is.
+   */
+  geoStatus: 'pending' | 'granted' | 'denied' | 'unavailable' | 'failed';
   /**
    * true while a fix is being acquired AND the wait has lasted long enough to
    * be worth showing (GEO_SPINNER_DELAY_MS). A fix served from the device's
@@ -966,12 +972,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         endGeoRequest();
         savePersisted({ lastPos: p, lastFix: p, geoGranted: true });
       },
-      () => {
+      (err) => {
         if (req !== geoReq.current) return;
-        setGeoStatus('denied');
+        // Only a refusal means location is off. A timeout (10 s indoors) or
+        // an unavailable position ends THIS request without a fix: the
+        // permission still stands, so `geoGranted` — and with it the next
+        // boot's hold for the fix — is left alone.
+        const refused = err.code === 1; // GeolocationPositionError.PERMISSION_DENIED
+        setGeoStatus(refused ? 'denied' : 'failed');
         setGeoHold(false);
         endGeoRequest();
-        savePersisted({ geoGranted: false });
+        if (refused) savePersisted({ geoGranted: false });
       },
       { timeout: GEO_TIMEOUT_MS, maximumAge: 300000 },
     );
@@ -2079,7 +2090,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (autoStartNeedsFix) {
       if (geoStatus === 'pending' && !autoStartWaitOver) return;
       if (!geoFixed) {
-        // Refused, unavailable or unanswered, and no earlier fix to fall back
+        // Refused, unavailable, failed or unanswered, and no earlier fix to fall back
         // on: there is no trip to wait for. The setup form takes over, where
         // the reader can name a departure or ask for the fix again.
         pendingAutoStart.current = false;
