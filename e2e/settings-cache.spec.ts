@@ -49,7 +49,7 @@ test('the counter includes the basemap tiles, and « Clear » sweeps them too', 
   // src/lib/swCaches.ts — the current generation plus an abandoned one, which
   // survives until the next worker activates and must still be counted.
   await page.evaluate(async () => {
-    const current = await caches.open('plein-tiles-v2')
+    const current = await caches.open('plein-tiles-v3')
     await current.put('https://a.basemaps.cartocdn.com/dark_all/5/16/11.png', new Response('t'))
     await current.put('https://a.basemaps.cartocdn.com/dark_all/5/17/11.png', new Response('t'))
     const stale = await caches.open('plein-tiles-v1')

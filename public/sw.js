@@ -17,8 +17,13 @@ const SHELL_CACHE = 'plein-shell-v1';
 // keyless requests with tiles stamped « API key required » — under the keyless
 // cache identity below those would keep answering forever. The bump sweeps
 // that generation on activation; the keyed requests refill the cache clean.
+// v3: v2 was filled by no-cors requests, whose opaque responses hide their
+// status — a 403, a 429 or a 5xx from the CDN went in like a good tile and
+// kept answering cache-first. The app now asks for its tiles in CORS mode and
+// only `ok` responses are stored (tileFromCacheFirst); the bump sweeps what
+// the old rule let in.
 // The name is mirrored in src/lib/swCaches.ts, which nothing here can import.
-const TILE_CACHE = 'plein-tiles-v2';
+const TILE_CACHE = 'plein-tiles-v3';
 // Build-time data the app enriches its stations with. Separate from the assets
 // because it is not content-hashed: it is revalidated, not immutable.
 const DATA_CACHE = 'plein-data-v2';
@@ -79,9 +84,14 @@ async function tileFromCacheFirst(event, req, key) {
     return hit;
   }
   const res = await fetch(req);
-  // Leaflet loads tiles via <img> (no-cors) → opaque responses (status 0);
-  // those are the ones we actually get in prod, so cache them too.
-  if (res.ok || res.type === 'opaque') {
+  // Only a readable success is stored. The app requests its tiles in CORS
+  // mode (crossOrigin on the Leaflet layers, src/lib/tiles.ts) precisely so
+  // the status is visible here: an opaque response (status 0) could be a
+  // 403/429/5xx as easily as a tile, and a cached error would answer
+  // cache-first from then on — each hit refreshing its recency, so it would
+  // also be the last entry evicted. An opaque response is passed through,
+  // never cached.
+  if (res.ok) {
     const copy = res.clone();
     event.waitUntil(cache.put(key, copy).then(() => trimCache(cache, TILE_MAX_ENTRIES)));
   }

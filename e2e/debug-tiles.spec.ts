@@ -43,7 +43,7 @@ async function seedTilePyramid(
     // The CURRENT generation (SW_TILE_CACHE in src/lib/swCaches.ts) — the
     // debug layer reads only that one, unlike the Settings counter's
     // prefix-wide sweep.
-    const cache = await caches.open('plein-tiles-v2')
+    const cache = await caches.open('plein-tiles-v3')
     let n = 0
     for (let z = 4; z <= 19; z += 1) {
       const c = 2 ** z
