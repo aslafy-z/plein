@@ -36,6 +36,7 @@ import {
   selectEffectiveSort,
   selectRouteAnalysis,
   selectVisible,
+  routeDeparturePoint,
   routeFromLabel,
   routeToLabel,
   selectCanPickCurrentPosition,
@@ -849,6 +850,40 @@ describe('selectAutonomy', () => {
   it('derives autonomy from tank × level ÷ consumption, with a ~20 % reserve', () => {
     expect(selectAutonomy(app())).toEqual({ autonomyKm: 538, limitKm: 430 })
     expect(selectAutonomy(app({ startTankPct: 10 }))).toEqual({ autonomyKm: 77, limitKm: 60 })
+  })
+})
+
+describe('routeDeparturePoint', () => {
+  const first = { lat: 43.6047, lng: 1.4442 }
+  const now = { lat: 45.764, lng: 4.8357 }
+
+  it('resolves « My position » to the current fix, not the point a previous trip stored', () => {
+    expect(
+      routeDeparturePoint(
+        app({ fromIsCurrentPosition: true, fromPoint: first, hasKnownPos: true, userPos: now }),
+      ),
+    ).toEqual(now)
+  })
+
+  it('has no departure under the flag without a fix', () => {
+    expect(
+      routeDeparturePoint(
+        app({ fromIsCurrentPosition: true, fromPoint: first, hasKnownPos: false, userPos: now }),
+      ),
+    ).toBeNull()
+  })
+
+  it('keeps a named departure on its own point', () => {
+    expect(
+      routeDeparturePoint(
+        app({ fromIsCurrentPosition: false, fromPoint: first, hasKnownPos: true, userPos: now }),
+      ),
+    ).toEqual(first)
+    expect(
+      routeDeparturePoint(
+        app({ fromIsCurrentPosition: false, fromPoint: null, hasKnownPos: true, userPos: now }),
+      ),
+    ).toBeNull()
   })
 })
 

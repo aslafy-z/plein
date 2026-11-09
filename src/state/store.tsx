@@ -1920,7 +1920,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setGeocoding(true);
     beginRouteTiming();
     try {
-      let from = fromPoint;
+      // « My position » is resolved on every start, never read back from the
+      // point the previous trip stored: the flag means wherever the user is
+      // NOW, and the last trip's origin would otherwise win for good.
+      let from = routeDeparturePoint({
+        fromIsCurrentPosition, fromPoint, hasKnownPos: geoFixed, userPos,
+      });
       let to = toPick?.point ?? toPoint;
       let fromLabel = fromIsCurrentPosition ? '' : fromText.trim();
       let toLabel = toPick?.label ?? (toIsCurrentPosition ? '' : toText.trim());
@@ -2023,17 +2028,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   /** Re-run both stages for the endpoints already resolved. */
   const retryRoute = useCallback(() => {
-    if (!fromPoint || !toPoint) return;
+    // A « My position » departure retries from the current fix, like a start
+    const from = routeDeparturePoint({
+      fromIsCurrentPosition, fromPoint, hasKnownPos: geoFixed, userPos,
+    });
+    if (!from || !toPoint) return;
     beginRouteTiming();
-    void computeRoute(fromPoint, toPoint, {
+    // The stored point is the origin of the trip being computed: the matrix
+    // stage and the multi-stop maps link read it, and must agree with it
+    setFromPoint(from);
+    void computeRoute(from, toPoint, {
       from: fromIsCurrentPosition
         ? m.route_from_current_position()
         : fromText.trim() || m.route_from_current_position(),
       to: toIsCurrentPosition ? m.route_from_current_position() : toText.trim(),
     });
   }, [
-    computeRoute, fromIsCurrentPosition, fromPoint, fromText,
-    toIsCurrentPosition, toPoint, toText,
+    computeRoute, fromIsCurrentPosition, fromPoint, fromText, geoFixed,
+    toIsCurrentPosition, toPoint, toText, userPos,
   ]);
 
   const retryCorridor = useCallback(() => {
@@ -2369,6 +2381,22 @@ export function routeFromLabel(
 ): string {
   if (!app.fromIsCurrentPosition) return app.fromText;
   return app.hasKnownPos ? m.route_from_current_position() : '';
+}
+
+/**
+ * Where the trip departs from, or null while that is not known yet (a
+ * departure typed but not geocoded, or « My position » without a fix).
+ *
+ * « My position » is the flag, never a stored point: it resolves to the fix of
+ * the moment it is asked. `fromPoint` still holds the origin of the last trip
+ * computed under the flag (the matrix stage keys on it), and reading it back
+ * here would pin every later trip to where the first one started.
+ */
+export function routeDeparturePoint(
+  app: Pick<AppStore, 'fromIsCurrentPosition' | 'fromPoint' | 'hasKnownPos' | 'userPos'>,
+): GeoPoint | null {
+  if (!app.fromIsCurrentPosition) return app.fromPoint;
+  return app.hasKnownPos ? app.userPos : null;
 }
 
 /**
