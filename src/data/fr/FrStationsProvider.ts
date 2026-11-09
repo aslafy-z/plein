@@ -6,7 +6,7 @@
 import { IS_DEV } from '../../lib/env';
 import { enrichWithBrands, fuelPoisAlong, fuelPoisNear } from './osmBrands';
 import type { GeoPoint } from '../../lib/geo';
-import { nearestOnPolyline, polylineLengthKm, samplePolyline } from '../../lib/geo';
+import { haversineKm, nearestOnPolyline, samplePolyline } from '../../lib/geo';
 import type { DayHours, StationHours } from '../../lib/hours';
 import { titleCase } from '../../lib/text';
 import type {
@@ -27,7 +27,10 @@ const ENDPOINT =
 
 const PAGE = 100;
 const NEAR_CAP = 300;
-const ALONG_LIMIT = 100;
+// Hard ceiling per corridor disc, so a pathological disc cannot page forever
+// against a public API. The densest disc a route asks for (Île-de-France at
+// the 10-sample spacing of a very long trip) stays well under it.
+const ALONG_DISC_CAP = 2000;
 const SAMPLE_KM = 40;
 const MAX_SAMPLES = 10;
 const CONCURRENCY = 4;
@@ -484,18 +487,29 @@ export class FrStationsProvider implements StationsProvider {
   async getStationsAlong(polyline: GeoPoint[], corridorKm: number): Promise<Station[]> {
     let samples = samplePolyline(polyline, SAMPLE_KM);
     if (samples.length > MAX_SAMPLES) {
-      const step = samples.length / MAX_SAMPLES;
+      // Spread the picks over the whole index range, BOTH ends included: a
+      // floor(i × n / MAX) pick never reaches the last sample, and the end of
+      // the route — the destination — went unqueried.
+      const n = samples.length;
       const picked: GeoPoint[] = [];
-      for (let i = 0; i < MAX_SAMPLES; i++) picked.push(samples[Math.floor(i * step)]);
+      for (let i = 0; i < MAX_SAMPLES; i++) {
+        picked.push(samples[Math.round((i * (n - 1)) / (MAX_SAMPLES - 1))]);
+      }
       samples = picked;
     }
 
-    // Sample circles must overlap enough to cover the whole corridor: query
-    // half the effective spacing plus the corridor width, then keep only the
-    // stations truly within corridorKm of the route.
-    const totalKm = polylineLengthKm(polyline);
-    const spacingKm = samples.length > 1 ? totalKm / (samples.length - 1) : SAMPLE_KM;
-    const queryKm = Math.ceil(spacingKm / 2 + corridorKm + 1);
+    // The discs must cover the whole corridor, so their radius is measured
+    // rather than assumed from an average spacing (the picks above are not
+    // evenly spaced, and neither are a polyline's vertices): the farthest any
+    // route vertex sits from its nearest sample, plus the corridor width. The
+    // corridor filter below is vertex-based too, so this is exactly its reach.
+    let reachKm = 0;
+    for (const v of polyline) {
+      let nearest = Infinity;
+      for (const s of samples) nearest = Math.min(nearest, haversineKm(v, s));
+      if (nearest > reachKm) reachKm = nearest;
+    }
+    const queryKm = Math.ceil(reachKm + corridorKm + 1);
 
     const byId = new Map<string, Station>();
     // Split the sample points across a few concurrent lanes (concurrency ≤ 4).
@@ -504,12 +518,19 @@ export class FrStationsProvider implements StationsProvider {
 
     const runLane = async (pts: GeoPoint[]) => {
       for (const pt of pts) {
-        const results = await fetchPage(buildUrl(pt, queryKm, ALONG_LIMIT, 0));
-        for (const r of results) {
-          if (r && typeof r === 'object') {
-            const st = parseRecord(r as Raw);
-            if (st && !byId.has(st.id)) byId.set(st.id, st);
+        // A disc holds more than one page as soon as it touches a city (137
+        // stations within 25 km of Toulouse, 363 within 51 km of Lyon): page
+        // it until exhausted, on a stable order so offsets stay consistent
+        // from one page to the next.
+        for (let offset = 0; offset < ALONG_DISC_CAP; offset += PAGE) {
+          const results = await fetchPage(`${buildUrl(pt, queryKm, PAGE, offset)}&order_by=id`);
+          for (const r of results) {
+            if (r && typeof r === 'object') {
+              const st = parseRecord(r as Raw);
+              if (st && !byId.has(st.id)) byId.set(st.id, st);
+            }
           }
+          if (results.length < PAGE) break;
         }
       }
     };

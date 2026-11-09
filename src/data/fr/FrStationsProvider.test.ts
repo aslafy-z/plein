@@ -11,6 +11,8 @@ import {
   parseServices,
   parseFluxTimestamp,
 } from './FrStationsProvider';
+import type { GeoPoint } from '../../lib/geo';
+import { haversineKm, nearestOnPolyline } from '../../lib/geo';
 
 // The gouv flux is schema-loose: the same column arrives as a number, a
 // string, a JSON string or not at all, depending on the record. These pin the
@@ -482,4 +484,122 @@ describe('getStationsByIds', () => {
     });
     expect(await new FrStationsProvider().getStationsByIds(['fr-1.0,2.0', 'ad-7'])).toEqual([]);
   });
+});
+
+describe('getStationsAlong', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  interface Disc {
+    center: GeoPoint;
+    radiusKm: number;
+  }
+
+  /**
+   * A stand-in for the flux: answers `within_distance` discs out of `dataset`,
+   * one `limit`/`offset` page at a time, and records every disc asked for.
+   * Without an `order_by` the pages come back in a shifting order, like the
+   * live endpoint is free to do.
+   */
+  function stubFlux(dataset: { id: number; lat: number; lng: number }[]) {
+    const discs: Disc[] = [];
+    let requests = 0;
+    vi.stubGlobal('fetch', async (input: string) => {
+      const url = new URL(String(input), 'http://localhost');
+      // The OSM brand index is not what these tests are about
+      if (!url.pathname.includes('/records')) throw new Error('offline');
+      requests++;
+      const m = /POINT\(([-\d.]+) ([-\d.]+)\)', ([\d.]+)km/.exec(url.searchParams.get('where') ?? '');
+      if (!m) throw new Error(`unexpected where: ${url.search}`);
+      const center = { lat: Number(m[2]), lng: Number(m[1]) };
+      const radiusKm = Number(m[3]);
+      if (!discs.some((d) => d.center.lat === center.lat && d.center.lng === center.lng)) {
+        discs.push({ center, radiusKm });
+      }
+      const limit = Number(url.searchParams.get('limit'));
+      const offset = Number(url.searchParams.get('offset') ?? 0);
+      const inDisc = dataset.filter((s) => haversineKm(s, center) <= radiusKm);
+      if (url.searchParams.get('order_by') === 'id') inDisc.sort((a, b) => a.id - b.id);
+      else inDisc.sort((a, b) => ((a.id * 7 + offset) % 13) - ((b.id * 7 + offset) % 13));
+      return {
+        ok: true,
+        json: async () => ({
+          total_count: inDisc.length,
+          results: inDisc.slice(offset, offset + limit).map((s) => ({
+            id: s.id,
+            ville: 'Ville',
+            geom: { lat: s.lat, lon: s.lng },
+            gazole_prix: '1.80',
+          })),
+        }),
+      };
+    });
+    return { discs, requestCount: () => requests };
+  }
+
+  /** A dense polyline heading east then north-east, ~1 km between vertices */
+  function syntheticRoute(km: number): GeoPoint[] {
+    const line: GeoPoint[] = [];
+    let lat = 43.6;
+    let lng = 1.44;
+    for (let i = 0; i <= km; i++) {
+      line.push({ lat, lng });
+      // A bend every 90 km, so the route is not one straight line
+      if (Math.floor(i / 90) % 2 === 0) lng += 1 / 80.6;
+      else {
+        lat += 0.7 / 111.2;
+        lng += 0.7 / 80.6;
+      }
+    }
+    return line;
+  }
+
+  it('fetches every page of a disc holding more than one', async () => {
+    // 250 stations packed around the middle of a short route: one disc, three pages
+    const route = syntheticRoute(30);
+    const mid = route[15];
+    const dataset = Array.from({ length: 250 }, (_, i) => ({
+      id: 31000001 + i,
+      lat: mid.lat + ((i % 10) - 5) * 0.002,
+      lng: mid.lng + (Math.floor(i / 10) - 12) * 0.002,
+    }));
+    const flux = stubFlux(dataset);
+
+    const stations = await new FrStationsProvider().getStationsAlong(route, 5);
+
+    expect(new Set(stations.map((s) => s.id)).size).toBe(250);
+    expect(stations).toHaveLength(250);
+    // Three pages per disc (100 + 100 + 50), and not one request more
+    expect(flux.requestCount()).toBe(flux.discs.length * 3);
+  });
+
+  it.each([120, 400, 556, 1000])(
+    'covers every vertex of a %i km route with a sample disc, destination included',
+    async (km) => {
+      const route = syntheticRoute(km);
+      const corridorKm = 5;
+      // One station right on every fifth vertex, the destination among them
+      const dataset = route
+        .filter((_, i) => i % 5 === 0 || i === route.length - 1)
+        .map((p, i) => ({ id: 1000 + i, lat: p.lat, lng: p.lng }));
+      const flux = stubFlux(dataset);
+
+      const stations = await new FrStationsProvider().getStationsAlong(route, corridorKm);
+
+      expect(flux.discs.length).toBeLessThanOrEqual(10);
+      for (const v of route) {
+        // The disc must reach the whole corridor around the vertex, not just the vertex
+        const covered = flux.discs.some((d) => haversineKm(v, d.center) + corridorKm <= d.radiusKm);
+        expect(covered).toBe(true);
+      }
+      const dest = route[route.length - 1];
+      expect(flux.discs.some((d) => haversineKm(dest, d.center) < 0.001)).toBe(true);
+
+      const expected = dataset.filter((s) => nearestOnPolyline(s, route).distKm <= corridorKm);
+      expect(stations.map((s) => s.id).sort()).toEqual(expected.map((s) => `fr-${s.id}`).sort());
+      // Ten discs at most, each paged a handful of times: nothing runs away
+      expect(flux.requestCount()).toBeLessThanOrEqual(60);
+    },
+  );
 });
