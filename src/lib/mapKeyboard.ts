@@ -89,6 +89,18 @@ export function zoomDirection(held: Iterable<number>): number {
 }
 
 /**
+ * Identity of a held zoom key: the PHYSICAL key (`code`), because `key` is not
+ * stable across a hold — Shift+« = » goes down as « + » and, Shift let go
+ * first, comes back up as « = ». Tracked by `key`, that « + » was never
+ * released and the map zoomed until the window lost focus. The direction is
+ * still read from `key` at keydown, so every layout keeps its own +/-. `code`
+ * is empty on some virtual keyboards: `key` stands in for it there.
+ */
+export function heldKeyId(e: { code: string; key: string }): string {
+  return e.code || e.key;
+}
+
+/**
  * Whole pixels to move now and the sub-pixel remainder to carry to the next
  * frame. Leaflet rounds the offsets it is given, so a 0.4 px frame would
  * otherwise be dropped — and a slow pan would stand still.
@@ -284,7 +296,7 @@ export function installSmoothKeyboard(
     if (pan) {
       panHeld.add(e.key);
     } else {
-      zoomHeld.set(e.key, zoom);
+      zoomHeld.set(heldKeyId(e), zoom);
       zoomHoldFrom = performance.now() + ZOOM_HOLD_DELAY * 1000;
       addZoom(zoom * ZOOM_STEP);
     }
@@ -296,7 +308,7 @@ export function installSmoothKeyboard(
   const onKeyUp = (e: KeyboardEvent) => {
     shiftHeld = e.shiftKey;
     panHeld.delete(e.key);
-    zoomHeld.delete(e.key);
+    zoomHeld.delete(heldKeyId(e));
   };
 
   const releaseAll = () => {
