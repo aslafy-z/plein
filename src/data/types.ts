@@ -153,6 +153,13 @@ export interface StationsFetchOptions {
   /** Background refresh behind an already-painted cache: hint the browser to
    * schedule the requests behind user-visible work (fetchpriority low). */
   lowPriority?: boolean;
+  /**
+   * Called when the source held more stations in the disc than it returns:
+   * `coveredRadiusKm` is how far from the center the result is complete (the
+   * farthest station kept, 0 when nothing can be claimed). Never called for a
+   * complete result — the caller then records the radius it asked for.
+   */
+  onCapped?: (coveredRadiusKm: number) => void;
 }
 
 export interface StationsProvider {

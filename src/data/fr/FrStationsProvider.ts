@@ -6,7 +6,7 @@
 import { IS_DEV } from '../../lib/env';
 import { enrichWithBrands, fuelPoisAlong, fuelPoisNear } from './osmBrands';
 import type { GeoPoint } from '../../lib/geo';
-import { nearestOnPolyline, polylineLengthKm, samplePolyline } from '../../lib/geo';
+import { haversineKm, nearestOnPolyline, polylineLengthKm, samplePolyline } from '../../lib/geo';
 import type { DayHours, StationHours } from '../../lib/hours';
 import { titleCase } from '../../lib/text';
 import type {
@@ -399,26 +399,56 @@ export function frDatasetId(id: string): number | null {
 }
 
 // ── HTTP ─────────────────────────────────────────────────────────────────────
-function buildUrl(center: GeoPoint, radiusKm: number, limit: number, offset: number): string {
+function buildUrl(
+  center: GeoPoint,
+  radiusKm: number,
+  limit: number,
+  offset: number,
+  nearestFirst = false,
+): string {
   // ODSQL POINT is lon lat order.
-  const where = `within_distance(geom, geom'POINT(${center.lng} ${center.lat})', ${radiusKm}km)`;
+  const point = `geom'POINT(${center.lng} ${center.lat})'`;
   const params = new URLSearchParams({
-    where,
+    where: `within_distance(geom, ${point}, ${radiusKm}km)`,
     limit: String(limit),
     offset: String(offset),
   });
+  // Nearest first, `id` breaking ties: offset paging is only sound over a
+  // total order (without one a row can come back twice or never), and a
+  // capped result must be the NEAREST stations, not whichever the index
+  // happened to list first.
+  if (nearestFirst) params.set('order_by', `distance(geom, ${point}), id`);
   return `${ENDPOINT}?${params.toString()}`;
 }
 
-async function fetchPage(url: string, lowPriority = false): Promise<unknown[]> {
+interface Page {
+  results: unknown[];
+  /** Rows matching the query upstream, when the response says so */
+  total?: number;
+}
+
+class FluxHttpError extends Error {
+  constructor(readonly status: number) {
+    super(`gouv flux HTTP ${status}`);
+  }
+}
+
+async function fetchPageWithTotal(url: string, lowPriority = false): Promise<Page> {
   const res = await fetch(url, {
     signal: AbortSignal.timeout(TIMEOUT_MS),
     // Background refreshes yield to user-visible requests (tiles, geocoding)
     priority: lowPriority ? 'low' : 'auto',
   });
-  if (!res.ok) throw new Error(`gouv flux HTTP ${res.status}`);
+  if (!res.ok) throw new FluxHttpError(res.status);
   const json = (await res.json()) as { total_count?: number; results?: unknown[] };
-  return Array.isArray(json.results) ? json.results : [];
+  return {
+    results: Array.isArray(json.results) ? json.results : [],
+    total: typeof json.total_count === 'number' ? json.total_count : undefined,
+  };
+}
+
+async function fetchPage(url: string, lowPriority = false): Promise<unknown[]> {
+  return (await fetchPageWithTotal(url, lowPriority)).results;
 }
 
 export class FrStationsProvider implements StationsProvider {
@@ -434,18 +464,48 @@ export class FrStationsProvider implements StationsProvider {
   ): Promise<Station[]> {
     // The static OSM brand index loads concurrently with the price pages
     const poisPromise = fuelPoisNear(center, radiusKm).catch(() => []);
-    const stations: Station[] = [];
+    // Keyed by id: a row the flux moves between two pages must not show twice
+    const byId = new Map<string, Station>();
+    let nearestFirst = true;
+    // More rows upstream than the cap lets through
+    let capped = false;
     for (let offset = 0; offset < NEAR_CAP; offset += PAGE) {
-      const results = await fetchPage(buildUrl(center, radiusKm, PAGE, offset), opts?.lowPriority);
-      for (const r of results) {
+      let page: Page;
+      try {
+        page = await fetchPageWithTotal(
+          buildUrl(center, radiusKm, PAGE, offset, nearestFirst),
+          opts?.lowPriority,
+        );
+      } catch (err) {
+        // A flux that refuses the ordering clause still answers the plain
+        // query: restart on it rather than lose the whole zone. What comes
+        // back is then in upstream order, and claims no coverage if capped.
+        if (!(nearestFirst && offset === 0 && err instanceof FluxHttpError && err.status === 400)) {
+          throw err;
+        }
+        nearestFirst = false;
+        offset = -PAGE;
+        continue;
+      }
+      for (const r of page.results) {
         if (r && typeof r === 'object') {
           const st = parseRecord(r as Raw);
-          if (st) stations.push(st);
+          if (st && !byId.has(st.id)) byId.set(st.id, st);
         }
       }
-      if (results.length < PAGE) break;
+      if (page.results.length < PAGE) break;
+      if (offset + PAGE >= NEAR_CAP) capped = page.total == null || page.total > NEAR_CAP;
     }
-    return enrichWithBrands(stations.slice(0, NEAR_CAP), await poisPromise);
+    const stations = [...byId.values()];
+    if (capped) {
+      // The disc is only complete up to the farthest station kept — and not
+      // at all when the rows could not be asked for nearest first.
+      const reachKm = nearestFirst
+        ? Math.max(0, ...stations.map((st) => haversineKm(center, { lat: st.lat, lng: st.lng })))
+        : 0;
+      opts?.onCapped?.(Math.min(radiusKm, reachKm));
+    }
+    return enrichWithBrands(stations, await poisPromise);
   }
 
   /**

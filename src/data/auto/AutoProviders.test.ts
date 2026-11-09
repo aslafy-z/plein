@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { capNearest, mergeAsTheyLand } from './AutoProviders'
+import { describe, expect, it, vi } from 'vitest'
+import { AutoStationsProvider, capNearest, mergeAsTheyLand } from './AutoProviders'
 import { haversineKm } from '../../lib/geo'
 import type { GeocodeResult, Station } from '../types'
 
@@ -58,6 +58,44 @@ describe('capNearest', () => {
   it('defaults to the same cap as a single source', () => {
     const stations = Array.from({ length: 660 }, (_, i) => station(`fr-${i}`, (i + 1) * 0.001))
     expect(capNearest(stations, CENTER)).toHaveLength(300)
+  })
+})
+
+describe('AutoStationsProvider.getStationsNear', () => {
+  /** The merge with each country source replaced by a canned answer. */
+  const autoOver = (bySource: Record<'fr' | 'es' | 'ad' | 'pt', Station[]>) => {
+    const auto = new AutoStationsProvider()
+    const sources = auto as unknown as Record<string, { getStationsNear: () => Promise<Station[]> }>
+    for (const [id, stations] of Object.entries(bySource)) {
+      sources[id] = { getStationsNear: async () => stations }
+    }
+    return auto
+  }
+
+  it('reports the radius its own cut covers when the merge overflows the cap', async () => {
+    // 200 French stations out to ~22 km, 200 Spanish ones out to ~11 km
+    const fr = Array.from({ length: 200 }, (_, i) => station(`fr-${i}`, (i + 1) * 0.001))
+    const es = Array.from({ length: 200 }, (_, i) => station(`es-${i}`, -(i + 1) * 0.0005))
+    const onCapped = vi.fn()
+
+    const merged = await autoOver({ fr, es, ad: [], pt: [] }).getStationsNear(CENTER, 25, { onCapped })
+
+    expect(merged).toHaveLength(300)
+    const furthestKept = Math.max(
+      ...merged.map((st) => haversineKm(CENTER, { lat: st.lat, lng: st.lng })),
+    )
+    expect(onCapped).toHaveBeenCalledTimes(1)
+    expect(onCapped).toHaveBeenCalledWith(furthestKept)
+    expect(furthestKept).toBeLessThan(25)
+  })
+
+  it('reports nothing when the merge fits under the cap', async () => {
+    const fr = Array.from({ length: 100 }, (_, i) => station(`fr-${i}`, (i + 1) * 0.001))
+    const onCapped = vi.fn()
+
+    await autoOver({ fr, es: [], ad: [], pt: [] }).getStationsNear(CENTER, 25, { onCapped })
+
+    expect(onCapped).not.toHaveBeenCalled()
   })
 })
 

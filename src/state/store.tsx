@@ -149,6 +149,8 @@ import {
 /** Toulouse Capitole — default position when geolocation is unavailable */
 export const DEFAULT_POS: GeoPoint = { lat: 43.6047, lng: 1.4442 };
 export const MAX_RADIUS_KM = 25;
+/** Two search centers this close are the same fetch (≈ the cache key's 11 m) */
+const SAME_CENTER_KM = 0.011;
 /** How long a fix may take before the app says out loud that it is locating */
 const GEO_SPINNER_DELAY_MS = 350;
 /** Give up on a fix after this — past it the last known area is what we have */
@@ -1211,7 +1213,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         area &&
         area.source === sourceId &&
         Date.now() - area.fetchedAt < STALE_MS &&
-        haversineKm(area.center, searchPos) + radius <= area.radiusKm
+        // A capped area covers less than was asked, but asking again from its
+        // own center returns the same stations: it is still the answer there.
+        (haversineKm(area.center, searchPos) + radius <= area.radiusKm ||
+          haversineKm(area.center, searchPos) < SAME_CENTER_KM)
       ) {
         reportAreaLoad('memory');
         return;
@@ -1295,15 +1300,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const bundle = getProviders(sourceId);
       try {
         // Refreshing behind painted cache → don't compete with visible work
+        // A source that caps a dense disc says how far out its answer is
+        // complete; recording the asked radius instead would serve the
+        // truncated set as full coverage to every later pan inside it.
+        let coveredKm = MAX_RADIUS_KM;
         const data = await bundle.stations.getStationsNear(searchPos, MAX_RADIUS_KM, {
           lowPriority: cached != null,
+          onCapped: (km) => {
+            coveredKm = Math.min(coveredKm, km);
+          },
         });
         if (reqId !== stationsReq.current) return;
         const fetchedAt = Date.now();
-        writeStationsCache(sourceId, searchPos, MAX_RADIUS_KM, data, fetchedAt);
+        writeStationsCache(sourceId, searchPos, coveredKm, data, fetchedAt);
         // A favorite seen in any fetch keeps its price for the Favorites tab
         recordFavoritePrices(favoriteIds.current, data, fetchedAt);
-        loadedArea.current = { source: sourceId, center: searchPos, radiusKm: MAX_RADIUS_KM, fetchedAt };
+        loadedArea.current = { source: sourceId, center: searchPos, radiusKm: coveredKm, fetchedAt };
         failedArea.current = null;
         dispatchStations({ kind: 'success', data, source: sourceId, fetchedAt });
         reportAreaLoad('network');
