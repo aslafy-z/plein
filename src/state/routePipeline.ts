@@ -14,7 +14,7 @@
 // slow answer for endpoints the user has since edited can never overwrite a
 // newer result. The store additionally guards on a generation counter, which
 // distinguishes two runs that share the same signature (a stage retried twice).
-import type { ReachInfo, Route, RouteStation } from '../data/types';
+import type { DataSourceId, ReachInfo, Route, RouteStation, VehicleId } from '../data/types';
 import type { GeoPoint } from '../lib/geo';
 
 export type StageStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -33,6 +33,21 @@ export interface RouteEndpoints {
   to: string;
 }
 
+/**
+ * What `route` was computed with: the resolved points and the routing options.
+ * Committed with the geometry for the same reason the labels are — the form
+ * (`fromPoint`, the avoid chips, the vehicle) is already describing the NEXT
+ * trip while this one still stands, and the matrix stage measures this one.
+ */
+export interface RouteTrip {
+  from: GeoPoint;
+  to: GeoPoint;
+  source: DataSourceId;
+  avoidMotorway: boolean;
+  avoidToll: boolean;
+  vehicle: VehicleId;
+}
+
 export interface RouteState {
   /** Last known geometry — kept on screen while a newer one computes or fails */
   route: Route | null;
@@ -42,6 +57,8 @@ export interface RouteState {
    * « Lyon → Annecy · 543 km » would be a distance that belongs to neither.
    */
   endpoints: RouteEndpoints;
+  /** Points and options `route` was computed with — null until one stands */
+  trip: RouteTrip | null;
   /** Corridor stops placed along `route` */
   stations: RouteStation[];
   geometry: StageStatus;
@@ -71,6 +88,7 @@ export interface RouteState {
 export const initialRouteState: RouteState = {
   route: null,
   endpoints: { from: '', to: '' },
+  trip: null,
   stations: [],
   geometry: 'idle',
   corridor: 'idle',
@@ -123,6 +141,7 @@ export function commitGeometry(
   key: string,
   route: Route,
   endpoints: RouteEndpoints,
+  trip: RouteTrip,
 ): RouteState {
   if (state.pendingKey !== key) return state;
   const sameTrip = state.key === key;
@@ -130,6 +149,7 @@ export function commitGeometry(
     ...state,
     route,
     endpoints,
+    trip,
     // Stops belong to the geometry they were placed along; for a new trip they
     // are dropped and the list shows placeholders until the corridor answers.
     stations: sameTrip ? state.stations : [],
