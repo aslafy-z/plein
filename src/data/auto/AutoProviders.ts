@@ -131,7 +131,17 @@ export class AutoStationsProvider implements StationsProvider {
     if (ptCoversNear(center, radiusKm)) {
       tasks.push({ task: this.pt.getStationsNear(center, radiusKm, opts), required: ptCoversNear(center, 0) });
     }
-    return capNearest(await mergeSettled(tasks), center);
+    const merged = await mergeSettled(tasks);
+    const nearest = capNearest(merged, center);
+    // The merge's own cut is a cap like a source's: the disc is complete only
+    // up to the farthest station kept (a source's own report passes through
+    // `opts` untouched, and the caller keeps the smallest).
+    if (nearest.length < merged.length) {
+      opts?.onCapped?.(
+        Math.max(0, ...nearest.map((st) => haversineKm(center, { lat: st.lat, lng: st.lng }))),
+      );
+    }
+    return nearest;
   }
 
   // No cap on the corridor, deliberately: unlike a disc, a route has no centre

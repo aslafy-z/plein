@@ -486,6 +486,145 @@ describe('getStationsByIds', () => {
   });
 });
 
+describe('getStationsNear', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const PARIS = { lat: 48.8566, lng: 2.3522 };
+  /** Row `n` of the nearest-first listing, `stepDeg` further north each time. */
+  const row = (n: number, stepDeg = 0.001) => ({
+    id: 75000000 + n,
+    geom: { lat: PARIS.lat + n * stepDeg, lon: PARIS.lng },
+    gazole_prix: '1.80',
+  });
+  const rows = (count: number, stepDeg?: number) =>
+    Array.from({ length: count }, (_, i) => row(i + 1, stepDeg));
+
+  /**
+   * Stands in for the flux: serves `all` by limit/offset and records the
+   * price queries. The brand index request fails, which the provider absorbs.
+   */
+  function stubFlux(
+    all: unknown[],
+    opts: { total?: number | null; rejectOrder?: boolean } = {},
+  ): URL[] {
+    const calls: URL[] = [];
+    vi.stubGlobal('fetch', async (input: string) => {
+      const url = new URL(String(input), 'http://localhost');
+      if (!url.pathname.endsWith('/records')) return { ok: false, status: 404 };
+      calls.push(url);
+      if (opts.rejectOrder && url.searchParams.has('order_by')) return { ok: false, status: 400 };
+      const offset = Number(url.searchParams.get('offset'));
+      const limit = Number(url.searchParams.get('limit'));
+      const total = opts.total === undefined ? all.length : opts.total;
+      return {
+        ok: true,
+        json: async () => ({
+          ...(total == null ? {} : { total_count: total }),
+          results: all.slice(offset, offset + limit),
+        }),
+      };
+    });
+    return calls;
+  }
+
+  it('asks for the stations nearest first, with a stable tiebreak', async () => {
+    const calls = stubFlux(rows(2));
+    const onCapped = vi.fn();
+
+    const stations = await new FrStationsProvider().getStationsNear(PARIS, 25, { onCapped });
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].searchParams.get('where')).toBe(
+      "within_distance(geom, geom'POINT(2.3522 48.8566)', 25km)",
+    );
+    expect(calls[0].searchParams.get('order_by')).toBe(
+      "distance(geom, geom'POINT(2.3522 48.8566)'), id",
+    );
+    expect(stations.map((s) => s.id)).toEqual(['fr-75000001', 'fr-75000002']);
+    // A complete disc reports nothing: the caller records what it asked for
+    expect(onCapped).not.toHaveBeenCalled();
+  });
+
+  it('keeps one station per id when a row comes back on two pages', async () => {
+    // Row 100 repeats at the top of the second page, as a shifting listing does
+    stubFlux([...rows(100), row(100), row(101)]);
+
+    const stations = await new FrStationsProvider().getStationsNear(PARIS, 25);
+
+    expect(stations).toHaveLength(101);
+    expect(new Set(stations.map((s) => s.id)).size).toBe(101);
+  });
+
+  it('reports the radius actually covered when the disc overflows the cap', async () => {
+    // Central Paris: 509 stations within 25 km, 300 let through — here packed
+    // 11 m apart, so the 300th sits ~3.3 km out
+    const calls = stubFlux(rows(509, 0.0001));
+    const onCapped = vi.fn();
+
+    const stations = await new FrStationsProvider().getStationsNear(PARIS, 25, { onCapped });
+
+    expect(calls.map((u) => u.searchParams.get('offset'))).toEqual(['0', '100', '200']);
+    expect(stations).toHaveLength(300);
+    expect(stations[299].id).toBe('fr-75000300');
+    expect(onCapped).toHaveBeenCalledTimes(1);
+    const [coveredKm] = onCapped.mock.calls[0] as [number];
+    expect(coveredKm).toBeGreaterThan(3.2);
+    expect(coveredKm).toBeLessThan(3.5);
+  });
+
+  it('never claims more than the radius it was asked for', async () => {
+    // Coordinates the flux places beyond the disc it matched them in
+    stubFlux(rows(509, 0.001));
+    const onCapped = vi.fn();
+
+    await new FrStationsProvider().getStationsNear(PARIS, 25, { onCapped });
+
+    expect(onCapped).toHaveBeenCalledWith(25);
+  });
+
+  it('does not report a cap when exactly the cap is all there is', async () => {
+    stubFlux(rows(300));
+    const onCapped = vi.fn();
+
+    await new FrStationsProvider().getStationsNear(PARIS, 25, { onCapped });
+
+    expect(onCapped).not.toHaveBeenCalled();
+  });
+
+  it('assumes a cap when a full last page comes without a total', async () => {
+    stubFlux(rows(300), { total: null });
+    const onCapped = vi.fn();
+
+    await new FrStationsProvider().getStationsNear(PARIS, 25, { onCapped });
+
+    expect(onCapped).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to the plain query when the flux refuses the ordering, and then claims nothing', async () => {
+    const calls = stubFlux(rows(509), { rejectOrder: true });
+    const onCapped = vi.fn();
+
+    const stations = await new FrStationsProvider().getStationsNear(PARIS, 25, { onCapped });
+
+    expect(calls.map((u) => [u.searchParams.has('order_by'), u.searchParams.get('offset')])).toEqual([
+      [true, '0'],
+      [false, '0'],
+      [false, '100'],
+      [false, '200'],
+    ]);
+    expect(stations).toHaveLength(300);
+    // Upstream order says nothing about distance: no part of the disc is complete
+    expect(onCapped).toHaveBeenCalledWith(0);
+  });
+
+  it('still fails on any other transport error', async () => {
+    vi.stubGlobal('fetch', async () => ({ ok: false, status: 503 }));
+    await expect(new FrStationsProvider().getStationsNear(PARIS, 25)).rejects.toThrow('HTTP 503');
+  });
+});
+
 describe('getStationsAlong', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
