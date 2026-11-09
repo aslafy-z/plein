@@ -1,3 +1,21 @@
+# Baseline security headers, on every response. Workers Assets merges the
+# headers of every matching rule, so the path blocks below add their
+# Cache-Control on top of these rather than replacing them.
+# - nosniff: a response is only ever what its Content-Type says it is.
+# - DENY: the app is never framed, so nothing can overlay it for clickjacking.
+# - Referrer-Policy: cross-origin requests (tiles, price APIs, navigation
+#   deep links) learn the origin, never the path — which can carry a position.
+# - Permissions-Policy: geolocation is the only gated feature the app uses.
+#   Clipboard write and Web Share are left on their default (self) allowlist.
+# No Content-Security-Policy here on purpose: the inline theme script, the
+# inline styles in the map pins and the cross-origin API/tile hosts need a
+# policy written and tested against production first.
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(self), camera=(), microphone=(), payment=(), usb=(), accelerometer=(), gyroscope=(), magnetometer=(), midi=(), display-capture=()
+
 # Workers Assets defaults every response to `max-age=0, must-revalidate`, which
 # is right for the HTML shell but wasteful for the content-hashed bundles: a new
 # build emits new filenames, so the old ones can never go stale.
