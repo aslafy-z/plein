@@ -77,6 +77,7 @@
   "nav_route": "Viagem",
   "nav_favorites": "Favoritos",
   "nav_settings": "Definições",
+  "nav_home_aria": "Plein. — voltar ao mapa",
   "onboarding_headline": "Abasteça ao preço justo.",
   "onboarding_intro": "Os preços dos postos em França, Espanha, Andorra e Portugal, comparados à sua volta e nas suas viagens.",
   "onboarding_step1_title": "Escolha o seu combustível",
@@ -90,6 +91,7 @@
   "onboarding_start": "Começar",
   "onboarding_skip_location": "Continuar sem localização",
   "map_radius_chip": "< {km} km",
+  "map_cycle_fuel_title": "Mudar de combustível",
   "map_filters_chip": "Filtros · {count}",
   "map_filters_aria": [
     {
@@ -126,10 +128,13 @@
   "map_locating": "A procurar a sua posição…",
   "map_geo_last_known": "Última posição conhecida — reativar a localização",
   "map_geo_default_pos": "Posição predefinida: Toulouse — ativar a localização",
-  "map_install_app": "⤓ Instalar a app",
-  "map_install_dismiss": "Não voltar a sugerir a instalação",
+  "install_pitch": "Instale o Plein. para o abrir com um gesto, mesmo offline.",
+  "install_action": "⤓ Instalar a app",
+  "install_dismiss_aria": "Não voltar a sugerir a instalação",
   "map_share_view": "Partilhar esta vista",
   "map_recenter_aria": "Centrar na minha posição",
+  "map_zoom_in": "Aproximar",
+  "map_zoom_out": "Afastar",
   "map_my_position": "A minha posição",
   "map_route_aria": "Mapa da viagem",
   "map_close_list": "Fechar a lista",
@@ -171,7 +176,7 @@
   "sheet_no_match": "Nenhum posto corresponde aos seus filtros.",
   "sheet_adjust_filters": "Ajustar os filtros",
   "sheet_active_filters": "Filtros ativos:",
-  "sheet_zone_count": [
+  "sheet_zone_count_compact": [
     {
       "declarations": [
         "input count",
@@ -181,8 +186,8 @@
         "countPlural"
       ],
       "match": {
-        "countPlural=one": "{count} posto na área",
-        "countPlural=other": "{count} postos na área"
+        "countPlural=one": "{count} posto",
+        "countPlural=other": "{count} postos"
       }
     }
   ],
@@ -206,6 +211,7 @@
   "sheet_sort_distance": "Distância",
   "sheet_sort_distance_unavailable_aria": "Ordenação por distância indisponível: a zona está longe da sua posição",
   "sheet_locate_aria": "Ver {station} no mapa",
+  "sheet_open_station_aria": "Abrir a ficha de {station}",
   "sheet_empty_radius": "Nenhum posto dentro do raio.",
   "sheet_offline_empty": "Sem ligação — não há postos guardados para esta zona.",
   "sheet_source_empty": "Não foi possível carregar os postos desta zona.",
@@ -430,6 +436,7 @@
   "detail_highway": "Autoestrada",
   "detail_view_on_map": "Ver no mapa ›",
   "detail_back_aria": "Voltar",
+  "detail_close_aria": "Fechar a ficha",
   "detail_share_aria": "Partilhar o posto",
   "detail_add_favorite_aria": "Adicionar aos favoritos",
   "detail_remove_favorite_aria": "Remover dos favoritos",
