@@ -15,7 +15,7 @@ import {
 import { fmtPrice, distLabel, agoLabel, durationLabel } from '../lib/format';
 import { fuelLabel, openStatusShort } from '../lib/labels';
 import { m } from '../paraglide/messages.js';
-import { openStatus } from '../lib/hours';
+import { stationOpenStatus } from '../lib/hours';
 import BrandAvatar from './BrandAvatar';
 import Freshness from './Freshness';
 import Star from './Star';
@@ -46,7 +46,7 @@ export default function ZoneCard({ handle }: { handle?: ReactNode }) {
   // (empty circle, or a station selected outside it) — then no chip at all,
   // « +1.67 €/L » against a nonexistent floor is just the price again
   const zoneDelta = selectZoneDelta(app, shown);
-  const shownStatus = shown ? openStatus(shown.hours) : null;
+  const shownStatus = shown ? stationOpenStatus(shown) : null;
   // No trip origin — the searched area is beyond any drive from the user, or
   // no position was ever known: no trip figure is honest, so the card shows
   // none — no distance in the meta line, no ETA on « Go there ». Their

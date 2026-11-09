@@ -12,7 +12,7 @@ import { fmtPrice, distLabel, agoLabel, agoLabelFrom } from '../lib/format';
 import { fuelLabel, openStatusShort } from '../lib/labels';
 import { useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
-import { openStatus } from '../lib/hours';
+import { stationOpenStatus } from '../lib/hours';
 import { haversineKm } from '../lib/geo';
 import BrandAvatar from '../components/BrandAvatar';
 import Star from '../components/Star';
@@ -163,7 +163,7 @@ export default function FavoritesScreen() {
             }}
           >
             {favs.map(({ f, live, held, priceInfo, price, distKm }) => {
-              const liveStatus = live ? openStatus(live.hours) : null;
+              const liveStatus = live ? stationOpenStatus(live) : null;
               const status = liveStatus ? openStatusShort(liveStatus) : undefined;
               // The source's own update stamp stays the thing shown; a source
               // that doesn't stamp its prices falls back to when we read them

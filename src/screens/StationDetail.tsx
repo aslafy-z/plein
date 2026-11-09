@@ -24,7 +24,7 @@ import { fmtPrice, distLabel, agoLabel, durationLabel } from '../lib/format';
 import { fuelLabel, openStatusLabel, serviceLabel } from '../lib/labels';
 import { useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
-import { openStatus } from '../lib/hours';
+import { stationOpenStatus } from '../lib/hours';
 import { brandIconSrc } from '../lib/brandIcons';
 import { addBasemap } from '../lib/tiles';
 import Star from '../components/Star';
@@ -233,7 +233,7 @@ export default function StationDetail() {
 
   // Address line already shows the city; the third chip adds brand or context
   const thirdChip = s.brand ?? (s.highway ? m.detail_highway() : s.address ? null : s.city);
-  const status = openStatus(s.hours);
+  const status = stationOpenStatus(s);
 
   const onViewOnMap = () => {
     keepFocusRef.current = true;
