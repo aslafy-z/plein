@@ -288,6 +288,20 @@ npm run e2e         # Playwright (starts the Vite dev server itself) — see
 npm run build       # tsc + vite build
 ```
 
+## Deploys: merging is not releasing
+
+`.github/workflows/deploy.yml` is the whole pipeline, on one Worker:
+
+- **A pull request** uploads a preview version (`pr-<n>` alias), commented on
+  the PR and deleted when it closes (`deploy-cleanup.yml`).
+- **A push on `main`** uploads a version under the `staging` alias
+  (`staging-plein.<subdomain>.workers.dev`). It takes no production traffic.
+- **Production (`plein.zadkiel.fr`) only moves on a manual run** — Actions →
+  Deploy → Run workflow, `ref` = the commit to promote (default: the tip of
+  `main`; an older commit is a rollback). The job rebuilds that commit and
+  refuses one that is not on `main`. Never run `npm run deploy` or dispatch
+  that workflow unless the user asked for a production release.
+
 ## Push first: CI runs the tests inline
 
 - **Commit and open a pull request as soon as the change is testable** —

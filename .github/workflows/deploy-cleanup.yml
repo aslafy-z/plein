@@ -4,7 +4,7 @@
 # Lives outside deploy.yml on purpose: merging a PR fires `push` on main and
 # `pull_request: closed` in the same second, and two runs of the SAME workflow
 # share a concurrency group. This cleanup — which cancels what it supersedes —
-# used to kill the production deploy on its way in. A workflow of its own puts
+# used to kill the main deploy on its way in. A workflow of its own puts
 # it in a group of its own.
 #
 # Required repository secrets:
