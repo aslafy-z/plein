@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest'
-import { capNearest, mergeAsTheyLand } from './AutoProviders'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { AutoStationsProvider, capNearest, mergeAsTheyLand } from './AutoProviders'
+import { FrStationsProvider } from '../fr/FrStationsProvider'
+import { EsStationsProvider, esCoversAlong, esCoversNear } from '../es/EsStationsProvider'
+import { AdStationsProvider } from '../ad/AdStationsProvider'
+import { PtStationsProvider } from '../pt/PtStationsProvider'
 import { haversineKm } from '../../lib/geo'
 import type { GeocodeResult, Station } from '../types'
 
@@ -58,6 +62,72 @@ describe('capNearest', () => {
   it('defaults to the same cap as a single source', () => {
     const stations = Array.from({ length: 660 }, (_, i) => station(`fr-${i}`, (i + 1) * 0.001))
     expect(capNearest(stations, CENTER)).toHaveLength(300)
+  })
+})
+
+describe('AutoStationsProvider — a failed source', () => {
+  // Biarritz: French ground, with the Spanish coverage grazing the 25 km disc
+  // without containing its centre — France owns the zone, Spain is a neighbour.
+  const BIARRITZ = { lat: 43.4832, lng: -1.5586 }
+  const RADIUS_KM = 25
+  const TOULOUSE = { lat: 43.6047, lng: 1.4442 }
+  const BARCELONA = { lat: 41.3874, lng: 2.1686 }
+
+  const sources = [FrStationsProvider, EsStationsProvider, AdStationsProvider, PtStationsProvider]
+  type Outcome = Station[] | Error
+  const settle = (outcome: Outcome) =>
+    outcome instanceof Error ? Promise.reject(outcome) : Promise.resolve(outcome)
+
+  /** Stub every source's network; the ones not named answer an empty list. */
+  const stub = (method: 'getStationsNear' | 'getStationsAlong', fr: Outcome, es: Outcome) => {
+    const outcomes: Outcome[] = [fr, es, [], []]
+    sources.forEach((source, i) => {
+      vi.spyOn(source.prototype, method).mockImplementation(() => settle(outcomes[i]))
+    })
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('stands on a zone France owns and Spain only neighbours', () => {
+    expect(esCoversNear(BIARRITZ, RADIUS_KM)).toBe(true)
+    expect(esCoversNear(BIARRITZ, 0)).toBe(false)
+  })
+
+  it('rejects when the source owning the zone failed, even though a neighbour answered', async () => {
+    stub('getStationsNear', new Error('fr down'), [station('es-1', 0)])
+    await expect(new AutoStationsProvider().getStationsNear(BIARRITZ, RADIUS_KM)).rejects.toThrow('fr down')
+  })
+
+  it('still resolves with the owner\'s stations when a non-owning neighbour failed', async () => {
+    stub('getStationsNear', [station('fr-1', 0)], new Error('es down'))
+    const res = await new AutoStationsProvider().getStationsNear(BIARRITZ, RADIUS_KM)
+    expect(res.map((st) => st.id)).toEqual(['fr-1'])
+  })
+
+  it('merges every source when all of them answered', async () => {
+    stub('getStationsNear', [station('fr-1', 0)], [station('es-1', 0)])
+    const res = await new AutoStationsProvider().getStationsNear(BIARRITZ, RADIUS_KM)
+    expect(res.map((st) => st.id)).toEqual(['fr-1', 'es-1'])
+  })
+
+  it('rejects a corridor when one of the countries it crosses failed', async () => {
+    const route = [TOULOUSE, BARCELONA]
+    expect(esCoversAlong(route, 5)).toBe(true)
+
+    stub('getStationsAlong', new Error('fr down'), [station('es-1', 0)])
+    await expect(new AutoStationsProvider().getStationsAlong(route, 5)).rejects.toThrow('fr down')
+
+    vi.restoreAllMocks()
+    stub('getStationsAlong', [station('fr-1', 0)], new Error('es down'))
+    await expect(new AutoStationsProvider().getStationsAlong(route, 5)).rejects.toThrow('es down')
+  })
+
+  it('resolves a corridor with every country when all of them answered', async () => {
+    stub('getStationsAlong', [station('fr-1', 0)], [station('es-1', 0)])
+    const res = await new AutoStationsProvider().getStationsAlong([TOULOUSE, BARCELONA], 5)
+    expect(res.map((st) => st.id)).toEqual(['fr-1', 'es-1'])
   })
 })
 

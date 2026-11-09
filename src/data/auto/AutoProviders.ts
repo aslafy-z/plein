@@ -2,9 +2,13 @@
 // Each source is queried only when its coverage area can intersect the
 // searched zone / route corridor, so a Toulouse map costs zero Spanish
 // requests and a Madrid one zero French requests, while the border shows
-// several countries at once. One source failing must not blank the others'
-// stations: the call only throws when every RELEVANT source failed (which
-// lets the store fall back to demo data as usual).
+// several countries at once. A failed source is never papered over by the
+// others when its stations were REQUIRED: the store would cache the partial
+// merge as a fresh, complete area — no banner, no retry until it goes stale.
+// Near a point, the sources whose coverage contains the query centre own the
+// zone and are required, a neighbour merely grazing the disc is not; along a
+// route every relevant source is. A required failure rejects the call, which
+// hands over to the store's failure path (painted data kept, error shown).
 import type { GeoPoint } from '../../lib/geo';
 import { haversineKm, nearestOnPolyline } from '../../lib/geo';
 import type {
@@ -56,12 +60,23 @@ function frCoversAlong(polyline: GeoPoint[], corridorKm: number): boolean {
 // JSON.stringify of writeStationsCache, so the merge caps like a source does.
 const NEAR_CAP = 300;
 
-async function mergeSettled(tasks: Promise<Station[]>[]): Promise<Station[]> {
+/** One source's share of a merged query. */
+interface SourceTask {
+  task: Promise<Station[]>;
+  /** A failure of this source fails the whole query rather than thinning it. */
+  required: boolean;
+}
+
+async function mergeSettled(tasks: SourceTask[]): Promise<Station[]> {
   if (tasks.length === 0) return [];
-  const settled = await Promise.allSettled(tasks);
-  const ok = settled.filter((s): s is PromiseFulfilledResult<Station[]> => s.status === 'fulfilled');
-  if (ok.length === 0) throw (settled[0] as PromiseRejectedResult).reason;
-  return ok.flatMap((s) => s.value);
+  const settled = await Promise.allSettled(tasks.map((t) => t.task));
+  const failed = settled.filter((s): s is PromiseRejectedResult => s.status === 'rejected');
+  const requiredFailure = settled.find(
+    (s, i): s is PromiseRejectedResult => s.status === 'rejected' && tasks[i].required,
+  );
+  if (requiredFailure) throw requiredFailure.reason;
+  if (failed.length === tasks.length) throw failed[0].reason;
+  return settled.flatMap((s) => (s.status === 'fulfilled' ? s.value : []));
 }
 
 /**
@@ -94,11 +109,21 @@ export class AutoStationsProvider implements StationsProvider {
     radiusKm: number,
     opts?: StationsFetchOptions,
   ): Promise<Station[]> {
-    const tasks: Promise<Station[]>[] = [];
-    if (frCoversNear(center, radiusKm)) tasks.push(this.fr.getStationsNear(center, radiusKm, opts));
-    if (esCoversNear(center, radiusKm)) tasks.push(this.es.getStationsNear(center, radiusKm, opts));
-    if (adCoversNear(center, radiusKm)) tasks.push(this.ad.getStationsNear(center, radiusKm, opts));
-    if (ptCoversNear(center, radiusKm)) tasks.push(this.pt.getStationsNear(center, radiusKm, opts));
+    const tasks: SourceTask[] = [];
+    // Radius 0 asks whether the coverage contains the centre itself: that
+    // source owns the zone, and the merge is not a result without it.
+    if (frCoversNear(center, radiusKm)) {
+      tasks.push({ task: this.fr.getStationsNear(center, radiusKm, opts), required: frCoversNear(center, 0) });
+    }
+    if (esCoversNear(center, radiusKm)) {
+      tasks.push({ task: this.es.getStationsNear(center, radiusKm, opts), required: esCoversNear(center, 0) });
+    }
+    if (adCoversNear(center, radiusKm)) {
+      tasks.push({ task: this.ad.getStationsNear(center, radiusKm, opts), required: adCoversNear(center, 0) });
+    }
+    if (ptCoversNear(center, radiusKm)) {
+      tasks.push({ task: this.pt.getStationsNear(center, radiusKm, opts), required: ptCoversNear(center, 0) });
+    }
     return capNearest(await mergeSettled(tasks), center);
   }
 
@@ -110,11 +135,15 @@ export class AutoStationsProvider implements StationsProvider {
   // « auto » would be the only source silently dropping stations off a long
   // route. The corridor is already narrow enough to keep the payload sane.
   async getStationsAlong(polyline: GeoPoint[], corridorKm: number): Promise<Station[]> {
-    const tasks: Promise<Station[]>[] = [];
-    if (frCoversAlong(polyline, corridorKm)) tasks.push(this.fr.getStationsAlong(polyline, corridorKm));
-    if (esCoversAlong(polyline, corridorKm)) tasks.push(this.es.getStationsAlong(polyline, corridorKm));
-    if (adCoversAlong(polyline, corridorKm)) tasks.push(this.ad.getStationsAlong(polyline, corridorKm));
-    if (ptCoversAlong(polyline, corridorKm)) tasks.push(this.pt.getStationsAlong(polyline, corridorKm));
+    // Every relevant source is required: a route has no centre to name an
+    // owner, and a corridor missing one country's stations would plan fuel
+    // stops as if that stretch had none.
+    const tasks: SourceTask[] = [];
+    const add = (task: Promise<Station[]>) => tasks.push({ task, required: true });
+    if (frCoversAlong(polyline, corridorKm)) add(this.fr.getStationsAlong(polyline, corridorKm));
+    if (esCoversAlong(polyline, corridorKm)) add(this.es.getStationsAlong(polyline, corridorKm));
+    if (adCoversAlong(polyline, corridorKm)) add(this.ad.getStationsAlong(polyline, corridorKm));
+    if (ptCoversAlong(polyline, corridorKm)) add(this.pt.getStationsAlong(polyline, corridorKm));
     return mergeSettled(tasks);
   }
 }
