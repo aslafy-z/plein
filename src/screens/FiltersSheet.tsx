@@ -171,6 +171,7 @@ export default function FiltersSheet() {
                 key={f}
                 className="press"
                 onClick={() => app.setFuel(f)}
+                aria-pressed={on}
                 style={{
                   background: on ? C.accent : 'transparent',
                   color: on ? C.onAccent : C.body,
@@ -206,6 +207,8 @@ export default function FiltersSheet() {
           step={1}
           value={radiusDraft}
           onChange={(e) => dragRadius(+e.target.value)}
+          aria-label={m.filters_radius_section()}
+          aria-valuetext={m.unit_kilometres({ km: radiusDraft })}
           style={{ width: '100%', cursor: 'pointer' }}
         />
         <div
@@ -271,6 +274,7 @@ export default function FiltersSheet() {
                       <button
                         key={brand}
                         onClick={() => app.toggleBrand(brand)}
+                        aria-pressed={on}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
@@ -347,6 +351,7 @@ export default function FiltersSheet() {
                             key={brand}
                             className="press"
                             onClick={() => app.toggleBrand(brand)}
+                            aria-pressed={on}
                             style={{
                               display: 'flex',
                               alignItems: 'center',

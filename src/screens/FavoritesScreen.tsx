@@ -100,6 +100,7 @@ export default function FavoritesScreen() {
                   key={k}
                   className="press"
                   onClick={() => setSort(k)}
+                  aria-pressed={active}
                   style={{
                     fontSize: 12.5,
                     fontWeight: 700,

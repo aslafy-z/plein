@@ -32,6 +32,11 @@ test('tank size setting shows the chosen value', async ({ page }) => {
 
   await page.locator('input[type=range]').first().fill('80')
   await expect(page.getByText('80 L', { exact: true })).toBeVisible()
+  // The slider is named by its own label and announces the value with its unit
+  await expect(page.getByRole('slider', { name: 'Tank', exact: true })).toHaveAttribute(
+    'aria-valuetext',
+    '80 L',
+  )
 })
 
 test('tabs are routed: refresh keeps the screen, browser back navigates', async ({ page }) => {

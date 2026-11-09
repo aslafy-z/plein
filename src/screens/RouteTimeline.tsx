@@ -616,6 +616,7 @@ export default function RouteTimeline() {
                 key={k}
                 className="press"
                 onClick={() => app.setRouteMode(k)}
+                aria-pressed={active}
                 style={{
                   background: active ? C.accent : 'transparent',
                   color: active ? C.onAccent : C.body,
