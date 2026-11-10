@@ -48,6 +48,7 @@ import {
   selectZoneDelta,
   selectZoneFuels,
   sortFavoriteRows,
+  effectiveFavSort,
   type AppStore,
   type RouteMode,
 } from './store'
@@ -799,6 +800,36 @@ describe('sortFavoriteRows', () => {
     ]
     expect(sortFavoriteRows(blind, 'price', cfg).map((r) => r.id)).toEqual(['a', 'b'])
     expect(sortFavoriteRows(blind, 'recommended', cfg).map((r) => r.id)).toEqual(['a', 'b'])
+  })
+
+  it('leaves distance out of every order while the position is unknown', () => {
+    // The distances start from the fallback area, not from the user: the
+    // near-but-dearer row no longer beats the sticker-cheapest one, and
+    // « Distance » is the default ranking under another name.
+    expect(effectiveFavSort('distance', false)).toBe('recommended')
+    expect(effectiveFavSort('distance', true)).toBe('distance')
+    expect(effectiveFavSort('price', false)).toBe('price')
+    for (const sort of ['recommended', 'price', 'distance'] as const) {
+      expect(sortFavoriteRows(rows, sort, cfg, false).map((r) => r.id)).toEqual([
+        'far-cheap',
+        'near',
+        'unloaded',
+      ])
+    }
+    // Not even as a tie-break: equal prices and priceless rows keep the
+    // order the favorites were given in
+    const tied = [
+      { id: 'b', price: 1.7, distKm: 9 },
+      { id: 'a', price: 1.7, distKm: 3 },
+      { id: 'd', price: null, distKm: 8 },
+      { id: 'c', price: null, distKm: 1 },
+    ]
+    expect(sortFavoriteRows(tied, 'recommended', cfg, false).map((r) => r.id)).toEqual([
+      'b',
+      'a',
+      'd',
+      'c',
+    ])
   })
 })
 

@@ -295,6 +295,7 @@
   "favorites_sort_recommended": "Recomendado",
   "favorites_sort_price": "Precio",
   "favorites_sort_distance": "Distancia",
+  "favorites_sort_distance_unavailable_aria": "Orden por distancia no disponible: tu posición es desconocida",
   "favorites_empty_title": "Aún no hay favoritas",
   "favorites_empty_body": "Toca la estrella de una gasolinera para fijarla aquí y comparar de un vistazo las que sueles usar.",
   "favorites_explore_map": "Explorar el mapa",

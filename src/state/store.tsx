@@ -2937,28 +2937,49 @@ export function selectCheapest(app: AppStore): NearbyStation | null {
 export type FavSort = 'recommended' | 'price' | 'distance';
 
 /**
+ * The sort the Favorites screen actually renders with. A favorite's distance
+ * is measured from the user, so without a known position (`hasKnownPos`) there
+ * is none to show and « Distance » is not an order the user can read: the chip
+ * greys out and a distance sort falls back to the default ranking — the
+ * Favorites mirror of `selectEffectiveSort`. Unlike the zone, an out-of-reach
+ * search area changes nothing here: favorites are not tied to the area.
+ */
+export function effectiveFavSort(sort: FavSort, originKnown: boolean): FavSort {
+  return sort === 'distance' && !originKnown ? 'recommended' : sort;
+}
+
+/**
  * Order the Favorites rows. « Recommended » ranks on the effective per-litre
  * price (fuel burnt to get there included — same notion as the map card);
  * « Price » keeps the raw sticker order; rows without any known price (never
  * seen in an area or route fetch yet) and rows out of a full tank's round
  * trip (no effective price) sink to the bottom, sorted by distance.
+ *
+ * `originKnown` false (no position geolocation ever returned): the rows'
+ * `distKm` start from a fallback area, not from the user, so they take no
+ * part in the order — « Recommended » ranks on the sticker price alone,
+ * « Distance » falls back to it (`effectiveFavSort`), and ties keep the
+ * order the favorites were given in.
  */
 export function sortFavoriteRows<T extends { price: number | null; distKm: number }>(
   rows: T[],
   sort: FavSort,
   app: Pick<AppStore, 'consumption' | 'tank'>,
+  originKnown: boolean = true,
 ): T[] {
+  const mode = effectiveFavSort(sort, originKnown);
+  const km = (r: T) => (originKnown ? r.distKm : 0);
   return [...rows].sort((a, b) => {
-    if (sort === 'distance') return a.distKm - b.distKm;
-    if (sort === 'price') {
-      if (a.price == null && b.price == null) return a.distKm - b.distKm;
+    if (mode === 'distance') return km(a) - km(b);
+    if (mode === 'price') {
+      if (a.price == null && b.price == null) return km(a) - km(b);
       if (a.price == null) return 1;
       if (b.price == null) return -1;
       return a.price - b.price;
     }
-    const ea = a.price != null ? effectiveLiterPrice(app, a.price, a.distKm) : Infinity;
-    const eb = b.price != null ? effectiveLiterPrice(app, b.price, b.distKm) : Infinity;
-    if (ea === eb) return a.distKm - b.distKm;
+    const ea = a.price != null ? effectiveLiterPrice(app, a.price, km(a)) : Infinity;
+    const eb = b.price != null ? effectiveLiterPrice(app, b.price, km(b)) : Infinity;
+    if (ea === eb) return km(a) - km(b);
     return ea - eb;
   });
 }
