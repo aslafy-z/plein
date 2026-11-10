@@ -290,8 +290,81 @@ describe('reachability', () => {
     )
     expect(plan.status).toBe('infeasible')
     expect(plan.diagnostics).toMatchObject({ noStationInRange: true })
-    expect(plan.diagnostics!.furthestReachableKm).toBeCloseTo(usableRangeKm(5, 6.5), 1)
+    // The fixture cruises at 100 km/h, so the reach carries the same uplift as the legs
+    expect(plan.diagnostics!.furthestReachableKm).toBeCloseTo(
+      usableRangeKm(5, 6.5) / speedConsumptionFactor(100),
+      1,
+    )
     expect(plan.stops).toEqual([])
+  })
+
+  it('a top-up smaller than the forecourt minimum is allowed when it fills the tank', () => {
+    // Full tank at departure, 650 km to go: the direct run is ~20 km past the
+    // safe range, and the only station sits 30 km in — where the car is still
+    // within 2 L of full. Filling back up there is what makes the trip safe.
+    const plan = planRoute(
+      buildInput({
+        routeKm: 650,
+        startFuel: 50,
+        cons: 6,
+        stations: [{ id: 'early', km: 30, price: 1.7 }],
+      }),
+    )
+    expect(plan.status).toBe('planned')
+    expect(plan.stops.map((s) => s.stationId)).toEqual(['early'])
+    expect(plan.stops[0].purchasedLitres).toBeLessThan(MIN_PURCHASE_LITRES)
+    expect(plan.stops[0].departureFuelLitres).toBe(50)
+  })
+
+  it('the reported reach uses the motorway factor and stops at the destination', () => {
+    const at = (kmh: number) => (legs: Parameters<NonNullable<Spec['patch']>>[0]) => {
+      const fast = (l: TravelLeg | null): TravelLeg | null =>
+        l && { distanceKm: l.distanceKm, durationMin: (l.distanceKm / kmh) * 60 }
+      legs.direct = fast(legs.direct)!
+      legs.origin = legs.origin.map(fast)
+      legs.destination = legs.destination.map(fast)
+      legs.between = legs.between.map((row) => row.map(fast))
+    }
+    // 20 L at 6 L/100 km is 267 km on paper, but 225 km at 120 km/h: the
+    // station at km 240 is out of reach, and the diagnostics must not claim
+    // a reach that would include it.
+    const plan = planRoute(
+      buildInput({
+        routeKm: 600,
+        startFuel: 20,
+        cons: 6,
+        stations: [{ id: 'just-too-far', km: 240, price: 1.7 }],
+        patch: at(120),
+      }),
+    )
+    expect(plan.status).toBe('infeasible')
+    expect(plan.diagnostics).toMatchObject({ noStationInRange: true })
+    expect(plan.diagnostics!.furthestReachableKm).toBeCloseTo(
+      usableRangeKm(20, 6) / speedConsumptionFactor(120),
+      1,
+    )
+    expect(plan.diagnostics!.furthestReachableKm).toBeLessThan(240)
+
+    // Stranded at a station whose full-tank reach would overshoot the
+    // destination: the gap to a pinned stop is a missing leg, not a fuel
+    // wall, and the reach is capped at the route length.
+    const capped = planRoute(
+      buildInput({
+        routeKm: 300,
+        startFuel: 10,
+        stations: [
+          { id: 'first', km: 100, price: 1.6 },
+          { id: 'pinned', km: 200, price: 1.5 },
+        ],
+        required: ['pinned'],
+        patch: (legs) => {
+          legs.origin[1] = null
+          legs.between[0][1] = null
+        },
+      }),
+    )
+    expect(capped.status).toBe('infeasible')
+    expect(capped.diagnostics!.furthestReachableKm).toBe(300)
   })
 
   it('a reachable station that cannot connect onwards → infeasible, stranded there', () => {
