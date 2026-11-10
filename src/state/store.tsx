@@ -1678,7 +1678,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       if (reqId !== routeReq.current) return;
       markRoute('route:geometry');
-      setRouteState((s) => commitGeometry(s, key, route, endpoints));
+      setRouteState((s) =>
+        commitGeometry(s, key, route, endpoints, {
+          from, to, source: sourceId, avoidMotorway, avoidToll, vehicle,
+        }),
+      );
 
       await runCorridor(key, route, reqId);
     },
@@ -1699,13 +1703,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => () => clearTimeout(matrixTimer.current), []);
   useEffect(() => {
     const route = routeState.route;
-    if (!route || routeState.stations.length === 0 || !fromPoint || !toPoint) {
+    // The STANDING trip's points and options, never the form's: a departure
+    // picked (or an avoid chip toggled) over a finished route describes the
+    // next trip, and reading it here would measure this corridor from there.
+    const trip = routeState.trip;
+    if (!route || routeState.stations.length === 0 || !trip) {
       matrixKeyRef.current = null;
       clearTimeout(matrixTimer.current);
       setRouteState((s) => matrixBlocked(s, 'idle'));
       return;
     }
-    const provider = getProviders(sourceId).route;
+    const { avoidMotorway, avoidToll, vehicle } = trip;
+    const provider = getProviders(trip.source).route;
     const candidates = planCandidatesFor(
       routeState,
       fuel,
@@ -1725,9 +1734,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
     const key = travelMatrixKey(
-      sourceId,
-      fromPoint,
-      toPoint,
+      trip.source,
+      trip.from,
+      trip.to,
       candidates.map((c) => c.station.id),
       { avoidMotorway, avoidToll, vehicle },
     );
@@ -1735,9 +1744,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     matrixKeyRef.current = key;
     setRouteState((s) => beginMatrix(s, key));
     const points: GeoPoint[] = [
-      fromPoint,
+      trip.from,
       ...candidates.map((c) => ({ lat: c.station.lat, lng: c.station.lng })),
-      toPoint,
+      trip.to,
     ];
     // Public routing servers rate-limit, and a 429 is transient — but the key
     // stays put on failure, so nothing would ever ask again for this candidate
@@ -1749,7 +1758,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Forced offline: the plan settles on estimated legs without a request.
       // The key stays put, exactly like exhausted retries — the next plan
       // input change re-keys the stage and measures again.
-      if (isForcedOffline() && sourceId !== 'demo') {
+      if (isForcedOffline() && trip.source !== 'demo') {
         setRouteState((s) => failMatrix(s, key));
         markRoute('route:plan');
         return;
@@ -1777,20 +1786,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // returns, exactly as it does while loading.
     clearTimeout(matrixTimer.current);
     matrixTimer.current = setTimeout(() => attempt(0), MATRIX_DEBOUNCE_MS);
-  }, [
-    routeState,
-    fromPoint,
-    toPoint,
-    sourceId,
-    fuel,
-    tank,
-    consumption,
-    startTankPct,
-    plannedStops,
-    avoidMotorway,
-    avoidToll,
-    vehicle,
-  ]);
+  }, [routeState, fuel, tank, consumption, startTankPct, plannedStops]);
 
   // ── Actions ────────────────────────────────────────────────────────────────
   const go = useCallback((s: Screen) => {
@@ -2169,8 +2165,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
     if (!from || !toPoint) return;
     beginRouteTiming();
-    // The stored point is the origin of the trip being computed: the matrix
-    // stage and the multi-stop maps link read it, and must agree with it
+    // The stored point is the origin of the trip being computed: the
+    // multi-stop maps link reads it, and must agree with it
     setFromPoint(from);
     void computeRoute(from, toPoint, {
       from: fromIsCurrentPosition
@@ -2524,7 +2520,7 @@ export function routeFromLabel(
  *
  * « My position » is the flag, never a stored point: it resolves to the fix of
  * the moment it is asked. `fromPoint` still holds the origin of the last trip
- * computed under the flag (the matrix stage keys on it), and reading it back
+ * computed under the flag (the multi-stop maps link reads it), and reading it back
  * here would pin every later trip to where the first one started.
  */
 export function routeDeparturePoint(
@@ -3249,7 +3245,9 @@ export const selectPlanCandidates = cached((app: AppStore): RouteCandidate[] =>
     app.fuel,
     { tank: app.tank, consumption: app.consumption, startTankPct: app.startTankPct },
     app.plannedStops,
-    getProviders(app.sourceId).route.travelMatrixMaxPoints,
+    // The standing trip's source, like the matrix effect — both must thin
+    // the corridor to the same set, or the committed key never matches
+    getProviders(app.routeState.trip?.source ?? app.sourceId).route.travelMatrixMaxPoints,
   ),
 );
 
@@ -3263,13 +3261,16 @@ const selectPlanLegs = cached((app: AppStore): PlanLegs | null => {
   const route = routeState.route;
   if (!route) return null;
   const candidates = selectPlanCandidates(app);
-  if (routeState.matrix === 'ready' && routeState.matrixCells && app.fromPoint && app.toPoint) {
+  const trip = routeState.trip;
+  if (routeState.matrix === 'ready' && routeState.matrixCells && trip) {
+    // Keyed on what the standing route was computed with, not on the form:
+    // an endpoint or an option edited since belongs to the next trip
     const key = travelMatrixKey(
-      app.sourceId,
-      app.fromPoint,
-      app.toPoint,
+      trip.source,
+      trip.from,
+      trip.to,
       candidates.map((c) => c.station.id),
-      { avoidMotorway: app.avoidMotorway, avoidToll: app.avoidToll, vehicle: app.vehicle },
+      trip,
     );
     if (key === routeState.matrixKey) {
       const legs = matrixPlanLegs(routeState.matrixCells, candidates.length, route);

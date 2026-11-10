@@ -8,6 +8,7 @@ import {
   commitMatrix,
   initialRouteState,
   type RouteState,
+  type RouteTrip,
 } from './routePipeline'
 import { INDEPENDENT_BRAND_ID } from '../lib/brandIcons'
 import { m } from '../paraglide/messages.js'
@@ -864,10 +865,18 @@ const CORRIDOR: RouteStation[] = [
 
 const ROUTE: Route = { distanceKm: ROUTE_KM, durationMin: 156, polyline: routeLine() }
 const ENDS = { from: 'Lyon', to: 'Nantes' }
+const TRIP: RouteTrip = {
+  from: BASE,
+  to: north(ROUTE_KM),
+  source: 'demo',
+  avoidMotorway: false,
+  avoidToll: false,
+  vehicle: 'car',
+}
 
 /** A finished computation: geometry committed, then the corridor stops. */
 const readyState = (stations: RouteStation[] = CORRIDOR): RouteState =>
-  commitCorridor(commitGeometry(beginGeometry(initialRouteState, 'k'), 'k', ROUTE, ENDS), 'k', stations)
+  commitCorridor(commitGeometry(beginGeometry(initialRouteState, 'k'), 'k', ROUTE, ENDS, TRIP), 'k', stations)
 
 const routeApp = (over: Partial<AppStore> = {}) =>
   app({
@@ -973,7 +982,7 @@ describe('selectRouteAnalysis at the geometry stage', () => {
   // The corridor stage has not answered yet: the timeline still has to render
   // the trip, so the analysis must describe it without a single station — and
   // without inventing a plan over stations that were never fetched.
-  const geometryOnly = commitGeometry(beginGeometry(initialRouteState, 'k'), 'k', ROUTE, ENDS)
+  const geometryOnly = commitGeometry(beginGeometry(initialRouteState, 'k'), 'k', ROUTE, ENDS, TRIP)
 
   it('describes the trip before any station is known, with no plan yet', () => {
     const a = selectRouteAnalysis(app({ routeState: geometryOnly }))
@@ -1167,6 +1176,35 @@ describe('selectRouteAnalysis', () => {
       routeApp({ routeState: commitMatrix(beginMatrix(readyState(), 'other'), 'other', cells) }),
     )
     expect(stale.quality).toBe('estimated')
+  })
+
+  it('keys the legs on the standing trip, not on the form being edited', () => {
+    const candidates = selectPlanCandidates(routeApp())
+    const ids = candidates.map((c) => c.station.id)
+    const opts = { avoidMotorway: false, avoidToll: false, vehicle: 'car' }
+    const n = candidates.length + 2
+    const cells = Array.from({ length: n }, () =>
+      Array.from({ length: n }, () => ({ distanceKm: 60, durationMin: 40 })),
+    )
+    const standing = travelMatrixKey('demo', BASE, north(ROUTE_KM), ids, opts)
+    const routeState = commitMatrix(beginMatrix(readyState(), standing), standing, cells)
+    // A new departure, an avoid chip and another vehicle picked over the
+    // finished route describe the NEXT trip: the standing plan keeps its legs
+    const edited = routeApp({
+      routeState,
+      fromPoint: north(-40),
+      toPoint: null,
+      avoidToll: true,
+      vehicle: 'motorcycle',
+    })
+    expect(selectRouteAnalysis(edited).quality).toBe('routed')
+    // …and a matrix measured from the form's departure is not this trip's
+    const fromForm = travelMatrixKey('demo', north(-40), north(ROUTE_KM), ids, opts)
+    const foreign = routeApp({
+      routeState: commitMatrix(beginMatrix(readyState(), fromForm), fromForm, cells),
+      fromPoint: north(-40),
+    })
+    expect(selectRouteAnalysis(foreign).quality).toBe('estimated')
   })
 })
 
