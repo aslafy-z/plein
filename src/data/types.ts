@@ -154,6 +154,18 @@ export interface StationsFetchOptions {
    * schedule the requests behind user-visible work (fetchpriority low). */
   lowPriority?: boolean;
   /**
+   * Retry / revalidation: a source that memoizes its downloads must not answer
+   * from one that has already landed.
+   */
+  force?: boolean;
+  /**
+   * Called (possibly several times — keep the oldest) with the time the data
+   * behind the answer was requested, by a source that may answer from a
+   * download it memoized earlier. Never called by a source that always goes to
+   * the network: the caller then stamps the moment the answer landed.
+   */
+  onFetchedAt?: (fetchedAt: number) => void;
+  /**
    * Called when the source held more stations in the disc than it returns:
    * `coveredRadiusKm` is how far from the center the result is complete (the
    * farthest station kept, 0 when nothing can be claimed). Never called for a

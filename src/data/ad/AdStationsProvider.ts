@@ -18,14 +18,19 @@ import type {
   StationsFetchOptions,
   StationsProvider,
 } from '../types';
+import { STALE_MS } from '../stationsCache';
 
 const ENDPOINT =
   (IS_DEV ? '/proxy/ad' : 'https://sig.govern.ad') +
   '/server/rest/services/CARBURANTS/CARBURANTS/FeatureServer/1/query';
 
 const TIMEOUT_MS = 15000;
-/** Stations update their prices over the day; refetch at most twice an hour */
-const CACHE_MS = 30 * 60_000;
+/**
+ * Memo lifetime — the store's own freshness window, never longer: a
+ * revalidation (an area past STALE_MS) must reach the network, not be handed
+ * back the download it is trying to replace.
+ */
+const CACHE_MS = STALE_MS;
 
 const MIN_PRICE = 0.5;
 const MAX_PRICE = 3.5;
@@ -235,17 +240,36 @@ export function groupStations(features: unknown[]): Station[] {
 // while the request is still in flight (map + route computed together, a pan
 // landing mid-fetch, the « auto » source near the border) share it instead of
 // each starting their own download.
-let cache: { fetchedAt: number; stations: Promise<Station[]> } | null = null;
+/** `fetchedAt` is when the request left — the age a caller may claim for it */
+interface MemoEntry {
+  fetchedAt: number;
+  stations: Promise<Station[]>;
+  settled: boolean;
+}
+let cache: MemoEntry | null = null;
 
-function fetchCountry(lowPriority = false): Promise<Station[]> {
-  if (cache && Date.now() - cache.fetchedAt < CACHE_MS) return cache.stations;
+function fetchCountry(opts?: StationsFetchOptions): Promise<Station[]> {
+  const hit = cache;
+  // `force` only skips a download that has LANDED: one still in flight is as
+  // fresh as a new request would be, and is shared rather than doubled.
+  if (hit && Date.now() - hit.fetchedAt < CACHE_MS && !(opts?.force && hit.settled)) {
+    opts?.onFetchedAt?.(hit.fetchedAt);
+    return hit.stations;
+  }
 
-  const stations = loadCountry(lowPriority);
-  cache = { fetchedAt: Date.now(), stations };
-  // A failed fetch must retry on the next query, not stick for CACHE_MS.
-  stations.catch(() => {
-    if (cache?.stations === stations) cache = null;
-  });
+  const stations = loadCountry(opts?.lowPriority === true);
+  const entry: MemoEntry = { fetchedAt: Date.now(), stations, settled: false };
+  cache = entry;
+  opts?.onFetchedAt?.(entry.fetchedAt);
+  stations.then(
+    () => {
+      entry.settled = true;
+    },
+    // A failed fetch must retry on the next query, not stick for CACHE_MS.
+    () => {
+      if (cache === entry) cache = null;
+    },
+  );
   return stations;
 }
 
@@ -283,7 +307,7 @@ export class AdStationsProvider implements StationsProvider {
     opts?: StationsFetchOptions,
   ): Promise<Station[]> {
     if (!adCoversNear(center, radiusKm)) return [];
-    const stations = await fetchCountry(opts?.lowPriority);
+    const stations = await fetchCountry(opts);
     return stations
       .filter((st) => haversineKm(center, { lat: st.lat, lng: st.lng }) <= radiusKm)
       .sort(

@@ -1387,14 +1387,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // complete; recording the asked radius instead would serve the
         // truncated set as full coverage to every later pan inside it.
         let coveredKm = MAX_RADIUS_KM;
+        // A source may answer from a download it memoized minutes ago: the
+        // area is as old as the oldest one behind it, not as this call.
+        let sourcedAt = Infinity;
         const data = await bundle.stations.getStationsNear(searchPos, MAX_RADIUS_KM, {
           lowPriority: cached != null,
+          force,
+          onFetchedAt: (at) => {
+            sourcedAt = Math.min(sourcedAt, at);
+          },
           onCapped: (km) => {
             coveredKm = Math.min(coveredKm, km);
           },
         });
         if (reqId !== stationsReq.current) return;
-        const fetchedAt = Date.now();
+        const fetchedAt = Math.min(Date.now(), sourcedAt);
         writeStationsCache(sourceId, searchPos, coveredKm, data, fetchedAt);
         // A favorite seen in any fetch keeps its price for the Favorites tab
         recordFavoritePrices(favoriteIds.current, data, fetchedAt);
@@ -1577,12 +1584,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         for (const id of group.ids) favRefreshAttempted.current.set(id, Date.now());
         const provider = getProviders(group.country).stations;
         try {
+          let sourcedAt = Infinity;
           const stations = provider.getStationsByIds
             ? await provider.getStationsByIds(group.ids, { lowPriority: true })
             : await provider.getStationsNear(group.center, group.radiusKm, {
                 lowPriority: true,
+                onFetchedAt: (at) => {
+                  sourcedAt = Math.min(sourcedAt, at);
+                },
               });
-          recordFavoritePrices(favoriteIds.current, stations, Date.now());
+          recordFavoritePrices(favoriteIds.current, stations, Math.min(Date.now(), sourcedAt));
         } catch {
           /* the cached price stays on screen, with its honest age */
         }
