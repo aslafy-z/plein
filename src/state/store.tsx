@@ -167,6 +167,14 @@ export const VEHICLE_PRESETS: Record<
   motorcycle: { tank: 15, consumption: 5, fuel: 'e10' },
 };
 const DEFAULT_CONSUMPTION = VEHICLE_PRESETS.car.consumption;
+/**
+ * What « Reset » in the Filters sheet puts the radius and the fuel back to.
+ * The fuel is the vehicle profile's own, not a fixed diesel: a motorcycle
+ * resets to SP95-E10, the fuel its profile selected in the first place.
+ */
+export function filtersResetTarget(vehicle: VehicleId): { radius: number; fuel: FuelId } {
+  return { radius: 5, fuel: VEHICLE_PRESETS[vehicle].fuel };
+}
 /** Default departure tank level (%) — adjustable on the route setup */
 const DEFAULT_START_TANK_PCT = 70;
 /**
@@ -1895,11 +1903,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const resetFilters = useCallback(() => {
-    setRadius(5);
+    const target = filtersResetTarget(vehicle);
+    setRadius(target.radius);
     setBrandSelState([]);
     setServiceTags({});
-    setFuel('diesel');
-  }, [setFuel, setRadius]);
+    setFuel(target.fuel);
+  }, [setFuel, setRadius, vehicle]);
 
   const searchPlaces = useCallback(
     (q: string, opts?: GeocodeSearchOptions) => getProviders(sourceId).geocode.search(q, opts),
