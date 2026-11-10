@@ -123,7 +123,10 @@ function loadSw(fetchImpl: (req: SwRequest) => Promise<Response>) {
 }
 
 const shellCache = (sw: ReturnType<typeof loadSw>) => sw.caches.stores.get('plein-shell-v1')
-const assetCache = (sw: ReturnType<typeof loadSw>) => sw.caches.stores.get('plein-assets-v1')
+const assetCache = (sw: ReturnType<typeof loadSw>) => sw.caches.stores.get('plein-assets-v2')
+
+const html = (body: string, status = 200) =>
+  new Response(body, { status, headers: { 'content-type': 'text/html; charset=utf-8' } })
 
 // What a built index.html references: entry chunks, stylesheet, preloaded
 // fonts, app icons. The first offline launch of a freshly-installed PWA has
@@ -203,6 +206,13 @@ describe('service worker — install precache', () => {
     expect(assetCache(noChunk)?.entries.has(`${ORIGIN}/assets/index-abc.js`)).toBe(false)
   })
 
+  it('rejects the install when an asset is answered with the shell', async () => {
+    const sw = loadSw(shellFetch({ '/assets/index-abc.js': html(SHELL_HTML) }))
+
+    await expect(sw.install()).rejects.toThrow()
+    expect(assetCache(sw)?.entries.has(`${ORIGIN}/assets/index-abc.js`)).toBe(false)
+  })
+
   it('does not let the brand index block the install', async () => {
     const sw = loadSw(shellFetch({ '/brands-fr.json': 'offline' }))
 
@@ -215,7 +225,7 @@ describe('service worker — install precache', () => {
 
 describe('service worker — navigations', () => {
   it('caches a successful navigation as the offline shell, inside waitUntil', async () => {
-    const sw = loadSw(async () => new Response('<html>app</html>', { status: 200 }))
+    const sw = loadSw(async () => html('<html>app</html>'))
 
     const { res, waitCount } = await sw.fetchEvent(request('/', 'navigate'))
 
@@ -235,6 +245,27 @@ describe('service worker — navigations', () => {
     // The error page is served to the page that asked for it…
     expect(res?.status).toBe(500)
     // …but the good shell survives it
+    expect(waitCount).toBe(0)
+    expect(await cache.entries.get(`${ORIGIN}/`)?.text()).toBe('<html>app</html>')
+  })
+
+  it('does not let a non-HTML navigation become the shell', async () => {
+    // /version.json opened in a tab is a successful same-origin navigation
+    const sw = loadSw(
+      async () =>
+        new Response('{"version":"1.2.3"}', {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+    )
+    const cache = await sw.caches.open('plein-shell-v1')
+    await cache.put('/', html('<html>app</html>'))
+
+    const { res, waitCount } = await sw.fetchEvent(request('/version.json', 'navigate'))
+
+    // The tab gets its JSON…
+    expect(await res?.text()).toBe('{"version":"1.2.3"}')
+    // …and the shell is still the app
     expect(waitCount).toBe(0)
     expect(await cache.entries.get(`${ORIGIN}/`)?.text()).toBe('<html>app</html>')
   })
@@ -272,6 +303,32 @@ describe('service worker — assets', () => {
     await sw.fetchEvent(request('/assets/missing.js'))
     expect(calls).toBe(3) // never cached → refetched every time
     expect(assetCache(sw)?.entries.size).toBe(1)
+  })
+
+  it('neither caches nor serves the shell standing in for a removed asset', async () => {
+    // The host's single-page-application fallback: index.html and a 200 for
+    // a chunk the last deploy removed
+    let calls = 0
+    const sw = loadSw(async () => {
+      calls += 1
+      return html('<html>app</html>')
+    })
+
+    for (const path of [
+      '/assets/app-old123.js',
+      '/icons/gone.png',
+      '/fonts/gone.woff2',
+      '/brand-icons/gone.svg',
+    ]) {
+      const { res, waitCount } = await sw.fetchEvent(request(path))
+      expect(res?.status).toBe(404)
+      expect(await res?.text()).toBe('')
+      expect(waitCount).toBe(0)
+    }
+
+    await sw.fetchEvent(request('/assets/app-old123.js'))
+    expect(calls).toBe(5) // never cached → asked again
+    expect(assetCache(sw)?.entries.size ?? 0).toBe(0)
   })
 
   it('caches the self-hosted fonts, so the offline shell keeps its type', async () => {
@@ -484,11 +541,12 @@ describe('service worker — tiles and activation', () => {
 
   it('drops caches that are no longer in the keep list', async () => {
     const sw = loadSw(async () => new Response('', { status: 200 }))
-    await sw.caches.open('plein-assets-v1')
+    await sw.caches.open('plein-assets-v2')
     await sw.caches.open('plein-shell-v1')
     await sw.caches.open('plein-tiles-v3')
     await sw.caches.open('plein-data-v2')
-    await sw.caches.open('plein-assets-v0')
+    // v1 may hold index.html under a removed chunk's URL — the bump sweeps it
+    await sw.caches.open('plein-assets-v1')
     // The previous tile generations: v1 was warmed by keyless requests, so it
     // may hold tiles CARTO stamped « API key required »; v2 by no-cors ones,
     // whose opaque responses let CDN errors in — the bumps must sweep both.
@@ -498,7 +556,7 @@ describe('service worker — tiles and activation', () => {
     await sw.activate()
 
     expect(await sw.caches.keys()).toEqual([
-      'plein-assets-v1',
+      'plein-assets-v2',
       'plein-shell-v1',
       'plein-tiles-v3',
       'plein-data-v2',
