@@ -15,7 +15,6 @@ import Toast from './components/Toast';
 import FallbackBanner from './components/FallbackBanner';
 import InstallPrompt from './components/InstallPrompt';
 import UpdatePrompt from './components/UpdatePrompt';
-import WhatsNewPrompt from './components/WhatsNewPrompt';
 import WhatsNewSheet from './components/WhatsNewSheet';
 
 // Developer chrome behind its own chunk: a normal session (flag off) never
@@ -51,7 +50,6 @@ export default function App() {
         {showSideNav && <SideNav />}
         <div className="app-main">
           <UpdatePrompt />
-          <WhatsNewPrompt />
           <FallbackBanner />
           <InstallPrompt />
           {screen === 'onboarding' && <Onboarding />}

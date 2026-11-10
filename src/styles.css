@@ -1075,6 +1075,32 @@ button,
   animation: toast-in 0.34s var(--ease-out);
 }
 
+/* The What's new sparkle (WhatsNewButton): a short wiggle, then a long rest —
+   enough to be noticed from the corner of an eye, never a constant twitch
+   next to the prices. The rest is part of the cycle so the beat stays even. */
+@keyframes whatsnew-wiggle {
+  0%,
+  14%,
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+  2% {
+    transform: rotate(-16deg) scale(1.12);
+  }
+  5% {
+    transform: rotate(14deg) scale(1.12);
+  }
+  8% {
+    transform: rotate(-10deg) scale(1.06);
+  }
+  11% {
+    transform: rotate(6deg) scale(1.02);
+  }
+}
+.whatsnew-wiggle {
+  animation: whatsnew-wiggle 6s var(--ease-in-out) 1.2s infinite;
+}
+
 /* Theme switch: colorScheme.ts flips `data-theme` inside a view transition,
    so the whole re-color lands as one whole-page cross-fade instead of an
    abrupt swap. These rules only pace the browser's default cross-fade; a
@@ -1105,7 +1131,8 @@ button,
   .list-enter,
   .sheet-hint,
   .skeleton-row::after,
-  .spin {
+  .spin,
+  .whatsnew-wiggle {
     animation: none;
   }
   /* Feedback stays (the brightness dip), the movement goes */

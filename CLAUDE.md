@@ -194,14 +194,19 @@ wrote it, **in the same commit as the user-visible change it announces**.
   Onboarding stamps it (a newcomer is never told about the app they just
   met); a blob without it predates the log and gets the latest entry only;
   `unseenChangelog()` caps a long absence at `MAX_ANNOUNCED`.
-- The flow rides the update bar: `UpdatePrompt` says a newer build exists,
-  its reload (or any later cold start) runs that build, and `WhatsNewPrompt` —
-  the next bar down, both arrangements — names what it changed. « See » opens
-  `WhatsNewSheet` (phone `ModalSheet`, desktop centered glass card); opening
-  it or ✕ marks the log seen. Being open is nav state (`whatsNewOpen`), so
-  Back closes it. Settings › App › « What's new » reopens the whole log.
+- **Never pushed at the user.** The app is opened at the pump or behind the
+  wheel, so unread news is a quiet signal only: `WhatsNewButton`, a small
+  sparkle at the far end of the map's top controls (the phone's chip row,
+  the desktop overlay row's right corner) that wiggles briefly every few
+  seconds (`.whatsnew-wiggle`, off under reduced motion — the unread dot
+  stays). No bar, no dialog on boot. It appears once the new build runs —
+  the update bar's reload or any later cold start — and a tap opens
+  `WhatsNewSheet` (phone `ModalSheet`, desktop centered glass card), which
+  marks the log seen and removes the sparkle. Being open is nav state
+  (`whatsNewOpen`), so Back closes it. Settings › App › « What's new »
+  reopens the whole log.
 - e2e: `BASE_SEED` marks the log read (`changelogSeen: '9999-12-31'`) so the
-  bar never shifts another spec's layout; `whats-new.spec.ts` drops it with
+  sparkle never shifts another spec's layout; `whats-new.spec.ts` drops it with
   `changelogSeen: null`.
 
 ## Route: three stages, committed as they land

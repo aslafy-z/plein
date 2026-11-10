@@ -14,8 +14,8 @@ type Options = { seed: Record<string, unknown> }
 // `locale: null` to exercise the detection path.
 //
 // The What's new log is marked as read up to a date no entry will reach, so
-// the bar it raises for returning users (src/lib/changelog.ts) never shifts
-// the layout under a spec that isn't about it. `whats-new.spec.ts` drops the
+// the sparkle it puts on the map for returning users (src/lib/changelog.ts)
+// never shifts the layout under a spec that isn't about it. `whats-new.spec.ts` drops the
 // mark with `changelogSeen: null`.
 const BASE_SEED = { locale: 'en', changelogSeen: '9999-12-31' }
 
