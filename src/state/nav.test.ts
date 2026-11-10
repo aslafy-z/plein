@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isFicheSwap, type NavHistoryState } from './store'
+import { isFicheSwap, navFromPath, type NavHistoryState } from './store'
 
 // Which nav changes swap the current history entry instead of stacking one.
 // Everything else about the history effect needs a browser (routing.spec.ts,
@@ -54,5 +54,17 @@ describe('isFicheSwap', () => {
     const foreign = { screen: 'detail', detailId: 'in', filtersOpen: false } as const
     expect(isFicheSwap(null, foreign)).toBe(false)
     expect(isFicheSwap(entry({ plein: undefined }), foreign)).toBe(false)
+  })
+})
+
+describe('navFromPath', () => {
+  it('opens the fiche of an encoded station id', () => {
+    expect(navFromPath('/station/fr-123')).toEqual({ screen: 'detail', detailId: 'fr-123' })
+  })
+
+  it('does not throw on a malformed escape', () => {
+    expect(() => navFromPath('/station/%E0')).not.toThrow()
+    expect(() => navFromPath('/station/abc%')).not.toThrow()
+    expect(navFromPath('/station/abc%').screen).toBe('detail')
   })
 })
