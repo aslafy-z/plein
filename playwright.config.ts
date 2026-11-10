@@ -13,7 +13,7 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:5173',
     locale: 'en-US',
-    // The app follows prefers-color-scheme unless Réglages says otherwise,
+    // The app follows prefers-color-scheme unless Settings says otherwise,
     // and Playwright's default is LIGHT — pinned dark so the suite exercises
     // the same arrangement it always has. theme.spec.ts overrides it to
     // drive the resolution paths on purpose.
