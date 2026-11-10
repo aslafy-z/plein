@@ -24,11 +24,22 @@ export interface CacheStore {
   readonly durable: boolean;
   get<T>(store: StoreName, key: string): Promise<T | undefined>;
   put(store: StoreName, key: string, value: unknown): Promise<void>;
+  /**
+   * Several records, possibly across stores, that land together or not at
+   * all — an area's payload and its index entry must never exist apart.
+   */
+  putAll(entries: readonly CachePut[]): Promise<void>;
   delete(store: StoreName, key: string): Promise<void>;
   /** Every value of a store — meant for the small `areas` index, not payloads */
   list<T>(store: StoreName): Promise<T[]>;
   /** Drops every store's contents */
   clear(): Promise<void>;
+}
+
+export interface CachePut {
+  store: StoreName;
+  key: string;
+  value: unknown;
 }
 
 const DB_NAME = 'plein.cache';
@@ -65,6 +76,9 @@ export function createMemoryCacheStore(): CacheStore {
     durable: false,
     get: async <T>(name: StoreName, key: string) => of(name).get(key) as T | undefined,
     put: async (name, key, value) => void of(name).set(key, value),
+    putAll: async (entries) => {
+      for (const entry of entries) of(entry.store).set(entry.key, entry.value);
+    },
     delete: async (name, key) => void of(name).delete(key),
     list: async <T>(name: StoreName) => [...of(name).values()] as T[],
     clear: async () => stores.clear(),
@@ -97,9 +111,16 @@ function transact(
       return;
     }
     tx.oncomplete = () => resolve();
-    const fail = () => reject(tx.error ?? new Error('IndexedDB transaction failed'));
-    tx.onerror = fail;
-    tx.onabort = fail;
+    // A failed request's `error` event bubbles here BEFORE the abort it
+    // causes, and `tx.error` is still null at that point: rejecting from it
+    // would trade the QuotaExceededError for an anonymous failure. Keep the
+    // request's error and settle on the abort, which always follows.
+    let requestError: unknown = null;
+    tx.onerror = (event) => {
+      requestError = (event.target as IDBRequest | null)?.error ?? requestError;
+    };
+    tx.onabort = () =>
+      reject(tx.error ?? requestError ?? new Error('IndexedDB transaction failed'));
     try {
       run(tx);
     } catch (err) {
@@ -163,6 +184,12 @@ function wrapDb(db: IDBDatabase): CacheStore {
       ),
     put: (name, key, value) =>
       transact(db, [name], (tx) => void tx.objectStore(name).put(value, key)),
+    putAll: (entries) =>
+      entries.length === 0
+        ? Promise.resolve()
+        : transact(db, [...new Set(entries.map((entry) => entry.store))], (tx) => {
+            for (const entry of entries) tx.objectStore(entry.store).put(entry.value, entry.key);
+          }),
     delete: (name, key) => transact(db, [name], (tx) => void tx.objectStore(name).delete(key)),
     list: <T>(name: StoreName) =>
       request<T[]>(db.transaction(name).objectStore(name).getAll() as IDBRequest<T[]>),
