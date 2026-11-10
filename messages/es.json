@@ -3,6 +3,9 @@
   "app_title": "Plein. — repostar al precio justo",
   "unit_metres": "{metres} m",
   "unit_kilometres": "{km} km",
+  "unit_litres": "{litres} L",
+  "unit_litres_per_100_km": "{litres} L/100 km",
+  "unit_percent": "{percent} %",
   "unit_size_under_kilobyte": "menos de 1 kB",
   "unit_minutes": "{minutes} min",
   "unit_hours": "{hours} h",
@@ -119,6 +122,7 @@
       }
     }
   ],
+  "map_pin_label": "{name}, {price} € el litro",
   "map_pin_cap_hint": [
     {
       "declarations": [
@@ -295,6 +299,7 @@
   "favorites_sort_recommended": "Recomendado",
   "favorites_sort_price": "Precio",
   "favorites_sort_distance": "Distancia",
+  "favorites_sort_distance_unavailable_aria": "Orden por distancia no disponible: tu posición es desconocida",
   "favorites_empty_title": "Aún no hay favoritas",
   "favorites_empty_body": "Toca la estrella de una gasolinera para fijarla aquí y comparar de un vistazo las que sueles usar.",
   "favorites_explore_map": "Explorar el mapa",
@@ -478,6 +483,7 @@
   "settings_geo_denied": "denegada para este sitio",
   "settings_geo_unavailable": "no disponible en este dispositivo",
   "settings_geo_pending": "no solicitada",
+  "settings_geo_failed": "posición no encontrada — toca para reintentar",
   "settings_geo_locating": "buscando…",
   "settings_geo_enable": "Activar",
   "settings_location_hint": "Sin ubicación, el mapa se abre en la última zona consultada (Toulouse por defecto). Si el aviso ya no aparece, permite la ubicación para este sitio en los ajustes del navegador.",

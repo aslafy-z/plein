@@ -161,3 +161,41 @@ test('a fuel nobody sells in the zone names itself and offers what IS sold', asy
   await expect(page.getByText('The cheapest near you')).toBeVisible()
   await expect(page.getByText('Diesel ↻')).toBeVisible()
 })
+
+// Both frames are dialogs to a keyboard: opening one moves focus into it, and
+// closing it hands focus back to the chip that opened it rather than dropping
+// it on the body. Runs on both arrangements — the sheet and the popover.
+test('the keyboard lands inside the filters and returns to the chip on close', async ({ page }) => {
+  const chip = page.getByText('Filters · 6')
+  await chip.focus()
+  await page.keyboard.press('Enter')
+
+  const dialog = page.getByRole('dialog', { name: 'Filters' })
+  await expect(dialog).toBeVisible()
+  await expect
+    .poll(() => dialog.evaluate((el) => el.contains(document.activeElement)))
+    .toBe(true)
+
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+  await expect(chip).toBeFocused()
+})
+
+test.describe('modal sheet', () => {
+  phoneOnly('the desktop popover leaves the map reachable — only the sheet is modal')
+
+  test('Tab never leaves the open sheet', async ({ page }) => {
+    await page.getByText('Filters · 6').focus()
+    await page.keyboard.press('Enter')
+    const sheet = page.getByRole('dialog', { name: 'Filters' })
+    await expect(sheet).toHaveAttribute('aria-modal', 'true')
+    await expect(sheet).toBeFocused()
+
+    // Backwards from the sheet wraps to its last control, forwards from
+    // there to its first — the map under the scrim is never a stop
+    await page.keyboard.press('Shift+Tab')
+    await expect(page.getByRole('button', { name: 'Show 6 stations' })).toBeFocused()
+    await page.keyboard.press('Tab')
+    await expect(sheet.getByRole('button', { name: 'Close', exact: true })).toBeFocused()
+  })
+})

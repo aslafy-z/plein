@@ -19,7 +19,7 @@ import { fmtPrice, distLabel } from '../lib/format';
 import { openStatusShort } from '../lib/labels';
 import { useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
-import { openStatus } from '../lib/hours';
+import { stationOpenStatus } from '../lib/hours';
 import BrandAvatar from './BrandAvatar';
 
 /**
@@ -230,7 +230,7 @@ export default function ZoneList({
           // tier, so it matches its card — without moving the tier bounds.
           const deal = priceTier(price, stats, true) === 'deal' || recoRow;
           const delta = (priceCents(price) - priceCents(min)) / 100;
-          const rowStatus = openStatus(s.hours);
+          const rowStatus = stationOpenStatus(s);
 
           const identity = (
             <>

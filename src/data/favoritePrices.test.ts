@@ -33,6 +33,9 @@ function memoryStore(): CacheStore & { records: Map<StoreName, Map<string, unkno
     durable: true,
     get: async <T>(name: StoreName, key: string) => of(name).get(key) as T | undefined,
     put: async (name, key, value) => void of(name).set(key, value),
+    putAll: async (entries) => {
+      for (const entry of entries) of(entry.store).set(entry.key, entry.value);
+    },
     delete: async (name, key) => void of(name).delete(key),
     list: async <T>(name: StoreName) => [...of(name).values()] as T[],
     clear: async () => records.clear(),

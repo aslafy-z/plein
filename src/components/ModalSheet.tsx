@@ -27,6 +27,9 @@ import {
 const SCRIM_TRANSITION = 'opacity .38s var(--ease-out)';
 /** Unmount fallback if the dismissal slide's transitionend never fires */
 const CLOSE_FALLBACK_MS = 450;
+/** What Tab can land on inside the sheet */
+const TABBABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export default function ModalSheet({
   onClose,
@@ -49,6 +52,39 @@ export default function ModalSheet({
   const scrollerRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+
+  // A modal takes the keyboard with it: focus moves into the sheet when it
+  // opens and goes back to whatever opened it (the chip) when it unmounts —
+  // however that happens: the handle, the scrim, Escape or the system Back.
+  useEffect(() => {
+    const opener = document.activeElement;
+    sheetRef.current?.focus({ preventScroll: true });
+    return () => {
+      if (opener instanceof HTMLElement && opener.isConnected) {
+        opener.focus({ preventScroll: true });
+      }
+    };
+  }, []);
+
+  // …and Tab stays inside while it is open: the map under the scrim is not
+  // reachable by pointer, so it must not be by keyboard either.
+  const trapTab = (e: React.KeyboardEvent) => {
+    const el = sheetRef.current;
+    if (e.key !== 'Tab' || !el) return;
+    const stops = [...el.querySelectorAll<HTMLElement>(TABBABLE)];
+    if (stops.length === 0) {
+      e.preventDefault();
+      return;
+    }
+    const first = stops[0];
+    const last = stops[stops.length - 1];
+    const at = document.activeElement;
+    const inside = at instanceof Node && el.contains(at) && at !== el;
+    if (e.shiftKey ? !inside || at === first : !inside || at === last) {
+      e.preventDefault();
+      (e.shiftKey ? last : first).focus();
+    }
+  };
 
   const g = useRef({
     active: false,
@@ -333,7 +369,7 @@ export default function ModalSheet({
   }, [dragBegin, dragMove, midFlight]);
 
   return (
-    <div style={{ position: 'absolute', inset: 0, zIndex: 1100 }}>
+    <div style={{ position: 'absolute', inset: 0, zIndex: 1100 }} onKeyDown={trapTab}>
       <button
         ref={scrimRef}
         onClick={onClose}
@@ -349,7 +385,9 @@ export default function ModalSheet({
       <div
         ref={sheetRef}
         role="dialog"
+        aria-modal="true"
         aria-label={label}
+        tabIndex={-1}
         className="anim-sheet"
         style={{
           position: 'absolute',
@@ -362,6 +400,7 @@ export default function ModalSheet({
           flexDirection: 'column',
           maxHeight: '88%',
           overflow: 'hidden',
+          outline: 'none',
           willChange: 'transform',
           transition: SHEET_TRANSITION,
         }}

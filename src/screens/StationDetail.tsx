@@ -23,8 +23,9 @@ import { stationCountry } from '../data/stationIds';
 import { fmtPrice, distLabel, agoLabel, durationLabel } from '../lib/format';
 import { fuelLabel, openStatusLabel, serviceLabel } from '../lib/labels';
 import { useIsDesktop } from '../lib/layout';
+import { pinInitialsHtml } from '../lib/text';
 import { m } from '../paraglide/messages.js';
-import { openStatus } from '../lib/hours';
+import { stationOpenStatus } from '../lib/hours';
 import { brandIconSrc } from '../lib/brandIcons';
 import { addBasemap } from '../lib/tiles';
 import Star from '../components/Star';
@@ -61,7 +62,7 @@ function StationMiniMap({ station }: { station: Station }) {
         `</div>`
       : `<div class="pin-bubble" style="background:${C.accent};color:${C.onAccent};` +
         `font:700 13px 'Spline Sans Mono',monospace;padding:5px 9px;border:1px solid ${C.accent}">` +
-        `${station.init}</div>`;
+        `${pinInitialsHtml(station.init)}</div>`;
     const html =
       `<div style="transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center">` +
       bubble +
@@ -69,6 +70,7 @@ function StationMiniMap({ station }: { station: Station }) {
     L.marker([station.lat, station.lng], {
       icon: L.divIcon({ className: '', html, iconSize: [0, 0], iconAnchor: [0, 0] }),
       interactive: false,
+      keyboard: false,
     }).addTo(map);
     mapRef.current = map;
     return () => {
@@ -200,7 +202,7 @@ export default function StationDetail() {
   // Unleaded 95 stands in for E10 in Spain/Andorra — same substitution as the map
   const cur = effectivePrice(s, app.fuel)?.value;
   const dSave = cur != null && maxForCurrentFuel != null ? (maxForCurrentFuel - cur) * app.tank : 0;
-  const dSaveStr = dSave > 0 ? `−${fmtPrice(dSave)}` : '0,00';
+  const dSaveStr = dSave > 0 ? `−${fmtPrice(dSave)}` : fmtPrice(0);
 
   // Most recent update among this station's prices
   const updatedTimes = Object.values(s.prices)
@@ -233,7 +235,7 @@ export default function StationDetail() {
 
   // Address line already shows the city; the third chip adds brand or context
   const thirdChip = s.brand ?? (s.highway ? m.detail_highway() : s.address ? null : s.city);
-  const status = openStatus(s.hours);
+  const status = stationOpenStatus(s);
 
   const onViewOnMap = () => {
     keepFocusRef.current = true;

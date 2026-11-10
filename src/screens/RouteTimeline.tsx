@@ -531,9 +531,16 @@ export default function RouteTimeline() {
             onClick={() => app.shareRoute()}
             aria-label={m.ribbon_share_aria()}
             title={m.ribbon_share_aria()}
+            // A 40px touch target around the 15px icon; the negative margins
+            // keep its footprint (and its baseline) where the bare icon was
             style={{
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
+              width: 40,
+              height: 40,
+              margin: -12.5,
+              flexShrink: 0,
               color: C.accent,
               cursor: 'pointer',
             }}

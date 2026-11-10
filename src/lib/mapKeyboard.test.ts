@@ -1,5 +1,13 @@
-import { describe, it, expect } from 'vitest';
-import { approach, panDirection, zoomDirection, wholePixels } from './mapKeyboard';
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import type * as L from 'leaflet';
+import {
+  approach,
+  heldKeyId,
+  installSmoothKeyboard,
+  panDirection,
+  zoomDirection,
+  wholePixels,
+} from './mapKeyboard';
 
 describe('approach', () => {
   it('closes the same fraction of the gap whatever the frame rate', () => {
@@ -76,5 +84,119 @@ describe('wholePixels', () => {
     expect(wholePixels(3.7).whole).toBe(3);
     expect(wholePixels(-3.7).whole).toBe(-3);
     expect(wholePixels(-3.7).carry).toBeCloseTo(-0.7, 10);
+  });
+});
+
+describe('heldKeyId', () => {
+  it('names the physical key, whatever character Shift makes of it', () => {
+    expect(heldKeyId({ code: 'Equal', key: '+' })).toBe(heldKeyId({ code: 'Equal', key: '=' }));
+    expect(heldKeyId({ code: 'Minus', key: '_' })).toBe(heldKeyId({ code: 'Minus', key: '-' }));
+  });
+
+  it('tells the numpad key from the main-row one', () => {
+    expect(heldKeyId({ code: 'NumpadAdd', key: '+' })).not.toBe(
+      heldKeyId({ code: 'Equal', key: '+' }),
+    );
+  });
+
+  it('falls back on the character when the keyboard reports no code', () => {
+    expect(heldKeyId({ code: '', key: '+' })).toBe('+');
+  });
+});
+
+describe('installSmoothKeyboard', () => {
+  type Listener = (e: unknown) => void;
+
+  /** The handler under node: a fake container, window, clock and frame loop */
+  const mount = (startZoom: number) => {
+    const onEl = new Map<string, Listener>();
+    const onWindow = new Map<string, Listener>();
+    let now = 1000;
+    let pending: ((ts: number) => void) | null = null;
+    vi.stubGlobal('window', {
+      addEventListener: (type: string, fn: Listener) => onWindow.set(type, fn),
+      removeEventListener: () => {},
+    });
+    vi.stubGlobal('requestAnimationFrame', (fn: (ts: number) => void) => {
+      pending = fn;
+      return 1;
+    });
+    vi.stubGlobal('cancelAnimationFrame', () => {
+      pending = null;
+    });
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+
+    let zoom = startZoom;
+    const setView = vi.fn((_center: unknown, z: number) => {
+      zoom = z;
+    });
+    const map = {
+      getContainer: () => ({
+        tabIndex: 0,
+        hasAttribute: () => true,
+        addEventListener: (type: string, fn: Listener) => onEl.set(type, fn),
+        removeEventListener: () => {},
+      }),
+      getZoom: () => zoom,
+      getMinZoom: () => 0,
+      getMaxZoom: () => 18,
+      getCenter: () => ({ lat: 0, lng: 0 }),
+      fire: () => {},
+      setView,
+      _move: (_center: unknown, z: number) => {
+        zoom = z;
+      },
+    };
+    installSmoothKeyboard(map as unknown as L.Map);
+
+    const key = (type: 'keydown' | 'keyup', code: string, char: string, shiftKey: boolean) =>
+      (type === 'keydown' ? onEl : onWindow).get(type)!({
+        code,
+        key: char,
+        shiftKey,
+        preventDefault: () => {},
+      });
+    /** Runs the loop for `seconds`; true when it settled on its own */
+    const run = (seconds: number) => {
+      for (let t = 0; t < seconds && pending; t += 0.016) {
+        now += 16;
+        const fn: (ts: number) => void = pending;
+        pending = null;
+        fn(now);
+      }
+      return pending == null;
+    };
+    return { key, run, setView };
+  };
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('stops zooming in when Shift is let go before the « + » key', () => {
+    const { key, run, setView } = mount(10);
+    key('keydown', 'Equal', '+', true);
+    // Shift comes up first: the same physical key is now reported as « = »
+    key('keyup', 'ShiftLeft', 'Shift', false);
+    key('keyup', 'Equal', '=', false);
+    expect(run(5)).toBe(true);
+    expect(setView).toHaveBeenLastCalledWith(expect.anything(), 11, expect.anything());
+  });
+
+  it('stops zooming out when Shift is let go before the « _ » key', () => {
+    const { key, run, setView } = mount(10);
+    key('keydown', 'Minus', '_', true);
+    key('keyup', 'ShiftLeft', 'Shift', false);
+    key('keyup', 'Minus', '-', false);
+    expect(run(5)).toBe(true);
+    expect(setView).toHaveBeenLastCalledWith(expect.anything(), 9, expect.anything());
+  });
+
+  it('keeps zooming for as long as the key really is held', () => {
+    const { key, run } = mount(10);
+    key('keydown', 'Equal', '+', true);
+    key('keyup', 'ShiftLeft', 'Shift', false);
+    expect(run(1)).toBe(false);
   });
 });

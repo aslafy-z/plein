@@ -249,7 +249,7 @@ function RouteForm({ withTitle }: { withTitle: boolean }) {
           <span style={{ fontSize: 13, fontWeight: 700, color: C.ink, flex: 1 }}>
             {m.route_start_tank()}
           </span>
-          <span style={{ font: mono(700, 14), color: C.accent }}>{app.startTankPct} %</span>
+          <span style={{ font: mono(700, 14), color: C.accent }}>{m.unit_percent({ percent: app.startTankPct })}</span>
         </div>
         <input
           type="range"

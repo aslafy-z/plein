@@ -203,7 +203,7 @@ const APP_VERSION = buildVersion()
 // dev and build). `npm run typecheck` and `npm test` don't go through this
 // config, so they run the same compile from their `pre*` scripts.
 //
-// The strategy list is evaluated in order: an explicit choice in Réglages
+// The strategy list is evaluated in order: an explicit choice in Settings
 // wins, then the browser's language, then French. `url` is deliberately absent
 // — screens are store state here, not routes, so there is nothing in the URL
 // to carry a locale.

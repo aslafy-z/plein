@@ -154,6 +154,18 @@ export interface StationsFetchOptions {
    * schedule the requests behind user-visible work (fetchpriority low). */
   lowPriority?: boolean;
   /**
+   * Retry / revalidation: a source that memoizes its downloads must not answer
+   * from one that has already landed.
+   */
+  force?: boolean;
+  /**
+   * Called (possibly several times — keep the oldest) with the time the data
+   * behind the answer was requested, by a source that may answer from a
+   * download it memoized earlier. Never called by a source that always goes to
+   * the network: the caller then stamps the moment the answer landed.
+   */
+  onFetchedAt?: (fetchedAt: number) => void;
+  /**
    * Called when the source held more stations in the disc than it returns:
    * `coveredRadiusKm` is how far from the center the result is complete (the
    * farthest station kept, 0 when nothing can be claimed). Never called for a
@@ -213,6 +225,13 @@ export interface GeocodeSearchOptions {
    * can keep its spinner up until every source has concluded.
    */
   onPartial?(results: GeocodeResult[]): void;
+  /**
+   * The answer about to be returned is missing something a failure took away —
+   * one source of a merge, or part of a source's own detail calls. It is still
+   * the best list available and is returned as usual; the signal only says it
+   * must not be remembered as THE answer to this query (`withGeocodeMemo`).
+   */
+  onIncomplete?(): void;
 }
 
 export interface GeocodeProvider {
@@ -253,6 +272,8 @@ export interface RouteProvider {
    * station→destination legs for the route fuel-stop plan. `null` per cell
    * when unroutable. Optional — the plan falls back to a geometric estimate
    * (and says so) when the provider has no matrix backend or the call fails.
+   * Rejects with `TravelMatrixUnsupportedError` when the backend cannot answer
+   * THIS request by design — nothing to retry, and not an outage.
    */
   getTravelMatrix?(
     points: GeoPoint[],
@@ -260,6 +281,18 @@ export interface RouteProvider {
   ): Promise<Array<Array<ReachInfo | null>>>;
   /** Largest `points` a single getTravelMatrix call accepts */
   readonly travelMatrixMaxPoints?: number;
+}
+
+/**
+ * The matrix backend cannot answer this request, by design rather than by
+ * accident (a server-side limit the request is known to exceed). The matrix
+ * stage settles on `unsupported` instead of `error`: no retry would succeed.
+ */
+export class TravelMatrixUnsupportedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'TravelMatrixUnsupportedError';
+  }
 }
 
 // ── Source selection ─────────────────────────────────────────────────────────

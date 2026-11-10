@@ -63,7 +63,9 @@ const FEEDBACK_EMAIL = 'plein@zadkiel.fr';
 
 const VEHICLES: VehicleId[] = ['car', 'motorcycle'];
 
-function geoStatusLabel(status: 'granted' | 'denied' | 'unavailable' | 'pending'): string {
+function geoStatusLabel(
+  status: 'granted' | 'denied' | 'unavailable' | 'pending' | 'failed',
+): string {
   switch (status) {
     case 'granted':
       return m.settings_geo_granted();
@@ -73,6 +75,8 @@ function geoStatusLabel(status: 'granted' | 'denied' | 'unavailable' | 'pending'
       return m.settings_geo_unavailable();
     case 'pending':
       return m.settings_geo_pending();
+    case 'failed':
+      return m.settings_geo_failed();
   }
 }
 
@@ -643,7 +647,7 @@ export default function Settings() {
               <span style={{ fontSize: 13, fontWeight: 700, color: C.ink, flex: 1 }}>
                 {m.settings_tank()}
               </span>
-              <span style={{ font: mono(700, 15), color: C.accent }}>{tank} L</span>
+              <span style={{ font: mono(700, 15), color: C.accent }}>{m.unit_litres({ litres: tank })}</span>
             </div>
             <input
               type="range"
@@ -664,7 +668,7 @@ export default function Settings() {
                 {m.settings_consumption()}
               </span>
               <span style={{ font: mono(700, 15), color: C.accent }}>
-                {fmtDecimal(consumption, 1)} L/100 km
+                {m.unit_litres_per_100_km({ litres: fmtDecimal(consumption, 1) })}
               </span>
             </div>
             <input
@@ -739,7 +743,10 @@ export default function Settings() {
                   <LocateIcon color={C.mut} dot={false} size={17} spinning />
                 </span>
               ) : (
-                geoStatus !== 'granted' && (
+                // « Turn on » would contradict a request that failed with
+                // the permission standing: its status line carries the retry
+                geoStatus !== 'granted' &&
+                geoStatus !== 'failed' && (
                   <span style={{ color: C.accent, fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
                     {m.settings_geo_enable()}
                   </span>

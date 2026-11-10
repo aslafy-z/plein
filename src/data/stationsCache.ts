@@ -212,8 +212,12 @@ async function writeArea(current: CacheStore, meta: AreaMeta, retried: boolean):
   const stations = payloads.get(meta.key);
   if (!stations) return;
   try {
-    await current.put('payloads', meta.key, stations);
-    await current.put('areas', meta.key, meta);
+    // One transaction for both records: a tab dying mid-flush (it runs on
+    // pagehide) must not leave a payload the index never points at.
+    await current.putAll([
+      { store: 'payloads', key: meta.key, value: stations },
+      { store: 'areas', key: meta.key, value: meta },
+    ]);
   } catch (err) {
     if (!isQuotaError(err) || retried) {
       // Out of room with nothing left to shed, or a store that is simply
@@ -479,9 +483,10 @@ export async function readStationsCache(
 ): Promise<StationsCacheHit | null> {
   await ready();
   const now = Date.now();
-  const entries = [...index.values()].filter(
-    (e) => e.source === source && now - e.fetchedAt <= MAX_CACHE_AGE_MS,
-  );
+  // Newest first: when several areas qualify, the freshest prices answer
+  const entries = [...index.values()]
+    .filter((e) => e.source === source && now - e.fetchedAt <= MAX_CACHE_AGE_MS)
+    .sort((a, b) => b.fetchedAt - a.fetchedAt);
   const covering = entries.find(
     (e) => haversineKm(e.center, center) + radiusKm <= e.fetchRadiusKm,
   );

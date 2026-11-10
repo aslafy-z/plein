@@ -7,7 +7,7 @@
 // (« 597/600 » is one pan away from eviction). A name that drifts from sw.js
 // silently reads an empty cache, so they are declared once here rather than
 // spelled out at each reader.
-export const SW_ASSET_CACHE = 'plein-assets-v1';
+export const SW_ASSET_CACHE = 'plein-assets-v2';
 export const SW_SHELL_CACHE = 'plein-shell-v1';
 export const SW_TILE_CACHE = 'plein-tiles-v3';
 export const SW_DATA_CACHE = 'plein-data-v2';

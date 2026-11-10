@@ -8,6 +8,7 @@ import {
   commitMatrix,
   initialRouteState,
   type RouteState,
+  type RouteTrip,
 } from './routePipeline'
 import { INDEPENDENT_BRAND_ID } from '../lib/brandIcons'
 import { m } from '../paraglide/messages.js'
@@ -48,6 +49,7 @@ import {
   selectZoneDelta,
   selectZoneFuels,
   sortFavoriteRows,
+  effectiveFavSort,
   type AppStore,
   type RouteMode,
 } from './store'
@@ -800,6 +802,36 @@ describe('sortFavoriteRows', () => {
     expect(sortFavoriteRows(blind, 'price', cfg).map((r) => r.id)).toEqual(['a', 'b'])
     expect(sortFavoriteRows(blind, 'recommended', cfg).map((r) => r.id)).toEqual(['a', 'b'])
   })
+
+  it('leaves distance out of every order while the position is unknown', () => {
+    // The distances start from the fallback area, not from the user: the
+    // near-but-dearer row no longer beats the sticker-cheapest one, and
+    // « Distance » is the default ranking under another name.
+    expect(effectiveFavSort('distance', false)).toBe('recommended')
+    expect(effectiveFavSort('distance', true)).toBe('distance')
+    expect(effectiveFavSort('price', false)).toBe('price')
+    for (const sort of ['recommended', 'price', 'distance'] as const) {
+      expect(sortFavoriteRows(rows, sort, cfg, false).map((r) => r.id)).toEqual([
+        'far-cheap',
+        'near',
+        'unloaded',
+      ])
+    }
+    // Not even as a tie-break: equal prices and priceless rows keep the
+    // order the favorites were given in
+    const tied = [
+      { id: 'b', price: 1.7, distKm: 9 },
+      { id: 'a', price: 1.7, distKm: 3 },
+      { id: 'd', price: null, distKm: 8 },
+      { id: 'c', price: null, distKm: 1 },
+    ]
+    expect(sortFavoriteRows(tied, 'recommended', cfg, false).map((r) => r.id)).toEqual([
+      'b',
+      'a',
+      'd',
+      'c',
+    ])
+  })
 })
 
 // ── Route analysis ───────────────────────────────────────────────────────────
@@ -833,10 +865,18 @@ const CORRIDOR: RouteStation[] = [
 
 const ROUTE: Route = { distanceKm: ROUTE_KM, durationMin: 156, polyline: routeLine() }
 const ENDS = { from: 'Lyon', to: 'Nantes' }
+const TRIP: RouteTrip = {
+  from: BASE,
+  to: north(ROUTE_KM),
+  source: 'demo',
+  avoidMotorway: false,
+  avoidToll: false,
+  vehicle: 'car',
+}
 
 /** A finished computation: geometry committed, then the corridor stops. */
 const readyState = (stations: RouteStation[] = CORRIDOR): RouteState =>
-  commitCorridor(commitGeometry(beginGeometry(initialRouteState, 'k'), 'k', ROUTE, ENDS), 'k', stations)
+  commitCorridor(commitGeometry(beginGeometry(initialRouteState, 'k'), 'k', ROUTE, ENDS, TRIP), 'k', stations)
 
 const routeApp = (over: Partial<AppStore> = {}) =>
   app({
@@ -942,7 +982,7 @@ describe('selectRouteAnalysis at the geometry stage', () => {
   // The corridor stage has not answered yet: the timeline still has to render
   // the trip, so the analysis must describe it without a single station — and
   // without inventing a plan over stations that were never fetched.
-  const geometryOnly = commitGeometry(beginGeometry(initialRouteState, 'k'), 'k', ROUTE, ENDS)
+  const geometryOnly = commitGeometry(beginGeometry(initialRouteState, 'k'), 'k', ROUTE, ENDS, TRIP)
 
   it('describes the trip before any station is known, with no plan yet', () => {
     const a = selectRouteAnalysis(app({ routeState: geometryOnly }))
@@ -1136,6 +1176,35 @@ describe('selectRouteAnalysis', () => {
       routeApp({ routeState: commitMatrix(beginMatrix(readyState(), 'other'), 'other', cells) }),
     )
     expect(stale.quality).toBe('estimated')
+  })
+
+  it('keys the legs on the standing trip, not on the form being edited', () => {
+    const candidates = selectPlanCandidates(routeApp())
+    const ids = candidates.map((c) => c.station.id)
+    const opts = { avoidMotorway: false, avoidToll: false, vehicle: 'car' }
+    const n = candidates.length + 2
+    const cells = Array.from({ length: n }, () =>
+      Array.from({ length: n }, () => ({ distanceKm: 60, durationMin: 40 })),
+    )
+    const standing = travelMatrixKey('demo', BASE, north(ROUTE_KM), ids, opts)
+    const routeState = commitMatrix(beginMatrix(readyState(), standing), standing, cells)
+    // A new departure, an avoid chip and another vehicle picked over the
+    // finished route describe the NEXT trip: the standing plan keeps its legs
+    const edited = routeApp({
+      routeState,
+      fromPoint: north(-40),
+      toPoint: null,
+      avoidToll: true,
+      vehicle: 'motorcycle',
+    })
+    expect(selectRouteAnalysis(edited).quality).toBe('routed')
+    // …and a matrix measured from the form's departure is not this trip's
+    const fromForm = travelMatrixKey('demo', north(-40), north(ROUTE_KM), ids, opts)
+    const foreign = routeApp({
+      routeState: commitMatrix(beginMatrix(readyState(), fromForm), fromForm, cells),
+      fromPoint: north(-40),
+    })
+    expect(selectRouteAnalysis(foreign).quality).toBe('estimated')
   })
 })
 

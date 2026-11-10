@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   agoLabel,
+  agoLabelFrom,
   clockLabel,
   distLabel,
   durationLabel,
@@ -93,8 +94,23 @@ describe('agoLabel', () => {
     expect(agoLabel(ago(0))).toBe("à l'instant")
     expect(agoLabel(ago(5))).toBe(`il y a 5${NB}min`)
     expect(agoLabel(ago(120))).toBe(`il y a 2${NB}h`)
-    expect(agoLabel(ago(26 * 60))).toBe('hier')
-    expect(agoLabel(ago(3 * 24 * 60))).toBe(`il y a 3${NB}j`)
+  })
+
+  // Local-time constructors on both sides: the calendar days below are the
+  // runner's own, whatever its time zone.
+  const at = (day: number, hour: number) => new Date(2026, 5, day, hour, 0).getTime()
+
+  it('counts days between calendar days, not 24-hour blocks', () => {
+    expect(agoLabelFrom(at(9, 10), at(10, 12))).toBe('hier')
+    expect(agoLabelFrom(at(7, 12), at(10, 12))).toBe(`il y a 3${NB}j`)
+    // 37 h old, but updated yesterday.
+    expect(agoLabelFrom(at(9, 10), at(10, 23))).toBe('hier')
+    // 30 h old, but updated two days ago.
+    expect(agoLabelFrom(at(8, 19), at(10, 1))).toBe('avant-hier')
+  })
+
+  it('keeps hours under a day, even across midnight', () => {
+    expect(agoLabelFrom(at(9, 22), at(10, 1))).toBe(`il y a 3${NB}h`)
   })
 
   it('degrades to an em-dash on missing or invalid input', () => {

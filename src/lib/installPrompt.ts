@@ -37,13 +37,24 @@ export function subscribeInstall(fn: () => void): () => void {
   return () => listeners.delete(fn);
 }
 
-/** Show the native install dialog. */
+/**
+ * Show the native install dialog. The captured event is single-use: once it
+ * has been answered — or its prompt() refused — it is retired whatever the
+ * outcome, and the browser fires a new beforeinstallprompt if it wants to
+ * offer again.
+ */
 export async function promptInstall(): Promise<'accepted' | 'dismissed' | 'unavailable'> {
   if (!deferred) return 'unavailable';
   const ev = deferred;
-  await ev.prompt();
-  const { outcome } = await ev.userChoice;
-  if (outcome === 'accepted') deferred = null;
-  notify();
-  return outcome;
+  try {
+    await ev.prompt();
+    const { outcome } = await ev.userChoice;
+    return outcome;
+  } catch {
+    return 'unavailable'; // a spent event, or a call outside a user gesture
+  } finally {
+    // A newer event captured while the dialog was open stays.
+    if (deferred === ev) deferred = null;
+    notify();
+  }
 }

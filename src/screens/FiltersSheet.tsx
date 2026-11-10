@@ -105,10 +105,19 @@ export default function FiltersSheet() {
   };
 
   // The popover takes focus on open, so the keyboard lands inside the thing
-  // that just appeared instead of staying on the chip that opened it
+  // that just appeared instead of staying on the chip that opened it — and
+  // hands it back on close, or the unmounting card would drop focus on the
+  // body. The phone frame (ModalSheet) does both for itself.
   const cardRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (desktop) cardRef.current?.focus({ preventScroll: true });
+    if (!desktop) return;
+    const opener = document.activeElement;
+    cardRef.current?.focus({ preventScroll: true });
+    return () => {
+      if (opener instanceof HTMLElement && opener.isConnected) {
+        opener.focus({ preventScroll: true });
+      }
+    };
   }, [desktop]);
 
   // Brand groups present in the zone with their station count, most frequent
@@ -196,7 +205,7 @@ export default function FiltersSheet() {
       <div>
         <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
           <span style={{ ...sectionLabel, flex: 1 }}>{m.filters_radius_section()}</span>
-          <span style={{ font: mono(700, 15), color: C.ink }}>{radiusDraft} km</span>
+          <span style={{ font: mono(700, 15), color: C.ink }}>{m.unit_kilometres({ km: radiusDraft })}</span>
         </div>
         {/* Horizontal slider: its drag must never become the sheet's */}
         <input

@@ -365,6 +365,22 @@ export function planRoute(input: OptimizerInput): RoutePlan {
         };
         if (!purchase || better(minBuy, purchase)) purchase = minBuy;
       }
+      // Filling the tank is always a legal purchase, however small: a car
+      // that arrives within the forecourt minimum of full can still top up,
+      // and that top-up may be the only thing that makes the next leg safe.
+      if (f === tankUnits) {
+        for (let a = Math.max(0, tankUnits - minBuyUnits + 1); a < tankUnits; a++) {
+          const nearFull = arriveRow[a];
+          if (!nearFull) continue;
+          const stopped = stopAt(nearFull, a);
+          const fill: DepartState = {
+            ...stopped,
+            money: stopped.money + (tankUnits - a) * price,
+            purchasedUnits: tankUnits - a,
+          };
+          if (!purchase || better(fill, purchase)) purchase = fill;
+        }
+      }
       // A pinned stop may leave without buying (the user wants the halt);
       // anywhere else a zero-litre stop is pointless and stays illegal.
       const a = arriveRow[f];
@@ -429,14 +445,18 @@ export function planRoute(input: OptimizerInput): RoutePlan {
         break;
       }
     }
-    const startRange = usableRangeKm(startUnits * unit, cons);
-    const furthest =
+    // Same physics as the legs: the reach shrinks by the motorway factor, and
+    // it never extends past the destination.
+    const startRange = usableRangeKm(startUnits * unit, cons) / consFactor;
+    const furthest = Math.min(
+      input.direct.distanceKm,
       strandedK >= 0
         ? Math.max(
             startRange,
-            stationAt(strandedK).positionKm + usableRangeKm(tankUnits * unit, cons),
+            stationAt(strandedK).positionKm + usableRangeKm(tankUnits * unit, cons) / consFactor,
           )
-        : startRange;
+        : startRange,
+    );
     const unreachableRequired = requiredNodes.find((r) => !arrive[r].some(Boolean));
     return {
       status: 'infeasible',

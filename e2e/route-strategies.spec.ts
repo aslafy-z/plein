@@ -104,7 +104,9 @@ test.describe('a vehicle that cannot bridge the corridor gaps', () => {
   test.use({
     seed: {
       sourceId: 'demo', onboarded: true, lastFix: TOULOUSE,
-      tank: 10, consumption: 17, startTankPct: 40,
+      // The thirstiest vehicle the Settings sliders allow — persist.ts drops
+      // anything beyond them on the way in
+      tank: 5, consumption: 12, startTankPct: 40,
     },
   })
 
