@@ -28,17 +28,50 @@ export interface ChangelogEntry {
   items: readonly (() => string)[];
 }
 
-/** Newest first. Never edit an id once shipped: it is what users have seen. */
+/** Newest first. Never edit an id once shipped: it is what users have seen.
+    The August entries were written after the fact, from the merge history, so
+    the log reads as a history from its first day rather than a lone item. */
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
-    id: '2026-11-07',
-    title: m.changelog_2026_11_07_title,
+    id: '2026-11-10',
+    title: m.changelog_2026_11_10_title,
     items: [
-      m.changelog_2026_11_07_item_whatsnew,
-      m.changelog_2026_11_07_item_destination,
-      m.changelog_2026_11_07_item_endpoints,
-      m.changelog_2026_11_07_item_offline,
-      m.changelog_2026_11_07_item_update,
+      m.changelog_2026_11_10_item_whatsnew,
+      m.changelog_2026_11_10_item_accent,
+      m.changelog_2026_11_10_item_departure,
+      m.changelog_2026_11_10_item_hours,
+      m.changelog_2026_11_10_item_rotate,
+      m.changelog_2026_11_10_item_accessibility,
+    ],
+  },
+  {
+    id: '2026-08-28',
+    title: m.changelog_2026_08_28_title,
+    items: [
+      m.changelog_2026_08_28_item_update,
+      m.changelog_2026_08_28_item_tiles,
+      m.changelog_2026_08_28_item_filters,
+      m.changelog_2026_08_28_item_motion,
+    ],
+  },
+  {
+    id: '2026-08-05',
+    title: m.changelog_2026_08_05_title,
+    items: [
+      m.changelog_2026_08_05_item_destination,
+      m.changelog_2026_08_05_item_endpoints,
+      m.changelog_2026_08_05_item_firefox,
+    ],
+  },
+  {
+    id: '2026-08-04',
+    title: m.changelog_2026_08_04_title,
+    items: [
+      m.changelog_2026_08_04_item_force_offline,
+      m.changelog_2026_08_04_item_zoom,
+      m.changelog_2026_08_04_item_route_position,
+      m.changelog_2026_08_04_item_locate,
+      m.changelog_2026_08_04_item_light_theme,
     ],
   },
 ];
@@ -74,4 +107,28 @@ export function unseenChangelog<T extends { id: string }>(
 export function changelogDate(id: string): Date {
   const [y, mo, d] = id.slice(0, 10).split('-').map(Number);
   return new Date(y, mo - 1, d);
+}
+
+/**
+ * How the log opens. From the map's sparkle it is `unread`: the news this
+ * session announced leads, and the earlier entries wait behind « See earlier
+ * changes » — someone who just came back wants what changed since, with the
+ * history one tap away. From Settings it is `all`: the whole history, open.
+ */
+export type WhatsNewView = 'unread' | 'all';
+
+/**
+ * Splits the log for a view: `lead` is shown at once, `earlier` behind the
+ * unroll. With nothing announced this session there is no news to lead with,
+ * and an `unread` view shows the whole history like `all` rather than an
+ * empty sheet.
+ */
+export function splitChangelog<T extends { id: string }>(
+  entries: readonly T[],
+  fresh: ReadonlySet<string>,
+  view: WhatsNewView,
+): { lead: T[]; earlier: T[] } {
+  const lead = view === 'unread' ? entries.filter((e) => fresh.has(e.id)) : [];
+  if (lead.length === 0) return { lead: [...entries], earlier: [] };
+  return { lead, earlier: entries.filter((e) => !fresh.has(e.id)) };
 }

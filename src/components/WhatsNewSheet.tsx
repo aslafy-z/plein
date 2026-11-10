@@ -1,15 +1,20 @@
-// The What's new log — every changelog entry, newest first, the ones this
-// session announced flagged « New ». Opened from the map's sparkle
-// (WhatsNewButton) or from Settings › What's new — never on its own; being open is nav state (`whatsNewOpen`), so the
-// system Back closes it like the filters.
+// The What's new log, newest first, the entries this session announced
+// flagged « New ». Opened from the map's sparkle (WhatsNewButton) or from
+// Settings › What's new — never on its own. Being open is nav state
+// (`whatsNewOpen`, which also says how it opened), so the system Back closes
+// it like the filters.
+//
+// From the sparkle the news leads and the earlier entries wait behind « See
+// earlier changes », unrolled in place; from Settings the whole history is
+// open (`splitChangelog` decides which is which).
 //
 // Same split as the filters: the phone's drag-to-dismiss ModalSheet, and on a
 // window a glass card. Unlike the filters it is not anchored to anything it
 // corrects, so the card is centered over a dimmed stage.
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../state/store';
 import { useIsDesktop } from '../lib/layout';
-import { CHANGELOG, changelogDate } from '../lib/changelog';
+import { CHANGELOG, changelogDate, splitChangelog, type ChangelogEntry } from '../lib/changelog';
 import { calendarDateLabel } from '../lib/format';
 import { m } from '../paraglide/messages.js';
 import { C, ctaStyle, glass } from '../theme';
@@ -18,7 +23,7 @@ import ModalSheet from './ModalSheet';
 export default function WhatsNewSheet() {
   const app = useApp();
   const desktop = useIsDesktop();
-  const close = () => app.setWhatsNewOpen(false);
+  const close = () => app.setWhatsNewOpen(null);
 
   // Escape closes — captured on the window, focus may still sit on the map
   const appRef = useRef(app);
@@ -27,7 +32,7 @@ export default function WhatsNewSheet() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
       e.stopPropagation();
-      appRef.current.setWhatsNewOpen(false);
+      appRef.current.setWhatsNewOpen(null);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -38,67 +43,112 @@ export default function WhatsNewSheet() {
     if (desktop) cardRef.current?.focus({ preventScroll: true });
   }, [desktop]);
 
+  const { lead, earlier } = splitChangelog(
+    CHANGELOG,
+    app.whatsNewFresh,
+    app.whatsNewOpen ?? 'all',
+  );
+  const [unrolled, setUnrolled] = useState(false);
+  // The unroll button goes away with the click, and focus must not fall to
+  // the document: it lands on the first entry it revealed
+  const firstEarlierRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (unrolled) firstEarlierRef.current?.focus({ preventScroll: true });
+  }, [unrolled]);
+
+  const entry = (e: ChangelogEntry, divided: boolean, ref?: React.Ref<HTMLElement>) => (
+    <section
+      key={e.id}
+      ref={ref}
+      tabIndex={ref ? -1 : undefined}
+      aria-labelledby={`whatsnew-${e.id}`}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+        paddingTop: divided ? 16 : 0,
+        borderTop: divided ? `1px solid ${C.divider}` : undefined,
+        outline: 'none',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <time dateTime={e.id.slice(0, 10)} style={{ fontSize: 12, color: C.faint }}>
+          {calendarDateLabel(changelogDate(e.id))}
+        </time>
+        {app.whatsNewFresh.has(e.id) && (
+          <span
+            style={{
+              fontSize: 10.5,
+              fontWeight: 800,
+              letterSpacing: '.06em',
+              textTransform: 'uppercase',
+              color: C.accent,
+              background: C.accentSoft09,
+              border: `1px solid ${C.accentBorder}`,
+              borderRadius: 999,
+              padding: '1px 7px',
+            }}
+          >
+            {m.whatsnew_new_badge()}
+          </span>
+        )}
+      </div>
+      <h3
+        id={`whatsnew-${e.id}`}
+        style={{ fontSize: 15.5, fontWeight: 700, color: C.ink, margin: 0, lineHeight: 1.35 }}
+      >
+        {e.title()}
+      </h3>
+      <ul
+        style={{
+          margin: 0,
+          paddingLeft: 18,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+          fontSize: 13.5,
+          lineHeight: 1.45,
+          color: C.body,
+        }}
+      >
+        {e.items.map((item, j) => (
+          <li key={j}>{item()}</li>
+        ))}
+      </ul>
+    </section>
+  );
+
   const body = (
     <>
       <h2 style={{ fontSize: 22, fontWeight: 800, color: C.ink, margin: 0 }}>{m.whatsnew_title()}</h2>
-      {CHANGELOG.map((entry, i) => (
-        <section
-          key={entry.id}
-          aria-labelledby={`whatsnew-${entry.id}`}
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 6,
-            paddingTop: i > 0 ? 16 : 0,
-            borderTop: i > 0 ? `1px solid ${C.divider}` : undefined,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <time dateTime={entry.id.slice(0, 10)} style={{ fontSize: 12, color: C.faint }}>
-              {calendarDateLabel(changelogDate(entry.id))}
-            </time>
-            {app.whatsNewFresh.has(entry.id) && (
-              <span
-                style={{
-                  fontSize: 10.5,
-                  fontWeight: 800,
-                  letterSpacing: '.06em',
-                  textTransform: 'uppercase',
-                  color: C.accent,
-                  background: C.accentSoft09,
-                  border: `1px solid ${C.accentBorder}`,
-                  borderRadius: 999,
-                  padding: '1px 7px',
-                }}
-              >
-                {m.whatsnew_new_badge()}
-              </span>
-            )}
-          </div>
-          <h3
-            id={`whatsnew-${entry.id}`}
-            style={{ fontSize: 15.5, fontWeight: 700, color: C.ink, margin: 0, lineHeight: 1.35 }}
-          >
-            {entry.title()}
-          </h3>
-          <ul
+      {lead.map((e, i) => entry(e, i > 0))}
+      {earlier.length > 0 &&
+        (unrolled ? (
+          earlier.map((e, i) => entry(e, true, i === 0 ? firstEarlierRef : undefined))
+        ) : (
+          <button
+            onClick={() => setUnrolled(true)}
+            aria-expanded={false}
+            className="press"
             style={{
-              margin: 0,
-              paddingLeft: 18,
+              alignSelf: 'flex-start',
               display: 'flex',
-              flexDirection: 'column',
+              alignItems: 'center',
               gap: 6,
               fontSize: 13.5,
-              lineHeight: 1.45,
-              color: C.body,
+              fontWeight: 700,
+              color: C.accent,
+              padding: '10px 14px',
+              borderRadius: 18,
+              border: `1px solid ${C.accentBorder}`,
+              background: C.accentSoft09,
+              cursor: 'pointer',
             }}
           >
-            {entry.items.map((item, j) => (
-              <li key={j}>{item()}</li>
-            ))}
-          </ul>
-        </section>
-      ))}
+            {m.whatsnew_earlier_show()}
+            <span aria-hidden>▾</span>
+          </button>
+        ))}
       <button onClick={close} className="press" style={ctaStyle()}>
         {m.whatsnew_done()}
       </button>

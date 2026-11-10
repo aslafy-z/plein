@@ -19,7 +19,7 @@ export default function WhatsNewButton({ size }: { size: number }) {
   return (
     <button
       className="press"
-      onClick={() => app.setWhatsNewOpen(true)}
+      onClick={() => app.setWhatsNewOpen('unread')}
       aria-label={m.whatsnew_button_aria()}
       title={m.whatsnew_button_aria()}
       style={{

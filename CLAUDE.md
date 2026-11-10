@@ -203,8 +203,15 @@ wrote it, **in the same commit as the user-visible change it announces**.
   the update bar's reload or any later cold start — and a tap opens
   `WhatsNewSheet` (phone `ModalSheet`, desktop centered glass card), which
   marks the log seen and removes the sparkle. Being open is nav state
-  (`whatsNewOpen`), so Back closes it. Settings › App › « What's new »
-  reopens the whole log.
+  (`whatsNewOpen`), so Back closes it.
+- **The log is a history, not a headline.** `whatsNewOpen` is a
+  `WhatsNewView`: from the sparkle it is `'unread'` — the news this session
+  announced leads, flagged « New », and every earlier entry waits behind
+  « See earlier changes », unrolled in place; from Settings › App ›
+  « What's new » it is `'all'`, the whole history open. `splitChangelog()`
+  is the one rule (an `'unread'` view with nothing announced falls back to
+  the whole history rather than an empty sheet). The August 2026 entries
+  were backfilled from the merge history.
 - e2e: `BASE_SEED` marks the log read (`changelogSeen: '9999-12-31'`) so the
   sparkle never shifts another spec's layout; `whats-new.spec.ts` drops it with
   `changelogSeen: null`.

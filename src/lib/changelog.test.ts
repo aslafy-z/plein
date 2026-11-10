@@ -4,6 +4,7 @@ import {
   MAX_ANNOUNCED,
   changelogDate,
   latestChangelogId,
+  splitChangelog,
   unseenChangelog,
 } from './changelog';
 
@@ -75,5 +76,31 @@ describe('CHANGELOG', () => {
 
   it('stamps the newest entry as seen', () => {
     expect(latestChangelogId(CHANGELOG)).toBe(CHANGELOG[0].id);
+  });
+});
+
+describe('splitChangelog', () => {
+  const entries = log('2027-01-10', '2026-12-01', '2026-11-07');
+
+  it('leads the unread view with the news and keeps the history behind it', () => {
+    expect(splitChangelog(entries, new Set(['2027-01-10', '2026-12-01']), 'unread')).toEqual({
+      lead: log('2027-01-10', '2026-12-01'),
+      earlier: log('2026-11-07'),
+    });
+  });
+
+  it('opens the whole history for the all view, news included', () => {
+    expect(splitChangelog(entries, new Set(['2027-01-10']), 'all')).toEqual({
+      lead: entries,
+      earlier: [],
+    });
+  });
+
+  it('shows the whole history when nothing was announced this session', () => {
+    expect(splitChangelog(entries, new Set(), 'unread')).toEqual({ lead: entries, earlier: [] });
+  });
+
+  it('has no earlier part when every entry is news', () => {
+    expect(splitChangelog(entries, new Set(entries.map((e) => e.id)), 'unread').earlier).toEqual([]);
   });
 });

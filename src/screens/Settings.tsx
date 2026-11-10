@@ -1150,7 +1150,7 @@ export default function Settings() {
             }}
           >
             <button
-              onClick={() => app.setWhatsNewOpen(true)}
+              onClick={() => app.setWhatsNewOpen('all')}
               style={{
                 display: 'flex',
                 alignItems: 'center',
