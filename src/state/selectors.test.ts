@@ -990,7 +990,8 @@ describe('selectRouteAnalysis at the geometry stage', () => {
     expect(a.planStops).toEqual([])
     expect(a.alternatives).toEqual([])
     expect(a.arrival).toBeNull()
-    expect(a.limitKm).toBe(430)
+    // 430 km flat, shrunk by the 100 km/h route's consumption factor
+    expect(a.limitKm).toBe(410)
   })
 
   it('is unchanged by the provisional flag', () => {
@@ -1095,7 +1096,7 @@ describe('selectRouteAnalysis', () => {
       routeApp({ startTankPct: 25, routeMode: 'balanced', routeState: readyState(wide) }),
     )
     const ids = a.alternatives.map((s) => s.id)
-    expect(a.limitKm).toBe(150)
+    expect(a.limitKm).toBe(140)
     // Three of the four slots go to stations BEYOND the no-stop limit…
     expect(ids).toEqual(
       expect.arrayContaining(['far-on-route-fair', 'far-on-route-ok', 'far-on-route-meh']),
@@ -1118,6 +1119,24 @@ describe('selectRouteAnalysis', () => {
     expect(a.plan?.diagnostics?.noStationInRange).toBe(true)
     expect(a.arrival).toEqual({ kind: 'autonomyShort', limitKm: 60 })
     expect(a.planStops).toEqual([])
+  })
+
+  it('the range limit shrinks by the motorway factor, matching the optimizer reach', () => {
+    // 260 km in 130 min → 120 km/h: the flat limit (≈ 61.5 km → 60) would
+    // sit past the point where the plan says the car runs dry
+    const motorway: Route = { ...ROUTE, durationMin: 130 }
+    const routeState = commitCorridor(
+      commitGeometry(beginGeometry(initialRouteState, 'k'), 'k', motorway, ENDS, TRIP),
+      'k',
+      CORRIDOR.filter((s) => s.kmAlong > 100),
+    )
+    const a = selectRouteAnalysis(routeApp({ startTankPct: 10, routeState }))
+    expect(a.plan?.status).toBe('infeasible')
+    const reach = a.plan?.diagnostics?.furthestReachableKm ?? NaN
+    expect(reach).toBeLessThan(55)
+    expect(a.limitKm).toBe(Math.round(reach / 10) * 10)
+    expect(a.limitKm).toBe(50)
+    expect(a.arrival).toEqual({ kind: 'autonomyShort', limitKm: 50 })
   })
 
   it('a picked stop is constrained INTO the plan and its litres recomputed', () => {
