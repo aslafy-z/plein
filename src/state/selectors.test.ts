@@ -891,6 +891,13 @@ describe('selectAutonomy', () => {
     expect(selectAutonomy(app())).toEqual({ autonomyKm: 538, limitKm: 430 })
     expect(selectAutonomy(app({ startTankPct: 10 }))).toEqual({ autonomyKm: 77, limitKm: 60 })
   })
+
+  it('scales the limit by the motorway consumption factor of the route pace', () => {
+    // 520 km in 4 h is 130 km/h: the full +25 % uplift, so 430 km of range is 344 km
+    const motorway: Route = { ...ROUTE, distanceKm: 520, durationMin: 240 }
+    const routeState = commitGeometry(beginGeometry(initialRouteState, 'k'), 'k', motorway, ENDS, TRIP)
+    expect(selectAutonomy(app({ routeState }))).toEqual({ autonomyKm: 538, limitKm: 340 })
+  })
 })
 
 describe('routeDeparturePoint', () => {
@@ -990,7 +997,8 @@ describe('selectRouteAnalysis at the geometry stage', () => {
     expect(a.planStops).toEqual([])
     expect(a.alternatives).toEqual([])
     expect(a.arrival).toBeNull()
-    expect(a.limitKm).toBe(430)
+    // 430 km of range at the fixture's 100 km/h pace (×1.0625 consumption)
+    expect(a.limitKm).toBe(410)
   })
 
   it('is unchanged by the provisional flag', () => {
@@ -1095,7 +1103,7 @@ describe('selectRouteAnalysis', () => {
       routeApp({ startTankPct: 25, routeMode: 'balanced', routeState: readyState(wide) }),
     )
     const ids = a.alternatives.map((s) => s.id)
-    expect(a.limitKm).toBe(150)
+    expect(a.limitKm).toBe(140)
     // Three of the four slots go to stations BEYOND the no-stop limit…
     expect(ids).toEqual(
       expect.arrayContaining(['far-on-route-fair', 'far-on-route-ok', 'far-on-route-meh']),
