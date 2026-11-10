@@ -11,8 +11,24 @@
 // ("Total Access · Tournefeuille"), so favorites — which only persist the
 // name — resolve too.
 
+/**
+ * A brand pattern that only matches whole words: `alternatives` (regex source)
+ * must start at the beginning of the label or after a non-letter, and must
+ * not be followed by a letter. Unanchored, `aldi` claimed "Garibaldi
+ * Automobiles", `elf` "Self Service", `avia` "Batavia" and `esso` "Presso".
+ * `\b` is not enough: it is ASCII-only, so it sees a boundary inside "Décora"
+ * and "Aviação". A compound that IS the brand opts in explicitly
+ * (`total\p{L}*` for "TotalEnergies"). No lookbehind — older Safari rejects
+ * the syntax at parse time.
+ */
+function words(alternatives: string): RegExp {
+  return new RegExp(`(?:^|\\P{L})(?:${alternatives})(?!\\p{L})`, 'iu');
+}
+
 /** Every banner of the U cooperative — one enseigne, one card program */
-const U_FAMILY = /super\s?u|hyper\s?u|système u|u express|station\s?u|enseignes u|^u\s*(·|$)/i;
+const U_FAMILY = words(
+  'super\\s?u|hyper\\s?u|syst[èe]me u|u express|station\\s?u|enseignes u|^u\\s*(?:·|$)',
+);
 
 /**
  * Filter group for unrecognized brands and stations without brand data. A
@@ -33,67 +49,67 @@ interface BrandGroupDef {
 // Total Access stays distinct from TotalEnergies (discount banner, prices
 // differently); the other Total variants are label noise and merge.
 const BRAND_GROUPS: ReadonlyArray<BrandGroupDef> = [
-  { label: 'Total Access', match: /total\s*access/i, icon: 'total' },
-  { label: 'TotalEnergies', match: /total|elf\b/i, icon: 'total' },
-  { label: 'Intermarché', match: /intermarch|mousquetaires/i, icon: 'intermarche' },
-  { label: 'Carrefour', match: /carrefour/i, icon: 'carrefour' },
-  { label: 'E.Leclerc', match: /leclerc/i, icon: 'leclerc' },
+  { label: 'Total Access', match: words('total\\s*access'), icon: 'total' },
+  { label: 'TotalEnergies', match: words('total\\p{L}*|elf'), icon: 'total' },
+  { label: 'Intermarché', match: words('intermarch\\p{L}*|mousquetaires'), icon: 'intermarche' },
+  { label: 'Carrefour', match: words('carrefour'), icon: 'carrefour' },
+  { label: 'E.Leclerc', match: words('leclerc'), icon: 'leclerc' },
   { label: 'Enseignes U', match: U_FAMILY, icon: 'u' },
-  { label: 'Auchan', match: /auchan/i, icon: 'auchan' },
-  { label: 'Avia', match: /avia/i, icon: 'avia' },
-  { label: 'Esso', match: /esso/i, icon: 'esso' },
-  { label: 'Shell', match: /shell/i, icon: 'shell' },
-  { label: 'BP', match: /\bbp\b/i },
-  { label: 'Eni / Agip', match: /\beni\b|agip/i, icon: 'eni' },
-  { label: 'Casino', match: /casino|g[ée]ant/i },
-  { label: 'Cora', match: /cora\b/i },
-  { label: 'Netto', match: /netto/i, icon: 'netto' },
-  { label: 'Lidl', match: /lidl/i, icon: 'lidl' },
-  { label: 'Aldi', match: /aldi/i, icon: 'aldi' },
-  { label: 'Spar', match: /spar\b/i, icon: 'spar' },
-  { label: 'Colruyt', match: /colruyt/i, icon: 'colruyt' },
-  { label: 'Dyneff', match: /dyneff/i, icon: 'dyneff' },
-  { label: 'AS 24', match: /as\s?24/i, icon: 'as24' },
-  { label: 'Tamoil', match: /tamoil/i, icon: 'tamoil' },
-  { label: 'Élan', match: /^[ée]lan\b/i },
-  { label: 'Vito', match: /^vito\b/i },
+  { label: 'Auchan', match: words('auchan'), icon: 'auchan' },
+  { label: 'Avia', match: words('avia(?:xpress)?'), icon: 'avia' },
+  { label: 'Esso', match: words('esso'), icon: 'esso' },
+  { label: 'Shell', match: words('shell'), icon: 'shell' },
+  { label: 'BP', match: words('bp') },
+  { label: 'Eni / Agip', match: words('eni|agip'), icon: 'eni' },
+  { label: 'Casino', match: words('casino|g[ée]ant') },
+  { label: 'Cora', match: words('cora') },
+  { label: 'Netto', match: words('netto'), icon: 'netto' },
+  { label: 'Lidl', match: words('lidl'), icon: 'lidl' },
+  { label: 'Aldi', match: words('aldi'), icon: 'aldi' },
+  { label: 'Spar', match: words('(?:euro|inter)?spar'), icon: 'spar' },
+  { label: 'Colruyt', match: words('colruyt'), icon: 'colruyt' },
+  { label: 'Dyneff', match: words('dyneff'), icon: 'dyneff' },
+  { label: 'AS 24', match: words('as\\s?24'), icon: 'as24' },
+  { label: 'Tamoil', match: words('tamoil'), icon: 'tamoil' },
+  { label: 'Élan', match: words('^[ée]lan') },
+  { label: 'Vito', match: words('^vito') },
   // Spanish banners (source geoportalgasolineras.es) — Petronor prices under
   // the Repsol group; Moeve is Cepsa's new banner but prices apart.
-  { label: 'Repsol', match: /repsol|petronor/i, icon: 'repsol' },
-  { label: 'Cepsa', match: /cepsa/i },
-  { label: 'Moeve', match: /moeve/i, icon: 'moeve' },
-  { label: 'Galp', match: /galp/i, icon: 'galp' },
-  { label: 'Ballenoil', match: /ballenoil/i },
-  { label: 'Plenergy', match: /plenergy|plenoil/i },
-  { label: 'Petroprix', match: /petroprix/i, icon: 'petroprix' },
-  { label: 'Q8', match: /\bq8\b/i, icon: 'q8' },
-  { label: 'BonÀrea', match: /bonarea/i, icon: 'bonarea' },
+  { label: 'Repsol', match: words('repsol|petronor'), icon: 'repsol' },
+  { label: 'Cepsa', match: words('cepsa') },
+  { label: 'Moeve', match: words('moeve'), icon: 'moeve' },
+  { label: 'Galp', match: words('galp'), icon: 'galp' },
+  { label: 'Ballenoil', match: words('ballenoil') },
+  { label: 'Plenergy', match: words('plenergy|plenoil') },
+  { label: 'Petroprix', match: words('petroprix'), icon: 'petroprix' },
+  { label: 'Q8', match: words('q8'), icon: 'q8' },
+  { label: 'BonÀrea', match: words('bon[aà]rea'), icon: 'bonarea' },
   // Esclatoil = the Bon Preu group's stations
-  { label: 'Esclatoil', match: /esclatoil|bon\s?preu/i, icon: 'esclatoil' },
-  { label: 'Alcampo', match: /alcampo/i, icon: 'alcampo' },
-  { label: 'Eroski', match: /eroski/i, icon: 'eroski' },
-  { label: 'Meroil', match: /meroil/i, icon: 'meroil' },
-  { label: 'Agla', match: /\bagla\b/i, icon: 'agla' },
-  { label: 'GasExpress', match: /gas\s?express/i, icon: 'gasexpress' },
-  { label: 'Beroil', match: /beroil/i, icon: 'beroil' },
-  { label: 'Petromiralles', match: /petromiralles/i, icon: 'petromiralles' },
-  { label: 'Campsa', match: /campsa/i },
-  { label: 'Valcarce', match: /valcarce/i },
-  { label: 'Disa', match: /\bdisa\b/i },
-  { label: 'Petrocat', match: /petrocat/i },
-  { label: 'HAM', match: /\bham\b/i },
+  { label: 'Esclatoil', match: words('esclatoil|bon\\s?preu'), icon: 'esclatoil' },
+  { label: 'Alcampo', match: words('alcampo'), icon: 'alcampo' },
+  { label: 'Eroski', match: words('eroski'), icon: 'eroski' },
+  { label: 'Meroil', match: words('meroil'), icon: 'meroil' },
+  { label: 'Agla', match: words('agla'), icon: 'agla' },
+  { label: 'GasExpress', match: words('gas\\s?express'), icon: 'gasexpress' },
+  { label: 'Beroil', match: words('beroil'), icon: 'beroil' },
+  { label: 'Petromiralles', match: words('petromiralles'), icon: 'petromiralles' },
+  { label: 'Campsa', match: words('campsa') },
+  { label: 'Valcarce', match: words('valcarce') },
+  { label: 'Disa', match: words('disa') },
+  { label: 'Petrocat', match: words('petrocat') },
+  { label: 'HAM', match: words('ham') },
   // Andorran banners (source sig.govern.ad) — Elf, Cepsa, Repsol, Shell, BP,
   // TotalEnergies, Meroil and Dyneff already match above.
-  { label: 'Gasopas', match: /gasopas/i },
+  { label: 'Gasopas', match: words('gasopas') },
   // Portuguese banners (source precoscombustiveis.dgeg.gov.pt) — Galp, BP,
   // Repsol, Cepsa, Moeve, Intermarché, Auchan, E.Leclerc, Shell, Petroprix,
   // Plenergy, Q8 and Avia already match above; the tail below the Pingo Doce
   // network is made of regional distributors that read as independents.
-  { label: 'Prio', match: /\bprio\b/i, icon: 'prio' },
-  { label: 'Alves Bandeira', match: /alves\s?bandeira/i },
-  { label: 'Freitas', match: /\bfreitas\b/i },
-  { label: 'Pingo Doce', match: /pingo\s?doce/i, icon: 'pingodoce' },
-  { label: 'OZ Energia', match: /\boz\s?energia/i },
+  { label: 'Prio', match: words('prio'), icon: 'prio' },
+  { label: 'Alves Bandeira', match: words('alves\\s?bandeira') },
+  { label: 'Freitas', match: words('freitas') },
+  { label: 'Pingo Doce', match: words('pingo\\s?doce'), icon: 'pingodoce' },
+  { label: 'OZ Energia', match: words('oz\\s?energia') },
 ];
 
 /** Every filter entry the app knows — drives the out-of-zone selector. */
