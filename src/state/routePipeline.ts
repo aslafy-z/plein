@@ -248,6 +248,16 @@ export function failMatrix(state: RouteState, matrixKey: string): RouteState {
 }
 
 /**
+ * The backend cannot answer THIS candidate set by design (a server limit the
+ * request exceeds): not a failure, nothing to retry. Unlike `matrixBlocked`
+ * the key stays — it is what keeps the same set from being asked again.
+ */
+export function declineMatrix(state: RouteState, matrixKey: string): RouteState {
+  if (state.matrixKey !== matrixKey) return state;
+  return { ...state, matrix: 'unsupported', matrixCells: null };
+}
+
+/**
  * Nothing to measure: no route stands, the corridor holds no candidate
  * (`idle`), or the source has no matrix backend (`unsupported`). Identity when
  * already there, so the store's effect can dispatch it unconditionally.

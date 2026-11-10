@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { decodePolyline6 } from './OsrmRouteProvider';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { decodePolyline6, RealRouteProvider } from './OsrmRouteProvider';
+import { TravelMatrixUnsupportedError } from '../types';
 import type { GeoPoint } from '../../lib/geo';
 
 // Valhalla returns its leg shapes as Google-encoded polylines at 1e-6
@@ -85,5 +86,76 @@ describe('decodePolyline6', () => {
       { lat: 43.604652, lng: 1.444209 },
     ]);
     expect(decodePolyline6('')).toEqual([]);
+  });
+});
+
+// The public Valhalla instance refuses any matrix whose points lie more than
+// 150 km apart. That is a limit, not an outage: the provider must say
+// « unsupported » — and must not send the request it knows will be refused.
+describe('getTravelMatrix on Valhalla', () => {
+  const PARIS: GeoPoint = { lat: 48.8566, lng: 2.3522 };
+  const LYON: GeoPoint = { lat: 45.764, lng: 4.8357 };
+  const MARSEILLE: GeoPoint = { lat: 43.2965, lng: 5.3698 };
+  const TOULOUSE: GeoPoint = { lat: 43.6045, lng: 1.444 };
+  const MONTAUBAN: GeoPoint = { lat: 44.0176, lng: 1.355 };
+  const provider = new RealRouteProvider();
+
+  const stubFetch = (status: number, body: unknown) => {
+    const fetchMock = vi.fn(async (_url: string) => new Response(JSON.stringify(body), { status }));
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  };
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('reports a matrix over the distance limit as unsupported without sending it', async () => {
+    const fetchMock = stubFetch(200, {});
+    for (const options of [{ avoidMotorway: true }, { avoidToll: true }, { vehicle: 'motorcycle' as const }]) {
+      await expect(
+        provider.getTravelMatrix([PARIS, LYON, MARSEILLE], options),
+      ).rejects.toBeInstanceOf(TravelMatrixUnsupportedError);
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('still asks Valhalla for a matrix under the limit', async () => {
+    const cell = { distance: 50, time: 3000 };
+    const fetchMock = stubFetch(200, { sources_to_targets: [[cell, cell], [cell, cell]] });
+    const cells = await provider.getTravelMatrix([TOULOUSE, MONTAUBAN], { avoidToll: true });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toContain('sources_to_targets');
+    expect(cells[0][1]).toEqual({ distanceKm: 50, durationMin: 50 });
+  });
+
+  it('maps the server-side distance-limit refusal (400, error_code 154) to unsupported', async () => {
+    stubFetch(400, {
+      error_code: 154,
+      error: 'Path distance exceeds the max distance limit: 150000 meters',
+      status_code: 400,
+      status: 'Bad Request',
+    });
+    await expect(
+      provider.getTravelMatrix([TOULOUSE, MONTAUBAN], { avoidToll: true }),
+    ).rejects.toBeInstanceOf(TravelMatrixUnsupportedError);
+  });
+
+  it('keeps every other failure a plain error', async () => {
+    stubFetch(400, { error_code: 171, error: 'No suitable edges near location' });
+    const other = provider.getTravelMatrix([TOULOUSE, MONTAUBAN], { avoidToll: true });
+    await expect(other).rejects.toThrow('Valhalla HTTP 400');
+    await expect(other).rejects.not.toBeInstanceOf(TravelMatrixUnsupportedError);
+    stubFetch(429, {});
+    await expect(
+      provider.getTravelMatrix([TOULOUSE, MONTAUBAN], { avoidToll: true }),
+    ).rejects.not.toBeInstanceOf(TravelMatrixUnsupportedError);
+  });
+
+  it('leaves the OSRM path alone: a long plain-car trip is still requested', async () => {
+    const fetchMock = stubFetch(200, { code: 'Ok', distances: [[0, 1], [1, 0]], durations: [[0, 60], [60, 0]] });
+    await provider.getTravelMatrix([PARIS, MARSEILLE]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toContain('/table/');
   });
 });
