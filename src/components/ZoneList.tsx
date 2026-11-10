@@ -173,6 +173,7 @@ export default function ZoneList({
               key={k}
               className="press"
               onClick={disabled ? undefined : () => app.setSort(k)}
+              aria-pressed={active}
               disabled={disabled}
               aria-label={disabled ? m.sheet_sort_distance_unavailable_aria() : undefined}
               title={disabled ? m.sheet_sort_distance_unavailable_aria() : undefined}

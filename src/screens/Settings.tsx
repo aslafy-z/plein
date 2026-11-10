@@ -584,6 +584,7 @@ export default function Settings() {
                     key={v}
                     className="press"
                     onClick={() => app.setVehicle(v)}
+                    aria-pressed={active}
                     style={{
                       flex: 1,
                       background: active ? C.accent : 'transparent',
@@ -622,6 +623,7 @@ export default function Settings() {
                     key={f}
                     className="press"
                     onClick={() => app.setFuel(f)}
+                    aria-pressed={active}
                     style={{
                       background: active ? C.accent : 'transparent',
                       color: active ? C.onAccent : C.body,
@@ -654,6 +656,8 @@ export default function Settings() {
               step={tankRange.step}
               value={tank}
               onChange={(e) => app.setTank(+e.target.value)}
+              aria-label={m.settings_tank()}
+              aria-valuetext={`${tank} L`}
               style={{ width: '100%', cursor: 'pointer' }}
             />
             <div style={{ fontSize: 11.5, color: C.faint, marginTop: 6 }}>
@@ -674,6 +678,8 @@ export default function Settings() {
               step={0.5}
               value={consumption}
               onChange={(e) => app.setConsumption(+e.target.value)}
+              aria-label={m.settings_consumption()}
+              aria-valuetext={`${fmtDecimal(consumption, 1)} L/100 km`}
               style={{ width: '100%', cursor: 'pointer' }}
             />
             <div style={{ fontSize: 11.5, color: C.faint, marginTop: 6 }}>
@@ -778,6 +784,7 @@ export default function Settings() {
                     key={t ?? 'auto'}
                     className="press"
                     onClick={() => app.setTheme(t)}
+                    aria-pressed={active}
                     style={{
                       background: active ? C.accent : 'transparent',
                       color: active ? C.onAccent : C.body,
@@ -876,6 +883,7 @@ export default function Settings() {
                     key={l ?? 'auto'}
                     className="press"
                     onClick={() => app.setLocale(l)}
+                    aria-pressed={active}
                     style={{
                       background: active ? C.accent : 'transparent',
                       color: active ? C.onAccent : C.body,
@@ -924,6 +932,7 @@ export default function Settings() {
                     key={site}
                     className="press"
                     onClick={() => app.setMapsSite(site)}
+                    aria-pressed={active}
                     style={{
                       background: active ? C.accent : 'transparent',
                       color: active ? C.onAccent : C.body,
@@ -970,6 +979,7 @@ export default function Settings() {
                 <button
                   key={src}
                   onClick={() => app.setSourceId(src)}
+                  aria-pressed={selected}
                   style={{
                     display: 'flex',
                     alignItems: 'center',

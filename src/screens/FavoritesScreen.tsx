@@ -110,6 +110,7 @@ export default function FavoritesScreen() {
                   key={k}
                   className="press"
                   onClick={disabled ? undefined : () => setSort(k)}
+                  aria-pressed={active}
                   disabled={disabled}
                   aria-label={disabled ? m.favorites_sort_distance_unavailable_aria() : undefined}
                   title={disabled ? m.favorites_sort_distance_unavailable_aria() : undefined}

@@ -89,7 +89,10 @@ test('brand rows count with the other filters applied, never promising an empty 
   // …and a counted row delivers exactly the stations it announces
   const total = page.getByRole('button', { name: 'TotalEnergies 1' })
   await expect(total).toBeVisible()
+  // The selection is exposed as state, not only as the checkbox fill
+  await expect(total).toHaveAttribute('aria-pressed', 'false')
   await total.click()
+  await expect(total).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByText('Show 1 station', { exact: true })).toBeVisible()
 })
 
