@@ -163,6 +163,12 @@
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --ease-snap: cubic-bezier(0.22, 1, 0.36, 1);
+  /* The two slides long enough to count as movement — a sheet travelling to
+     its snap point, the map controls riding its edge. Tokens so the
+     reduced-motion block below can zero them under the inline styles that
+     use them (SheetShell's SHEET_TRANSITION, the maps' bottom-edge controls). */
+  --dur-sheet: 0.38s;
+  --dur-shift: 0.3s;
 }
 
 /* Where the browser can plot a real spring, the primary curve becomes one:
@@ -800,7 +806,7 @@ button,
    the attribution control rides up with the sheet like the other controls */
 .leaflet-bottom {
   bottom: var(--map-bottom-inset, 0px);
-  transition: bottom 0.3s var(--ease-in-out);
+  transition: bottom var(--dur-shift) var(--ease-in-out);
 }
 .leaflet-control-attribution {
   background: var(--c-attribution-bg) !important;
@@ -1086,6 +1092,11 @@ button,
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* The sheets and the controls riding them jump to their place */
+  :root {
+    --dur-sheet: 0s;
+    --dur-shift: 0s;
+  }
   .anim-sheet,
   .anim-fade,
   .anim-dialog,

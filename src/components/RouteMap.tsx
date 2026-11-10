@@ -390,7 +390,7 @@ export default function RouteMap({
           bottom: 26 + bottomInset,
           // transform is listed because this inline transition replaces the
           // .press class's own — without it the compress would snap
-          transition: 'bottom .3s var(--ease-in-out), transform .16s var(--ease-snap)',
+          transition: 'bottom var(--dur-shift) var(--ease-in-out), transform .16s var(--ease-snap)',
           width: 44,
           height: 44,
           borderRadius: '50%',

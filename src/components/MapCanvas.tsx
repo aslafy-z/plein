@@ -994,7 +994,7 @@ export default function MapCanvas({
   // transition replaces the class's own; a no-op for the inert pills.
   const bottomEdge = {
     bottom: 26 + bottomInset,
-    transition: 'bottom .3s var(--ease-in-out), transform .16s var(--ease-snap)',
+    transition: 'bottom var(--dur-shift) var(--ease-in-out), transform .16s var(--ease-snap)',
   };
 
   // Floating pills and control clusters share the glass of the panels

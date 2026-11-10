@@ -16,6 +16,7 @@
 // color), applied as `data-accent` next to `data-theme`. styles.css holds
 // each preset's tones per theme, so the two attributes compose freely.
 import { loadPersisted, savePersisted } from '../state/persist';
+import { prefersReducedMotion } from './motion';
 
 export type Theme = 'dark' | 'light';
 
@@ -41,11 +42,6 @@ export function isAccent(raw: unknown): raw is Accent {
 const media: MediaQueryList | null =
   typeof window !== 'undefined' && typeof window.matchMedia === 'function'
     ? window.matchMedia('(prefers-color-scheme: light)')
-    : null;
-
-const reducedMotion: MediaQueryList | null =
-  typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-    ? window.matchMedia('(prefers-reduced-motion: reduce)')
     : null;
 
 const listeners = new Set<() => void>();
@@ -108,7 +104,7 @@ function animatedNotify(): void {
   if (
     typeof document === 'undefined' ||
     typeof document.startViewTransition !== 'function' ||
-    reducedMotion?.matches === true ||
+    prefersReducedMotion() ||
     (document.documentElement.dataset.theme === currentTheme() &&
       document.documentElement.dataset.accent === currentAccent())
   ) {

@@ -14,6 +14,7 @@
 // `data-sheet-no-drag` (a horizontal slider…) keeps its own gesture.
 import { useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { C } from '../theme';
+import { prefersReducedMotion } from '../lib/motion';
 import {
   DRAG_SLOP_PX,
   FLING_VPS,
@@ -139,7 +140,10 @@ export default function ModalSheet({
           if (e.target === el && e.propertyName === 'transform') finish();
         };
         el.addEventListener('transitionend', onTransEnd);
-        tid = window.setTimeout(finish, CLOSE_FALLBACK_MS);
+        // Under reduced motion the slide has no duration (--dur-sheet), so
+        // no transitionend comes: unmount now rather than leave an invisible
+        // scrim over the map for the length of the fallback.
+        tid = window.setTimeout(finish, prefersReducedMotion() ? 0 : CLOSE_FALLBACK_MS);
         closeCleanup.current = () => {
           clearTimeout(tid);
           el.removeEventListener('transitionend', onTransEnd);
