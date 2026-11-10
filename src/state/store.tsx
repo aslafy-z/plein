@@ -792,10 +792,9 @@ export interface AppStore {
 
   // what's new
   /** Changelog entries this user has not been shown yet, newest first —
-      empty once seen (and for a newcomer, whom onboarding stamps) */
+      empty once seen (and for a newcomer, whom onboarding stamps). Non-empty
+      is what puts the sparkle on the map (WhatsNewButton) */
   whatsNew: ChangelogEntry[];
-  /** Marks the whole log as seen: the bar goes, and it stays gone */
-  dismissWhatsNew(): void;
   /** The What's new sheet — nav state like the filters, so Back closes it.
       Opening it counts as having seen the news. */
   whatsNewOpen: boolean;
@@ -2059,7 +2058,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // The What's new sheet works the same way. Opening it IS reading the news,
-  // so it also stamps the log as seen — the bar that led there goes with it.
+  // so it also stamps the log as seen — the map's sparkle goes with it.
   const [changelogSeen, setChangelogSeen] = useState<string | undefined>(persisted.changelogSeen);
   const whatsNew = useMemo(() => unseenChangelog(CHANGELOG, changelogSeen), [changelogSeen]);
   const whatsNewFresh = useRef<ReadonlySet<string>>(
@@ -2067,7 +2066,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       persisted.onboarded ? unseenChangelog(CHANGELOG, persisted.changelogSeen).map((e) => e.id) : [],
     ),
   ).current;
-  const dismissWhatsNew = useCallback(() => {
+  const markChangelogSeen = useCallback(() => {
     const latest = latestChangelogId(CHANGELOG);
     if (latest === undefined) return;
     setChangelogSeen(latest);
@@ -2076,11 +2075,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setWhatsNewOpenNav = useCallback(
     (open: boolean) => {
       const cur = window.history.state as NavHistoryState | null;
-      if (open) dismissWhatsNew();
+      if (open) markChangelogSeen();
       if (!open && cur?.plein && cur.whatsNewOpen) window.history.back();
       else setWhatsNewOpen(open);
     },
-    [dismissWhatsNew],
+    [markChangelogSeen],
   );
 
   // Same for the place search: closing it from the UI (✕, Escape, a picked
@@ -2725,7 +2724,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       sheetHint,
       consumeSheetHint,
       whatsNew,
-      dismissWhatsNew,
       whatsNewOpen,
       setWhatsNewOpen: setWhatsNewOpenNav,
       whatsNewFresh,
@@ -2754,7 +2752,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       canInstall, installDismissed, promptInstall, dismissInstallBanner, geoFixed,
       openInMaps, openTripInMaps, shareStation, shareMapView, shareRoute,
       finishOnboarding, sheetHint, consumeSheetHint,
-      whatsNew, dismissWhatsNew, whatsNewOpen, setWhatsNewOpenNav,
+      whatsNew, whatsNewOpen, setWhatsNewOpenNav,
     ],
   );
 

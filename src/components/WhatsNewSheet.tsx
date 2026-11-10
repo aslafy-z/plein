@@ -1,6 +1,6 @@
 // The What's new log — every changelog entry, newest first, the ones this
-// session announced flagged « New ». Opened from the What's new bar or from
-// Settings › What's new; being open is nav state (`whatsNewOpen`), so the
+// session announced flagged « New ». Opened from the map's sparkle
+// (WhatsNewButton) or from Settings › What's new — never on its own; being open is nav state (`whatsNewOpen`), so the
 // system Back closes it like the filters.
 //
 // Same split as the filters: the phone's drag-to-dismiss ModalSheet, and on a

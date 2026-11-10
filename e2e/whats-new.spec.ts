@@ -3,40 +3,34 @@ import { test, expect, gotoMap } from './fixtures'
 // The What's new log (src/lib/changelog.ts). Every other spec seeds it as
 // read; here the mark is dropped, which is what a blob written before the log
 // existed looks like — a returning user.
-const bar = (page: import('@playwright/test').Page) =>
-  page.getByRole('status').filter({ hasText: /^New:/ })
+const sparkle = (page: import('@playwright/test').Page) =>
+  page.getByRole('button', { name: "See what's new" })
 const sheet = (page: import('@playwright/test').Page) =>
   page.getByRole('dialog', { name: "What's new" })
 
 test.describe('a returning user', () => {
   test.use({ seed: { sourceId: 'demo', onboarded: true, changelogSeen: null } })
 
-  test('is told what changed, reads it, and is not told again', async ({ page }) => {
+  test('gets a quiet sparkle on the map, reads the news through it, and keeps no sparkle', async ({
+    page,
+  }) => {
     await gotoMap(page)
-    await expect(bar(page)).toBeVisible()
+    // Nothing interrupts the map: no dialog until the user asks for one
+    await expect(sparkle(page)).toBeVisible()
+    await expect(sheet(page)).toHaveCount(0)
 
-    await bar(page).getByRole('button', { name: 'See' }).click()
+    await sparkle(page).click()
     await expect(sheet(page)).toBeVisible()
     await expect(sheet(page).getByText('New', { exact: true })).toBeVisible()
-    // Opening the sheet is reading the news: the bar is gone behind it
-    await expect(bar(page)).toHaveCount(0)
+    // Opening the sheet is reading the news: the sparkle is gone behind it
+    await expect(sparkle(page)).toHaveCount(0)
 
     await sheet(page).getByRole('button', { name: 'Got it' }).click()
     await expect(sheet(page)).toHaveCount(0)
 
     await page.reload()
     await expect(page.getByText('The cheapest near you')).toBeVisible({ timeout: 15_000 })
-    await expect(bar(page)).toHaveCount(0)
-  })
-
-  test('can dismiss the bar without opening it, for good', async ({ page }) => {
-    await gotoMap(page)
-    await page.getByRole('button', { name: "Hide what's new" }).click()
-    await expect(bar(page)).toHaveCount(0)
-
-    await page.reload()
-    await expect(page.getByText('The cheapest near you')).toBeVisible({ timeout: 15_000 })
-    await expect(bar(page)).toHaveCount(0)
+    await expect(sparkle(page)).toHaveCount(0)
   })
 })
 
@@ -44,7 +38,7 @@ test('Settings reopens the log, and Back closes it without leaving the screen', 
   page,
 }) => {
   await gotoMap(page)
-  await expect(bar(page)).toHaveCount(0)
+  await expect(sparkle(page)).toHaveCount(0)
   await page.getByText('Settings', { exact: true }).click()
 
   await page.getByRole('button', { name: /What's new/ }).click()
@@ -64,10 +58,10 @@ test.describe('a newcomer', () => {
     await page.goto('/')
     await page.getByText('Continue without location').click()
     await expect(page.getByText('The cheapest near you')).toBeVisible({ timeout: 15_000 })
-    await expect(bar(page)).toHaveCount(0)
+    await expect(sparkle(page)).toHaveCount(0)
 
     await page.reload()
     await expect(page.getByText('The cheapest near you')).toBeVisible({ timeout: 15_000 })
-    await expect(bar(page)).toHaveCount(0)
+    await expect(sparkle(page)).toHaveCount(0)
   })
 })

@@ -10,9 +10,10 @@
 //   2. put the entry at the TOP of `CHANGELOG` below.
 //
 // The next time a returning user opens a build carrying it — the reload the
-// update bar offers, or any later cold start — the What's new bar names it
-// (`WhatsNewPrompt`), and the sheet behind it lists it (`WhatsNewSheet`).
-// Settings › What's new reopens the whole log at any time.
+// update bar offers, or any later cold start — a small sparkle wiggles in a
+// corner of the map (`WhatsNewButton`). Nothing more: the app is used behind
+// the wheel, so reading is opt-in. A tap opens the sheet that lists it
+// (`WhatsNewSheet`); Settings › What's new reopens the whole log at any time.
 import { m } from '../paraglide/messages.js';
 
 export interface ChangelogEntry {
