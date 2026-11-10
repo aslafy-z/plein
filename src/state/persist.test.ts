@@ -134,3 +134,162 @@ describe('loadPersisted position migration', () => {
     expect(loadPersisted().lastPos).toEqual(paris)
   })
 })
+
+// The blob feeds `useState` initialisers directly: a field of the wrong shape
+// is a crash on every boot, not a wrong setting. Each one is dropped on the
+// way in, so the store falls back to its first-visit default, and the fields
+// next to it survive.
+describe('loadPersisted shape validation', () => {
+  const stubBlob = (blob: unknown) =>
+    vi.stubGlobal('localStorage', {
+      getItem: () => JSON.stringify(blob),
+      setItem: () => {},
+      removeItem: () => {},
+    })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  const toulouse = { lat: 43.6047, lng: 1.4442 }
+  const favorite = { id: 'fr-31000009', name: 'Station U', init: 'SU', lat: 43.61, lng: 1.45 }
+
+  it('answers an empty blob when the stored value is not an object', () => {
+    for (const blob of [null, 5, 'junk', [1, 2]]) {
+      stubBlob(blob)
+      expect(loadPersisted()).toEqual({})
+    }
+  })
+
+  it('drops lists that are not lists', () => {
+    stubBlob({ brandSel: 'Total', favorites: {}, searchHistory: 'Annecy', serviceTags: 7, fuel: 'e10' })
+    expect(loadPersisted()).toEqual({ fuel: 'e10' })
+  })
+
+  it('drops the entries of a list that are not what it holds', () => {
+    stubBlob({
+      brandSel: ['Total', 5, null, '', 'Leclerc'],
+      favorites: [
+        favorite,
+        'fr-1',
+        null,
+        { ...favorite, id: 12 },
+        { ...favorite, name: undefined },
+        { ...favorite, lat: 'north' },
+        { ...favorite, lng: 400 },
+      ],
+      searchHistory: [
+        searched('Annecy', 3),
+        'Bordeaux',
+        null,
+        { ...searched('No point', 2), point: undefined },
+        { ...searched('Off the globe', 2), point: { lat: 91, lng: 0 } },
+        { ...searched('', 2) },
+      ],
+    })
+    const out = loadPersisted()
+    expect(out.brandSel).toEqual(['Total', 'Leclerc'])
+    expect(out.favorites).toEqual([favorite])
+    expect(out.searchHistory).toEqual([searched('Annecy', 3)])
+  })
+
+  it('repairs the secondary fields of an entry rather than losing the place', () => {
+    stubBlob({
+      favorites: [{ ...favorite, city: 42 }],
+      searchHistory: [
+        { label: 'Annecy', point: toulouse, kind: 'planet', at: 'yesterday', country: 'fr' },
+      ],
+    })
+    const out = loadPersisted()
+    expect(out.favorites).toEqual([favorite])
+    expect(out.searchHistory).toEqual([
+      { label: 'Annecy', sublabel: '', point: toulouse, kind: 'other', at: 0 },
+    ])
+  })
+
+  it('range-checks the trips folded in from the retired recents', () => {
+    stubBlob({
+      searchHistory: {},
+      recents: [
+        { label: 'Montpellier', point: { lat: 43.61, lng: 3.88 } },
+        { label: 'Nowhere', point: { lat: 943, lng: 3.88 } },
+      ],
+    })
+    expect(loadPersisted().searchHistory?.map((p) => p.label)).toEqual(['Montpellier'])
+  })
+
+  it('drops numbers that are not finite or that no slider can set', () => {
+    stubBlob({ radius: 0, tank: 500, consumption: 0, startTankPct: -5 })
+    expect(loadPersisted()).toEqual({})
+    // JSON has no NaN/Infinity: they come back as null, strings stay strings
+    stubBlob({ radius: null, tank: '50', consumption: [6.5], startTankPct: {} })
+    expect(loadPersisted()).toEqual({})
+  })
+
+  it('keeps numbers on the bounds the sliders stop at', () => {
+    const low = { radius: 1, tank: 5, consumption: 3, startTankPct: 10 }
+    stubBlob(low)
+    expect(loadPersisted()).toEqual(low)
+    const high = { radius: 25, tank: 80, consumption: 12, startTankPct: 100 }
+    stubBlob(high)
+    expect(loadPersisted()).toEqual(high)
+  })
+
+  it('still takes the legacy consumption key, held to the same bounds', () => {
+    stubBlob({ conso: 7.5 })
+    expect(loadPersisted()).toEqual({ consumption: 7.5 })
+    stubBlob({ conso: 0 })
+    expect(loadPersisted()).toEqual({})
+  })
+
+  it('drops points that are not a latitude and a longitude', () => {
+    for (const point of ['here', [43.6, 1.44], { lat: 43.6 }, { lat: '43.6', lng: 1.44 }, { lat: 43.6, lng: 181 }, { lat: -91, lng: 0 }]) {
+      stubBlob({ lastPos: point, lastFix: point })
+      expect(loadPersisted()).toEqual({})
+    }
+    stubBlob({ lastPos: toulouse, lastFix: toulouse })
+    expect(loadPersisted()).toEqual({ lastPos: toulouse, lastFix: toulouse })
+  })
+
+  it('derives no fix from a malformed last position', () => {
+    stubBlob({ geoGranted: true, lastPos: { lat: 'x', lng: 1 } })
+    expect(loadPersisted()).toEqual({ geoGranted: true })
+  })
+
+  it('drops flags that are not booleans', () => {
+    stubBlob({
+      avoidMotorway: 'yes',
+      avoidToll: 1,
+      onboarded: 'true',
+      geoGranted: null,
+      installDismissed: {},
+      sheetHint: 0,
+    })
+    expect(loadPersisted()).toEqual({})
+    const flags = {
+      avoidMotorway: true,
+      avoidToll: false,
+      onboarded: true,
+      geoGranted: false,
+      installDismissed: true,
+      sheetHint: false,
+    }
+    stubBlob(flags)
+    expect(loadPersisted()).toEqual(flags)
+  })
+
+  it('drops enum values this build does not know', () => {
+    stubBlob({ mapsSite: 'bing', fuel: 'kerosene', vehicle: 'truck' })
+    expect(loadPersisted()).toEqual({})
+    stubBlob({ mapsSite: 'waze', fuel: 'lpg', vehicle: 'motorcycle' })
+    expect(loadPersisted()).toEqual({ mapsSite: 'waze', fuel: 'lpg', vehicle: 'motorcycle' })
+  })
+
+  it('hands the choices validated where they are read only as strings', () => {
+    stubBlob({ locale: 5, theme: ['dark'], accent: {}, sourceId: 3 })
+    expect(loadPersisted()).toEqual({})
+    const choices = { locale: 'pt', theme: 'light', accent: 'violet', sourceId: 'es' }
+    stubBlob(choices)
+    expect(loadPersisted()).toEqual(choices)
+  })
+})

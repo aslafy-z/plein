@@ -5,7 +5,14 @@
 // storage key of its own, and « what the app thinks the locale is » can never
 // drift from « what Paraglide thinks it is ».
 import type { GeoPoint } from '../lib/geo';
-import type { DataSourceId, FuelId, GeocodeResult, ServiceTag, VehicleId } from '../data/types';
+import type {
+  DataSourceId,
+  FuelId,
+  GeocodeResult,
+  PlaceKind,
+  ServiceTag,
+  VehicleId,
+} from '../data/types';
 import { SERVICE_TAGS } from '../data/types';
 
 const LS_KEY = 'plein.settings.v1';
@@ -185,7 +192,133 @@ export function foldRecentsIntoSearchHistory(
   return [...history, ...folded];
 }
 
-function migrate(raw: Partial<PersistedSettings> & LegacySettings): Partial<PersistedSettings> {
+// ── Shape validation ─────────────────────────────────────────────────────────
+// The blob is read straight into `useState` initialisers, so a field of the
+// wrong shape — hand-edited, truncated, written by a build that meant
+// something else by the key — is not a wrong setting, it is a `.map is not a
+// function` on every boot. One validator per shape; a field that fails its own
+// is dropped and the store falls back to the default it has for a first visit.
+
+/** Sanity bounds — what the sliders can set (the tank's is the union of both
+    vehicle profiles), the same ones `routeUrl.ts` holds a shared link to */
+const NUMBER_RANGES = {
+  radius: { min: 1, max: 25 },
+  tank: { min: 5, max: 80 },
+  consumption: { min: 3, max: 12 },
+  startTankPct: { min: 10, max: 100 },
+} as const;
+
+const BOOLEAN_FIELDS = [
+  'avoidMotorway',
+  'avoidToll',
+  'onboarded',
+  'geoGranted',
+  'installDismissed',
+  'sheetHint',
+] as const;
+
+/** Fields whose vocabulary is checked where they are read — `locale` by
+    lib/locale.ts, `theme` and `accent` by lib/colorScheme.ts, `sourceId` by
+    the store — and that only have to be strings to get there safely */
+const STRING_FIELDS = ['locale', 'theme', 'accent', 'sourceId'] as const;
+
+const MAPS_SITES: readonly MapsSiteId[] = ['google', 'waze', 'apple', 'osm'];
+const PLACE_KINDS: readonly PlaceKind[] = ['locality', 'street', 'address', 'other'];
+
+function isRecord(raw: unknown): raw is Record<string, unknown> {
+  return typeof raw === 'object' && raw !== null && !Array.isArray(raw);
+}
+
+function validNumber(raw: unknown, range: { min: number; max: number }): number | null {
+  return typeof raw === 'number' && Number.isFinite(raw) && raw >= range.min && raw <= range.max
+    ? raw
+    : null;
+}
+
+function validPoint(raw: unknown): GeoPoint | null {
+  if (!isRecord(raw)) return null;
+  const lat = validNumber(raw.lat, { min: -90, max: 90 });
+  const lng = validNumber(raw.lng, { min: -180, max: 180 });
+  return lat == null || lng == null ? null : { lat, lng };
+}
+
+function validString(raw: unknown): string | null {
+  return typeof raw === 'string' && raw !== '' ? raw : null;
+}
+
+/** The entries of a persisted list that pass `valid` — null when the field
+    is not a list at all */
+function validList<T>(raw: unknown, valid: (entry: unknown) => T | null): T[] | null {
+  if (!Array.isArray(raw)) return null;
+  const out: T[] = [];
+  for (const entry of raw) {
+    const ok = valid(entry);
+    if (ok != null) out.push(ok);
+  }
+  return out;
+}
+
+function validFavorite(raw: unknown): FavoriteStation | null {
+  if (!isRecord(raw)) return null;
+  const point = validPoint(raw);
+  const id = validString(raw.id);
+  if (!point || id == null || typeof raw.name !== 'string' || typeof raw.init !== 'string') {
+    return null;
+  }
+  const out = { ...raw, id, name: raw.name, init: raw.init, ...point } as FavoriteStation;
+  if (typeof raw.city !== 'string') delete out.city;
+  return out;
+}
+
+/** A history entry needs a label to show and a point to go to; the rest is
+    repaired rather than costing the user the place they remembered */
+function validSearchedPlace(raw: unknown): SearchedPlace | null {
+  if (!isRecord(raw)) return null;
+  const label = validString(raw.label);
+  const point = validPoint(raw.point);
+  if (label == null || !point) return null;
+  const out = {
+    ...raw,
+    label,
+    sublabel: typeof raw.sublabel === 'string' ? raw.sublabel : '',
+    point,
+    kind: PLACE_KINDS.includes(raw.kind as PlaceKind) ? (raw.kind as PlaceKind) : 'other',
+    at: typeof raw.at === 'number' && Number.isFinite(raw.at) ? raw.at : 0,
+  } as SearchedPlace;
+  const country =
+    typeof raw.country === 'string' ? (LEGACY_PLACE_COUNTRIES[raw.country] ?? raw.country) : null;
+  if (country === 'ad' || country === 'pt') out.country = country;
+  else delete out.country;
+  return out;
+}
+
+/** Drop every field of `out` whose shape is not the one its type promises */
+function dropMalformed(out: Partial<PersistedSettings>): void {
+  const fields = out as Record<string, unknown>;
+  const keep = (key: keyof PersistedSettings, value: unknown) => {
+    if (value == null) delete fields[key];
+    else fields[key] = value;
+  };
+  for (const key of Object.keys(NUMBER_RANGES) as (keyof typeof NUMBER_RANGES)[]) {
+    keep(key, validNumber(fields[key], NUMBER_RANGES[key]));
+  }
+  for (const key of BOOLEAN_FIELDS) {
+    if (typeof fields[key] !== 'boolean') delete fields[key];
+  }
+  for (const key of STRING_FIELDS) {
+    if (typeof fields[key] !== 'string') delete fields[key];
+  }
+  keep('mapsSite', MAPS_SITES.includes(fields.mapsSite as MapsSiteId) ? fields.mapsSite : null);
+  keep('lastPos', validPoint(fields.lastPos));
+  keep('lastFix', validPoint(fields.lastFix));
+  keep('brandSel', validList(fields.brandSel, validString));
+  keep('favorites', validList(fields.favorites, validFavorite));
+  keep('searchHistory', validList(fields.searchHistory, validSearchedPlace));
+}
+
+function migrate(stored: unknown): Partial<PersistedSettings> {
+  if (!isRecord(stored)) return {};
+  const raw = stored as Partial<PersistedSettings> & LegacySettings;
   const out: Partial<PersistedSettings> & LegacySettings = { ...raw };
   const fuel = migrateFuelId(out.fuel);
   if (fuel) out.fuel = fuel;
@@ -199,14 +332,9 @@ function migrate(raw: Partial<PersistedSettings> & LegacySettings): Partial<Pers
   if (typeof out.sourceId === 'string' && LEGACY_SOURCES[out.sourceId]) {
     out.sourceId = LEGACY_SOURCES[out.sourceId];
   }
-  if (Array.isArray(out.searchHistory)) {
-    out.searchHistory = out.searchHistory.map((place) => {
-      const country =
-        typeof place?.country === 'string' ? LEGACY_PLACE_COUNTRIES[place.country] : undefined;
-      return country ? { ...place, country } : place;
-    });
-  }
   if (out.consumption == null && typeof out.conso === 'number') out.consumption = out.conso;
+  // Before anything below reads a list or a point off the blob
+  dropMalformed(out);
   // `lastFix` split off `lastPos`, which used to stand for both « where the
   // map was looking » and « where the user is ». A blob that granted
   // geolocation before was written by a build where the two agreed, so its
@@ -216,7 +344,11 @@ function migrate(raw: Partial<PersistedSettings> & LegacySettings): Partial<Pers
     out.lastFix = out.lastPos;
   }
   if (out.recents != null) {
-    out.searchHistory = foldRecentsIntoSearchHistory(out.recents, out.searchHistory ?? []);
+    out.searchHistory =
+      validList(
+        foldRecentsIntoSearchHistory(out.recents, out.searchHistory ?? []),
+        validSearchedPlace,
+      ) ?? [];
   }
   delete out.conso;
   delete out.bgloc;
@@ -229,7 +361,7 @@ function migrate(raw: Partial<PersistedSettings> & LegacySettings): Partial<Pers
 export function loadPersisted(): Partial<PersistedSettings> {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    return raw ? migrate(JSON.parse(raw) as Partial<PersistedSettings>) : {};
+    return raw ? migrate(JSON.parse(raw)) : {};
   } catch {
     return {};
   }
