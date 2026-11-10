@@ -132,7 +132,17 @@ export function agoLabelFrom(ms: number, now = Date.now()): string {
   if (mins < 60) return relative().format(-mins, 'minute');
   const hours = Math.round(mins / 60);
   if (hours < 24) return relative().format(-hours, 'hour');
-  return relative().format(-Math.round(hours / 24), 'day');
+  // Past a day the label NAMES a day (« hier », « avant-hier »), so the count
+  // is a calendar difference between local midnights, not 24-hour blocks:
+  // yesterday 10:00 seen at 23:00 is 37 h old and still « hier ». The round
+  // absorbs the 23/25-hour days around a DST change; the floor of 1 covers an
+  // age that rounds up to 24 h without leaving today.
+  return relative().format(-Math.max(1, calendarDaysBetween(ms, now)), 'day');
+}
+
+function calendarDaysBetween(from: number, to: number): number {
+  const midnight = (t: number) => new Date(t).setHours(0, 0, 0, 0);
+  return Math.round((midnight(to) - midnight(from)) / 86_400_000);
 }
 
 /** ISO timestamp -> "il y a 2 h" / "hier" / "il y a 3 j" */
