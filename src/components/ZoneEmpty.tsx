@@ -23,6 +23,18 @@ import { m } from '../paraglide/messages.js';
  * replaces. The phone variant drops the mark and tightens the spacing.
  */
 export default function ZoneEmpty() {
+  // One polite live region around every state of the block: it is mounted
+  // with the loading line, so what replaces that line — « no station matches »,
+  // the network failure — is a change inside a region the screen reader
+  // already knows, which is the case it announces.
+  return (
+    <div role="status">
+      <ZoneEmptyState />
+    </div>
+  );
+}
+
+function ZoneEmptyState() {
   const app = useApp();
 
   // Transient by definition — a mark and a button would flash and leave.

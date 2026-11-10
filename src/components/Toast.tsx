@@ -5,21 +5,39 @@ import { C } from '../theme';
 export default function Toast() {
   const { toast } = useApp();
   const desktop = useIsDesktop();
-  if (!toast) return null;
+  // The live region stays mounted, and empty, between toasts: a screen reader
+  // announces text CHANGING inside a region it already knows, and several
+  // stay silent on a region inserted together with its text. Empty it has no
+  // height, and it lets every pointer through either way.
   return (
     <div
       role="status"
-      className="anim-toast"
       style={{
         position: 'absolute',
-        left: '50%',
+        left: 0,
+        right: 0,
         // Clear of the tab bar on a phone; there is none on desktop, so the
         // toast sits on the bottom edge where a desktop notice belongs
         bottom: desktop ? 28 : 96,
-        transform: 'translateX(-50%)',
+        display: 'flex',
+        justifyContent: 'center',
+        pointerEvents: 'none',
         // Above every overlay: the fiche (1200) and the filters sheet (1100)
         // are full-screen, and a toast fired from either was drawn behind them.
         zIndex: 2000,
+      }}
+    >
+      {toast && <ToastPill text={toast} />}
+    </div>
+  );
+}
+
+function ToastPill({ text }: { text: string }) {
+  return (
+    <div
+      className="anim-toast"
+      style={{
+        pointerEvents: 'auto',
         background: C.ink,
         color: C.bg,
         fontSize: 13,
@@ -33,7 +51,7 @@ export default function Toast() {
         textOverflow: 'ellipsis',
       }}
     >
-      {toast}
+      {text}
     </div>
   );
 }

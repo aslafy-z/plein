@@ -1084,20 +1084,23 @@ export default function MapCanvas({
         </div>
       )}
 
-      {/* Loading indicator while the moved area fetches its stations */}
-      {app.stations.status === 'loading' && (
-        <div
-          style={{
-            position: 'absolute',
-            left: leftInset,
-            right: 0,
-            ...bottomEdge,
-            display: 'flex',
-            justifyContent: 'center',
-            zIndex: 1000,
-            pointerEvents: 'none',
-          }}
-        >
+      {/* Loading indicator while the moved area fetches its stations. The
+          status region stays mounted and only the pill comes and goes: a
+          screen reader announces text arriving in a region it already knows */}
+      <div
+        role="status"
+        style={{
+          position: 'absolute',
+          left: leftInset,
+          right: 0,
+          ...bottomEdge,
+          display: 'flex',
+          justifyContent: 'center',
+          zIndex: 1000,
+          pointerEvents: 'none',
+        }}
+      >
+        {app.stations.status === 'loading' && (
           <span
             style={{
               ...pillGlass,
@@ -1111,8 +1114,8 @@ export default function MapCanvas({
           >
             {m.map_loading_stations()}
           </span>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Desktop: one glass column for everything a mouse needs on the map.
           Zoom first — a finger pinches and a keyboard has +/− (see
