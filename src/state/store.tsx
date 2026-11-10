@@ -80,6 +80,7 @@ import {
   latestChangelogId,
   unseenChangelog,
   type ChangelogEntry,
+  type WhatsNewView,
 } from '../lib/changelog';
 import { beginRouteTiming, markRoute } from '../lib/perf';
 import {
@@ -795,10 +796,12 @@ export interface AppStore {
       empty once seen (and for a newcomer, whom onboarding stamps). Non-empty
       is what puts the sparkle on the map (WhatsNewButton) */
   whatsNew: ChangelogEntry[];
-  /** The What's new sheet — nav state like the filters, so Back closes it.
-      Opening it counts as having seen the news. */
-  whatsNewOpen: boolean;
-  setWhatsNewOpen(open: boolean): void;
+  /** The What's new sheet and how it opened (lib/changelog `WhatsNewView`:
+      the sparkle leads with the news, Settings opens the whole history), or
+      null — nav state like the filters, so Back closes it. Opening it counts
+      as having seen the news. */
+  whatsNewOpen: WhatsNewView | null;
+  setWhatsNewOpen(view: WhatsNewView | null): void;
   /** Ids the log had to announce when this session started — the sheet
       flags them « New » even after opening it stamped them seen */
   whatsNewFresh: ReadonlySet<string>;
@@ -858,7 +861,7 @@ export type NavHistoryState = {
   screen?: Screen;
   detailId?: string | null;
   filtersOpen?: boolean;
-  whatsNewOpen?: boolean;
+  whatsNewOpen?: WhatsNewView | null;
   /** Which search field the entry holds open — entries written before the
       route shared the search carried a boolean, hence the union */
   searchOpen?: SearchTarget | boolean | null;
@@ -952,7 +955,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
   usePersisted('serviceTags', activeServiceTags);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [whatsNewOpen, setWhatsNewOpen] = useState(false);
+  const [whatsNewOpen, setWhatsNewOpen] = useState<WhatsNewView | null>(null);
   const [searchOpen, setSearchOpen] = useState<SearchTarget | null>(null);
   const [routeMode, setRouteMode] = useState<RouteMode>(initialRoute.mode ?? 'balanced');
   const [plannedStops, setPlannedStops] = useState<Record<string, boolean>>({});
@@ -1260,14 +1263,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setScreen(st.screen);
         setDetailId(st.detailId ?? null);
         setFiltersOpen(!!st.filtersOpen);
-        setWhatsNewOpen(!!st.whatsNewOpen);
+        setWhatsNewOpen(st.whatsNewOpen ?? null);
         setSearchOpen(navSearchTarget(st));
       } else {
         const nav = navFromPath(window.location.pathname);
         setScreen(nav.screen);
         setDetailId(nav.detailId);
         setFiltersOpen(false);
-        setWhatsNewOpen(false);
+        setWhatsNewOpen(null);
         setSearchOpen(null);
       }
     };
@@ -1352,7 +1355,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       cur.screen === screen &&
       (cur.detailId ?? null) === detailId &&
       !!cur.filtersOpen === filtersOpen &&
-      !!cur.whatsNewOpen === whatsNewOpen &&
+      (cur.whatsNewOpen ?? null) === whatsNewOpen &&
       navSearchTarget(cur) === searchOpen;
     const url = withDebugParam(
       pathFor(screen, detailId) +
@@ -2073,11 +2076,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     savePersisted({ changelogSeen: latest });
   }, []);
   const setWhatsNewOpenNav = useCallback(
-    (open: boolean) => {
+    (view: WhatsNewView | null) => {
       const cur = window.history.state as NavHistoryState | null;
-      if (open) markChangelogSeen();
-      if (!open && cur?.plein && cur.whatsNewOpen) window.history.back();
-      else setWhatsNewOpen(open);
+      if (view) markChangelogSeen();
+      if (!view && cur?.plein && cur.whatsNewOpen) window.history.back();
+      else setWhatsNewOpen(view);
     },
     [markChangelogSeen],
   );
