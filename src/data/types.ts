@@ -253,6 +253,8 @@ export interface RouteProvider {
    * station→destination legs for the route fuel-stop plan. `null` per cell
    * when unroutable. Optional — the plan falls back to a geometric estimate
    * (and says so) when the provider has no matrix backend or the call fails.
+   * Rejects with `TravelMatrixUnsupportedError` when the backend cannot answer
+   * THIS request by design — nothing to retry, and not an outage.
    */
   getTravelMatrix?(
     points: GeoPoint[],
@@ -260,6 +262,18 @@ export interface RouteProvider {
   ): Promise<Array<Array<ReachInfo | null>>>;
   /** Largest `points` a single getTravelMatrix call accepts */
   readonly travelMatrixMaxPoints?: number;
+}
+
+/**
+ * The matrix backend cannot answer this request, by design rather than by
+ * accident (a server-side limit the request is known to exceed). The matrix
+ * stage settles on `unsupported` instead of `error`: no retry would succeed.
+ */
+export class TravelMatrixUnsupportedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'TravelMatrixUnsupportedError';
+  }
 }
 
 // ── Source selection ─────────────────────────────────────────────────────────

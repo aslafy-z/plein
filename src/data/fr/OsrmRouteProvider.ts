@@ -3,8 +3,9 @@
 // – « Avoid motorways / tolls »: Valhalla (FOSSGIS public server), whose
 //   costing options support use_highways / use_tolls.
 import { IS_DEV } from '../../lib/env';
-import type { GeoPoint } from '../../lib/geo';
+import { haversineKm, type GeoPoint } from '../../lib/geo';
 import { TtlLru } from '../../lib/lru';
+import { TravelMatrixUnsupportedError } from '../types';
 import type { ReachInfo, Route, RouteOptions, RouteProvider } from '../types';
 
 const OSRM_ROOT = IS_DEV ? '/proxy/osrm' : 'https://router.project-osrm.org';
@@ -22,6 +23,15 @@ const TIMEOUT_MS = 12000;
  * SERVER will take, not what we choose to send.
  */
 const TRAVEL_MATRIX_MAX_POINTS = 50;
+/**
+ * The FOSSGIS Valhalla instance also caps the distance between any source and
+ * any target of one matrix call (straight line, checked before routing): past
+ * it the whole request is refused with HTTP 400, error_code 154 (« Path
+ * distance exceeds the max distance limit: 150000 meters »). The square matrix
+ * always holds origin→destination, so a longer trip can never be answered.
+ */
+export const VALHALLA_MATRIX_MAX_KM = 150;
+const VALHALLA_DISTANCE_LIMIT_CODE = 154;
 
 // ── OSRM ─────────────────────────────────────────────────────────────────────
 interface OsrmResponse {
@@ -204,11 +214,26 @@ interface ValhallaMatrixResponse {
   sources_to_targets?: Array<Array<{ distance?: number | null; time?: number | null }>>;
 }
 
+/** true when some pair of `points` is farther apart than the matrix limit */
+function exceedsValhallaMatrixLimit(points: GeoPoint[]): boolean {
+  for (let i = 0; i < points.length; i++) {
+    for (let j = i + 1; j < points.length; j++) {
+      if (haversineKm(points[i], points[j]) > VALHALLA_MATRIX_MAX_KM) return true;
+    }
+  }
+  return false;
+}
+
 async function valhallaTravelMatrix(
   points: GeoPoint[],
   opts: RouteOptions,
 ): Promise<Array<Array<ReachInfo | null>>> {
   if (!points.length) return [];
+  // A request known to exceed the limit is never sent: it is a guaranteed
+  // 400, and so is each of its retries.
+  if (exceedsValhallaMatrixLimit(points)) {
+    throw new TravelMatrixUnsupportedError('Valhalla matrix distance limit');
+  }
   const locations = points.map((p) => ({ lat: p.lat, lon: p.lng }));
   const body = {
     sources: locations,
@@ -218,6 +243,13 @@ async function valhallaTravelMatrix(
   };
   const url = `${VALHALLA_MATRIX_BASE}?json=${encodeURIComponent(JSON.stringify(body))}`;
   const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+  if (res.status === 400) {
+    // The server's own measure of the same limit wins over our pre-check.
+    const err = (await res.json().catch(() => null)) as { error_code?: number } | null;
+    if (err?.error_code === VALHALLA_DISTANCE_LIMIT_CODE) {
+      throw new TravelMatrixUnsupportedError('Valhalla matrix distance limit');
+    }
+  }
   if (!res.ok) throw new Error(`Valhalla HTTP ${res.status}`);
   const json = (await res.json()) as ValhallaMatrixResponse;
   const rows = json.sources_to_targets;

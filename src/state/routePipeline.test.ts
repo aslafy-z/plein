@@ -7,6 +7,7 @@ import {
   commitCorridor,
   commitGeometry,
   commitMatrix,
+  declineMatrix,
   failCorridor,
   failGeometry,
   failMatrix,
@@ -258,6 +259,16 @@ describe('matrix stage', () => {
     expect(failed.matrixCells).toBeNull()
     expect(failed.route).not.toBeNull()
     expect(failed.stations.length).toBe(2)
+  })
+
+  it('declines only the key in flight, as unsupported rather than error, and keeps the key', () => {
+    const s = beginMatrix(ready(), MK)
+    expect(declineMatrix(s, 'old-key')).toBe(s)
+    const declined = declineMatrix(s, MK)
+    expect(declined.matrix).toBe('unsupported')
+    expect(declined.matrixKey).toBe(MK)
+    expect(declined.matrixCells).toBeNull()
+    expect(declined.route).not.toBeNull()
   })
 
   it('re-keying clears the previous cells — they answer another set', () => {

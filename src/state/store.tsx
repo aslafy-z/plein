@@ -47,6 +47,7 @@ import { haversineKm } from '../lib/geo';
 import {
   ALL_FUELS,
   SERVICE_TAGS,
+  TravelMatrixUnsupportedError,
   type VehicleId,
   type DataSourceId,
   type FuelId,
@@ -100,6 +101,7 @@ import {
   commitCorridor,
   commitGeometry,
   commitMatrix,
+  declineMatrix,
   failCorridor,
   failGeometry,
   failMatrix,
@@ -1703,8 +1705,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setRouteState((s) => commitMatrix(s, key, cells));
           markRoute('route:plan');
         })
-        .catch(() => {
+        .catch((err: unknown) => {
           if (matrixKeyRef.current !== key) return;
+          // A request the backend refuses by design is not an outage: no
+          // retry, and `unsupported` rather than `error`.
+          if (err instanceof TravelMatrixUnsupportedError) {
+            setRouteState((s) => declineMatrix(s, key));
+            markRoute('route:plan');
+            return;
+          }
           if (n < MATRIX_RETRIES) {
             matrixTimer.current = setTimeout(() => attempt(n + 1), MATRIX_RETRY_BASE_MS * 2 ** n);
             return;
