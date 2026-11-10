@@ -1535,12 +1535,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => subscribeInstall(() => setCanInstall(installReady())), []);
 
   const promptInstall = useCallback(() => {
-    void nativeInstallPrompt().then((outcome) => {
-      if (outcome === 'dismissed') {
-        setInstallDismissed(true);
-        savePersisted({ installDismissed: true });
-      }
-    });
+    void nativeInstallPrompt()
+      .then((outcome) => {
+        if (outcome === 'dismissed') {
+          setInstallDismissed(true);
+          savePersisted({ installDismissed: true });
+        }
+      })
+      .catch(() => {}); // a refused prompt is not an error worth surfacing
   }, []);
 
   const dismissInstallBanner = useCallback(() => {
