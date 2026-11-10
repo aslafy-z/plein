@@ -3,7 +3,7 @@
 // The palette lives in src/styles.css as CSS variables keyed on the
 // document's `data-theme` attribute; index.html resolves that attribute once
 // before first paint. This module keeps it LIVE after boot: it applies an
-// explicit choice made in Réglages (persisted in `plein.settings.v1` like
+// explicit choice made in Settings (persisted in `plein.settings.v1` like
 // `fuel` or `locale` — absent means « follow the browser »), follows the
 // browser preference while no choice is made, and keeps the `theme-color`
 // meta in step so the PWA chrome matches the shell.
@@ -46,7 +46,7 @@ const media: MediaQueryList | null =
 
 const listeners = new Set<() => void>();
 
-/** The explicit choice made in Réglages, or null while the browser decides */
+/** The explicit choice made in Settings, or null while the browser decides */
 export function explicitTheme(): Theme | null {
   const saved = loadPersisted().theme;
   return isTheme(saved) ? saved : null;

@@ -607,6 +607,10 @@ export default function PlaceField(props: PlaceFieldProps) {
     const panel = open
       ? createPortal(
           <div
+            // It covers everything: a dialog, named after the field it fills
+            role="dialog"
+            aria-modal="true"
+            aria-label={props.title ?? m.search_open_aria()}
             className="sheet-swap"
             data-testid="search-panel"
             style={{

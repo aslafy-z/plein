@@ -3,6 +3,9 @@
   "app_title": "Plein. — a fair price at the pump",
   "unit_metres": "{metres} m",
   "unit_kilometres": "{km} km",
+  "unit_litres": "{litres} L",
+  "unit_litres_per_100_km": "{litres} L/100 km",
+  "unit_percent": "{percent} %",
   "unit_size_under_kilobyte": "less than 1 kB",
   "unit_minutes": "{minutes} min",
   "unit_hours": "{hours}h",
@@ -119,6 +122,7 @@
       }
     }
   ],
+  "map_pin_label": "{name}, {price} € per litre",
   "map_pin_cap_hint": [
     {
       "declarations": [
@@ -295,6 +299,7 @@
   "favorites_sort_recommended": "Recommended",
   "favorites_sort_price": "Price",
   "favorites_sort_distance": "Distance",
+  "favorites_sort_distance_unavailable_aria": "Distance sort unavailable: your position is unknown",
   "favorites_empty_title": "No favorites yet",
   "favorites_empty_body": "Tap the star on a station page to pin it here and compare the stations you use at a glance.",
   "favorites_explore_map": "Explore the map",
@@ -478,6 +483,7 @@
   "settings_geo_denied": "denied for this site",
   "settings_geo_unavailable": "unavailable on this device",
   "settings_geo_pending": "not requested",
+  "settings_geo_failed": "no position found — tap to retry",
   "settings_geo_locating": "locating…",
   "settings_geo_enable": "Turn on",
   "settings_location_hint": "Without location the map opens on the last area you viewed (Toulouse by default). If the prompt no longer appears, allow location for this site in your browser settings.",

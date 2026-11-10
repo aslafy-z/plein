@@ -14,6 +14,7 @@ import { m } from '../paraglide/messages.js';
 import { fmtPrice } from '../lib/format';
 import { cumulativeKm, radiusBounds, type GeoPoint } from '../lib/geo';
 import { useLeafletMap } from '../lib/leafletMap';
+import { setMarkerLabel } from '../lib/markerLabel';
 import { pricePinHtml } from '../lib/pricePin';
 import { USER_DOT_CLASS, USER_DOT_SIZE, userDotHtml } from '../lib/userDot';
 import LocateIcon from './LocateIcon';
@@ -108,6 +109,13 @@ export default function RouteMap({
   const layerRef = useRef<L.LayerGroup | null>(null);
   const userDotRef = useRef<L.Marker | null>(null);
   const fittedRouteRef = useRef<unknown>(null);
+  /** Endpoints the pre-route framing last ran on — a pick is told apart from
+      a plain re-render by their identity, like a route by `fittedRouteRef` */
+  const framedEndsRef = useRef<{
+    from: GeoPoint | null;
+    to: GeoPoint | null;
+    fromIsCurrentPosition: boolean;
+  } | null>(null);
   /** Bumped when the map lands — the recenter control reads the live view */
   const [, setViewTick] = useState(0);
   /** Bounds currently framed (corridor / endpoints / search area) — the shell
@@ -211,12 +219,14 @@ export default function RouteMap({
       L.marker([from.lat, from.lng], {
         icon: L.divIcon({ className: '', html: endpointHtml('from'), iconSize: [16, 16], iconAnchor: [8, 8] }),
         interactive: false,
+        keyboard: false,
       }).addTo(layer);
     }
     if (to) {
       L.marker([to.lat, to.lng], {
         icon: L.divIcon({ className: '', html: endpointHtml('to'), iconSize: [16, 16], iconAnchor: [8, 8] }),
         interactive: false,
+        keyboard: false,
       }).addTo(layer);
     }
 
@@ -233,7 +243,25 @@ export default function RouteMap({
         })();
     frameBoundsRef.current = box;
     // A newly picked endpoint deserves its framing, like a newly computed
-    // route — but a plain re-render must not fight the user's pan.
+    // route — but a plain re-render must not fight the user's pan. The
+    // takeover is released HERE, before the decision below: released from an
+    // effect of its own, after this one, it only served the NEXT change, and
+    // a departure picked over a panned map stayed off-screen. The first run
+    // only records the ends — a view restored at mount keeps its takeover.
+    const framed = framedEndsRef.current;
+    if (
+      framed &&
+      (framed.from !== app.fromPoint ||
+        framed.to !== app.toPoint ||
+        framed.fromIsCurrentPosition !== app.fromIsCurrentPosition)
+    ) {
+      userInteractedRef.current = false;
+    }
+    framedEndsRef.current = {
+      from: app.fromPoint,
+      to: app.toPoint,
+      fromIsCurrentPosition: app.fromIsCurrentPosition,
+    };
     if (!userInteractedRef.current) {
       shell.fitBounds(box, ends.length > 1 ? { pad: 60 } : { pad: 40, maxZoom: 15 });
     }
@@ -247,12 +275,6 @@ export default function RouteMap({
     route, app.fromPoint, app.fromIsCurrentPosition, app.toPoint, app.userPos, app.hasKnownPos,
     app.searchPos, app.radius, bottomInset, leftInset,
   ]);
-
-  // Picking a new endpoint re-arms the framing the way a new route does
-  useEffect(() => {
-    if (!route) userInteractedRef.current = false;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [app.fromPoint, app.toPoint]);
 
   // ── The computed route: corridor, stops, autonomy limit ────────────────────
   useEffect(() => {
@@ -273,10 +295,12 @@ export default function RouteMap({
     L.marker([start.lat, start.lng], {
       icon: L.divIcon({ className: '', html: endpointHtml('from'), iconSize: [16, 16], iconAnchor: [8, 8] }),
       interactive: false,
+      keyboard: false,
     }).addTo(layer);
     L.marker([end.lat, end.lng], {
       icon: L.divIcon({ className: '', html: endpointHtml('to'), iconSize: [16, 16], iconAnchor: [8, 8] }),
       interactive: false,
+      keyboard: false,
     }).addTo(layer);
 
     // Autonomy limit
@@ -291,6 +315,7 @@ export default function RouteMap({
         L.marker([limit.lat, limit.lng], {
           icon: L.divIcon({ className: '', html, iconSize: [14, 14], iconAnchor: [7, 7] }),
           interactive: false,
+          keyboard: false,
         }).addTo(layer);
       }
     }
@@ -315,6 +340,7 @@ export default function RouteMap({
         zIndexOffset: focused ? 2000 : recommended ? 1000 : 0,
       });
       marker.on('click', () => app.openStation(st.id));
+      setMarkerLabel(marker, m.map_pin_label({ name: st.name, price: fmtPrice(price) }));
       marker.addTo(layer);
     }
 

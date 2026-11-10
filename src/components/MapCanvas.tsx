@@ -6,6 +6,7 @@ import { fmtPrice } from '../lib/format';
 import { haversineKm, radiusBounds, type GeoPoint } from '../lib/geo';
 import { useIsDesktop } from '../lib/layout';
 import { useLeafletMap, type LeafletShell } from '../lib/leafletMap';
+import { setMarkerLabel } from '../lib/markerLabel';
 import { pricePinDotHtml, pricePinHtml } from '../lib/pricePin';
 import { USER_DOT_CLASS, USER_DOT_SIZE, userDotHtml } from '../lib/userDot';
 import { zoneCircle } from '../lib/zoneCircle';
@@ -665,7 +666,8 @@ export default function MapCanvas({
       // The recommended pin wears the deal green whatever its tier — it must
       // agree with its green sheet card
       const deal = tier === 'deal' || best;
-      const sig = `${price}|${tier}|${best}|${focused}|${dot}`;
+      // The name is part of the signature: it feeds the pin's accessible name
+      const sig = `${price}|${tier}|${best}|${focused}|${dot}|${s.name}`;
       wanted.add(s.id);
       const existing = markers.get(s.id);
       if (existing && existing.sig === sig) continue;
@@ -683,10 +685,14 @@ export default function MapCanvas({
       // Deals float above their tier-mates (green dots above gray dots, green
       // bubbles above the rest) without ever crossing the dot/bubble divide
       const z = focused ? 2000 : best ? 1000 : dot ? (deal ? -200 : -400) : deal ? 500 : 0;
+      // A pin is a focusable button: name it with the station, not the bare
+      // price its bubble shows (and a dot shows nothing at all)
+      const label = m.map_pin_label({ name: s.name, price: fmtPrice(price) });
 
       if (existing) {
         existing.marker.setIcon(icon);
         existing.marker.setZIndexOffset(z);
+        setMarkerLabel(existing.marker, label);
         existing.sig = sig;
       } else {
         const marker = L.marker([s.lat, s.lng], { zIndexOffset: z, icon });
@@ -700,6 +706,7 @@ export default function MapCanvas({
           if (desktopRef.current && cur.screen === 'detail') cur.openStation(s.id);
           else cur.setFocusStation(s.id);
         });
+        setMarkerLabel(marker, label);
         marker.addTo(layer);
         markers.set(s.id, { marker, sig });
       }

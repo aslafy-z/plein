@@ -9,6 +9,8 @@ import {
 import { FrStationsProvider } from '../fr/FrStationsProvider'
 import { EsStationsProvider, esCoversAlong, esCoversNear } from '../es/EsStationsProvider'
 import { AdStationsProvider } from '../ad/AdStationsProvider'
+import { AdGeocodeProvider } from '../ad/AdGeocodeProvider'
+import { CartoCiudadGeocodeProvider } from '../es/CartoCiudadGeocodeProvider'
 import { PtStationsProvider } from '../pt/PtStationsProvider'
 import { haversineKm } from '../../lib/geo'
 import type { GeocodeResult, Station } from '../types'
@@ -284,6 +286,26 @@ describe('mergeAsTheyLand', () => {
     expect(res).toEqual([place('Toulouse')])
   })
 
+  it('flags a merge a source failed out of as incomplete', async () => {
+    const onIncomplete = vi.fn()
+    await mergeAsTheyLand(
+      [Promise.reject(new Error('cartociudad down')), Promise.resolve([place('Toulouse')])],
+      undefined,
+      onIncomplete,
+    )
+    expect(onIncomplete).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not flag a merge every source answered, empty lists included', async () => {
+    const onIncomplete = vi.fn()
+    await mergeAsTheyLand(
+      [Promise.resolve([]), Promise.resolve([place('Toulouse')])],
+      undefined,
+      onIncomplete,
+    )
+    expect(onIncomplete).not.toHaveBeenCalled()
+  })
+
   it('throws only when every source failed', async () => {
     await expect(
       mergeAsTheyLand([
@@ -291,5 +313,68 @@ describe('mergeAsTheyLand', () => {
         Promise.reject(new Error('second')),
       ]),
     ).rejects.toThrow('first')
+  })
+})
+
+describe('two-step geocoders — a failed resolve step', () => {
+  /** `fetch` answering from a URL → body table; a missing entry is an outage. */
+  const stubFetch = (answer: (url: string) => unknown) => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: unknown) => {
+        const body = answer(String(input))
+        if (body === undefined) throw new Error('timeout')
+        return { ok: true, json: async () => body }
+      }),
+    )
+  }
+
+  afterEach(() => vi.unstubAllGlobals())
+
+  const candidates = [
+    { address: 'Girona', type: 'Municipio', province: 'Girona' },
+    { address: 'Gironella', type: 'Municipio', province: 'Barcelona' },
+  ]
+
+  it('CartoCiudad throws when every find call failed, instead of answering « no result »', async () => {
+    stubFetch((url) => (url.includes('/candidates') ? candidates : undefined))
+    await expect(new CartoCiudadGeocodeProvider().search('giron')).rejects.toThrow('find failed')
+  })
+
+  it('CartoCiudad returns what resolved and flags the list as incomplete', async () => {
+    stubFetch((url) => {
+      if (url.includes('/candidates')) return candidates
+      return url.includes('q=Girona&') ? { lat: 41.98, lng: 2.82 } : undefined
+    })
+    const onIncomplete = vi.fn()
+    const res = await new CartoCiudadGeocodeProvider().search('giron', { onIncomplete })
+    expect(res.map((r) => r.label)).toEqual(['Girona'])
+    expect(onIncomplete).toHaveBeenCalledTimes(1)
+  })
+
+  it('CartoCiudad stays silent when find answers without a point', async () => {
+    stubFetch((url) => (url.includes('/candidates') ? candidates : { lat: 0, lng: 0 }))
+    const onIncomplete = vi.fn()
+    expect(await new CartoCiudadGeocodeProvider().search('giron', { onIncomplete })).toEqual([])
+    expect(onIncomplete).not.toHaveBeenCalled()
+  })
+
+  const suggestions = { suggestions: [{ text: 'Encamp, Encamp', magicKey: 'k1' }] }
+
+  it('the Andorran geocoder throws when every resolve call failed', async () => {
+    stubFetch((url) => (url.includes('/suggest') ? suggestions : undefined))
+    await expect(new AdGeocodeProvider().search('encamp')).rejects.toThrow('resolve failed')
+  })
+
+  it('the Andorran geocoder flags a list one locator is missing from', async () => {
+    stubFetch((url) => {
+      if (url.includes('LocatorIDE')) return undefined
+      if (url.includes('/suggest')) return suggestions
+      return { candidates: [{ location: { x: 1.58, y: 42.53 } }] }
+    })
+    const onIncomplete = vi.fn()
+    const res = await new AdGeocodeProvider().search('encamp', { onIncomplete })
+    expect(res.map((r) => r.label)).toEqual(['Encamp'])
+    expect(onIncomplete).toHaveBeenCalledTimes(1)
   })
 })

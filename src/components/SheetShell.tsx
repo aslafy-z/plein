@@ -242,6 +242,23 @@ export default function SheetShell({
     pendingH: 0,
   });
 
+  // ── Collapsed body: out of the tab order ──────────────────────────────────
+  // The translate model parks the body below the stage but keeps it rendered,
+  // so it stays focusable: Tab walks into it and the browser scrolls the
+  // `overflow: hidden` stage to reveal the focus, shoving the map up for good.
+  // The body is therefore `inert` while the sheet RESTS collapsed — and only
+  // then: mid-drag and mid-glide it must keep taking the presses that catch
+  // it (see `midFlight`). Written imperatively, like the transforms — React
+  // 18 does not know the attribute, and a drag commits no render to carry it.
+  const bodyWrapRef = useRef<HTMLDivElement>(null);
+  const syncInert = useCallback(() => {
+    const el = rootRef.current;
+    const wrap = bodyWrapRef.current;
+    if (!el || !wrap) return;
+    const d = dims.current;
+    wrap.inert = !d.expanded && !g.current.active && Math.abs(visibleNow(el) - d.min) <= 1;
+  }, [visibleNow]);
+
   const dragEnd = useCallback((cancelled = false, t = performance.now()) => {
     const el = rootRef.current;
     const s = g.current;
@@ -262,6 +279,7 @@ export default function SheetShell({
       const d = dims.current;
       const rest = d.expanded ? d.max : d.min;
       if (Math.abs(visibleNow(el) - rest) > 1) applyVisible(el, rest);
+      syncInert();
       return;
     }
     // Fling velocity: displacement over the trailing samples, measured on
@@ -294,12 +312,13 @@ export default function SheetShell({
       open = h > (d.min + d.max) / 2;
     }
     applyVisible(el, open ? d.max : d.min);
+    syncInert();
     openRef.current(open);
     // keep `moved` up until the trailing click has been swallowed
     setTimeout(() => {
       g.current.moved = false;
     }, 0);
-  }, [visibleNow, applyVisible]);
+  }, [visibleNow, applyVisible, syncInert]);
 
   const dragMove = useCallback((y: number, t: number) => {
     const el = rootRef.current;
@@ -348,6 +367,7 @@ export default function SheetShell({
       // would otherwise snap to its inline rest transform — the hand must
       // hold the sheet where it grabbed it, mid-glide included.
       applyVisible(el, startH);
+      syncInert();
       // Only touch pointers get implicit capture. A mouse pressed on the
       // handle leaves the sheet on its very first upward move (the handle
       // sits at the top edge), the element under it never sees a pointermove,
@@ -385,7 +405,7 @@ export default function SheetShell({
       window.addEventListener('pointerup', done);
       window.addEventListener('pointercancel', done);
     },
-    [dragEnd, dragMove, visibleNow, applyVisible],
+    [dragEnd, dragMove, visibleNow, applyVisible, syncInert],
   );
 
   /** A sheet away from its rest height is mid-glide, and a press anywhere on
@@ -564,6 +584,11 @@ export default function SheetShell({
     if (footerRef.current) footerRef.current.style.transition = SHEET_TRANSITION;
   }, [restTy, expanded, layoutH, instantContentResize]);
 
+  // After the effect above, so a rest change it just landed instantly is
+  // measured where it landed. A glide still running reads as off-rest here
+  // and is picked up by the root's `transitionend` instead.
+  useLayoutEffect(syncInert, [syncInert, restTy, expanded, layoutH, listAttached, hinting]);
+
   const bodyGestures: SheetGestures = {
     onPointerDown: listPointerDown,
     onPointerMove: listPointerMove,
@@ -628,6 +653,9 @@ export default function SheetShell({
       onAnimationEnd={(e) => {
         if (e.target === e.currentTarget) setHinting(false);
       }}
+      onTransitionEnd={(e) => {
+        if (e.target === e.currentTarget && e.propertyName === 'transform') syncInert();
+      }}
       style={{
         position: 'absolute',
         left: 0,
@@ -667,7 +695,13 @@ export default function SheetShell({
       </div>
 
       {/* ── Body revealed by pulling the sheet up ── */}
-      {listAttached && body?.(listRef, bodyGestures, staticBarGestures)}
+      {/* `display: contents`: the wrapper only carries `inert` (syncInert) —
+          the body stays a flex child of the sheet */}
+      {listAttached && (
+        <div ref={bodyWrapRef} data-sheet-body style={{ display: 'contents' }}>
+          {body?.(listRef, bodyGestures, staticBarGestures)}
+        </div>
+      )}
 
       {/* ── Footer pinned to the bottom edge, always visible ── */}
       {/* It sits at the element's REAL bottom — below the stage when

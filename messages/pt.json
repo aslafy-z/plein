@@ -3,6 +3,9 @@
   "app_title": "Plein. — abasteça ao preço justo",
   "unit_metres": "{metres} m",
   "unit_kilometres": "{km} km",
+  "unit_litres": "{litres} L",
+  "unit_litres_per_100_km": "{litres} L/100 km",
+  "unit_percent": "{percent} %",
   "unit_size_under_kilobyte": "menos de 1 kB",
   "unit_minutes": "{minutes} min",
   "unit_hours": "{hours} h",
@@ -119,6 +122,7 @@
       }
     }
   ],
+  "map_pin_label": "{name}, {price} € por litro",
   "map_pin_cap_hint": [
     {
       "declarations": [
@@ -295,6 +299,7 @@
   "favorites_sort_recommended": "Recomendado",
   "favorites_sort_price": "Preço",
   "favorites_sort_distance": "Distância",
+  "favorites_sort_distance_unavailable_aria": "Ordenação por distância indisponível: a sua posição é desconhecida",
   "favorites_empty_title": "Ainda não há favoritos",
   "favorites_empty_body": "Toque na estrela da ficha de um posto para o fixar aqui e comparar os seus postos habituais num relance.",
   "favorites_explore_map": "Explorar o mapa",
@@ -478,6 +483,7 @@
   "settings_geo_denied": "recusada para este site",
   "settings_geo_unavailable": "indisponível neste dispositivo",
   "settings_geo_pending": "não pedida",
+  "settings_geo_failed": "posição não encontrada — toque para tentar de novo",
   "settings_geo_locating": "a procurar…",
   "settings_geo_enable": "Ativar",
   "settings_location_hint": "Sem localização, o mapa abre na última área consultada (por predefinição: Toulouse). Se o pedido já não aparecer, autorize a localização para este site nas definições do navegador.",

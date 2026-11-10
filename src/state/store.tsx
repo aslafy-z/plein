@@ -47,6 +47,7 @@ import { haversineKm } from '../lib/geo';
 import {
   ALL_FUELS,
   SERVICE_TAGS,
+  TravelMatrixUnsupportedError,
   type VehicleId,
   type DataSourceId,
   type FuelId,
@@ -77,6 +78,7 @@ import {
   CROW_ROAD_FACTOR,
   VALUE_OF_TIME_CENTS_PER_MIN,
   effectiveLiterPrice,
+  speedConsumptionFactor,
   usableRangeKm,
 } from '../lib/fuelEconomics';
 import {
@@ -100,6 +102,7 @@ import {
   commitCorridor,
   commitGeometry,
   commitMatrix,
+  declineMatrix,
   failCorridor,
   failGeometry,
   failMatrix,
@@ -167,6 +170,14 @@ export const VEHICLE_PRESETS: Record<
   motorcycle: { tank: 15, consumption: 5, fuel: 'e10' },
 };
 const DEFAULT_CONSUMPTION = VEHICLE_PRESETS.car.consumption;
+/**
+ * What « Reset » in the Filters sheet puts the radius and the fuel back to.
+ * The fuel is the vehicle profile's own, not a fixed diesel: a motorcycle
+ * resets to SP95-E10, the fuel its profile selected in the first place.
+ */
+export function filtersResetTarget(vehicle: VehicleId): { radius: number; fuel: FuelId } {
+  return { radius: 5, fuel: VEHICLE_PRESETS[vehicle].fuel };
+}
 /** Default departure tank level (%) — adjustable on the route setup */
 const DEFAULT_START_TANK_PCT = 70;
 /**
@@ -303,7 +314,11 @@ function planCandidatesFor(
   const cap = Math.min(MATRIX_MAX_POINTS, matrixMaxPoints ?? MATRIX_MAX_POINTS) - 2;
   return selectRouteCandidates(route, routeState.stations, (s) => effectivePrice(s, fuel), {
     maxCandidates: cap,
-    firstWindowKm: usableRangeKm((vehicle.tank * vehicle.startTankPct) / 100, vehicle.consumption),
+    // Scaled like the optimizer's legs (motorway pace burns more), or the
+    // window keeps stations the departure fuel cannot actually reach.
+    firstWindowKm:
+      usableRangeKm((vehicle.tank * vehicle.startTankPct) / 100, vehicle.consumption) /
+      speedConsumptionFactor(route.durationMin > 0 ? (route.distanceKm / route.durationMin) * 60 : 0),
     requiredIds: Object.keys(plannedStops).filter((id) => plannedStops[id]),
   });
 }
@@ -371,7 +386,15 @@ export type StationsEvent =
       offlineHint: boolean;
     }
   | { kind: 'success'; data: Station[]; source: DataSourceId; fetchedAt: number }
-  | { kind: 'failure'; source: DataSourceId; error: StationsErrorKind };
+  | { kind: 'failure'; source: DataSourceId; error: StationsErrorKind }
+  | {
+      kind: 'superseded';
+      /** What the zone the user came back to already holds: `loaded` — its
+       *  stations are the ones in memory; `failed` — its last fetch failed
+       *  and nothing new is attempted until a retry. */
+      standing: 'loaded' | 'failed';
+      source: DataSourceId;
+    };
 
 /**
  * Stations state machine. The invariant every transition protects: real data
@@ -419,6 +442,23 @@ export function nextStationsState(prev: StationsState, ev: StationsEvent): Stati
         lastError: ev.error,
       };
     }
+    case 'superseded': {
+      // The request in flight was abandoned and nothing replaces it: its
+      // success and its failure are both dropped, so the flags it raised have
+      // to come down here or nothing ever lowers them. With nothing pending
+      // this is the identity — the caller dispatches it on every pan.
+      if (prev.status !== 'loading' && !prev.refreshing) return prev;
+      if (ev.standing === 'failed' && !(prev.data.length > 0 && prev.activeSource === ev.source)) {
+        return {
+          status: 'error',
+          data: [],
+          activeSource: ev.source,
+          refreshing: false,
+          lastError: prev.lastError ?? 'source',
+        };
+      }
+      return { ...prev, status: 'ready', refreshing: false };
+    }
   }
 }
 
@@ -457,7 +497,13 @@ export interface AppStore {
    * drawing a dot, lighting a control or showing a distance.
    */
   userPos: GeoPoint;
-  geoStatus: 'pending' | 'granted' | 'denied' | 'unavailable';
+  /**
+   * How the last geolocation request ended. `denied` is a permission refusal
+   * and nothing else; `failed` is a request that ended without a fix while
+   * the permission stands (timeout, position unavailable) — location is not
+   * off, so nothing may say it is.
+   */
+  geoStatus: 'pending' | 'granted' | 'denied' | 'unavailable' | 'failed';
   /**
    * true while a fix is being acquired AND the wait has lasted long enough to
    * be worth showing (GEO_SPINNER_DELAY_MS). A fix served from the device's
@@ -968,12 +1014,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         endGeoRequest();
         savePersisted({ lastPos: p, lastFix: p, geoGranted: true });
       },
-      () => {
+      (err) => {
         if (req !== geoReq.current) return;
-        setGeoStatus('denied');
+        // Only a refusal means location is off. A timeout (10 s indoors) or
+        // an unavailable position ends THIS request without a fix: the
+        // permission still stands, so `geoGranted` — and with it the next
+        // boot's hold for the fix — is left alone.
+        const refused = err.code === 1; // GeolocationPositionError.PERMISSION_DENIED
+        setGeoStatus(refused ? 'denied' : 'failed');
         setGeoHold(false);
         endGeoRequest();
-        savePersisted({ geoGranted: false });
+        if (refused) savePersisted({ geoGranted: false });
       },
       { timeout: GEO_TIMEOUT_MS, maximumAge: 300000 },
     );
@@ -1234,6 +1285,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         (haversineKm(area.center, searchPos) + radius <= area.radiusKm ||
           haversineKm(area.center, searchPos) < SAME_CENTER_KM)
       ) {
+        // A fetch started for another area must not land now that the zone
+        // is back inside this one — it would swap in the other disc under a
+        // `searchPos` that left it. Superseding it drops its outcome, so the
+        // `loading` / `refreshing` it raised is lowered here too.
+        stationsReq.current++;
+        dispatchStations({ kind: 'superseded', standing: 'loaded', source: sourceId });
         reportAreaLoad('memory');
         return;
       }
@@ -1278,6 +1335,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
             fetchedAt: cached.fetchedAt,
             revalidating: false,
           });
+          // What is in memory is now this cache entry, not `loadedArea`
+          loadedArea.current = null;
+        } else {
+          // Nothing to paint and nothing to attempt, yet `reqId` just orphaned
+          // whatever was in flight: settle the state it left pending, or the
+          // refresh triggers (tick, `online`, visibility) skip on it forever.
+          dispatchStations({ kind: 'superseded', standing: 'failed', source: sourceId });
         }
         return;
       }
@@ -1309,6 +1373,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           fetchedAt: cached.fetchedAt,
           revalidating: true,
         });
+        // What is in memory is now this cache entry, not `loadedArea`: panning
+        // back must go through the cache again rather than the fast path.
+        loadedArea.current = null;
         reportAreaLoad('cache-revalidate');
       } else {
         dispatchStations({ kind: 'request', offlineHint: isOffline() });
@@ -1320,14 +1387,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // complete; recording the asked radius instead would serve the
         // truncated set as full coverage to every later pan inside it.
         let coveredKm = MAX_RADIUS_KM;
+        // A source may answer from a download it memoized minutes ago: the
+        // area is as old as the oldest one behind it, not as this call.
+        let sourcedAt = Infinity;
         const data = await bundle.stations.getStationsNear(searchPos, MAX_RADIUS_KM, {
           lowPriority: cached != null,
+          force,
+          onFetchedAt: (at) => {
+            sourcedAt = Math.min(sourcedAt, at);
+          },
           onCapped: (km) => {
             coveredKm = Math.min(coveredKm, km);
           },
         });
         if (reqId !== stationsReq.current) return;
-        const fetchedAt = Date.now();
+        const fetchedAt = Math.min(Date.now(), sourcedAt);
         writeStationsCache(sourceId, searchPos, coveredKm, data, fetchedAt);
         // A favorite seen in any fetch keeps its price for the Favorites tab
         recordFavoritePrices(favoriteIds.current, data, fetchedAt);
@@ -1510,12 +1584,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         for (const id of group.ids) favRefreshAttempted.current.set(id, Date.now());
         const provider = getProviders(group.country).stations;
         try {
+          let sourcedAt = Infinity;
           const stations = provider.getStationsByIds
             ? await provider.getStationsByIds(group.ids, { lowPriority: true })
             : await provider.getStationsNear(group.center, group.radiusKm, {
                 lowPriority: true,
+                onFetchedAt: (at) => {
+                  sourcedAt = Math.min(sourcedAt, at);
+                },
               });
-          recordFavoritePrices(favoriteIds.current, stations, Date.now());
+          recordFavoritePrices(favoriteIds.current, stations, Math.min(Date.now(), sourcedAt));
         } catch {
           /* the cached price stays on screen, with its honest age */
         }
@@ -1535,12 +1613,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => subscribeInstall(() => setCanInstall(installReady())), []);
 
   const promptInstall = useCallback(() => {
-    void nativeInstallPrompt().then((outcome) => {
-      if (outcome === 'dismissed') {
-        setInstallDismissed(true);
-        savePersisted({ installDismissed: true });
-      }
-    });
+    void nativeInstallPrompt()
+      .then((outcome) => {
+        if (outcome === 'dismissed') {
+          setInstallDismissed(true);
+          savePersisted({ installDismissed: true });
+        }
+      })
+      .catch(() => {}); // a refused prompt is not an error worth surfacing
   }, []);
 
   const dismissInstallBanner = useCallback(() => {
@@ -1621,7 +1701,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       if (reqId !== routeReq.current) return;
       markRoute('route:geometry');
-      setRouteState((s) => commitGeometry(s, key, route, endpoints));
+      setRouteState((s) =>
+        commitGeometry(s, key, route, endpoints, {
+          from, to, source: sourceId, avoidMotorway, avoidToll, vehicle,
+        }),
+      );
 
       await runCorridor(key, route, reqId);
     },
@@ -1642,13 +1726,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => () => clearTimeout(matrixTimer.current), []);
   useEffect(() => {
     const route = routeState.route;
-    if (!route || routeState.stations.length === 0 || !fromPoint || !toPoint) {
+    // The STANDING trip's points and options, never the form's: a departure
+    // picked (or an avoid chip toggled) over a finished route describes the
+    // next trip, and reading it here would measure this corridor from there.
+    const trip = routeState.trip;
+    if (!route || routeState.stations.length === 0 || !trip) {
       matrixKeyRef.current = null;
       clearTimeout(matrixTimer.current);
       setRouteState((s) => matrixBlocked(s, 'idle'));
       return;
     }
-    const provider = getProviders(sourceId).route;
+    const { avoidMotorway, avoidToll, vehicle } = trip;
+    const provider = getProviders(trip.source).route;
     const candidates = planCandidatesFor(
       routeState,
       fuel,
@@ -1668,9 +1757,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
     const key = travelMatrixKey(
-      sourceId,
-      fromPoint,
-      toPoint,
+      trip.source,
+      trip.from,
+      trip.to,
       candidates.map((c) => c.station.id),
       { avoidMotorway, avoidToll, vehicle },
     );
@@ -1678,9 +1767,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     matrixKeyRef.current = key;
     setRouteState((s) => beginMatrix(s, key));
     const points: GeoPoint[] = [
-      fromPoint,
+      trip.from,
       ...candidates.map((c) => ({ lat: c.station.lat, lng: c.station.lng })),
-      toPoint,
+      trip.to,
     ];
     // Public routing servers rate-limit, and a 429 is transient — but the key
     // stays put on failure, so nothing would ever ask again for this candidate
@@ -1692,7 +1781,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Forced offline: the plan settles on estimated legs without a request.
       // The key stays put, exactly like exhausted retries — the next plan
       // input change re-keys the stage and measures again.
-      if (isForcedOffline() && sourceId !== 'demo') {
+      if (isForcedOffline() && trip.source !== 'demo') {
         setRouteState((s) => failMatrix(s, key));
         markRoute('route:plan');
         return;
@@ -1703,8 +1792,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setRouteState((s) => commitMatrix(s, key, cells));
           markRoute('route:plan');
         })
-        .catch(() => {
+        .catch((err: unknown) => {
           if (matrixKeyRef.current !== key) return;
+          // A request the backend refuses by design is not an outage: no
+          // retry, and `unsupported` rather than `error`.
+          if (err instanceof TravelMatrixUnsupportedError) {
+            setRouteState((s) => declineMatrix(s, key));
+            markRoute('route:plan');
+            return;
+          }
           if (n < MATRIX_RETRIES) {
             matrixTimer.current = setTimeout(() => attempt(n + 1), MATRIX_RETRY_BASE_MS * 2 ** n);
             return;
@@ -1720,20 +1816,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // returns, exactly as it does while loading.
     clearTimeout(matrixTimer.current);
     matrixTimer.current = setTimeout(() => attempt(0), MATRIX_DEBOUNCE_MS);
-  }, [
-    routeState,
-    fromPoint,
-    toPoint,
-    sourceId,
-    fuel,
-    tank,
-    consumption,
-    startTankPct,
-    plannedStops,
-    avoidMotorway,
-    avoidToll,
-    vehicle,
-  ]);
+  }, [routeState, fuel, tank, consumption, startTankPct, plannedStops]);
 
   // ── Actions ────────────────────────────────────────────────────────────────
   const go = useCallback((s: Screen) => {
@@ -1895,11 +1978,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const resetFilters = useCallback(() => {
-    setRadius(5);
+    const target = filtersResetTarget(vehicle);
+    setRadius(target.radius);
     setBrandSelState([]);
     setServiceTags({});
-    setFuel('diesel');
-  }, [setFuel, setRadius]);
+    setFuel(target.fuel);
+  }, [setFuel, setRadius, vehicle]);
 
   const searchPlaces = useCallback(
     (q: string, opts?: GeocodeSearchOptions) => getProviders(sourceId).geocode.search(q, opts),
@@ -2091,7 +2175,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (autoStartNeedsFix) {
       if (geoStatus === 'pending' && !autoStartWaitOver) return;
       if (!geoFixed) {
-        // Refused, unavailable or unanswered, and no earlier fix to fall back
+        // Refused, unavailable, failed or unanswered, and no earlier fix to fall back
         // on: there is no trip to wait for. The setup form takes over, where
         // the reader can name a departure or ask for the fix again.
         pendingAutoStart.current = false;
@@ -2112,8 +2196,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
     if (!from || !toPoint) return;
     beginRouteTiming();
-    // The stored point is the origin of the trip being computed: the matrix
-    // stage and the multi-stop maps link read it, and must agree with it
+    // The stored point is the origin of the trip being computed: the
+    // multi-stop maps link reads it, and must agree with it
     setFromPoint(from);
     void computeRoute(from, toPoint, {
       from: fromIsCurrentPosition
@@ -2467,7 +2551,7 @@ export function routeFromLabel(
  *
  * « My position » is the flag, never a stored point: it resolves to the fix of
  * the moment it is asked. `fromPoint` still holds the origin of the last trip
- * computed under the flag (the matrix stage keys on it), and reading it back
+ * computed under the flag (the multi-stop maps link reads it), and reading it back
  * here would pin every later trip to where the first one started.
  */
 export function routeDeparturePoint(
@@ -2896,28 +2980,49 @@ export function selectCheapest(app: AppStore): NearbyStation | null {
 export type FavSort = 'recommended' | 'price' | 'distance';
 
 /**
+ * The sort the Favorites screen actually renders with. A favorite's distance
+ * is measured from the user, so without a known position (`hasKnownPos`) there
+ * is none to show and « Distance » is not an order the user can read: the chip
+ * greys out and a distance sort falls back to the default ranking — the
+ * Favorites mirror of `selectEffectiveSort`. Unlike the zone, an out-of-reach
+ * search area changes nothing here: favorites are not tied to the area.
+ */
+export function effectiveFavSort(sort: FavSort, originKnown: boolean): FavSort {
+  return sort === 'distance' && !originKnown ? 'recommended' : sort;
+}
+
+/**
  * Order the Favorites rows. « Recommended » ranks on the effective per-litre
  * price (fuel burnt to get there included — same notion as the map card);
  * « Price » keeps the raw sticker order; rows without any known price (never
  * seen in an area or route fetch yet) and rows out of a full tank's round
  * trip (no effective price) sink to the bottom, sorted by distance.
+ *
+ * `originKnown` false (no position geolocation ever returned): the rows'
+ * `distKm` start from a fallback area, not from the user, so they take no
+ * part in the order — « Recommended » ranks on the sticker price alone,
+ * « Distance » falls back to it (`effectiveFavSort`), and ties keep the
+ * order the favorites were given in.
  */
 export function sortFavoriteRows<T extends { price: number | null; distKm: number }>(
   rows: T[],
   sort: FavSort,
   app: Pick<AppStore, 'consumption' | 'tank'>,
+  originKnown: boolean = true,
 ): T[] {
+  const mode = effectiveFavSort(sort, originKnown);
+  const km = (r: T) => (originKnown ? r.distKm : 0);
   return [...rows].sort((a, b) => {
-    if (sort === 'distance') return a.distKm - b.distKm;
-    if (sort === 'price') {
-      if (a.price == null && b.price == null) return a.distKm - b.distKm;
+    if (mode === 'distance') return km(a) - km(b);
+    if (mode === 'price') {
+      if (a.price == null && b.price == null) return km(a) - km(b);
       if (a.price == null) return 1;
       if (b.price == null) return -1;
       return a.price - b.price;
     }
-    const ea = a.price != null ? effectiveLiterPrice(app, a.price, a.distKm) : Infinity;
-    const eb = b.price != null ? effectiveLiterPrice(app, b.price, b.distKm) : Infinity;
-    if (ea === eb) return a.distKm - b.distKm;
+    const ea = a.price != null ? effectiveLiterPrice(app, a.price, km(a)) : Infinity;
+    const eb = b.price != null ? effectiveLiterPrice(app, b.price, km(b)) : Infinity;
+    if (ea === eb) return km(a) - km(b);
     return ea - eb;
   });
 }
@@ -3171,7 +3276,9 @@ export const selectPlanCandidates = cached((app: AppStore): RouteCandidate[] =>
     app.fuel,
     { tank: app.tank, consumption: app.consumption, startTankPct: app.startTankPct },
     app.plannedStops,
-    getProviders(app.sourceId).route.travelMatrixMaxPoints,
+    // The standing trip's source, like the matrix effect — both must thin
+    // the corridor to the same set, or the committed key never matches
+    getProviders(app.routeState.trip?.source ?? app.sourceId).route.travelMatrixMaxPoints,
   ),
 );
 
@@ -3185,13 +3292,16 @@ const selectPlanLegs = cached((app: AppStore): PlanLegs | null => {
   const route = routeState.route;
   if (!route) return null;
   const candidates = selectPlanCandidates(app);
-  if (routeState.matrix === 'ready' && routeState.matrixCells && app.fromPoint && app.toPoint) {
+  const trip = routeState.trip;
+  if (routeState.matrix === 'ready' && routeState.matrixCells && trip) {
+    // Keyed on what the standing route was computed with, not on the form:
+    // an endpoint or an option edited since belongs to the next trip
     const key = travelMatrixKey(
-      app.sourceId,
-      app.fromPoint,
-      app.toPoint,
+      trip.source,
+      trip.from,
+      trip.to,
       candidates.map((c) => c.station.id),
-      { avoidMotorway: app.avoidMotorway, avoidToll: app.avoidToll, vehicle: app.vehicle },
+      trip,
     );
     if (key === routeState.matrixKey) {
       const legs = matrixPlanLegs(routeState.matrixCells, candidates.length, route);

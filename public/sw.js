@@ -11,7 +11,14 @@
 // per fetched area and that has to stay the single source of truth about how
 // old the numbers on screen are. An HTTP cache in front of the price APIs
 // would make them older without anything knowing.
-const ASSET_CACHE = 'plein-assets-v1';
+// v2: v1 stored any `ok` response under the asset's URL, and the host answers
+// an unknown path with the app shell and a 200 (wrangler.jsonc,
+// `not_found_handling: single-page-application`) — a chunk a deploy had
+// removed could go in as index.html and keep answering cache-first. Only
+// non-HTML responses are stored now (isHtml); the bump sweeps what the old
+// rule let in.
+// The name is mirrored in src/lib/swCaches.ts, which nothing here can import.
+const ASSET_CACHE = 'plein-assets-v2';
 const SHELL_CACHE = 'plein-shell-v1';
 // v2: v1 was warmed while the app requested tiles keyless, and CARTO answers
 // keyless requests with tiles stamped « API key required » — under the keyless
@@ -61,6 +68,12 @@ const tileCacheKey = (url) => {
   keyless.searchParams.delete(CARTO_KEY_PARAM);
   return keyless.href;
 };
+
+// The host's single-page-application fallback answers ANY unknown path with
+// index.html and a 200, so `ok` alone does not say the response is the thing
+// that was asked for: nothing under the cache-first prefixes is HTML, and the
+// shell is nothing else.
+const isHtml = (res) => (res.headers.get('content-type') ?? '').includes('text/html');
 
 // cache.keys() preserves insertion order → dropping the head is FIFO eviction
 async function trimCache(cache, max) {
@@ -142,6 +155,7 @@ async function precacheShell() {
       if (await assets.match(url)) return;
       const asset = await fetch(url);
       if (!asset.ok) throw new Error('asset precache HTTP ' + asset.status + ' ' + url);
+      if (isHtml(asset)) throw new Error('asset precache got HTML ' + url);
       await assets.put(url, asset);
     }),
   );
@@ -204,6 +218,10 @@ self.addEventListener('fetch', (event) => {
         const hit = await cache.match(req);
         if (hit) return hit;
         const res = await fetch(req);
+        // The shell standing in for a file a deploy removed: not the asset, so
+        // neither cached under its URL nor handed over as if it were — the
+        // page gets the 404 the host did not send.
+        if (res.ok && isHtml(res)) return new Response(null, { status: 404, statusText: 'Not Found' });
         if (res.ok) {
           const copy = res.clone();
           event.waitUntil(cache.put(req, copy).then(() => trimCache(cache, ASSET_MAX_ENTRIES)));
@@ -223,7 +241,10 @@ self.addEventListener('fetch', (event) => {
           // maintenance page resolves like any other response. Caching one would
           // overwrite the good shell and make the error page *the* offline
           // experience until the next successful navigation.
-          if (res.ok) {
+          // Nor is every successful navigation the app: /version.json or
+          // /manifest.webmanifest opened in a tab is a navigation too, and
+          // would become what every route boots from offline.
+          if (res.ok && isHtml(res)) {
             const copy = res.clone();
             // Not floating: the worker may be killed as soon as the response is
             // returned, and the write has to survive that.

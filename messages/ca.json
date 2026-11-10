@@ -3,6 +3,9 @@
   "app_title": "Plein. — el ple al preu just",
   "unit_metres": "{metres} m",
   "unit_kilometres": "{km} km",
+  "unit_litres": "{litres} L",
+  "unit_litres_per_100_km": "{litres} L/100 km",
+  "unit_percent": "{percent} %",
   "unit_size_under_kilobyte": "menys d'1 kB",
   "unit_minutes": "{minutes} min",
   "unit_hours": "{hours} h",
@@ -119,6 +122,7 @@
       }
     }
   ],
+  "map_pin_label": "{name}, {price} € el litre",
   "map_pin_cap_hint": [
     {
       "declarations": [
@@ -295,6 +299,7 @@
   "favorites_sort_recommended": "Recomanat",
   "favorites_sort_price": "Preu",
   "favorites_sort_distance": "Distància",
+  "favorites_sort_distance_unavailable_aria": "Ordenació per distància no disponible: la teva posició és desconeguda",
   "favorites_empty_title": "Encara no tens preferides",
   "favorites_empty_body": "Toca l'estrella d'una fitxa de benzinera per fixar-la aquí i comparar d'un cop d'ull les que fas servir sempre.",
   "favorites_explore_map": "Explora el mapa",
@@ -478,6 +483,7 @@
   "settings_geo_denied": "denegada per a aquest lloc",
   "settings_geo_unavailable": "no disponible en aquest dispositiu",
   "settings_geo_pending": "no sol·licitada",
+  "settings_geo_failed": "posició no trobada — toca per tornar-ho a provar",
   "settings_geo_locating": "s'està cercant…",
   "settings_geo_enable": "Activa",
   "settings_location_hint": "Sense ubicació, el mapa s'obre a l'última zona consultada (Toulouse per defecte). Si l'avís ja no apareix, permet la ubicació per a aquest lloc a la configuració del navegador.",

@@ -36,6 +36,47 @@ describe('rankByKind', () => {
   });
 });
 
+describe('homonymous places', () => {
+  const town = (label: string, sublabel: string, lat: number, lng: number): GeocodeResult => ({
+    label,
+    sublabel,
+    point: { lat, lng },
+    kind: 'locality',
+  });
+
+  it('keeps every town of one name when the line under it tells them apart', () => {
+    const out = rankByKind([
+      town('Valence', '26, Drôme, Auvergne-Rhône-Alpes', 44.93, 4.89),
+      town('Valence', '82, Tarn-et-Garonne, Occitanie', 44.11, 0.89),
+      town('Valence', '16, Charente, Nouvelle-Aquitaine', 45.78, 0.29),
+    ]);
+    expect(out.map((r) => r.sublabel)).toEqual([
+      '26, Drôme, Auvergne-Rhône-Alpes',
+      '82, Tarn-et-Garonne, Occitanie',
+      '16, Charente, Nouvelle-Aquitaine',
+    ]);
+  });
+
+  it('collapses the same label and sublabel coming from two sources', () => {
+    const fr = [town('Le Perthus', 'Pyrénées-Orientales', 42.464, 2.863)];
+    const es = [town('Le Perthus', 'Pyrénées-Orientales', 42.47, 2.87)];
+    expect(mergeByKind([fr, es])).toEqual(fr);
+  });
+
+  it('collapses one spot two sources describe in their own words', () => {
+    const fr = [town('Le Perthus', '66, Pyrénées-Orientales, Occitanie', 42.464, 2.863)];
+    const es = [town('Le Perthus', 'Girona', 42.4645, 2.8635)];
+    expect(mergeByKind([fr, es])).toEqual(fr);
+  });
+
+  it('keeps a label two countries share', () => {
+    const fr = [town('Valence', '26, Drôme, Auvergne-Rhône-Alpes', 44.93, 4.89)];
+    const pt: GeocodeResult[] = [{ ...town('Valence', '', 42.03, -8.64), country: 'pt' }];
+    const ad: GeocodeResult[] = [{ ...town('Valence', '', 42.5, 1.52), country: 'ad' }];
+    expect(mergeByKind([fr, ad, pt])).toHaveLength(3);
+  });
+});
+
 describe('mergeByKind', () => {
   it('interleaves the sources inside a kind, and keeps the kinds apart', () => {
     const fr = [at('Le Perthus', 'locality'), at('Rue de France', 'street')];

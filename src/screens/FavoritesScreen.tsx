@@ -5,6 +5,7 @@ import {
   effectivePrice,
   roadReachOf,
   sortFavoriteRows,
+  effectiveFavSort,
   type FavoriteStation,
   type FavSort,
 } from '../state/store';
@@ -12,7 +13,7 @@ import { fmtPrice, distLabel, agoLabel, agoLabelFrom } from '../lib/format';
 import { fuelLabel, openStatusShort } from '../lib/labels';
 import { useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
-import { openStatus } from '../lib/hours';
+import { stationOpenStatus } from '../lib/hours';
 import { haversineKm } from '../lib/geo';
 import BrandAvatar from '../components/BrandAvatar';
 import Star from '../components/Star';
@@ -59,7 +60,15 @@ export default function FavoritesScreen() {
   // « Recommended » ranks on the effective per-litre price: the fuel burnt on
   // the round trip (consumption & tank size from Settings) counted in — the
   // same notion as the station the map card crowns.
-  const favs = sortFavoriteRows(rows, sort, app);
+  //
+  // Every distance here starts from the user, so without a known position
+  // (geolocation refused on a first visit — `userPos` is only the fallback
+  // area) there is none: rows show no distance, « Distance » greys out and
+  // « Recommended » ranks on price alone. The chosen sort survives untouched
+  // for when a fix lands.
+  const originKnown = app.hasKnownPos;
+  const effectiveSort = effectiveFavSort(sort, originKnown);
+  const favs = sortFavoriteRows(rows, sort, app, originKnown);
 
   const locate = (f: FavoriteStation) => {
     app.setSearchArea({ lat: f.lat, lng: f.lng }, f.name);
@@ -94,12 +103,16 @@ export default function FavoritesScreen() {
         {favs.length > 0 && (
           <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
             {sorts.map(([k, label]) => {
-              const active = sort === k;
+              const active = effectiveSort === k;
+              const disabled = k === 'distance' && !originKnown;
               return (
                 <button
                   key={k}
                   className="press"
-                  onClick={() => setSort(k)}
+                  onClick={disabled ? undefined : () => setSort(k)}
+                  disabled={disabled}
+                  aria-label={disabled ? m.favorites_sort_distance_unavailable_aria() : undefined}
+                  title={disabled ? m.favorites_sort_distance_unavailable_aria() : undefined}
                   style={{
                     fontSize: 12.5,
                     fontWeight: 700,
@@ -109,6 +122,7 @@ export default function FavoritesScreen() {
                     borderRadius: 15,
                     whiteSpace: 'nowrap',
                     transition: 'background .25s var(--ease-snap), color .25s var(--ease-snap)',
+                    ...(disabled ? { opacity: 0.4, cursor: 'default' } : null),
                   }}
                 >
                   {label}
@@ -163,7 +177,7 @@ export default function FavoritesScreen() {
             }}
           >
             {favs.map(({ f, live, held, priceInfo, price, distKm }) => {
-              const liveStatus = live ? openStatus(live.hours) : null;
+              const liveStatus = live ? stationOpenStatus(live) : null;
               const status = liveStatus ? openStatusShort(liveStatus) : undefined;
               // The source's own update stamp stays the thing shown; a source
               // that doesn't stamp its prices falls back to when we read them
@@ -206,7 +220,7 @@ export default function FavoritesScreen() {
                       </div>
                       <div style={{ fontSize: 12.5, color: C.mut, marginTop: 2 }}>
                         {[
-                          distLabel(distKm),
+                          originKnown ? distLabel(distKm) : undefined,
                           status,
                           ago
                             ? m.sheet_updated_ago({ ago })

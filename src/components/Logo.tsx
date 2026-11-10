@@ -9,7 +9,7 @@ export const LOGO_PATH =
 
 // The adaptive-icon's dark-green tile stays in the icon files; in the app the
 // glyph sits directly on the themed surface — a near-black tile read as a
-// black square on the light Réglages page.
+// black square on the light Settings page.
 
 export function LogoGlyph({ size = 24, color = C.accent }: { size?: number; color?: string }) {
   return (

@@ -15,7 +15,7 @@ import {
 import { fmtPrice, distLabel, agoLabel, durationLabel } from '../lib/format';
 import { fuelLabel, openStatusShort } from '../lib/labels';
 import { m } from '../paraglide/messages.js';
-import { openStatus } from '../lib/hours';
+import { stationOpenStatus } from '../lib/hours';
 import BrandAvatar from './BrandAvatar';
 import Freshness from './Freshness';
 import Star from './Star';
@@ -46,7 +46,7 @@ export default function ZoneCard({ handle }: { handle?: ReactNode }) {
   // (empty circle, or a station selected outside it) — then no chip at all,
   // « +1.67 €/L » against a nonexistent floor is just the price again
   const zoneDelta = selectZoneDelta(app, shown);
-  const shownStatus = shown ? openStatus(shown.hours) : null;
+  const shownStatus = shown ? stationOpenStatus(shown) : null;
   // No trip origin — the searched area is beyond any drive from the user, or
   // no position was ever known: no trip figure is honest, so the card shows
   // none — no distance in the meta line, no ETA on « Go there ». Their
@@ -100,7 +100,22 @@ export default function ZoneCard({ handle }: { handle?: ReactNode }) {
                 onClick={() => app.setFocusStation(null)}
                 aria-label={m.sheet_deselect_aria()}
                 title={m.sheet_deselect_aria()}
-                style={{ color: C.mut, fontSize: 14, fontWeight: 700, padding: '0 2px' }}
+                // A 40px touch target around a 14px glyph. The negative margins
+                // give the box back to the layout, and it grows LEFT only (over
+                // the heading, which takes no tap) so it never overlaps the star.
+                style={{
+                  color: C.mut,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  padding: '0 2px',
+                  width: 40,
+                  height: 40,
+                  margin: '-12px 0 -12px -25px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'flex-end',
+                  flexShrink: 0,
+                }}
               >
                 ✕
               </button>
@@ -126,7 +141,17 @@ export default function ZoneCard({ handle }: { handle?: ReactNode }) {
                   ? m.sheet_remove_favorite_aria({ station: shown.name })
                   : m.sheet_add_favorite_aria({ station: shown.name })
               }
-              style={{ padding: '0 2px', display: 'flex', alignItems: 'center' }}
+              // Same 40px target, centred on the star: its 20×16 footprint is
+              // unchanged, the extra 10px each side is the row's own gaps.
+              style={{
+                width: 40,
+                height: 40,
+                margin: '-12px -10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
             >
               <Star
                 filled={app.isFavorite(shown.id)}

@@ -39,6 +39,8 @@ function installStorage() {
 interface SpyStore extends CacheStore {
   readonly records: Map<StoreName, Map<string, unknown>>;
   puts: number;
+  /** The stores each multi-record write spanned, one entry per transaction */
+  batches: StoreName[][];
   payloadReads: number;
   /** Rejects the next `failPuts` writes with a quota error */
   failPuts: number;
@@ -63,6 +65,7 @@ function spyStore(): SpyStore {
   const store: SpyStore = {
     records,
     puts: 0,
+    batches: [],
     payloadReads: 0,
     failPuts: 0,
     durable: true,
@@ -79,6 +82,20 @@ function spyStore(): SpyStore {
       }
       store.puts += 1;
       of(name).set(key, value);
+    },
+    // All or nothing, like the transaction it stands for
+    putAll: async (entries) => {
+      if (store.failPuts > 0) {
+        store.failPuts -= 1;
+        const err = new Error('the origin is full');
+        err.name = 'QuotaExceededError';
+        throw err;
+      }
+      store.batches.push(entries.map((entry) => entry.store));
+      for (const entry of entries) {
+        store.puts += 1;
+        of(entry.store).set(entry.key, entry.value);
+      }
     },
     delete: async (name, key) => void of(name).delete(key),
     list: async <T>(name: StoreName) => [...of(name).values()] as T[],
@@ -134,6 +151,32 @@ describe('stationsCache', () => {
     expect(store.records.get('areas')?.size).toBe(1);
     const payloads = [...(store.records.get('payloads')?.values() ?? [])] as Station[][];
     expect(payloads[0]?.[0]?.id).toBe('a');
+  });
+
+  it('writes an area and its index entry in one transaction', async () => {
+    const store = spyStore();
+    const { writeStationsCache, flushStationsCache } = await freshCache(store);
+
+    writeStationsCache('fr', CENTER, 30, [station('a')], 1_000);
+    await flushStationsCache();
+
+    // Two separate writes would let a tab dying between them orphan the payload
+    expect(store.batches).toEqual([['payloads', 'areas']]);
+  });
+
+  it('answers from the newest area when several cover the zone', async () => {
+    const { writeStationsCache, readStationsCache } = await freshCache(spyStore());
+    // ~11 km apart: two distinct areas, both containing a 5 km zone on CENTER
+    const nearby: GeoPoint = { lat: CENTER.lat + 0.1, lng: CENTER.lng };
+
+    writeStationsCache('fr', CENTER, 30, [station('old')], 1_000);
+    writeStationsCache('fr', nearby, 30, [station('new')], 2_000);
+
+    const hit = await readStationsCache('fr', CENTER, 5);
+    expect(hit?.covers).toBe(true);
+    expect(hit?.stations.map((s) => s.id)).toEqual(['new']);
+    expect(hit?.fetchedAt).toBe(2_000);
+    expect(hit?.center).toEqual(nearby);
   });
 
   it('coalesces a burst of writes into a single flush', async () => {

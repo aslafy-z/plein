@@ -260,6 +260,8 @@ async function freshProvider() {
   return new mod.PtStationsProvider()
 }
 
+const T0 = Date.UTC(2026, 6, 19, 6, 0, 0)
+
 describe('district fetch memo', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
@@ -320,5 +322,83 @@ describe('district fetch memo', () => {
       ),
     )
     await expect(provider.getStationsNear(LISBOA, 5)).rejects.toThrow(/rejected/)
+  })
+
+  it('goes back to the network once the memo is as old as the freshness window', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      vi.setSystemTime(T0)
+      const provider = await freshProvider()
+      const { STALE_MS } = await import('../stationsCache')
+      const { mock, settleAll } = deferredFetch()
+
+      const first = provider.getStationsNear(LISBOA, 5)
+      await settleAll()
+      await first
+      const issued = mock.mock.calls.length
+
+      vi.setSystemTime(T0 + STALE_MS - 1)
+      await provider.getStationsNear(LISBOA, 5)
+      expect(mock.mock.calls.length).toBe(issued)
+
+      // A revalidation fires at STALE_MS: it must never be served the memo
+      vi.setSystemTime(T0 + STALE_MS)
+      const second = provider.getStationsNear(LISBOA, 5)
+      expect(mock.mock.calls.length).toBe(issued * 2)
+      await settleAll()
+      await second
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('skips a landed memo on a forced fetch, but shares one still in flight', async () => {
+    const provider = await freshProvider()
+    const { mock, settleAll } = deferredFetch()
+
+    const first = provider.getStationsNear(LISBOA, 5)
+    const issued = mock.mock.calls.length
+    const joined = provider.getStationsNear(LISBOA, 5, { force: true })
+    expect(mock.mock.calls.length).toBe(issued)
+    await settleAll()
+    await first
+    await joined
+
+    const forced = provider.getStationsNear(LISBOA, 5, { force: true })
+    expect(mock.mock.calls.length).toBe(issued * 2)
+    await settleAll()
+    await forced
+  })
+
+  it('reports when the download it answers from was requested', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      vi.setSystemTime(T0)
+      const provider = await freshProvider()
+      const { settleAll } = deferredFetch()
+
+      const first = provider.getStationsNear(LISBOA, 5)
+      await settleAll()
+      await first
+
+      // Answered from the memo five minutes later: the prices are five
+      // minutes old, whatever the clock says when the answer lands
+      vi.setSystemTime(T0 + 5 * 60_000)
+      const reported: number[] = []
+      await provider.getStationsNear(LISBOA, 5, { onFetchedAt: (at) => reported.push(at) })
+      expect(reported.length).toBeGreaterThan(0)
+      expect(new Set(reported)).toEqual(new Set([T0]))
+
+      const forced: number[] = []
+      const again = provider.getStationsNear(LISBOA, 5, {
+        force: true,
+        onFetchedAt: (at) => forced.push(at),
+      })
+      await settleAll()
+      await again
+      expect(new Set(forced)).toEqual(new Set([T0 + 5 * 60_000]))
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

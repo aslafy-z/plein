@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ALL_FUELS } from '../data/types'
-import { nextFuelAfter, toggleBrandIn, toggleFavoriteIn, type FavoriteStation } from './store'
+import {
+  filtersResetTarget,
+  nextFuelAfter,
+  toggleBrandIn,
+  toggleFavoriteIn,
+  VEHICLE_PRESETS,
+  type FavoriteStation,
+} from './store'
 
 const station = (id: string): FavoriteStation => ({
   id,
@@ -77,5 +84,21 @@ describe('state updaters stay pure', () => {
     // A double invocation is indistinguishable from a single one
     expect(run()).toEqual(run())
     expect(setItem).not.toHaveBeenCalled()
+  })
+})
+
+describe('filtersResetTarget', () => {
+  it('resets a car to diesel', () => {
+    expect(filtersResetTarget('car')).toEqual({ radius: 5, fuel: 'diesel' })
+  })
+
+  it('resets a motorcycle to its own fuel, not to diesel', () => {
+    expect(filtersResetTarget('motorcycle')).toEqual({ radius: 5, fuel: 'e10' })
+  })
+
+  it('follows the fuel each vehicle profile selects', () => {
+    for (const v of ['car', 'motorcycle'] as const) {
+      expect(filtersResetTarget(v).fuel).toBe(VEHICLE_PRESETS[v].fuel)
+    }
   })
 })

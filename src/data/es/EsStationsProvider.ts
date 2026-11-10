@@ -20,14 +20,19 @@ import type {
   StationsFetchOptions,
   StationsProvider,
 } from '../types';
+import { STALE_MS } from '../stationsCache';
 
 const ENDPOINT =
   (IS_DEV ? '/proxy/es' : 'https://sedeaplicaciones.minetur.gob.es') +
   '/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestres/FiltroProvincia/';
 
 const TIMEOUT_MS = 15000;
-/** The ministry refreshes the flux every ~30 min */
-const CACHE_MS = 30 * 60_000;
+/**
+ * Memo lifetime — the store's own freshness window, never longer: a
+ * revalidation (an area past STALE_MS) must reach the network, not be handed
+ * back the download it is trying to replace.
+ */
+const CACHE_MS = STALE_MS;
 const NEAR_CAP = 300;
 
 const MIN_PRICE = 0.5;
@@ -291,18 +296,36 @@ export function esCoversAlong(polyline: GeoPoint[], corridorKm: number): boolean
 // resolving several provinces near the border). Caching the value only would
 // let every caller that arrives before the response lands start its own
 // download.
-const provinceCache = new Map<string, { fetchedAt: number; stations: Promise<Station[]> }>();
+/** `fetchedAt` is when the request left — the age a caller may claim for it */
+interface MemoEntry {
+  fetchedAt: number;
+  stations: Promise<Station[]>;
+  settled: boolean;
+}
+const provinceCache = new Map<string, MemoEntry>();
 
-function fetchProvince(id: string, lowPriority = false): Promise<Station[]> {
+function fetchProvince(id: string, opts?: StationsFetchOptions): Promise<Station[]> {
   const hit = provinceCache.get(id);
-  if (hit && Date.now() - hit.fetchedAt < CACHE_MS) return hit.stations;
+  // `force` only skips a download that has LANDED: one still in flight is as
+  // fresh as a new request would be, and is shared rather than doubled.
+  if (hit && Date.now() - hit.fetchedAt < CACHE_MS && !(opts?.force && hit.settled)) {
+    opts?.onFetchedAt?.(hit.fetchedAt);
+    return hit.stations;
+  }
 
-  const stations = loadProvince(id, lowPriority);
-  provinceCache.set(id, { fetchedAt: Date.now(), stations });
-  // A failed fetch must retry on the next query, not stick for CACHE_MS.
-  stations.catch(() => {
-    if (provinceCache.get(id)?.stations === stations) provinceCache.delete(id);
-  });
+  const stations = loadProvince(id, opts?.lowPriority === true);
+  const entry: MemoEntry = { fetchedAt: Date.now(), stations, settled: false };
+  provinceCache.set(id, entry);
+  opts?.onFetchedAt?.(entry.fetchedAt);
+  stations.then(
+    () => {
+      entry.settled = true;
+    },
+    // A failed fetch must retry on the next query, not stick for CACHE_MS.
+    () => {
+      if (provinceCache.get(id) === entry) provinceCache.delete(id);
+    },
+  );
   return stations;
 }
 
@@ -340,7 +363,7 @@ export class EsStationsProvider implements StationsProvider {
     opts?: StationsFetchOptions,
   ): Promise<Station[]> {
     const ids = provincesNear(center, radiusKm);
-    const batches = await Promise.all(ids.map((id) => fetchProvince(id, opts?.lowPriority)));
+    const batches = await Promise.all(ids.map((id) => fetchProvince(id, opts)));
     return batches
       .flat()
       .filter((st) => haversineKm(center, { lat: st.lat, lng: st.lng }) <= radiusKm)

@@ -21,14 +21,19 @@ import type {
   StationsFetchOptions,
   StationsProvider,
 } from '../types';
+import { STALE_MS } from '../stationsCache';
 
 const ENDPOINT =
   (IS_DEV ? '/proxy/pt' : 'https://precoscombustiveis.dgeg.gov.pt') +
   '/api/PrecoComb/PesquisarPostos';
 
 const TIMEOUT_MS = 15000;
-/** Stations declare their prices over the day; refetch at most twice an hour */
-const CACHE_MS = 30 * 60_000;
+/**
+ * Memo lifetime — the store's own freshness window, never longer: a
+ * revalidation (an area past STALE_MS) must reach the network, not be handed
+ * back the download it is trying to replace.
+ */
+const CACHE_MS = STALE_MS;
 const NEAR_CAP = 300;
 /**
  * Rows per request. The API paginates, and the busiest district (Porto) holds
@@ -278,18 +283,36 @@ export function ptCoversAlong(polyline: GeoPoint[], corridorKm: number): boolean
 // landing while the previous query runs, the « auto » source resolving several
 // districts near the border). Caching the value only would let every caller
 // that arrives before the response lands start its own download.
-const districtCache = new Map<number, { fetchedAt: number; stations: Promise<Station[]> }>();
+/** `fetchedAt` is when the request left — the age a caller may claim for it */
+interface MemoEntry {
+  fetchedAt: number;
+  stations: Promise<Station[]>;
+  settled: boolean;
+}
+const districtCache = new Map<number, MemoEntry>();
 
-function fetchDistrict(id: number, lowPriority = false): Promise<Station[]> {
+function fetchDistrict(id: number, opts?: StationsFetchOptions): Promise<Station[]> {
   const hit = districtCache.get(id);
-  if (hit && Date.now() - hit.fetchedAt < CACHE_MS) return hit.stations;
+  // `force` only skips a download that has LANDED: one still in flight is as
+  // fresh as a new request would be, and is shared rather than doubled.
+  if (hit && Date.now() - hit.fetchedAt < CACHE_MS && !(opts?.force && hit.settled)) {
+    opts?.onFetchedAt?.(hit.fetchedAt);
+    return hit.stations;
+  }
 
-  const stations = loadDistrict(id, lowPriority);
-  districtCache.set(id, { fetchedAt: Date.now(), stations });
-  // A failed fetch must retry on the next query, not stick for CACHE_MS.
-  stations.catch(() => {
-    if (districtCache.get(id)?.stations === stations) districtCache.delete(id);
-  });
+  const stations = loadDistrict(id, opts?.lowPriority === true);
+  const entry: MemoEntry = { fetchedAt: Date.now(), stations, settled: false };
+  districtCache.set(id, entry);
+  opts?.onFetchedAt?.(entry.fetchedAt);
+  stations.then(
+    () => {
+      entry.settled = true;
+    },
+    // A failed fetch must retry on the next query, not stick for CACHE_MS.
+    () => {
+      if (districtCache.get(id) === entry) districtCache.delete(id);
+    },
+  );
   return stations;
 }
 
@@ -325,7 +348,7 @@ export class PtStationsProvider implements StationsProvider {
     opts?: StationsFetchOptions,
   ): Promise<Station[]> {
     const ids = districtsNear(center, radiusKm);
-    const batches = await Promise.all(ids.map((id) => fetchDistrict(id, opts?.lowPriority)));
+    const batches = await Promise.all(ids.map((id) => fetchDistrict(id, opts)));
     return batches
       .flat()
       .filter((st) => haversineKm(center, { lat: st.lat, lng: st.lng }) <= radiusKm)
