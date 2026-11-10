@@ -179,11 +179,14 @@ const MAX_RESULTS = 15;
  * spinner honest — results are already on screen while it still turns.
  *
  * `lists` are merged in the order given, so pass them in display order. The
- * call throws only when every source failed.
+ * call throws only when every source failed; when only some did, the survivors
+ * are returned and `onIncomplete` says so first — that merge is the best list
+ * available, not the answer to the query, and must not be memoized as one.
  */
 export async function mergeAsTheyLand(
   tasks: readonly Promise<GeocodeResult[]>[],
   onPartial?: (results: GeocodeResult[]) => void,
+  onIncomplete?: () => void,
 ): Promise<GeocodeResult[]> {
   const lists: GeocodeResult[][] = tasks.map(() => []);
   let landed = 0;
@@ -210,6 +213,7 @@ export async function mergeAsTheyLand(
   );
 
   if (tasks.length > 0 && failed === tasks.length) throw firstReason;
+  if (failed > 0) onIncomplete?.();
   return merged();
 }
 
@@ -225,9 +229,20 @@ export class AutoGeocodeProvider implements GeocodeProvider {
     // here — France, Andorra, Portugal, Spain — so no country fills the visible
     // rows on its own.
     const sources = [this.ban, this.ad, this.photon, this.cartociudad];
+    // A source that answered with part of its own list (some detail calls
+    // failed) makes the merge incomplete just like a source that failed whole;
+    // the caller hears about it once, whichever way it happened.
+    let incomplete = false;
+    const onIncomplete = () => {
+      incomplete = true;
+    };
     return mergeAsTheyLand(
-      sources.map((source) => source.search(query)),
+      sources.map((source) => source.search(query, { onIncomplete })),
       opts?.onPartial,
-    );
+      onIncomplete,
+    ).then((results) => {
+      if (incomplete) opts?.onIncomplete?.();
+      return results;
+    });
   }
 }
