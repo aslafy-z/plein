@@ -364,15 +364,21 @@ export class EsStationsProvider implements StationsProvider {
   ): Promise<Station[]> {
     const ids = provincesNear(center, radiusKm);
     const batches = await Promise.all(ids.map((id) => fetchProvince(id, opts)));
-    return batches
+    const near = batches
       .flat()
       .filter((st) => haversineKm(center, { lat: st.lat, lng: st.lng }) <= radiusKm)
       .sort(
         (a, b) =>
           haversineKm(center, { lat: a.lat, lng: a.lng }) -
           haversineKm(center, { lat: b.lat, lng: b.lng }),
-      )
-      .slice(0, NEAR_CAP);
+      );
+    if (near.length <= NEAR_CAP) return near;
+    // The disc held more than the cap: it is only complete up to the farthest
+    // station kept, and the caller must record that rather than radiusKm.
+    const kept = near.slice(0, NEAR_CAP);
+    const last = kept[kept.length - 1];
+    opts?.onCapped?.(haversineKm(center, { lat: last.lat, lng: last.lng }));
+    return kept;
   }
 
   async getStationsAlong(polyline: GeoPoint[], corridorKm: number): Promise<Station[]> {

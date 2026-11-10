@@ -367,3 +367,55 @@ describe('province fetch memo', () => {
     }
   })
 })
+
+// ── Near cap ─────────────────────────────────────────────────────────────────
+// Over a dense city the disc holds more than NEAR_CAP stations: the cut must be
+// reported, or the store records the nearest 300 as complete coverage.
+describe('getStationsNear cap', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  /** `count` stations due north of MADRID, ~10 m apart, nearest first. */
+  function stubStations(count: number) {
+    const rows = Array.from({ length: count }, (_, i) => ({
+      IDEESS: String(i + 1),
+      Latitud: (MADRID.lat + (i + 1) * 0.00009).toFixed(6).replace('.', ','),
+      'Longitud (WGS84)': String(MADRID.lng).replace('.', ','),
+      'Precio Gasoleo A': '1,499',
+      Municipio: 'MADRID',
+    }))
+    // The disc spans several provinces: the first one holds every row, so no
+    // station is counted twice.
+    let served = false
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        const body = { ...BODY, ListaEESSPrecio: served ? [] : rows }
+        served = true
+        return { ok: true, status: 200, json: async () => body } as Response
+      }),
+    )
+  }
+
+  it('reports the distance of the farthest station kept when it cuts', async () => {
+    stubStations(310)
+    const provider = await freshProvider()
+    const onCapped = vi.fn()
+    const stations = await provider.getStationsNear(MADRID, 5, { onCapped })
+    expect(stations).toHaveLength(300)
+    expect(stations[stations.length - 1]?.id).toBe('es-300')
+    expect(onCapped).toHaveBeenCalledTimes(1)
+    const [coveredKm] = onCapped.mock.calls[0] as [number]
+    expect(coveredKm).toBeCloseTo(3.0, 1)
+  })
+
+  it('stays silent on a complete result', async () => {
+    stubStations(300)
+    const provider = await freshProvider()
+    const onCapped = vi.fn()
+    const stations = await provider.getStationsNear(MADRID, 5, { onCapped })
+    expect(stations).toHaveLength(300)
+    expect(onCapped).not.toHaveBeenCalled()
+  })
+})
