@@ -23,6 +23,7 @@ import { stationCountry } from '../data/stationIds';
 import { fmtPrice, distLabel, agoLabel, durationLabel } from '../lib/format';
 import { fuelLabel, openStatusLabel, serviceLabel } from '../lib/labels';
 import { useIsDesktop } from '../lib/layout';
+import { pinInitialsHtml } from '../lib/text';
 import { m } from '../paraglide/messages.js';
 import { openStatus } from '../lib/hours';
 import { brandIconSrc } from '../lib/brandIcons';
@@ -61,7 +62,7 @@ function StationMiniMap({ station }: { station: Station }) {
         `</div>`
       : `<div class="pin-bubble" style="background:${C.accent};color:${C.onAccent};` +
         `font:700 13px 'Spline Sans Mono',monospace;padding:5px 9px;border:1px solid ${C.accent}">` +
-        `${station.init}</div>`;
+        `${pinInitialsHtml(station.init)}</div>`;
     const html =
       `<div style="transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center">` +
       bubble +
