@@ -657,7 +657,7 @@ export default function Settings() {
               value={tank}
               onChange={(e) => app.setTank(+e.target.value)}
               aria-label={m.settings_tank()}
-              aria-valuetext={`${tank} L`}
+              aria-valuetext={m.unit_litres({ litres: tank })}
               style={{ width: '100%', cursor: 'pointer' }}
             />
             <div style={{ fontSize: 11.5, color: C.faint, marginTop: 6 }}>
@@ -679,7 +679,7 @@ export default function Settings() {
               value={consumption}
               onChange={(e) => app.setConsumption(+e.target.value)}
               aria-label={m.settings_consumption()}
-              aria-valuetext={`${fmtDecimal(consumption, 1)} L/100 km`}
+              aria-valuetext={m.unit_litres_per_100_km({ litres: fmtDecimal(consumption, 1) })}
               style={{ width: '100%', cursor: 'pointer' }}
             />
             <div style={{ fontSize: 11.5, color: C.faint, marginTop: 6 }}>

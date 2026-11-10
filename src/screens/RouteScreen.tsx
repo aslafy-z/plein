@@ -259,7 +259,7 @@ function RouteForm({ withTitle }: { withTitle: boolean }) {
           value={app.startTankPct}
           onChange={(e) => app.setStartTankPct(+e.target.value)}
           aria-label={m.route_start_tank()}
-          aria-valuetext={`${app.startTankPct} %`}
+          aria-valuetext={m.unit_percent({ percent: app.startTankPct })}
           style={{ width: '100%', cursor: 'pointer' }}
         />
         <div style={{ fontSize: 11.5, color: C.faint, marginTop: 4 }}>
