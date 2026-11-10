@@ -3253,8 +3253,14 @@ export function selectZoneDelta(app: AppStore, station: NearbyStation | null): Z
 export function selectAutonomy(app: AppStore): { autonomyKm: number; limitKm: number } {
   const startFuel = (app.tank * app.startTankPct) / 100;
   const autonomyKm = Math.round((startFuel / app.consumption) * 100);
-  // The explicit reserve function draws the "you must stop" line
-  const limitKm = Math.round(usableRangeKm(startFuel, app.consumption) / 10) * 10;
+  // The explicit reserve function draws the "you must stop" line, scaled by
+  // the standing route's motorway factor like the optimizer's reach — or the
+  // marker sits past the point where the plan says the car runs dry.
+  const route = app.routeState.route;
+  const factor = route
+    ? speedConsumptionFactor(route.durationMin > 0 ? (route.distanceKm / route.durationMin) * 60 : 0)
+    : 1;
+  const limitKm = Math.round(usableRangeKm(startFuel, app.consumption) / factor / 10) * 10;
   return { autonomyKm, limitKm };
 }
 
