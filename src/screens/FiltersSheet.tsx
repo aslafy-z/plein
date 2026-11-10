@@ -204,7 +204,7 @@ export default function FiltersSheet() {
       <div>
         <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
           <span style={{ ...sectionLabel, flex: 1 }}>{m.filters_radius_section()}</span>
-          <span style={{ font: mono(700, 15), color: C.ink }}>{radiusDraft} km</span>
+          <span style={{ font: mono(700, 15), color: C.ink }}>{m.unit_kilometres({ km: radiusDraft })}</span>
         </div>
         {/* Horizontal slider: its drag must never become the sheet's */}
         <input

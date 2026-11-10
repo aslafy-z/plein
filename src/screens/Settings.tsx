@@ -645,7 +645,7 @@ export default function Settings() {
               <span style={{ fontSize: 13, fontWeight: 700, color: C.ink, flex: 1 }}>
                 {m.settings_tank()}
               </span>
-              <span style={{ font: mono(700, 15), color: C.accent }}>{tank} L</span>
+              <span style={{ font: mono(700, 15), color: C.accent }}>{m.unit_litres({ litres: tank })}</span>
             </div>
             <input
               type="range"
@@ -664,7 +664,7 @@ export default function Settings() {
                 {m.settings_consumption()}
               </span>
               <span style={{ font: mono(700, 15), color: C.accent }}>
-                {fmtDecimal(consumption, 1)} L/100 km
+                {m.unit_litres_per_100_km({ litres: fmtDecimal(consumption, 1) })}
               </span>
             </div>
             <input

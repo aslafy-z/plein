@@ -201,7 +201,7 @@ export default function StationDetail() {
   // Unleaded 95 stands in for E10 in Spain/Andorra — same substitution as the map
   const cur = effectivePrice(s, app.fuel)?.value;
   const dSave = cur != null && maxForCurrentFuel != null ? (maxForCurrentFuel - cur) * app.tank : 0;
-  const dSaveStr = dSave > 0 ? `−${fmtPrice(dSave)}` : '0,00';
+  const dSaveStr = dSave > 0 ? `−${fmtPrice(dSave)}` : fmtPrice(0);
 
   // Most recent update among this station's prices
   const updatedTimes = Object.values(s.prices)
