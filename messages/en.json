@@ -479,6 +479,7 @@
   "settings_geo_denied": "denied for this site",
   "settings_geo_unavailable": "unavailable on this device",
   "settings_geo_pending": "not requested",
+  "settings_geo_failed": "no position found — tap to retry",
   "settings_geo_locating": "locating…",
   "settings_geo_enable": "Turn on",
   "settings_location_hint": "Without location the map opens on the last area you viewed (Toulouse by default). If the prompt no longer appears, allow location for this site in your browser settings.",

@@ -33,6 +33,40 @@ async function stubRefusedFix(page: import('@playwright/test').Page) {
   })
 }
 
+/** Geolocation that gives up: permission stands, no fix this time (code 3) */
+async function stubTimedOutFix(page: import('@playwright/test').Page) {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: {
+        getCurrentPosition: (_ok: PositionCallback, ko?: PositionErrorCallback) =>
+          ko?.({ code: 3, message: 'timeout' } as GeolocationPositionError),
+        watchPosition: () => 0,
+        clearWatch: () => {},
+      },
+    })
+  })
+}
+
+test('a fix that times out is not reported as location turned off', async ({ page }) => {
+  await stubTimedOutFix(page)
+  await page.goto('/')
+
+  // The request ended: the control is back to the plain ask, nothing is busy
+  await expect(page.getByRole('button', { name: 'Recentre on my position' })).toHaveAttribute(
+    'data-locate-active',
+    'false',
+  )
+  await expect(page.locator(USER_DOT)).toHaveCount(0)
+  // …and no notice asks to turn on a permission that was never refused
+  await expect(page.getByText(/turn location (back )?on/)).toHaveCount(0)
+
+  await page.getByText('Settings', { exact: true }).click()
+  const row = page.getByRole('button', { name: /Device position/ })
+  await expect(row).toContainText('no position found — tap to retry')
+  await expect(row).not.toContainText('denied')
+})
+
 test('a refused fix leaves the default area unclaimed', async ({ page }) => {
   await stubRefusedFix(page)
   await page.goto('/')
@@ -179,5 +213,25 @@ test.describe('a device located before', () => {
 
     await expect(page.getByText('Last known position — turn location back on')).toBeVisible()
     await expect(page.locator(USER_DOT)).toHaveCount(1)
+  })
+
+  test('keeps the permission it was granted through a timeout', async ({ page }) => {
+    await stubTimedOutFix(page)
+    await page.goto('/')
+
+    // The last fix stays on screen, with no claim that location is off
+    await expect(page.locator(USER_DOT)).toHaveCount(1)
+    await expect(page.getByText(/turn location (back )?on/)).toHaveCount(0)
+
+    await page.getByText('Settings', { exact: true }).click()
+    await expect(page.getByRole('button', { name: /Device position/ })).toContainText(
+      'no position found — tap to retry',
+    )
+    // `geoGranted` is what holds the next boot's first load for the fix: a
+    // request that merely ran out of time must not clear it
+    const granted = await page.evaluate(
+      () => JSON.parse(localStorage.getItem('plein.settings.v1') ?? '{}').geoGranted,
+    )
+    expect(granted).toBe(true)
   })
 })

@@ -479,6 +479,7 @@
   "settings_geo_denied": "denegada para este sitio",
   "settings_geo_unavailable": "no disponible en este dispositivo",
   "settings_geo_pending": "no solicitada",
+  "settings_geo_failed": "posición no encontrada — toca para reintentar",
   "settings_geo_locating": "buscando…",
   "settings_geo_enable": "Activar",
   "settings_location_hint": "Sin ubicación, el mapa se abre en la última zona consultada (Toulouse por defecto). Si el aviso ya no aparece, permite la ubicación para este sitio en los ajustes del navegador.",

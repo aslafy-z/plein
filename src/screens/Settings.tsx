@@ -63,7 +63,9 @@ const FEEDBACK_EMAIL = 'plein@zadkiel.fr';
 
 const VEHICLES: VehicleId[] = ['car', 'motorcycle'];
 
-function geoStatusLabel(status: 'granted' | 'denied' | 'unavailable' | 'pending'): string {
+function geoStatusLabel(
+  status: 'granted' | 'denied' | 'unavailable' | 'pending' | 'failed',
+): string {
   switch (status) {
     case 'granted':
       return m.settings_geo_granted();
@@ -73,6 +75,8 @@ function geoStatusLabel(status: 'granted' | 'denied' | 'unavailable' | 'pending'
       return m.settings_geo_unavailable();
     case 'pending':
       return m.settings_geo_pending();
+    case 'failed':
+      return m.settings_geo_failed();
   }
 }
 
@@ -733,7 +737,10 @@ export default function Settings() {
                   <LocateIcon color={C.mut} dot={false} size={17} spinning />
                 </span>
               ) : (
-                geoStatus !== 'granted' && (
+                // « Turn on » would contradict a request that failed with
+                // the permission standing: its status line carries the retry
+                geoStatus !== 'granted' &&
+                geoStatus !== 'failed' && (
                   <span style={{ color: C.accent, fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
                     {m.settings_geo_enable()}
                   </span>

@@ -479,6 +479,7 @@
   "settings_geo_denied": "refusée pour ce site",
   "settings_geo_unavailable": "indisponible sur cet appareil",
   "settings_geo_pending": "non demandée",
+  "settings_geo_failed": "position introuvable — touchez pour réessayer",
   "settings_geo_locating": "recherche en cours…",
   "settings_geo_enable": "Activer",
   "settings_location_hint": "Sans localisation, la carte s'ouvre sur la dernière zone consultée (par défaut : Toulouse). Si la demande n'apparaît plus, autorisez la localisation pour ce site dans les réglages du navigateur.",
