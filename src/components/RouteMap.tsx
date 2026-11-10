@@ -108,6 +108,13 @@ export default function RouteMap({
   const layerRef = useRef<L.LayerGroup | null>(null);
   const userDotRef = useRef<L.Marker | null>(null);
   const fittedRouteRef = useRef<unknown>(null);
+  /** Endpoints the pre-route framing last ran on — a pick is told apart from
+      a plain re-render by their identity, like a route by `fittedRouteRef` */
+  const framedEndsRef = useRef<{
+    from: GeoPoint | null;
+    to: GeoPoint | null;
+    fromIsCurrentPosition: boolean;
+  } | null>(null);
   /** Bumped when the map lands — the recenter control reads the live view */
   const [, setViewTick] = useState(0);
   /** Bounds currently framed (corridor / endpoints / search area) — the shell
@@ -233,7 +240,25 @@ export default function RouteMap({
         })();
     frameBoundsRef.current = box;
     // A newly picked endpoint deserves its framing, like a newly computed
-    // route — but a plain re-render must not fight the user's pan.
+    // route — but a plain re-render must not fight the user's pan. The
+    // takeover is released HERE, before the decision below: released from an
+    // effect of its own, after this one, it only served the NEXT change, and
+    // a departure picked over a panned map stayed off-screen. The first run
+    // only records the ends — a view restored at mount keeps its takeover.
+    const framed = framedEndsRef.current;
+    if (
+      framed &&
+      (framed.from !== app.fromPoint ||
+        framed.to !== app.toPoint ||
+        framed.fromIsCurrentPosition !== app.fromIsCurrentPosition)
+    ) {
+      userInteractedRef.current = false;
+    }
+    framedEndsRef.current = {
+      from: app.fromPoint,
+      to: app.toPoint,
+      fromIsCurrentPosition: app.fromIsCurrentPosition,
+    };
     if (!userInteractedRef.current) {
       shell.fitBounds(box, ends.length > 1 ? { pad: 60 } : { pad: 40, maxZoom: 15 });
     }
@@ -247,12 +272,6 @@ export default function RouteMap({
     route, app.fromPoint, app.fromIsCurrentPosition, app.toPoint, app.userPos, app.hasKnownPos,
     app.searchPos, app.radius, bottomInset, leftInset,
   ]);
-
-  // Picking a new endpoint re-arms the framing the way a new route does
-  useEffect(() => {
-    if (!route) userInteractedRef.current = false;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [app.fromPoint, app.toPoint]);
 
   // ── The computed route: corridor, stops, autonomy limit ────────────────────
   useEffect(() => {
