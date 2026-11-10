@@ -54,7 +54,10 @@ export const GLIDE_CATCH_PX = 4;
 // The release snap rides the app's primary curve (styles.css --ease-out):
 // where the browser supports linear() springs the sheet lands with a
 // hair of overshoot and settle — an object with weight, not a cursor.
-export const SHEET_TRANSITION = 'transform .38s var(--ease-out)';
+// The duration is a token (styles.css --dur-sheet) so reduced motion zeroes
+// it: the sheet then lands on its snap point at once, and no transitionend
+// fires — nothing here waits on one.
+export const SHEET_TRANSITION = 'transform var(--dur-sheet) var(--ease-out)';
 
 /** Pointer handlers a body region carries so it can drag the sheet. Two
     contracts share this shape: the body's SCROLL CONTAINER gets the

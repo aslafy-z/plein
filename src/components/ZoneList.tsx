@@ -18,6 +18,7 @@ import {
 import { fmtPrice, distLabel } from '../lib/format';
 import { openStatusShort } from '../lib/labels';
 import { useIsDesktop } from '../lib/layout';
+import { prefersReducedMotion } from '../lib/motion';
 import { m } from '../paraglide/messages.js';
 import { stationOpenStatus } from '../lib/hours';
 import BrandAvatar from './BrandAvatar';
@@ -95,9 +96,9 @@ export default function ZoneList({
       if (!row || scroller.clientHeight < 60) return;
       const s = scroller.getBoundingClientRect();
       const r = row.getBoundingClientRect();
-      if (r.top < s.top) scroller.scrollBy({ top: r.top - s.top - 8, behavior: 'smooth' });
-      else if (r.bottom > s.bottom)
-        scroller.scrollBy({ top: r.bottom - s.bottom + 8, behavior: 'smooth' });
+      const behavior = prefersReducedMotion() ? 'auto' : 'smooth';
+      if (r.top < s.top) scroller.scrollBy({ top: r.top - s.top - 8, behavior });
+      else if (r.bottom > s.bottom) scroller.scrollBy({ top: r.bottom - s.bottom + 8, behavior });
       pending = false;
       ro.disconnect();
     };
