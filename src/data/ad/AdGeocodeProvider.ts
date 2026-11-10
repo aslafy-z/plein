@@ -7,7 +7,7 @@
 // two-step pattern as CartoCiudad for Spain.
 import { IS_DEV } from '../../lib/env';
 import { rankByKind } from '../geocodeRank';
-import type { GeocodeProvider, GeocodeResult, PlaceKind } from '../types';
+import type { GeocodeProvider, GeocodeResult, GeocodeSearchOptions, PlaceKind } from '../types';
 
 const BASE = (IS_DEV ? '/proxy/ad' : 'https://sig.govern.ad') + '/server/rest/services/IDE';
 const TIMEOUT_MS = 6000;
@@ -64,8 +64,14 @@ async function suggest(
   return out;
 }
 
-/** Resolve one suggestion's coordinates; null when it can't */
-async function resolve(s: Suggestion): Promise<GeocodeResult | null> {
+/** A resolve call that failed — as opposed to one that answered « no point ». */
+const FAILED = Symbol('resolve failed');
+
+/**
+ * Resolve one suggestion's coordinates; null when it has none, and `FAILED`
+ * when the request itself failed.
+ */
+async function resolve(s: Suggestion): Promise<GeocodeResult | null | typeof FAILED> {
   try {
     const params = new URLSearchParams({
       SingleLine: s.text,
@@ -83,12 +89,12 @@ async function resolve(s: Suggestion): Promise<GeocodeResult | null> {
     if (typeof lat !== 'number' || typeof lng !== 'number' || Math.abs(lat) > 90) return null;
     return { ...splitLabel(s.text), point: { lat, lng }, kind: s.kind };
   } catch {
-    return null;
+    return FAILED;
   }
 }
 
 export class AdGeocodeProvider implements GeocodeProvider {
-  async search(query: string): Promise<GeocodeResult[]> {
+  async search(query: string, opts?: GeocodeSearchOptions): Promise<GeocodeResult[]> {
     const q = query.trim();
     if (q.length < MIN_QUERY) return [];
 
@@ -103,7 +109,17 @@ export class AdGeocodeProvider implements GeocodeProvider {
     ];
 
     const resolved = await Promise.all(merged.map(resolve));
-    const ranked = rankByKind(resolved.filter((r): r is GeocodeResult => r !== null));
+    // The resolve step going down behind healthy suggestions is an outage, not
+    // « no result »: with nothing resolved the search fails like any other
+    // request, and a list missing a locator or some rows says it is partial.
+    const failures = resolved.filter((r) => r === FAILED).length;
+    if (failures > 0 && failures === resolved.length) throw new Error('IDE Andorra resolve failed');
+    if (failures > 0 || places.status === 'rejected' || streets.status === 'rejected') {
+      opts?.onIncomplete?.();
+    }
+    const ranked = rankByKind(
+      resolved.filter((r): r is GeocodeResult => r !== null && r !== FAILED),
+    );
     return ranked.slice(0, MAX_RESULTS);
   }
 }

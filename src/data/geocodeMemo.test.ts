@@ -69,4 +69,33 @@ describe('withGeocodeMemo', () => {
     expect((await memo.search('toulouse')).map((r) => r.label)).toEqual(['Toulouse']);
     expect(inner.calls).toEqual(['toulouse', 'toulouse']);
   });
+
+  it('returns an incomplete answer without remembering it', async () => {
+    // « Automatic » with one source down: the survivors' merge is the best
+    // list available, not the answer to the query.
+    let spainDown = true;
+    const calls: string[] = [];
+    const inner: GeocodeProvider = {
+      search: async (query, opts) => {
+        calls.push(query);
+        if (spainDown) {
+          opts?.onIncomplete?.();
+          return [result('Toulouse')];
+        }
+        return [result('Toulouse'), result('Girona')];
+      },
+    };
+    const memo = withGeocodeMemo(inner);
+    let flagged = 0;
+
+    const first = await memo.search('to', { onIncomplete: () => flagged++ });
+    expect(first.map((r) => r.label)).toEqual(['Toulouse']);
+    expect(flagged).toBe(1);
+
+    spainDown = false;
+    expect((await memo.search('to')).map((r) => r.label)).toEqual(['Toulouse', 'Girona']);
+    // The complete answer is the one that sticks.
+    expect((await memo.search('to')).map((r) => r.label)).toEqual(['Toulouse', 'Girona']);
+    expect(calls).toEqual(['to', 'to']);
+  });
 });

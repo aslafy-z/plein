@@ -4,7 +4,7 @@
 // 0), so each retained candidate is resolved through `find`, which does.
 import { IS_DEV } from '../../lib/env';
 import { rankByKind } from '../geocodeRank';
-import type { GeocodeProvider, GeocodeResult, PlaceKind } from '../types';
+import type { GeocodeProvider, GeocodeResult, GeocodeSearchOptions, PlaceKind } from '../types';
 
 const BASE =
   (IS_DEV ? '/proxy/cartociudad' : 'https://www.cartociudad.es') + '/geocoder/api/geocoder';
@@ -65,8 +65,14 @@ async function fetchJson(url: string): Promise<unknown> {
   return res.json();
 }
 
-/** Resolve one candidate's coordinates via `find`; null when it can't. */
-async function resolve(c: Candidate): Promise<GeocodeResult | null> {
+/** A `find` call that failed — as opposed to one that answered « no point ». */
+const FAILED = Symbol('find failed');
+
+/**
+ * Resolve one candidate's coordinates via `find`; null when it has none, and
+ * `FAILED` when the request itself failed.
+ */
+async function resolve(c: Candidate): Promise<GeocodeResult | null | typeof FAILED> {
   const address = typeof c.address === 'string' ? c.address : '';
   if (!address) return null;
   const province = typeof c.province === 'string' ? c.province : '';
@@ -86,20 +92,28 @@ async function resolve(c: Candidate): Promise<GeocodeResult | null> {
       kind: kindOf(c.type),
     };
   } catch {
-    return null;
+    return FAILED;
   }
 }
 
 export class CartoCiudadGeocodeProvider implements GeocodeProvider {
-  async search(query: string): Promise<GeocodeResult[]> {
+  async search(query: string, opts?: GeocodeSearchOptions): Promise<GeocodeResult[]> {
     const q = query.trim();
     if (q.length < MIN_QUERY) return [];
     const params = new URLSearchParams({ q, limit: String(MAX_RESULTS) });
     const json = await fetchJson(`${BASE}/candidates?${params.toString()}`);
     const candidates = Array.isArray(json) ? (json as Candidate[]) : [];
     const resolved = await Promise.all(candidates.slice(0, MAX_RESULTS).map(resolve));
+    // `find` going down behind a healthy `candidates` is an outage, not « no
+    // result »: with nothing resolved the search fails like any other request,
+    // and with part of the list it says the list is partial.
+    const failures = resolved.filter((r) => r === FAILED).length;
+    if (failures > 0 && failures === resolved.length) throw new Error('CartoCiudad find failed');
+    if (failures > 0) opts?.onIncomplete?.();
     // rankByKind also deduplicates labels — `candidates` often lists a town
     // twice as poblacion + Municipio.
-    return rankByKind(resolved.filter((r): r is GeocodeResult => r !== null));
+    return rankByKind(
+      resolved.filter((r): r is GeocodeResult => r !== null && r !== FAILED),
+    );
   }
 }

@@ -11,8 +11,11 @@ const MAX_ENTRIES = 50;
 const TTL_MS = 10 * 60_000;
 
 /**
- * Memoizes a geocoder's answers. Failures are never cached — a timeout must
- * not pin an empty list on a query for ten minutes — and a hit still calls
+ * Memoizes a geocoder's COMPLETE answers. Failures are never cached — a
+ * timeout must not pin an empty list on a query for ten minutes — and neither
+ * is an answer the source flagged through `onIncomplete` (a merge one source
+ * failed out of): it is returned, but the next identical query asks again, so
+ * the missing part comes back as soon as its source does. A hit still calls
  * `onPartial`, so a caller that paints from it (« Automatic » fills its list
  * as sources land) sees the same sequence as on a miss.
  */
@@ -26,8 +29,15 @@ export function withGeocodeMemo(inner: GeocodeProvider): GeocodeProvider {
         opts?.onPartial?.(hit);
         return hit;
       }
-      const results = await inner.search(query, opts);
-      memo.set(key, results);
+      let complete = true;
+      const results = await inner.search(query, {
+        ...opts,
+        onIncomplete: () => {
+          complete = false;
+          opts?.onIncomplete?.();
+        },
+      });
+      if (complete) memo.set(key, results);
       return results;
     },
   };

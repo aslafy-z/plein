@@ -213,6 +213,13 @@ export interface GeocodeSearchOptions {
    * can keep its spinner up until every source has concluded.
    */
   onPartial?(results: GeocodeResult[]): void;
+  /**
+   * The answer about to be returned is missing something a failure took away —
+   * one source of a merge, or part of a source's own detail calls. It is still
+   * the best list available and is returned as usual; the signal only says it
+   * must not be remembered as THE answer to this query (`withGeocodeMemo`).
+   */
+  onIncomplete?(): void;
 }
 
 export interface GeocodeProvider {
