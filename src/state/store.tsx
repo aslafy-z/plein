@@ -679,7 +679,7 @@ function pathFor(screen: Screen, detailId: string | null): string {
   }
 }
 
-function navFromPath(path: string): { screen: Screen; detailId: string | null } {
+export function navFromPath(path: string): { screen: Screen; detailId: string | null } {
   // /list is the pre-Favorites URL — keep old bookmarks working
   if (path.startsWith('/favorites') || path.startsWith('/list'))
     return { screen: 'favs', detailId: null };
@@ -692,7 +692,15 @@ function navFromPath(path: string): { screen: Screen; detailId: string | null } 
   if (path.startsWith('/settings')) return { screen: 'settings', detailId: null };
   if (path.startsWith('/station/')) {
     // Bookmarks predating the `fr-` prefix still carry a bare French id
-    const id = normalizeStationId(decodeURIComponent(path.slice('/station/'.length)));
+    const raw = path.slice('/station/'.length);
+    let decoded = raw;
+    try {
+      decoded = decodeURIComponent(raw);
+    } catch {
+      // A truncated or malformed escape (`%E0`, `abc%`) must not throw during
+      // the AppProvider render — keep the raw segment as the id.
+    }
+    const id = normalizeStationId(decoded);
     return { screen: 'detail', detailId: id };
   }
   return { screen: 'map', detailId: null };
