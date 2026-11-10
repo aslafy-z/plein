@@ -12,11 +12,19 @@ export default function UpdatePrompt() {
 
   useEffect(() => watchForUpdate(() => setOutdated(true)), []);
 
-  if (!outdated) return null;
+  // The live region is mounted from the start and only its content arrives
+  // with the update: a region inserted together with its text is not
+  // announced by several screen readers. Empty, it takes no room in the column.
+  return (
+    <div role="status" style={{ flexShrink: 0, zIndex: 40 }}>
+      {outdated && <UpdateBar />}
+    </div>
+  );
+}
 
+function UpdateBar() {
   return (
     <div
-      role="status"
       style={{
         background: C.accentSoft,
         borderBottom: `1px solid ${C.accentBorder}`,

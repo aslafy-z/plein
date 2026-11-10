@@ -169,6 +169,12 @@ test('an empty zone hugs the panel instead of filling it with void', async ({ pa
   const stage = await page.locator('.leaflet-container').first().boundingBox()
   if (!stage) throw new Error('layout not measurable')
 
+  // The zone's live region stands, empty, under the card — mark the node so
+  // the empty state can be shown to land in IT rather than in a fresh one
+  const zoneStatus = page.getByTestId('zone-panel').getByRole('status')
+  await expect(zoneStatus).toBeEmpty()
+  await zoneStatus.evaluate((el) => el.setAttribute('data-standing-region', ''))
+
   // Carrefour's only station in the demo zone is not open 24/7, so the two
   // filters together leave nothing — no card, and therefore no list
   await page.getByText(/^Filters · \d+$/).click()
@@ -179,6 +185,9 @@ test('an empty zone hugs the panel instead of filling it with void', async ({ pa
 
   // The empty state names the miss, what caused it, and the way out
   await expect(page.getByText('No station matches your filters.')).toBeVisible()
+  await expect(page.locator('[data-standing-region]')).toContainText(
+    'No station matches your filters.',
+  )
   await expect(page.getByText('Active filters:')).toBeVisible()
   await expect(page.getByText('Carrefour', { exact: true })).toBeVisible()
   await expect(page.getByText('Open 24/7', { exact: true })).toBeVisible()

@@ -66,16 +66,14 @@ export default function ZoneCard({ handle }: { handle?: ReactNode }) {
   const { lastError } = app.stations;
 
   return (
-    <div
-      key={stateKey}
-      className="sheet-swap"
-      data-stations-status={app.stations.status}
-      data-stations-error={lastError}
-    >
-      {shown ? (
+    <div data-stations-status={app.stations.status} data-stations-error={lastError}>
+      {shown && (
         // The handle carries the top padding when there is one (the phone
         // sheet); without it the kicker would sit flush against the edge.
-        <div style={{ padding: handle ? '0 20px 18px' : '16px 20px 18px' }}>
+        <div
+          className="sheet-swap"
+          style={{ padding: handle ? '0 20px 18px' : '16px 20px 18px' }}
+        >
           {handle}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
@@ -236,10 +234,22 @@ export default function ZoneCard({ handle }: { handle?: ReactNode }) {
             )}
           </div>
         </div>
-      ) : (
-        // No station to lead with — the zone is the empty state, whole
-        <ZoneEmpty />
       )}
+      {/* One polite live region for everything the zone says when it has no
+          station to lead with. It stays mounted — empty while a card shows —
+          and sits ABOVE the keyed node that swaps: the loading line, then
+          « no station matches » or the network failure, are text changes
+          inside a region the screen reader already knows, which is the case
+          it announces. The card stays outside it, or every price change
+          would be read out. */}
+      <div role="status">
+        {!shown && (
+          // No station to lead with — the zone is the empty state, whole
+          <div key={stateKey} className="sheet-swap">
+            <ZoneEmpty />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -139,8 +139,16 @@ test('without the Web Share API the map link goes to the clipboard', async ({ pa
   await gotoMap(page)
   await page.waitForTimeout(700) // let the throttled URL write settle
 
+  // The toast's live region is there, empty, BEFORE the toast: a screen
+  // reader announces text arriving in a region it already knows, and several
+  // skip one inserted together with its text
+  const toastRegion = page.locator('.app-shell > [role="status"]')
+  await expect(toastRegion).toHaveCount(1)
+  await expect(toastRegion).toHaveText('')
+
   await page.getByRole('button', { name: 'Share this view' }).click()
 
   await expect(page.getByRole('status').filter({ hasText: 'Link copied' })).toBeVisible()
+  await expect(toastRegion).toHaveText('Link copied')
   expect(await copied(page)).toEqual([page.url()])
 })

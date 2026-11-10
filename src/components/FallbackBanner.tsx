@@ -14,6 +14,19 @@ import { C } from '../theme';
  * an attempt cannot succeed while the switch holds, the way out is Settings.
  */
 export default function FallbackBanner() {
+  // A polite status, not an alert: the stations on screen stay usable, so the
+  // notice waits for the screen reader to finish its sentence rather than
+  // cutting it off. The region is mounted from the start and empty until
+  // there is something to say — one inserted together with its text is not
+  // announced by several screen readers. Empty, it takes no room in the column.
+  return (
+    <div role="status" style={{ flexShrink: 0, zIndex: 40 }}>
+      <FallbackNotice />
+    </div>
+  );
+}
+
+function FallbackNotice() {
   const app = useApp();
   const online = useIsOnline();
   const forced = useForcedOffline();
