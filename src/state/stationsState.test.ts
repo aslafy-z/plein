@@ -133,6 +133,89 @@ describe('nextStationsState', () => {
     expect(end).toMatchObject({ status: 'error', data: [], activeSource: 'es' })
   })
 
+  it('a superseded cold request settles back on the loaded area instead of sticking on loading', () => {
+    const chain = frames(idle, [
+      { kind: 'success', data: [station('a')], source: 'fr', fetchedAt: 1_000 },
+      { kind: 'request', offlineHint: false },
+      { kind: 'superseded', standing: 'loaded', source: 'fr' },
+    ])
+    expect(chain[2].status).toBe('loading')
+    expect(last(chain)).toEqual(chain[1])
+  })
+
+  it('a superseded request over a loaded area with no station is ready, not an error', () => {
+    const end = last(
+      frames(idle, [
+        { kind: 'success', data: [], source: 'fr', fetchedAt: 1_000 },
+        { kind: 'request', offlineHint: false },
+        { kind: 'superseded', standing: 'loaded', source: 'fr' },
+      ]),
+    )
+    expect(end).toMatchObject({ status: 'ready', data: [], refreshing: false })
+    expect(end.lastError).toBeUndefined()
+  })
+
+  it('a superseded background attempt stops refreshing', () => {
+    const end = last(
+      frames(idle, [
+        { kind: 'success', data: [station('a')], source: 'fr', fetchedAt: 1_000 },
+        { kind: 'request', offlineHint: true },
+        { kind: 'superseded', standing: 'loaded', source: 'fr' },
+      ]),
+    )
+    expect(end).toMatchObject({ status: 'ready', refreshing: false })
+    expect(end.data.map((s) => s.id)).toEqual(['a'])
+  })
+
+  it('back inside a failed area with nothing cached, a superseded request returns to the error', () => {
+    const chain = frames(idle, [
+      { kind: 'request', offlineHint: false },
+      { kind: 'failure', source: 'fr', error: 'offline' },
+      // Pan out: a new request starts and hangs
+      { kind: 'request', offlineHint: false },
+      // Pan back in before it settles
+      { kind: 'superseded', standing: 'failed', source: 'fr' },
+    ])
+    expect(chain[3].status).toBe('loading')
+    expect(last(chain)).toEqual(chain[2])
+  })
+
+  it('back inside a failed area, a superseded request keeps the data the failure kept', () => {
+    const end = last(
+      frames(idle, [
+        { kind: 'success', data: [station('a')], source: 'fr', fetchedAt: 1_000 },
+        { kind: 'request', offlineHint: false },
+        { kind: 'failure', source: 'fr', error: 'source' },
+        { kind: 'request', offlineHint: false },
+        { kind: 'superseded', standing: 'failed', source: 'fr' },
+      ]),
+    )
+    expect(end).toMatchObject({ status: 'ready', refreshing: false, lastError: 'source' })
+    expect(end.data.map((s) => s.id)).toEqual(['a'])
+  })
+
+  it('a failed area never settles on another source data', () => {
+    const end = last(
+      frames(idle, [
+        { kind: 'cache', data: [station('a')], source: 'es', fetchedAt: 1_000, revalidating: true },
+        { kind: 'superseded', standing: 'failed', source: 'fr' },
+      ]),
+    )
+    expect(end).toMatchObject({ status: 'error', data: [], activeSource: 'fr', refreshing: false })
+  })
+
+  it('superseding with nothing pending is the identity, so a pan re-renders nothing', () => {
+    const ready = last(frames(idle, [{ kind: 'success', data: [station('a')], source: 'fr', fetchedAt: 1_000 }]))
+    expect(nextStationsState(ready, { kind: 'superseded', standing: 'loaded', source: 'fr' })).toBe(ready)
+    const failed = last(
+      frames(idle, [
+        { kind: 'request', offlineHint: false },
+        { kind: 'failure', source: 'fr', error: 'offline' },
+      ]),
+    )
+    expect(nextStationsState(failed, { kind: 'superseded', standing: 'failed', source: 'fr' })).toBe(failed)
+  })
+
   it('is pure: same input twice gives the same output and never mutates prev', () => {
     const prev = last(frames(idle, [{ kind: 'success', data: [station('a')], source: 'fr', fetchedAt: 1_000 }]))
     const snapshot = structuredClone(prev)

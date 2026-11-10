@@ -371,7 +371,15 @@ export type StationsEvent =
       offlineHint: boolean;
     }
   | { kind: 'success'; data: Station[]; source: DataSourceId; fetchedAt: number }
-  | { kind: 'failure'; source: DataSourceId; error: StationsErrorKind };
+  | { kind: 'failure'; source: DataSourceId; error: StationsErrorKind }
+  | {
+      kind: 'superseded';
+      /** What the zone the user came back to already holds: `loaded` — its
+       *  stations are the ones in memory; `failed` — its last fetch failed
+       *  and nothing new is attempted until a retry. */
+      standing: 'loaded' | 'failed';
+      source: DataSourceId;
+    };
 
 /**
  * Stations state machine. The invariant every transition protects: real data
@@ -418,6 +426,23 @@ export function nextStationsState(prev: StationsState, ev: StationsEvent): Stati
         refreshing: false,
         lastError: ev.error,
       };
+    }
+    case 'superseded': {
+      // The request in flight was abandoned and nothing replaces it: its
+      // success and its failure are both dropped, so the flags it raised have
+      // to come down here or nothing ever lowers them. With nothing pending
+      // this is the identity — the caller dispatches it on every pan.
+      if (prev.status !== 'loading' && !prev.refreshing) return prev;
+      if (ev.standing === 'failed' && !(prev.data.length > 0 && prev.activeSource === ev.source)) {
+        return {
+          status: 'error',
+          data: [],
+          activeSource: ev.source,
+          refreshing: false,
+          lastError: prev.lastError ?? 'source',
+        };
+      }
+      return { ...prev, status: 'ready', refreshing: false };
     }
   }
 }
@@ -1234,6 +1259,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         (haversineKm(area.center, searchPos) + radius <= area.radiusKm ||
           haversineKm(area.center, searchPos) < SAME_CENTER_KM)
       ) {
+        // A fetch started for another area must not land now that the zone
+        // is back inside this one — it would swap in the other disc under a
+        // `searchPos` that left it. Superseding it drops its outcome, so the
+        // `loading` / `refreshing` it raised is lowered here too.
+        stationsReq.current++;
+        dispatchStations({ kind: 'superseded', standing: 'loaded', source: sourceId });
         reportAreaLoad('memory');
         return;
       }
@@ -1278,6 +1309,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
             fetchedAt: cached.fetchedAt,
             revalidating: false,
           });
+          // What is in memory is now this cache entry, not `loadedArea`
+          loadedArea.current = null;
+        } else {
+          // Nothing to paint and nothing to attempt, yet `reqId` just orphaned
+          // whatever was in flight: settle the state it left pending, or the
+          // refresh triggers (tick, `online`, visibility) skip on it forever.
+          dispatchStations({ kind: 'superseded', standing: 'failed', source: sourceId });
         }
         return;
       }
@@ -1309,6 +1347,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           fetchedAt: cached.fetchedAt,
           revalidating: true,
         });
+        // What is in memory is now this cache entry, not `loadedArea`: panning
+        // back must go through the cache again rather than the fast path.
+        loadedArea.current = null;
         reportAreaLoad('cache-revalidate');
       } else {
         dispatchStations({ kind: 'request', offlineHint: isOffline() });
