@@ -1,4 +1,4 @@
-import { test, expect, gotoMap, desktopOnly, phoneOnly } from './fixtures'
+import { test, expect, gotoMap, desktopOnly, phoneOnly, GEOPF_ADDRESS } from './fixtures'
 
 // The route's departure and arrival fields ARE the map's place search
 // (PlaceField): same debounce, same spinner, same ✕, same containers. This
@@ -38,7 +38,7 @@ test.beforeEach(async ({ page }) => {
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
   // A geocoder that takes its time — long enough for the spinner to be observable
-  await page.route('**/proxy/ban/**', async (route) => {
+  await page.route(GEOPF_ADDRESS, async (route) => {
     await new Promise((r) => setTimeout(r, 1_500))
     await route
       .fulfill({

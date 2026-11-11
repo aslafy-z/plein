@@ -1,4 +1,4 @@
-import { test, expect, openRouteSheet, closeRouteSheet, pickRoutePlace } from './fixtures'
+import { test, expect, openRouteSheet, closeRouteSheet, pickRoutePlace, GEOPF_ADDRESS } from './fixtures'
 import type { Page, Route as PwRoute } from '@playwright/test'
 
 // The route is computed in three stages: the itinerary as soon as the routing
@@ -108,7 +108,7 @@ async function stubStatics(page: Page) {
   await page.route('**/brands-fr.json', (r) =>
     r.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
-  await page.route('**/proxy/ban/**', (r) =>
+  await page.route(GEOPF_ADDRESS, (r) =>
     r.fulfill({ json: banResponse(new URL(r.request().url()).searchParams.get('q') ?? '') }),
   )
   await stubTravelMatrix(page)

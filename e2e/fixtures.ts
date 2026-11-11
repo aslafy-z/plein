@@ -21,6 +21,13 @@ function dropNullLocale(settings: Record<string, unknown>): Record<string, unkno
   return rest
 }
 
+// The French geocoder is ONE endpoint serving two indexes, told apart by the
+// `index` query parameter alone: addresses (the BAN) and points of interest.
+// A spec mocks each through its own pattern — a bare `**/proxy/geopf/**` would
+// answer both calls with one payload.
+export const GEOPF_ADDRESS = '**/proxy/geopf/**index=address*'
+export const GEOPF_POI = '**/proxy/geopf/**index=poi*'
+
 export const test = base.extend<Options>({
   seed: [{ sourceId: 'demo', onboarded: true }, { option: true }],
 
@@ -45,11 +52,11 @@ export const test = base.extend<Options>({
       localStorage.setItem('plein.settings.v1', JSON.stringify(settings))
     }, dropNullLocale({ ...BASE_SEED, ...seed }))
 
-    // France's point-of-interest geocoder rides along with every BAN search.
-    // Specs mock the BAN and assert on the exact rows, so this one answers
-    // empty unless a spec routes it itself (a later route wins) — left alone it
-    // would reach the live index through the dev proxy.
-    await page.route('**/proxy/geopf/**', (route) =>
+    // France's point-of-interest index rides along with every address search.
+    // Specs mock the addresses and assert on the exact rows, so this one
+    // answers empty unless a spec routes it itself (a later route wins) — left
+    // alone it would reach the live index through the dev proxy.
+    await page.route(GEOPF_POI, (route) =>
       route.fulfill({ json: { type: 'FeatureCollection', features: [] } }),
     )
 
