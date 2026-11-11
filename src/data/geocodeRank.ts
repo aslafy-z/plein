@@ -6,8 +6,19 @@
 import { haversineKm } from '../lib/geo';
 import type { GeocodeResult, PlaceKind } from './types';
 
-/** Most useful first. `other` catches anything a source can't classify. */
-export const PLACE_KIND_ORDER: readonly PlaceKind[] = ['locality', 'street', 'address', 'other'];
+/**
+ * Most useful first. A point of interest sits between the town and the
+ * streets: « Bayonne » still offers the town first, and « Gare de Bayonne » is
+ * a destination in its own right, where « Rue de la Gare » rarely is. `other`
+ * catches anything a source can't classify.
+ */
+export const PLACE_KIND_ORDER: readonly PlaceKind[] = [
+  'locality',
+  'poi',
+  'street',
+  'address',
+  'other',
+];
 
 /** Two same-label results closer than this are one place told by two sources */
 const SAME_PLACE_KM = 1;
@@ -28,7 +39,7 @@ function samePlace(a: GeocodeResult, b: GeocodeResult): boolean {
 
 /**
  * Merge several geocoders' lists into one suggestion list: all localities
- * first, then streets, then house numbers, and inside one kind the sources
+ * first, then points of interest, streets and house numbers, and inside one kind the sources
  * are interleaved in the order given so every country stays visible near the
  * top. Each source's own relevance order is preserved within its kind, and a
  * place already emitted is skipped (the sources overlap near the borders, and

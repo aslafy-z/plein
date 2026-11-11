@@ -35,7 +35,7 @@ const BBOX = '-9.6,36.9,-6.1,42.2';
  * `country` boundaries (a district's centroid is not a place to drive to) and
  * `other`, the catch-all for unnamed extras.
  */
-function kindOf(type: unknown): PlaceKind | null {
+function kindOf(type: unknown, named: boolean): PlaceKind | null {
   switch (type) {
     case 'city':
     case 'district':
@@ -44,14 +44,29 @@ function kindOf(type: unknown): PlaceKind | null {
     case 'street':
       return 'street';
     case 'house':
-      return 'address';
+      // OSM files a point of interest at house level, told from a plain
+      // address by the name it carries (« Torre de Belém », « Aeroporto
+      // Humberto Delgado »).
+      return named ? 'poi' : 'address';
     default:
       return null;
   }
 }
 
+/**
+ * Named house-level features that are a piece of something rather than a
+ * destination: every bus stop, and the platforms and entrances OSM maps
+ * around the one station that already answers.
+ */
+function isFragment(p: PhotonProperties): boolean {
+  if (p.osm_key === 'highway') return true;
+  return p.osm_key === 'railway' && (p.osm_value === 'stop' || p.osm_value === 'subway_entrance');
+}
+
 interface PhotonProperties {
   name?: unknown;
+  osm_key?: unknown;
+  osm_value?: unknown;
   street?: unknown;
   housenumber?: unknown;
   city?: unknown;
@@ -114,15 +129,17 @@ export class PhotonGeocodeProvider implements GeocodeProvider {
       if (!f || typeof f !== 'object') continue;
       const props = (f as PhotonFeature).properties ?? {};
       if (str(props.countrycode)?.toUpperCase() !== 'PT') continue;
-      const kind = kindOf(props.type);
+      const named = str(props.name) !== undefined;
+      const kind = kindOf(props.type, named);
+      if (kind === 'poi' && isFragment(props)) continue;
       const p = point(f as PhotonFeature);
       const described = describe(props);
       if (!kind || !p || !described) continue;
       out.push({ ...described, point: p, kind });
     }
-    // Localities first, then streets, then house numbers — and OSM splits a
-    // long street into segments, each of them its own hit, which the shared
-    // label deduplication folds back into one suggestion.
+    // Localities first, then points of interest, streets and house numbers —
+    // and OSM splits a long street into segments, each of them its own hit,
+    // which the shared label deduplication folds back into one suggestion.
     return rankByKind(out).slice(0, MAX_RESULTS);
   }
 }

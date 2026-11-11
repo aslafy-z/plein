@@ -45,6 +45,14 @@ export const test = base.extend<Options>({
       localStorage.setItem('plein.settings.v1', JSON.stringify(settings))
     }, dropNullLocale({ ...BASE_SEED, ...seed }))
 
+    // France's point-of-interest geocoder rides along with every BAN search.
+    // Specs mock the BAN and assert on the exact rows, so this one answers
+    // empty unless a spec routes it itself (a later route wins) — left alone it
+    // would reach the live index through the dev proxy.
+    await page.route('**/proxy/geopf/**', (route) =>
+      route.fulfill({ json: { type: 'FeatureCollection', features: [] } }),
+    )
+
     await use(page)
 
     expect(errors, 'the page must not throw').toEqual([])

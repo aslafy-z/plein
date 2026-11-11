@@ -223,7 +223,7 @@ const BOOLEAN_FIELDS = [
 const STRING_FIELDS = ['locale', 'theme', 'accent', 'sourceId'] as const;
 
 const MAPS_SITES: readonly MapsSiteId[] = ['google', 'waze', 'apple', 'osm'];
-const PLACE_KINDS: readonly PlaceKind[] = ['locality', 'street', 'address', 'other'];
+const PLACE_KINDS: readonly PlaceKind[] = ['locality', 'poi', 'street', 'address', 'other'];
 
 function isRecord(raw: unknown): raw is Record<string, unknown> {
   return typeof raw === 'object' && raw !== null && !Array.isArray(raw);

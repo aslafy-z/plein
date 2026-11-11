@@ -22,6 +22,7 @@ import type {
 } from '../types';
 import { FrStationsProvider } from '../fr/FrStationsProvider';
 import { BanGeocodeProvider } from '../fr/BanGeocodeProvider';
+import { GeopfPoiGeocodeProvider } from '../fr/GeopfPoiGeocodeProvider';
 import { EsStationsProvider, esCoversAlong, esCoversNear } from '../es/EsStationsProvider';
 import { CartoCiudadGeocodeProvider } from '../es/CartoCiudadGeocodeProvider';
 import { AdStationsProvider, adCoversAlong, adCoversNear } from '../ad/AdStationsProvider';
@@ -217,18 +218,16 @@ export async function mergeAsTheyLand(
   return merged();
 }
 
-export class AutoGeocodeProvider implements GeocodeProvider {
-  private readonly ban = new BanGeocodeProvider();
-  private readonly cartociudad = new CartoCiudadGeocodeProvider();
-  private readonly ad = new AdGeocodeProvider();
-  private readonly photon = new PhotonGeocodeProvider();
+/**
+ * Several geocoders behind one search box: every source is asked at once and
+ * the list is `mergeAsTheyLand`'s — by kind first, and inside one kind the
+ * sources interleave in the order given, so pass them in display order.
+ */
+export class MergedGeocodeProvider implements GeocodeProvider {
+  constructor(private readonly sources: readonly GeocodeProvider[]) {}
 
   search(query: string, opts?: GeocodeSearchOptions): Promise<GeocodeResult[]> {
-    // Localities of all four countries first, then their streets, then their
-    // house numbers; inside one kind the sources interleave in the order given
-    // here — France, Andorra, Portugal, Spain — so no country fills the visible
-    // rows on its own.
-    const sources = [this.ban, this.ad, this.photon, this.cartociudad];
+    const sources = this.sources;
     // A source that answered with part of its own list (some detail calls
     // failed) makes the merge incomplete just like a source that failed whole;
     // the caller hears about it once, whichever way it happened.
@@ -244,5 +243,31 @@ export class AutoGeocodeProvider implements GeocodeProvider {
       if (incomplete) opts?.onIncomplete?.();
       return results;
     });
+  }
+}
+
+/**
+ * France: the BAN knows addresses and nothing else, so the IGN's points of
+ * interest (airports, railway stations, monuments…) are merged next to it.
+ */
+export class FrGeocodeProvider extends MergedGeocodeProvider {
+  constructor() {
+    super([new BanGeocodeProvider(), new GeopfPoiGeocodeProvider()]);
+  }
+}
+
+export class AutoGeocodeProvider extends MergedGeocodeProvider {
+  constructor() {
+    // Localities of all four countries first, then their points of interest,
+    // streets and house numbers; inside one kind the sources interleave in the
+    // order given here — France, Andorra, Portugal, Spain — so no country
+    // fills the visible rows on its own.
+    super([
+      new BanGeocodeProvider(),
+      new GeopfPoiGeocodeProvider(),
+      new AdGeocodeProvider(),
+      new PhotonGeocodeProvider(),
+      new CartoCiudadGeocodeProvider(),
+    ]);
   }
 }

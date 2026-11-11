@@ -42,6 +42,7 @@ globalThis.fetch = async (url) => {
 const entry = `
 export { FrStationsProvider } from './src/data/fr/FrStationsProvider';
 export { BanGeocodeProvider } from './src/data/fr/BanGeocodeProvider';
+export { GeopfPoiGeocodeProvider } from './src/data/fr/GeopfPoiGeocodeProvider';
 export { RealRouteProvider } from './src/data/fr/OsrmRouteProvider';
 export { EsStationsProvider } from './src/data/es/EsStationsProvider';
 export { CartoCiudadGeocodeProvider } from './src/data/es/CartoCiudadGeocodeProvider';
@@ -110,6 +111,11 @@ const places = await ban.search('Bordeaux');
 ok('BAN: geocodes "Bordeaux"', places.length >= 1, places[0]?.label);
 ok('BAN: plausible coordinates',
   places[0] && Math.abs(places[0].point.lat - 44.84) < 1 && Math.abs(places[0].point.lng + 0.58) < 1);
+const pois = await new P.GeopfPoiGeocodeProvider().search('gare matabiau');
+ok('Géoplateforme: finds the "Gare Matabiau" point of interest',
+  pois[0]?.kind === 'poi' && Math.abs(pois[0].point.lat - 43.61) < 0.1 &&
+  Math.abs(pois[0].point.lng - 1.45) < 0.1,
+  pois[0] && `${pois[0].label} · ${pois[0].sublabel}`);
 
 // 3 — OSRM routing
 const osrm = new P.RealRouteProvider();
