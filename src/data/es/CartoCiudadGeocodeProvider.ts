@@ -116,6 +116,7 @@ export class CartoCiudadGeocodeProvider implements GeocodeProvider {
     // twice as poblacion + Municipio.
     return rankByKind(
       resolved.filter((r): r is GeocodeResult => r !== null && r !== FAILED),
+      q,
     );
   }
 }
