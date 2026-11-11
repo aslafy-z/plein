@@ -129,8 +129,8 @@ describe('queryCoverage', () => {
 
   it('takes only the word being typed as a prefix', () => {
     expect(queryCoverage('aeroport toul', said('Aéroport de Toulouse-Blagnac'))).toBe(1);
-    // « arria » is finished: it is not the start of « Arriaga »
-    expect(queryCoverage('rue arria ly', said('Rua Manuel de Arriaga'))).toBe(0);
+    // « paste » is finished: it is not the start of « Pasteur »
+    expect(queryCoverage('rue paste albi', said('Rua Doutor Pasteur'))).toBe(0);
   });
 
   it('is zero for an empty query', () => {
@@ -140,18 +140,18 @@ describe('queryCoverage', () => {
 
 describe('ranking against the query', () => {
   it('puts the address saying the whole query above nearer kinds that do not', () => {
-    const fr = [at('Rue Arria Ly 31200 Toulouse', 'street'), at('1 Rue Arria Ly 31200 Toulouse', 'address')];
+    const fr = [at('Rue Pasteur 81000 Albi', 'street'), at('3 Rue Pasteur 81000 Albi', 'address')];
     const pt = [
-      at('Lavandaria e Engomadoria', 'poi'),
-      at('Rua Manuel de Arriaga', 'street'),
-      at('1 Rua Doutor Manuel de Arriaga', 'address'),
+      at('Pastelaria Albi', 'poi'),
+      at('Rua Pasteur', 'street'),
+      at('3 Rua Doutor Pasteur', 'address'),
     ];
-    expect(mergeByKind([fr, pt], '1 rue arria ly').map((r) => r.label)).toEqual([
-      '1 Rue Arria Ly 31200 Toulouse',
-      'Rue Arria Ly 31200 Toulouse',
-      '1 Rua Doutor Manuel de Arriaga',
-      'Lavandaria e Engomadoria',
-      'Rua Manuel de Arriaga',
+    expect(mergeByKind([fr, pt], '3 rue pasteur albi').map((r) => r.label)).toEqual([
+      '3 Rue Pasteur 81000 Albi',
+      'Rue Pasteur 81000 Albi',
+      '3 Rua Doutor Pasteur',
+      'Pastelaria Albi',
+      'Rua Pasteur',
     ]);
   });
 

@@ -6,9 +6,9 @@
 //
 // What a result denotes only breaks ties, though: how much of the QUERY a
 // result answers comes first (`queryCoverage`). The kind order alone put any
-// point of interest and any street above every house number, so « 1 rue arria
-// ly » offered a Portuguese laundry and three « Rua … Arriaga » before the one
-// address that says all four words.
+// point of interest and any street above every house number, so a full
+// address typed in « Automatic » came after another country's shops and
+// streets sharing one word with it.
 import { haversineKm } from '../lib/geo';
 import type { GeocodeResult, PlaceKind } from './types';
 
@@ -40,8 +40,8 @@ function words(text: string): string[] {
  * Share of the query's words a result says, 0 to 1 — in its label or in the
  * line under it, since sources split a place differently (« Bayonne 64 » is a
  * label and a context for the BAN). The last word is still being typed, so it
- * matches as a prefix; the others must be whole words, or « arria » would
- * credit every « Arriaga ».
+ * matches as a prefix; the others must be whole words, or « paste » would
+ * credit every « Pasteur ».
  *
  * This is deliberately not a similarity score. The sources have already done
  * the fuzzy matching — a typo that matches no word leaves every result at 0
