@@ -3,7 +3,6 @@ import { withGeocodeMemo } from './geocodeMemo';
 import { isForcedOffline } from '../lib/connectivity';
 import type { DataSourceId, GeocodeProvider, ProviderBundle } from './types';
 import { FrStationsProvider } from './fr/FrStationsProvider';
-import { BanGeocodeProvider } from './fr/BanGeocodeProvider';
 import { RealRouteProvider } from './fr/OsrmRouteProvider';
 import { EsStationsProvider } from './es/EsStationsProvider';
 import { CartoCiudadGeocodeProvider } from './es/CartoCiudadGeocodeProvider';
@@ -11,7 +10,11 @@ import { AdStationsProvider } from './ad/AdStationsProvider';
 import { AdGeocodeProvider } from './ad/AdGeocodeProvider';
 import { PtStationsProvider } from './pt/PtStationsProvider';
 import { PhotonGeocodeProvider } from './pt/PhotonGeocodeProvider';
-import { AutoGeocodeProvider, AutoStationsProvider } from './auto/AutoProviders';
+import {
+  AutoGeocodeProvider,
+  AutoStationsProvider,
+  FrGeocodeProvider,
+} from './auto/AutoProviders';
 import {
   DemoGeocodeProvider,
   DemoRouteProvider,
@@ -31,7 +34,7 @@ function createBundle(id: DataSourceId): ProviderBundle {
   if (id === 'fr') {
     return {
       stations: new FrStationsProvider(),
-      geocode: new BanGeocodeProvider(),
+      geocode: new FrGeocodeProvider(),
       route: new RealRouteProvider(),
     };
   }

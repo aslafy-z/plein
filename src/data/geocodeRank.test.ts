@@ -19,6 +19,15 @@ describe('rankByKind', () => {
     expect(out.map((r) => r.label)).toEqual(['Bayonne', 'Rue de Bayonne', '12 rue de Bayonne']);
   });
 
+  it('puts a point of interest after the towns and before the streets', () => {
+    const out = rankByKind([
+      at('Rue de la Gare', 'street'),
+      at('Gare de Bayonne', 'poi'),
+      at('Bayonne', 'locality'),
+    ]);
+    expect(out.map((r) => r.kind)).toEqual(['locality', 'poi', 'street']);
+  });
+
   it('keeps the source relevance order inside one kind', () => {
     const out = rankByKind([at('Toulouse', 'locality'), at('Toulon', 'locality')]);
     expect(out.map((r) => r.label)).toEqual(['Toulouse', 'Toulon']);

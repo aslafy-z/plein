@@ -194,12 +194,13 @@ export interface StationsProvider {
 }
 
 /**
- * What a geocoder result denotes, normalized across the three national
- * geocoders. Suggestions are ranked by this (see `geocodeRank.ts`): someone
- * looking for cheap fuel means the town far more often than the street of the
- * same name three départements away.
+ * What a geocoder result denotes, normalized across the national geocoders.
+ * Suggestions are ranked by this (see `geocodeRank.ts`): someone looking for
+ * cheap fuel means the town far more often than the street of the same name
+ * three départements away. `poi` is a named point of interest — an airport, a
+ * railway station, a stadium, a monument.
  */
-export type PlaceKind = 'locality' | 'street' | 'address' | 'other';
+export type PlaceKind = 'locality' | 'poi' | 'street' | 'address' | 'other';
 
 export interface GeocodeResult {
   label: string; // "Bordeaux centre"

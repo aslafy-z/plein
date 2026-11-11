@@ -37,17 +37,35 @@ describe('PhotonGeocodeProvider', () => {
     expect(mock).not.toHaveBeenCalled()
   })
 
-  it('ranks the town above its streets and house numbers', async () => {
+  it('ranks the town, then its points of interest, streets and house numbers', async () => {
     stubFetch([
       feature({ name: 'Rua de Coimbra', type: 'street', city: 'Lisboa', county: 'Lisboa' }),
       feature({ name: 'Coimbra-B', type: 'house', city: 'Coimbra', county: 'Coimbra' }),
+      feature({ type: 'house', housenumber: '3', street: 'Rua de Coimbra', city: 'Lisboa' }),
       feature({ name: 'Coimbra', type: 'city', county: 'Coimbra' }),
     ])
     const out = await provider.search('coimbra')
     expect(out.map((r) => [r.label, r.kind])).toEqual([
       ['Coimbra', 'locality'],
+      ['Coimbra-B', 'poi'],
       ['Rua de Coimbra', 'street'],
-      ['Coimbra-B', 'address'],
+      ['3 Rua de Coimbra', 'address'],
+    ])
+  })
+
+  it('keeps the station and drops the stops and entrances mapped around it', async () => {
+    const at = { type: 'house', city: 'Lisboa', county: 'Lisboa' }
+    stubFetch([
+      feature({ ...at, name: 'Aeroporto', osm_key: 'railway', osm_value: 'stop' }),
+      feature({ ...at, name: 'Aeroporto', osm_key: 'railway', osm_value: 'subway_entrance' }),
+      feature({ ...at, name: 'Avenida de Berlim', osm_key: 'highway', osm_value: 'bus_stop' }),
+      feature({ ...at, name: 'Aeroporto', osm_key: 'railway', osm_value: 'station' }),
+      feature({ ...at, name: 'Aeroporto Humberto Delgado', osm_key: 'aeroway', osm_value: 'aerodrome' }),
+    ])
+    const out = await provider.search('aeroporto lisboa')
+    expect(out.map((r) => [r.label, r.kind])).toEqual([
+      ['Aeroporto', 'poi'],
+      ['Aeroporto Humberto Delgado', 'poi'],
     ])
   })
 

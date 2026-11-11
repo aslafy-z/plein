@@ -127,6 +127,7 @@ function tileHandler(cartoKey: string): TileHandler {
 const API_UPSTREAMS: Record<string, string> = {
   fr: 'https://data.economie.gouv.fr',
   ban: 'https://api-adresse.data.gouv.fr',
+  geopf: 'https://data.geopf.fr',
   osrm: 'https://router.project-osrm.org',
   valhalla: 'https://valhalla1.openstreetmap.de',
   es: 'https://sedeaplicaciones.minetur.gob.es',
@@ -160,7 +161,7 @@ function fetchJson(url: string): Promise<{ status: number; body: string }> {
 }
 
 function apiHandler(req: IncomingMessage, res: ServerResponse): void {
-  const m = (req.url ?? '').match(/^\/(fr|ban|osrm|valhalla|es|cartociudad|ad|pt|photon)(\/.*)$/)
+  const m = (req.url ?? '').match(/^\/(fr|ban|geopf|osrm|valhalla|es|cartociudad|ad|pt|photon)(\/.*)$/)
   if (!m) {
     res.statusCode = 404
     res.end()
