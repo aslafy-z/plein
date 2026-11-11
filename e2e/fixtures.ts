@@ -55,10 +55,15 @@ export const test = base.extend<Options>({
     // France's point-of-interest index rides along with every address search.
     // Specs mock the addresses and assert on the exact rows, so this one
     // answers empty unless a spec routes it itself (a later route wins) — left
-    // alone it would reach the live index through the dev proxy.
-    await page.route(GEOPF_POI, (route) =>
-      route.fulfill({ json: { type: 'FeatureCollection', features: [] } }),
-    )
+    // alone it would reach the live index through the dev proxy. Only where a
+    // spec leaves the demo source, which never asks it: a route puts EVERY
+    // request of the page through the test process, map tiles included, and
+    // the frame-timing specs (map-keyboard) run on the demo source.
+    if (seed.sourceId !== 'demo') {
+      await page.route(GEOPF_POI, (route) =>
+        route.fulfill({ json: { type: 'FeatureCollection', features: [] } }),
+      )
+    }
 
     await use(page)
 
