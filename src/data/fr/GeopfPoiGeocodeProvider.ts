@@ -83,6 +83,6 @@ export class GeopfPoiGeocodeProvider implements GeocodeProvider {
     }
     // The BD TOPO draws a bridge or a station as several features of one
     // name; the shared deduplication folds them back into one suggestion.
-    return rankByKind(out).slice(0, MAX_RESULTS);
+    return rankByKind(out, q).slice(0, MAX_RESULTS);
   }
 }

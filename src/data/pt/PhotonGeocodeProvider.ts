@@ -140,6 +140,6 @@ export class PhotonGeocodeProvider implements GeocodeProvider {
     // Localities first, then points of interest, streets and house numbers —
     // and OSM splits a long street into segments, each of them its own hit,
     // which the shared label deduplication folds back into one suggestion.
-    return rankByKind(out).slice(0, MAX_RESULTS);
+    return rankByKind(out, q).slice(0, MAX_RESULTS);
   }
 }

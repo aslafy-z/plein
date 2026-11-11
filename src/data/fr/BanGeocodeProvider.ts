@@ -73,6 +73,6 @@ export class BanGeocodeProvider implements GeocodeProvider {
         typeof context === 'string' ? context : typeof city === 'string' ? city : '';
       out.push({ label, sublabel, point, kind: kindOf(f.properties?.type) });
     }
-    return rankByKind(out);
+    return rankByKind(out, q);
   }
 }

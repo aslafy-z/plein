@@ -183,17 +183,22 @@ const MAX_RESULTS = 15;
  * call throws only when every source failed; when only some did, the survivors
  * are returned and `onIncomplete` says so first — that merge is the best list
  * available, not the answer to the query, and must not be memoized as one.
+ *
+ * `query` is what the sources were asked: with it the merge puts the results
+ * answering more of it first (`queryCoverage`), across sources whose own
+ * relevance scores cannot be compared.
  */
 export async function mergeAsTheyLand(
   tasks: readonly Promise<GeocodeResult[]>[],
   onPartial?: (results: GeocodeResult[]) => void,
   onIncomplete?: () => void,
+  query?: string,
 ): Promise<GeocodeResult[]> {
   const lists: GeocodeResult[][] = tasks.map(() => []);
   let landed = 0;
   let failed = 0;
   let firstReason: unknown;
-  const merged = () => mergeByKind(lists).slice(0, MAX_RESULTS);
+  const merged = () => mergeByKind(lists, query).slice(0, MAX_RESULTS);
 
   await Promise.all(
     tasks.map((task, i) =>
@@ -239,6 +244,7 @@ export class MergedGeocodeProvider implements GeocodeProvider {
       sources.map((source) => source.search(query, { onIncomplete })),
       opts?.onPartial,
       onIncomplete,
+      query,
     ).then((results) => {
       if (incomplete) opts?.onIncomplete?.();
       return results;
