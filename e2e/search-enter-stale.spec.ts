@@ -1,4 +1,4 @@
-import { test, expect, gotoMap } from './fixtures'
+import { test, expect, gotoMap, GEOPF_ADDRESS } from './fixtures'
 
 // Regression: the panel keeps the previous query's suggestions on screen
 // through the debounce and the request in flight, and Enter took the top row
@@ -40,7 +40,7 @@ test('Enter waits for the answer to the text on screen', async ({ page }) => {
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
   // The short query is answered at once, the full one only after a while.
-  await page.route('**/proxy/ban/**', async (route) => {
+  await page.route(GEOPF_ADDRESS, async (route) => {
     const q = new URL(route.request().url()).searchParams.get('q') ?? ''
     if (q !== 'Toulon') {
       await route.fulfill({

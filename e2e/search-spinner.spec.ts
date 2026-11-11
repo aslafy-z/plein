@@ -1,4 +1,4 @@
-import { test, expect, gotoMap } from './fixtures'
+import { test, expect, gotoMap, GEOPF_ADDRESS } from './fixtures'
 
 // The place search says it is working: a spinner sits at the right of the
 // input from the first keystroke (the debounce included) until the geocoder
@@ -29,7 +29,7 @@ test('a loading indicator spins while the place search runs', async ({ page }) =
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
   // A geocoder that takes its time — long enough for the spinner to be observable
-  await page.route('**/proxy/ban/**', async (route) => {
+  await page.route(GEOPF_ADDRESS, async (route) => {
     await new Promise((r) => setTimeout(r, 1_500))
     await route
       .fulfill({

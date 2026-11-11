@@ -1,4 +1,4 @@
-import { test, expect, gotoMap, phoneOnly, desktopOnly } from './fixtures'
+import { test, expect, gotoMap, phoneOnly, desktopOnly, GEOPF_ADDRESS, GEOPF_POI } from './fixtures'
 
 // The place search used to show whatever fitted, capped at a handful of rows.
 // Geocoders return a dozen candidates: the panel keeps them all behind a
@@ -44,7 +44,7 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/brands-fr.json', (route) =>
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
-  await page.route('**/proxy/ban/**', (route) =>
+  await page.route(GEOPF_ADDRESS, (route) =>
     route.fulfill({ json: { type: 'FeatureCollection', features: BAN_FEATURES } }),
   )
 })
@@ -116,7 +116,7 @@ test.describe('phone', () => {
   })
 
   test('an unmatched search says so instead of showing a blank screen', async ({ page }) => {
-    await page.route('**/proxy/ban/**', (route) =>
+    await page.route(GEOPF_ADDRESS, (route) =>
       route.fulfill({ json: { type: 'FeatureCollection', features: [] } }),
     )
     await gotoMap(page)
@@ -173,7 +173,7 @@ test('the suggestion list ranks localities first', async ({ page }) => {
 // The BAN only knows addresses: a railway station or an airport comes from
 // the IGN's point-of-interest index, merged into the same list.
 test('a point of interest ranks between the town and its streets', async ({ page }) => {
-  await page.route('**/proxy/geopf/**', (route) =>
+  await page.route(GEOPF_POI, (route) =>
     route.fulfill({
       json: {
         type: 'FeatureCollection',

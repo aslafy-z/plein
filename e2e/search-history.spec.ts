@@ -1,4 +1,4 @@
-import { test, expect, gotoMap } from './fixtures'
+import { test, expect, gotoMap, GEOPF_ADDRESS } from './fixtures'
 
 // Fuel searches repeat: the map's place search remembers where it has been
 // sent. Opening it offers the history before a single key is pressed, and
@@ -40,7 +40,7 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/brands-fr.json', (route) =>
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
-  await page.route('**/proxy/ban/**', (route) =>
+  await page.route(GEOPF_ADDRESS, (route) =>
     route.fulfill({
       json: {
         type: 'FeatureCollection',
