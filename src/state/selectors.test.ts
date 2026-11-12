@@ -1100,6 +1100,57 @@ describe('selectRouteAnalysis', () => {
     expect(offered('detour')).toEqual(['onroute-a', 'onroute-b', 'onroute-c', 'onroute-d'])
   })
 
+  it('offers the best pump of each place, not several pumps of one town', () => {
+    // Three good prices packed at the departure, then one fair pump per town
+    // down the road. Ranked alone, the departure trio takes three of the four
+    // rows and the road past KM 3 gets a single mention.
+    const wide: RouteStation[] = [
+      corridorStation('town-best', 1.6, 2, 0),
+      corridorStation('town-second', 1.61, 3, 0),
+      corridorStation('town-third', 1.62, 4, 0),
+      corridorStation('mid-a', 1.7, 60, 0),
+      corridorStation('mid-b', 1.72, 110, 0),
+      corridorStation('last-before-arrival', 1.75, 200, 0),
+    ]
+    const a = selectRouteAnalysis(routeApp({ routeMode: 'price', routeState: readyState(wide) }))
+
+    expect(a.alternatives.map((s) => s.id)).toEqual([
+      'town-best',
+      'mid-a',
+      'mid-b',
+      'last-before-arrival',
+    ])
+    // The pumps the list has no row for are still handed over, best first —
+    // the route map draws them as dots
+    expect(a.otherCandidates.map((s) => s.id)).toEqual(['town-second', 'town-third'])
+  })
+
+  it('fills the list from the ranking when the road holds fewer places than rows', () => {
+    const wide: RouteStation[] = [
+      corridorStation('town-best', 1.6, 2, 0),
+      corridorStation('town-second', 1.61, 3, 0),
+      corridorStation('town-third', 1.62, 4, 0),
+      corridorStation('elsewhere', 1.7, 120, 0),
+    ]
+    const a = selectRouteAnalysis(routeApp({ routeMode: 'price', routeState: readyState(wide) }))
+
+    // Two places only: a short list would hide two real options
+    expect(a.alternatives.map((s) => s.id)).toEqual([
+      'town-best',
+      'town-second',
+      'town-third',
+      'elsewhere',
+    ])
+    expect(a.otherCandidates).toEqual([])
+  })
+
+  it('never lists a plan stop among the other candidates', () => {
+    const a = selectRouteAnalysis(routeApp({ startTankPct: 10, routeMode: 'price' }))
+    const planIds = a.planStops.map((p) => p.station.id)
+    expect(planIds.length).toBeGreaterThan(0)
+    for (const s of [...a.alternatives, ...a.otherCandidates]) expect(planIds).not.toContain(s.id)
+  })
+
   it('ranks alternatives on the strategy alone, not on the departure tank reach', () => {
     // A low tank makes only the first stations reachable without stopping, and
     // they are the WORST of the corridor here: two pumps far off the road at
