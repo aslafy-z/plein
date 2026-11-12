@@ -1,8 +1,9 @@
 import { useApp } from '../state/store';
-import { C, ctaStyle, mono } from '../theme';
+import { C, ctaStyle, display, mono } from '../theme';
 import { useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
 import { LogoLockup } from '../components/Logo';
+import { userDotHtml } from '../lib/userDot';
 
 export default function Onboarding() {
   const app = useApp();
@@ -40,7 +41,7 @@ export default function Onboarding() {
       {/* Logo row — « 2a Goutte-repère ». The screen is the app's one
           first-impression moment, so it gets the one choreographed entrance
           (enter-up + --stagger, styles.css): logo → headline → intro →
-          steps → actions, whole sequence done under 800ms. Every other
+          steps → actions, every element settled within ~0.9s. Every other
           screen mounts instantly on purpose. */}
       <div className="enter-up" style={{ ['--stagger' as string]: '0ms' }}>
         <LogoLockup />
@@ -50,15 +51,15 @@ export default function Onboarding() {
       <div
         className="enter-up"
         style={{
+          // The display treatment (theme.ts) — this headline is where the
+          // app first learned that Archivo at 36/800 needs tighter tracking
+          // than the body, and the helper now carries that for every title
+          ...display(36),
           marginTop: 40,
-          fontSize: 36,
-          lineHeight: 1.1,
-          fontWeight: 800,
-          color: C.ink,
-          // Display-size tracking: Archivo at 36/800 needs to be set tighter
-          // than the body or it reads as inflated body text
-          letterSpacing: '-.025em',
-          ['--stagger' as string]: '60ms',
+          // The browser evens the headline's lines out rather than stranding
+          // an orphan word (ignored where unsupported)
+          textWrap: 'balance',
+          ['--stagger' as string]: '90ms',
         }}
       >
         {m.onboarding_headline()}
@@ -74,7 +75,7 @@ export default function Onboarding() {
           // card is already a narrow column, and 300px inside it left the
           // intro wrapping three times under a headline twice as wide
           maxWidth: desktop ? undefined : 300,
-          ['--stagger' as string]: '120ms',
+          ['--stagger' as string]: '180ms',
         }}
       >
         {m.onboarding_intro()}
@@ -88,7 +89,7 @@ export default function Onboarding() {
           display: 'flex',
           flexDirection: 'column',
           gap: 20,
-          ['--stagger' as string]: '180ms',
+          ['--stagger' as string]: '270ms',
         }}
       >
         {steps.map((s) => (
@@ -106,7 +107,7 @@ export default function Onboarding() {
       <div
         className="enter-up"
         style={{
-          ['--stagger' as string]: '260ms',
+          ['--stagger' as string]: '380ms',
           // Pushed to the bottom edge on a phone; part of the centered card
           // on a window, where `auto` would strand it a screen further down
           marginTop: desktop ? 34 : 'auto',
@@ -127,22 +128,16 @@ export default function Onboarding() {
             gap: 12,
           }}
         >
-          <div
-            style={{
-              width: 30,
-              height: 30,
-              borderRadius: '50%',
-              background: C.accentSoft,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <div
-              style={{ width: 10, height: 10, borderRadius: '50%', border: `2.5px solid ${C.accent}` }}
-            />
-          </div>
+          {/* The very dot the map will draw on the user (lib/userDot), halo
+              wave included: the row asks for the position, so it shows what
+              granting it puts on screen. The markup comes from the one
+              builder both maps use — a trusted string of theme tokens, no
+              user data — so the three can never drift apart. */}
+          <span
+            aria-hidden
+            style={{ display: 'flex', flexShrink: 0 }}
+            dangerouslySetInnerHTML={{ __html: userDotHtml() }}
+          />
           <div style={{ flex: 1, fontSize: 12.5, lineHeight: 1.4, color: C.mut }}>
             <strong style={{ color: C.ink }}>{m.onboarding_location_title()}</strong> —{' '}
             {m.onboarding_location_body()}

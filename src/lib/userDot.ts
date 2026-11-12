@@ -1,5 +1,6 @@
 // The « you are here » dot both maps drop on the user's position — the zone
-// map (MapCanvas) and the route map (RouteMap). One markup builder for the
+// map (MapCanvas) and the route map (RouteMap) — and the onboarding shows
+// beside its location row, as a preview of it. One markup builder for the
 // same reason lib/pricePin has one: the two maps read as a single map across
 // tabs, and a dot that drifted in size or color between them would read as
 // two different things. Pure string builder: the callers wrap the HTML in an
