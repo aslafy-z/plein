@@ -1137,18 +1137,42 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* Application */}
-        {app.installReady && (
-          <div style={{ marginTop: 18 }}>
-            <div style={SECTION_LABEL}>{m.settings_app_section()}</div>
-            <div
+        {/* Application — the What's new log is always there; installing
+            only while the browser can actually offer it */}
+        <div style={{ marginTop: 18 }}>
+          <div style={SECTION_LABEL}>{m.settings_app_section()}</div>
+          <div
+            style={{
+              background: C.surface,
+              border: `1px solid ${C.border}`,
+              borderRadius: 16,
+              overflow: 'hidden',
+            }}
+          >
+            <button
+              onClick={() => app.setWhatsNewOpen('all')}
               style={{
-                background: C.surface,
-                border: `1px solid ${C.border}`,
-                borderRadius: 16,
-                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: '14px 16px',
+                cursor: 'pointer',
+                width: '100%',
+                textAlign: 'left',
+                borderBottom: app.installReady ? `1px solid ${C.divider}` : undefined,
               }}
             >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>
+                  {m.settings_whatsnew_title()}
+                </div>
+                <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>
+                  {m.settings_whatsnew_sub()}
+                </div>
+              </div>
+              <span style={{ color: C.faint }}>›</span>
+            </button>
+            {app.installReady && (
               <button
                 onClick={() => app.promptInstall()}
                 style={{
@@ -1171,9 +1195,9 @@ export default function Settings() {
                 </div>
                 <span style={{ color: C.accent, fontWeight: 700 }}>›</span>
               </button>
-            </div>
+            )}
           </div>
-        )}
+        </div>
 
         {/* Footer — credits, kept compact */}
         <div

@@ -71,7 +71,7 @@ The debug overlay and the cache diagnostics are the exemption: developer tooling
 
 ## Sending a change
 
-Branch, commit, open a pull request — **early**. CI runs typecheck, unit tests and the Playwright suite on every PR (a branch push alone triggers nothing), so a PR opened as soon as the change compiles and carries its tests gets the full verification running alongside the rest of your work instead of at the end. Keep pushing to the same PR. Each push also deploys a preview on Cloudflare Workers and comments its URL. Merging does not release: `main` lands on staging, and a maintainer promotes a commit to production from Actions → Deploy → Run workflow.
+Branch, commit, open a pull request — **early**. CI runs typecheck, unit tests and the Playwright suite on every PR (a branch push alone triggers nothing), so a PR opened as soon as the change compiles and carries its tests gets the full verification running alongside the rest of your work instead of at the end. Keep pushing to the same PR. Each push also deploys a preview on Cloudflare Workers and comments its URL. Merging does not release: `main` lands on staging, and a maintainer promotes a commit to production from Actions → Deploy → Run workflow (ticking `silent` when the release has nothing to announce in What's new).
 
 `npm run typecheck` and `npm test` are cheap locally and worth running as you go; `npm run e2e` is worth it before asking for a review.
 
@@ -85,6 +85,7 @@ Two things that are easy to forget:
 ## Adding things
 
 - **A data source**: implement the `StationsProvider` / `GeocodeProvider` / `RouteProvider` interfaces and register it in `src/data/providers.ts`.
+- **A What's new entry**: only for a change users would notice (a performance pass or an invisible fix gets none). Add an entry at the top of `CHANGELOG` in `src/lib/changelog.ts` (id `YYYY-MM-DD`, at most four one-sentence bullets, `details: releaseNotesUrl(id)`) and its `changelog_<id>_*` copy in all five catalogs. Returning users see a small sparkle on the map the next time they open the app, and read it when they choose to. Promoting to production publishes the entry as the `release-<id>` GitHub Release, the page its ↗ button opens; a promotion with no new entry has to be marked `silent`.
 - **A locale**: add it to `project.inlang/settings.json`, add `messages/<locale>.json`, add its name to `localeName()` in `Settings.tsx`, add `README.<locale>.md` and its entry in every README's language-switcher line.
 
 ## License

@@ -199,6 +199,62 @@ width, never pointer type: a window gets resized and the layout has to follow.
   the geolocation notice and the app version — permanent chrome, so it never
   covers the map it is offering to install.
 
+## What's new: a hand-written log, one entry per release worth announcing
+
+`src/lib/changelog.ts` holds `CHANGELOG`, newest first: the one place users
+are told what changed. Nothing is derived from commits or deploys. An entry
+exists because someone wrote it, and **only a release users would notice gets
+one**: a performance pass, a refactor or an invisible fix ships silently, with
+no entry and no sparkle. Write it in the PR that makes the change, or in one
+that groups a few before the next promotion.
+
+- **Short by rule**: a title and at most `MAX_ITEMS` (4) one-sentence bullets,
+  the news rather than the inventory; `changelog.test.ts` caps the length in
+  every locale. The long version is the entry's `details` link,
+  `releaseNotesUrl(id)`: the GitHub Release its promotion publishes, which the
+  sheet opens from a round ↗ `ActionPill` on the entry's date line.
+- **Production promotion enforces it** (`deploy-production` in
+  `.github/workflows/deploy.yml`, through `scripts/whats-new-release.mjs`,
+  which reads the log as text before any build). The newest entry at the
+  promoted commit, if newer than the last `release-<id>` tag, is this
+  release's news: after the deploy the job publishes the `release-<id>` tag
+  and a GitHub Release whose body is the entry's English copy over the
+  generated list of PRs merged since the previous one. With no new entry the
+  run stops unless the `silent` input is ticked; ticking it over an unreleased
+  entry stops it too, since the build would show that entry anyway. A rollback
+  is a silent promotion.
+- An entry is an id (`YYYY-MM-DD`, a `.2` suffix for a second one that day —
+  it is both the shown date and what the « seen » mark compares) plus catalog
+  keys: `changelog_<id>_title` and one `changelog_<id>_item_<what>` per
+  bullet, each a whole sentence, in all five catalogs. Never edit a shipped
+  id: users' « seen » marks and its release tag are named after it.
+- `changelogSeen` in `plein.settings.v1` is the newest id the user was shown.
+  Onboarding stamps it (a newcomer is never told about the app they just
+  met); a blob without it predates the log and gets the latest entry only;
+  `unseenChangelog()` caps a long absence at `MAX_ANNOUNCED`.
+- **Never pushed at the user.** The app is opened at the pump or behind the
+  wheel, so unread news is a quiet signal only: `WhatsNewButton`, a small
+  sparkle at the far end of the map's top controls (the phone's chip row,
+  the desktop overlay row's right corner) that wiggles briefly every few
+  seconds (`.whatsnew-wiggle`, off under reduced motion — the unread dot
+  stays). No bar, no dialog on boot. It appears once the new build runs —
+  the update bar's reload or any later cold start — and a tap opens
+  `WhatsNewSheet` (phone `ModalSheet`, desktop centered glass card), which
+  marks the log seen and removes the sparkle. Being open is nav state
+  (`whatsNewOpen`), so Back closes it.
+- **The log is a history, not a headline.** `whatsNewOpen` is a
+  `WhatsNewView`: from the sparkle it is `'unread'` — the news this session
+  announced leads (no « New » badge: the title already says it), and every
+  earlier entry waits behind « See earlier changes », unrolled in place;
+  from Settings › App › « What's new » it is `'all'`, the whole history
+  open. `splitChangelog()`
+  is the one rule (an `'unread'` view with nothing announced falls back to
+  the whole history rather than an empty sheet). The August 2026 entries
+  were backfilled from the merge history.
+- e2e: `BASE_SEED` marks the log read (`changelogSeen: '9999-12-31'`) so the
+  sparkle never shifts another spec's layout; `whats-new.spec.ts` drops it with
+  `changelogSeen: null`.
+
 ## Route: three stages, committed as they land
 
 A route is not one async call. `src/state/routePipeline.ts` is a pure state
@@ -321,6 +377,9 @@ npm run build       # tsc + vite build
   `main`; an older commit is a rollback). The job rebuilds that commit and
   refuses one that is not on `main`. Never run `npm run deploy` or dispatch
   that workflow unless the user asked for a production release.
+- **Each promotion announces something or says it does not**: a new What's
+  new entry is published as the `release-<id>` GitHub Release, and a
+  promotion with none needs `silent` ticked (see « What's new » above).
 
 ## Push first: CI runs the tests inline
 

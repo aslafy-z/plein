@@ -15,6 +15,7 @@ import Toast from './components/Toast';
 import FallbackBanner from './components/FallbackBanner';
 import InstallPrompt from './components/InstallPrompt';
 import UpdatePrompt from './components/UpdatePrompt';
+import WhatsNewSheet from './components/WhatsNewSheet';
 
 // Developer chrome behind its own chunk: a normal session (flag off) never
 // downloads a byte of it. The flag is session-scoped — see lib/debugMode.
@@ -72,6 +73,7 @@ export default function App() {
           {screen === 'detail' && !desktop && <StationDetail />}
         </div>
         {app.filtersOpen && <FiltersSheet />}
+        {app.whatsNewOpen && <WhatsNewSheet />}
         <Toast />
         {/* Portalled to <body> by the component — position in the tree only
             decides when it mounts */}
