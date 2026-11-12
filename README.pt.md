@@ -29,6 +29,7 @@ Quer ver o que vem a seguir? [staging-plein.zadkiel.workers.dev](https://staging
   <img src="docs/screenshots/pt/trip.png" width="23%" alt="Trajeto Lisboa → Porto no mapa, com os postos e os seus preços ao longo do caminho" title="O seu trajeto no mapa" />
   <img src="docs/screenshots/pt/route.png" width="23%" alt="Comparação de postos num trajeto Lisboa → Porto" title="No seu trajeto" />
 </p>
+<p align="center"><sub>Capturas no tema escuro. Também há um tema claro, e a cor de destaque escolhe-se em Definições › Aparência.</sub></p>
 
 </div>
 

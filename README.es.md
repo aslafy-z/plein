@@ -29,6 +29,7 @@ Portugal.
   <img src="docs/screenshots/es/trip.png" width="23%" alt="Ruta Madrid → Barcelona en el mapa, con las estaciones y sus precios a lo largo del trayecto" title="Tu ruta en el mapa" />
   <img src="docs/screenshots/es/route.png" width="23%" alt="Comparación de estaciones en una ruta Madrid → Barcelona" title="En tu ruta" />
 </p>
+<p align="center"><sub>Capturas en tema oscuro. También hay un tema claro, y el color de acento se elige en Ajustes › Apariencia.</sub></p>
 
 </div>
 

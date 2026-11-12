@@ -29,6 +29,7 @@ Envie de voir la suite ? [staging-plein.zadkiel.workers.dev](https://staging-ple
   <img src="docs/screenshots/fr/trip.png" width="23%" alt="Itinéraire Toulouse → Lille sur la carte, avec les stations et leurs prix le long du trajet" title="Votre itinéraire sur la carte" />
   <img src="docs/screenshots/fr/route.png" width="23%" alt="Comparaison des stations sur un trajet Toulouse → Lille" title="Sur votre trajet" />
 </p>
+<p align="center"><sub>Captures en thème sombre. Il existe aussi un thème clair, et la couleur d’accent se choisit dans Réglages › Apparence.</sub></p>
 
 </div>
 

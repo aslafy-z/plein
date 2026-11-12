@@ -28,6 +28,7 @@ Want what is coming next? [staging-plein.zadkiel.workers.dev](https://staging-pl
   <img src="docs/screenshots/en/trip.png" width="23%" alt="Toulouse → Lille route on the map, with the priced stations along it" title="Your route on the map" />
   <img src="docs/screenshots/en/route.png" width="23%" alt="Station comparison on a Toulouse → Lille route" title="Along your route" />
 </p>
+<p align="center"><sub>Shown in the dark theme. There is a light theme too, and the accent color is yours to pick in Settings › Appearance.</sub></p>
 
 </div>
 

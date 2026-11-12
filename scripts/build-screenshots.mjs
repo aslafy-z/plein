@@ -1,7 +1,8 @@
 // Regenerates docs/screenshots/<locale>/*.png — the screenshots the READMEs
-// embed, one set per app locale (en, fr, es, ca, pt), each image a diagonal
-// light/dark split (light upper-left, dark lower-right) so one picture shows
-// both themes.
+// embed, one set per app locale (en, fr, es, ca, pt), all in the dark theme:
+// at README size, a screen split between both themes is unreadable on either
+// side. A line under the images says the light theme and the accent colors
+// exist.
 //
 // The shots are taken against the LIVE sources (`sourceId: 'auto'`), not the
 // deterministic demo dataset: real prices, real station names and a real OSRM
@@ -13,10 +14,8 @@
 // The UI language is seeded through the persisted `locale` setting (the same
 // switch the Settings screen writes), and every selector string comes from
 // that locale's message catalog — messages/<locale>.json is the single source
-// of truth for what the screen says. Each screen is shot twice, dark then
-// light, by flipping the emulated `prefers-color-scheme` (the app's theme
-// default follows the browser), and the two frames are composited along a
-// diagonal.
+// of truth for what the screen says. The dark theme comes from the emulated
+// `prefers-color-scheme` (the app's theme default follows the browser).
 //
 // The viewport is 480×1064 at DPR 3 (1440×3192), which the READMEs display
 // four abreast, each at 23% of the page width — a row of images rather than a
@@ -194,34 +193,11 @@ async function setTheme(page, scheme) {
   await page.waitForTimeout(2000);
 }
 
-/**
- * Screenshots the page in both themes and composites them along a diagonal:
- * light keeps the upper-left, dark the lower-right, with a hairline divider.
- * The PNG is re-encoded losslessly on the way out.
- */
+/** Screenshots the page in the dark theme, re-encoding the PNG losslessly. */
 async function shoot(page, locale, name) {
-  await setTheme(page, 'light');
-  const light = await page.screenshot();
   await setTheme(page, 'dark');
-  const dark = await page.screenshot();
-
-  const { width: W, height: H } = await sharp(light).metadata();
-  // The split line runs through the center, leaning right: from 62% of the
-  // width at the top edge down to 38% at the bottom, so every UI region
-  // (header, map, sheet) shows up once per theme.
-  const xTop = Math.round(W * 0.62);
-  const xBottom = Math.round(W * 0.38);
-  const darkSide = Buffer.from(
-    `<svg width="${W}" height="${H}"><polygon points="${xTop},0 ${W},0 ${W},${H} ${xBottom},${H}" fill="#fff"/></svg>`,
-  );
-  const divider = Buffer.from(
-    `<svg width="${W}" height="${H}"><line x1="${xTop}" y1="0" x2="${xBottom}" y2="${H}" stroke="rgba(127,127,127,0.9)" stroke-width="6"/></svg>`,
-  );
-  const darkMasked = await sharp(dark).composite([{ input: darkSide, blend: 'dest-in' }]).toBuffer();
-
   const path = join(OUT, locale, `${name}.png`);
-  await sharp(light)
-    .composite([{ input: darkMasked }, { input: divider }])
+  await sharp(await page.screenshot())
     .png({ compressionLevel: 9, effort: 10 })
     .toFile(path);
   console.log(`✓ ${locale}/${name}.png`);

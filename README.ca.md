@@ -29,6 +29,7 @@ Voleu veure què ve? [staging-plein.zadkiel.workers.dev](https://staging-plein.z
   <img src="docs/screenshots/ca/trip.png" width="23%" alt="Trajecte Andorra la Vella → Barcelona al mapa, amb les estacions i els seus preus al llarg del recorregut" title="El vostre trajecte al mapa" />
   <img src="docs/screenshots/ca/route.png" width="23%" alt="Comparació d'estacions en un trajecte Andorra la Vella → Barcelona" title="Al vostre trajecte" />
 </p>
+<p align="center"><sub>Captures en tema fosc. També hi ha un tema clar, i el color d’accent es tria a Configuració › Aparença.</sub></p>
 
 </div>
 
