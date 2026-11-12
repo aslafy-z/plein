@@ -8,6 +8,9 @@
 // earlier changes », unrolled in place; from Settings the whole history is
 // open (`splitChangelog` decides which is which).
 //
+// An entry shipped by a production promotion ends on a « Details » pill: the
+// release page, for whoever wants more than the few lines the entry allows.
+//
 // Same split as the filters: the phone's drag-to-dismiss ModalSheet, and on a
 // window a glass card. Unlike the filters it is not anchored to anything it
 // corrects, so the card is centered over a dimmed stage.
@@ -18,6 +21,7 @@ import { CHANGELOG, changelogDate, splitChangelog, type ChangelogEntry } from '.
 import { calendarDateLabel } from '../lib/format';
 import { m } from '../paraglide/messages.js';
 import { C, ctaStyle, glass } from '../theme';
+import ActionPill from './ActionPill';
 import ModalSheet from './ModalSheet';
 
 export default function WhatsNewSheet() {
@@ -115,6 +119,15 @@ export default function WhatsNewSheet() {
           <li key={j}>{item()}</li>
         ))}
       </ul>
+      {e.details && (
+        // The long version: the release page of the promotion that shipped it
+        <div style={{ alignSelf: 'flex-start', marginTop: 4 }}>
+          <ActionPill
+            label={m.whatsnew_details()}
+            onClick={() => window.open(e.details, '_blank', 'noopener,noreferrer')}
+          />
+        </div>
+      )}
     </section>
   );
 

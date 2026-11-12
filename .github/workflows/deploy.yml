@@ -6,6 +6,14 @@
 #   Deploy → Run workflow, with the commit to promote in `ref` (default: the
 #   tip of main). An older commit is a rollback — same button. The commit has
 #   to be on main: what reaches production went through staging first.
+#   Each promotion either announces something or says it does not. The newest
+#   What's new entry (src/lib/changelog.ts) at the promoted commit decides:
+#   newer than the last `release-<id>` tag, it is this promotion's news, and
+#   the job publishes it as a GitHub Release under `release-<id>` (the entry's
+#   English copy over the generated list of merged PRs: the page the entry's
+#   « Details » pill opens). With no new entry the run stops, unless `silent`
+#   is ticked: a performance pass, an invisible fix or a rollback ships with no
+#   entry and no sparkle, on purpose rather than by oversight.
 # - pull requests → preview version (URL pr-<n>-plein.<subdomain>.workers.dev),
 #   posted as a PR comment.
 # - closed PRs    → their preview versions are deleted by deploy-cleanup.yml,
@@ -33,6 +41,10 @@ on:
         description: Commit to put in production — a SHA, a tag or a branch. It must be on main.
         required: true
         default: main
+      silent:
+        description: Nothing for users to read about (performance, an invisible fix, a rollback). Ship without a What's new entry.
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -94,6 +106,9 @@ jobs:
     environment:
       name: production
       url: https://plein.zadkiel.fr
+    permissions:
+      # The `release-<id>` tag and its GitHub Release
+      contents: write
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -123,6 +138,35 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      # Before the build: a promotion with nothing said about its news stops
+      # here, in seconds.
+      - name: Check the What's new entry
+        id: whatsnew
+        env:
+          SILENT: ${{ inputs.silent }}
+        run: |
+          # A commit from before the log (a deep rollback) has no entry at all
+          id=$(node scripts/whats-new-release.mjs latest 2>/dev/null || true)
+          last=$(git tag --list 'release-*' | sed 's/^release-//' | sort | tail -n 1)
+          head=$(git rev-parse HEAD)
+          if [ -n "$id" ] && { [ -z "$last" ] || [[ "$id" > "$last" ]]; }; then
+            if [ "$SILENT" = "true" ]; then
+              echo "::error::This commit carries the What's new entry $id, never released: returning users will see it. Promote it without « silent »."
+              exit 1
+            fi
+            echo "announce=true" >> "$GITHUB_OUTPUT"
+            echo "id=$id" >> "$GITHUB_OUTPUT"
+            echo "last=$last" >> "$GITHUB_OUTPUT"
+            echo "What's new: announces **$id** (\`release-$id\`)." >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$(git rev-parse --verify --quiet "refs/tags/release-$id^{commit}")" = "$head" ]; then
+            # Running again the promotion that already shipped this entry
+            echo "What's new: **$id** was released by this very commit, nothing new to publish." >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$SILENT" = "true" ]; then
+            echo "What's new: silent release, nothing announced." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::error::No new What's new entry${last:+ since release-$last}. Add one to src/lib/changelog.ts if users will notice the change; otherwise run again with « silent » ticked (performance, an invisible fix, a rollback)."
+            exit 1
+          fi
       - run: npm ci
       - run: npm run build
       - name: Deploy to production
@@ -131,6 +175,27 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
+      # After the deploy, so a failed one publishes nothing. A failure here
+      # leaves production up and no tag behind: running the promotion again
+      # redeploys the same build and publishes the release.
+      - name: Publish the release notes
+        if: steps.whatsnew.outputs.announce == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ID: ${{ steps.whatsnew.outputs.id }}
+          LAST: ${{ steps.whatsnew.outputs.last }}
+        run: |
+          node scripts/whats-new-release.mjs notes "$ID" > "$RUNNER_TEMP/notes.md"
+          # The entry's copy first, then every PR merged since the last release
+          gh release create "release-$ID" \
+            --target "$(git rev-parse HEAD)" \
+            --title "$ID" \
+            --notes-file "$RUNNER_TEMP/notes.md" \
+            --generate-notes \
+            ${LAST:+--notes-start-tag "release-$LAST"} \
+            --latest
+          echo "Release: $GITHUB_SERVER_URL/$GH_REPO/releases/tag/release-$ID" >> "$GITHUB_STEP_SUMMARY"
 
   deploy-preview:
     # Forked PRs don't get secrets — only same-repo PRs deploy a preview.
