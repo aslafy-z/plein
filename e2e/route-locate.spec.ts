@@ -40,9 +40,9 @@ test('the route map shows where the user is, and takes the view back to them', a
   const recenter = page.getByTestId('route-recenter')
   await expect(recenter).toBeVisible()
 
-  // The « you are here » dot — its halo is the one thing on either map wearing
-  // the soft accent (the endpoint markers are the flat accent / warn)
-  await expect(page.locator('.leaflet-marker-icon div[style*="--c-accent-soft-15"]')).toBeVisible()
+  // The « you are here » dot, by the class both maps put on it for exactly
+  // this (USER_DOT_CLASS) — its halo tone is a styling detail that moves
+  await expect(page.locator('.leaflet-marker-icon.user-dot')).toBeVisible()
 
   // The setup framing is the search area's, which is the user's position until
   // they search elsewhere: the view sits on them and the control says so
