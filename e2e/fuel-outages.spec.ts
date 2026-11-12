@@ -27,19 +27,30 @@ async function mockFlux(page: import('@playwright/test').Page, records: (lat: nu
   await page.route('**/proxy/osrm/**', (route) => route.abort())
 }
 
+// A RECENT outage, so relative to the run: a station dry of everything for
+// over a week is dormant and no longer counted as a shortage (`dormantSince`),
+// which is what a fixed date turned these stations into a week after it was
+// written. The flux's own shape is kept — a wall clock labelled UTC.
+const TWO_DAYS_AGO = new Date(Date.now() - 2 * 24 * 3600_000).toISOString().slice(0, 19) + '+00:00'
+
 const dry = (id: string, ville: string, lat: number, lng: number, extra: Rec = {}): Rec => ({
   id,
   ville,
   adresse: '1 rue du Test',
   geom: { lat, lon: lng },
   gazole_rupture_type: 'temporaire',
-  gazole_rupture_debut: '2026-11-03T17:44:31+00:00',
+  gazole_rupture_debut: TWO_DAYS_AGO,
   ...extra,
 })
 
 test('the fiche says a dry pump is out of stock, not « not sold here »', async ({ page }) => {
   await mockFlux(page, (lat, lng) => [
-    dry('31000020', 'Dryville', lat + 0.008, lng, { e85_prix: '0.899' }),
+    // A fixed start, for the date the fiche prints — this one still sells
+    // E85, so it never turns dormant however old the outage gets
+    dry('31000020', 'Dryville', lat + 0.008, lng, {
+      e85_prix: '0.899',
+      gazole_rupture_debut: '2026-11-03T17:44:31+00:00',
+    }),
     { id: '31000021', ville: 'Wetville', geom: { lat: lat - 0.01, lon: lng }, gazole_prix: '1.985' },
   ])
   await page.goto('/station/fr-31000020')
