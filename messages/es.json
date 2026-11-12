@@ -155,6 +155,8 @@
   "map_zoom_out": "Alejar",
   "map_my_position": "Mi posición",
   "map_route_aria": "Mapa de la ruta",
+  "map_route_loading_geometry": "Calculando la ruta…",
+  "map_route_loading_stations": "Buscando gasolineras en la ruta…",
   "map_close_list": "Cerrar la lista",
   "search_open_aria": "Buscar un lugar",
   "search_prompt": "Busca un lugar o una ruta…",

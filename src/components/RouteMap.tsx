@@ -446,9 +446,64 @@ export default function RouteMap({
   // (MapCanvas): the app's spinner in place of the crosshair, and aria-busy.
   const locating = app.geoLocating;
 
+  // The map tab's loading pill, on this map's two waits: the route itself,
+  // then the stations along it. Only for the trip the screen is showing —
+  // the form (setup, or an endpoint edited over a result) has nothing in
+  // flight to report. A recompute keeps the previous trip drawn, so the pill
+  // is what says a new one is on its way. The sentences are already announced
+  // stage by stage through RouteScreen's live region: the pill is visual only.
+  const showingTrip = app.screen !== 'routeSetup' && app.routeReady;
+  const loadingLabel = !showingTrip
+    ? null
+    : app.routeState.geometry === 'loading'
+      ? m.map_route_loading_geometry()
+      : app.routeState.corridor === 'loading'
+        ? m.map_route_loading_stations()
+        : null;
+
   return (
     <div aria-label={m.map_route_aria()} style={{ position: 'absolute', inset: 0, background: C.mapBg }}>
       <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
+
+      {/* Centered in the VISIBLE map, on the bottom edge it shares with the
+          recenter control — kept clear of it on both sides so the centre
+          holds. Same glass and type as the map tab's pill (MapCanvas). */}
+      {loadingLabel && (
+        <div
+          aria-hidden
+          data-testid="route-map-loading"
+          style={{
+            position: 'absolute',
+            left: leftInset + 66,
+            right: 66,
+            bottom: 26 + bottomInset,
+            transition: 'bottom var(--dur-shift) var(--ease-in-out)',
+            minHeight: 44,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            pointerEvents: 'none',
+          }}
+        >
+          <span
+            style={{
+              background: C.glassBgSoft,
+              ...glassBlur(12),
+              border: `1px solid ${C.glassBorder}`,
+              color: C.body,
+              fontSize: 12.5,
+              fontWeight: 600,
+              padding: '8px 16px',
+              borderRadius: 18,
+              boxShadow: `inset 0 1px 0 ${C.glassEdge}, 0 8px 24px ${C.shadow50}`,
+              textAlign: 'center',
+            }}
+          >
+            {loadingLabel}
+          </span>
+        </div>
+      )}
 
       {/* Same glass circle, same corner and same picto as the map tab's — it
           rides the map's bottom edge, so it slides up with the sheet. This map
