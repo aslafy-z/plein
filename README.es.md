@@ -101,6 +101,7 @@ geocodificación — que la app elige según la zona mostrada (fuente
 | --- | --- | --- |
 | Precios de carburantes, horarios y rótulos | [Precios de carburantes](https://geoportalgasolineras.es) (sedeaplicaciones.minetur.gob.es, MITECO) — el rótulo lo aporta el flujo | Datos abiertos |
 | Geocodificación y autocompletado | [CartoCiudad](https://www.cartociudad.es) (IGN) | CC BY 4.0 |
+| Geocodificación de respaldo, cuando CartoCiudad no responde | [Photon](https://photon.komoot.io), limitado a la España peninsular y Baleares | ODbL |
 
 ### 🇦🇩 Andorra
 
@@ -108,6 +109,7 @@ geocodificación — que la app elige según la zona mostrada (fuente
 | --- | --- | --- |
 | Precios de carburantes y marcas | [Preus dels carburants](https://sig.govern.ad/IPE/PreusCarburants) (sig.govern.ad, Govern d'Andorra — Oficina de l'Energia i del Canvi Climàtic) — la marca se deduce del nombre de la estación; el flujo no incluye ni dirección ni horarios | © Govern d'Andorra |
 | Geocodificación y autocompletado | Nomenclàtor (nomenclátor oficial) & LocatorIDE (sig.govern.ad, IDE Andorra) | © Govern d'Andorra |
+| Geocodificación de respaldo, cuando los localizadores de la IDE no responden | [Photon](https://photon.komoot.io), limitado a Andorra | ODbL |
 
 ### 🇵🇹 Portugal
 

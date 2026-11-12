@@ -29,7 +29,13 @@ import { CartoCiudadGeocodeProvider } from '../es/CartoCiudadGeocodeProvider';
 import { AdStationsProvider, adCoversAlong, adCoversNear } from '../ad/AdStationsProvider';
 import { AdGeocodeProvider } from '../ad/AdGeocodeProvider';
 import { PtStationsProvider, ptCoversAlong, ptCoversNear } from '../pt/PtStationsProvider';
-import { PHOTON_FRANCE, PhotonGeocodeProvider } from '../pt/PhotonGeocodeProvider';
+import {
+  PHOTON_ANDORRA,
+  PHOTON_FRANCE,
+  PHOTON_SPAIN,
+  PhotonGeocodeProvider,
+} from '../pt/PhotonGeocodeProvider';
+import { BackedUpGeocodeProvider } from '../geocodeBackup';
 import { mergeByKind } from '../geocodeRank';
 
 // ── French flux coverage ─────────────────────────────────────────────────────
@@ -298,6 +304,22 @@ export class FrGeocodeProvider implements GeocodeProvider {
   }
 }
 
+/** Spain: CartoCiudad, and Photon when it does not answer */
+export function esGeocodeProvider(): GeocodeProvider {
+  return new BackedUpGeocodeProvider(
+    new CartoCiudadGeocodeProvider(),
+    new PhotonGeocodeProvider(PHOTON_SPAIN),
+  );
+}
+
+/** Andorra: the Govern's locators, and Photon when they do not answer */
+export function adGeocodeProvider(): GeocodeProvider {
+  return new BackedUpGeocodeProvider(
+    new AdGeocodeProvider(),
+    new PhotonGeocodeProvider(PHOTON_ANDORRA),
+  );
+}
+
 export class AutoGeocodeProvider extends MergedGeocodeProvider {
   constructor() {
     // Inside one kind the countries interleave in the order given here —
@@ -305,9 +327,9 @@ export class AutoGeocodeProvider extends MergedGeocodeProvider {
     // own.
     super([
       { country: 'fr', provider: new FrGeocodeProvider() },
-      { country: 'ad', provider: new AdGeocodeProvider() },
+      { country: 'ad', provider: adGeocodeProvider() },
       { country: 'pt', provider: new PhotonGeocodeProvider() },
-      { country: 'es', provider: new CartoCiudadGeocodeProvider() },
+      { country: 'es', provider: esGeocodeProvider() },
     ]);
   }
 }

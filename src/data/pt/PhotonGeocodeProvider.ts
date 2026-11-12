@@ -1,9 +1,10 @@
 // Photon (photon.komoot.io), the autocomplete front end to OpenStreetMap data,
 // on the public FOSS instance the app already leans on for routing (OSRM /
-// Valhalla). It is Portugal's geocoder, and France's backup: the app asks it
-// for French addresses only when the Géoplateforme does not answer
-// (`FrGeocodeProvider`), so an outage of the national service does not leave
-// the French search empty.
+// Valhalla). It is Portugal's geocoder, and the backup of the three other
+// countries: the app asks it for French, Spanish or Andorran places only when
+// that country's own service does not answer (`FrGeocodeProvider`,
+// `BackedUpGeocodeProvider`), so an outage of a national service does not
+// leave its country out of the search.
 //
 // Portugal publishes no keyless address geocoder: the DGT serves downloadable
 // datasets rather than a search API, and geoapi.pt — the open platform over
@@ -49,6 +50,25 @@ export const PHOTON_PORTUGAL: PhotonArea = {
   bbox: '-9.6,36.9,-6.1,42.2',
   countryCode: 'PT',
   country: 'pt',
+  communeInContext: false,
+};
+
+/**
+ * Mainland Spain and the Balearics. The Canaries are left out: one box cannot
+ * reach them without taking in Portugal and Morocco, whose hits would fill
+ * the page before the country filter drops them.
+ */
+export const PHOTON_SPAIN: PhotonArea = {
+  bbox: '-9.4,35.9,4.4,43.9',
+  countryCode: 'ES',
+  communeInContext: true,
+};
+
+/** Andorra — the context is the parish, and the view names the country */
+export const PHOTON_ANDORRA: PhotonArea = {
+  bbox: '1.40,42.42,1.79,42.66',
+  countryCode: 'AD',
+  country: 'ad',
   communeInContext: false,
 };
 

@@ -100,6 +100,7 @@ l'app choisit selon la zone affichée (source *Automatique*). Le reste
 | --- | --- | --- |
 | Prix des carburants, horaires & enseignes | [Precios de carburantes](https://geoportalgasolineras.es) (sedeaplicaciones.minetur.gob.es, MITECO) — l'enseigne (*rótulo*) est portée par le flux | Datos abiertos |
 | Géocodage & autocomplétion | [CartoCiudad](https://www.cartociudad.es) (IGN) | CC BY 4.0 |
+| Géocodage de secours, quand CartoCiudad ne répond pas | [Photon](https://photon.komoot.io), borné à l'Espagne continentale et aux Baléares | ODbL |
 
 ### 🇦🇩 Andorre
 
@@ -107,6 +108,7 @@ l'app choisit selon la zone affichée (source *Automatique*). Le reste
 | --- | --- | --- |
 | Prix des carburants & enseignes | [Preus dels carburants](https://sig.govern.ad/IPE/PreusCarburants) (sig.govern.ad, Govern d'Andorra — Oficina de l'Energia i del Canvi Climàtic) — l'enseigne est déduite du nom de la station ; le flux ne porte ni adresse ni horaires | © Govern d'Andorra |
 | Géocodage & autocomplétion | Nomenclàtor (gazetteer officiel) & LocatorIDE (sig.govern.ad, IDE Andorra) | © Govern d'Andorra |
+| Géocodage de secours, quand les localisateurs de l'IDE ne répondent pas | [Photon](https://photon.komoot.io), borné à l'Andorre | ODbL |
 
 ### 🇵🇹 Portugal
 

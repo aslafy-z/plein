@@ -103,6 +103,7 @@ Cada país cobert té els seus propis fluxos oficials — preus i geocodificaci�
 | --- | --- | --- |
 | Preus dels carburants, horaris i marques | [Precios de carburantes](https://geoportalgasolineras.es) (sedeaplicaciones.minetur.gob.es, MITECO) — la marca (*rótulo*) l'aporta el flux | Datos abiertos |
 | Geocodificació i autocompleció | [CartoCiudad](https://www.cartociudad.es) (IGN) | CC BY 4.0 |
+| Geocodificació de reserva, quan CartoCiudad no respon | [Photon](https://photon.komoot.io), limitat a l'Espanya peninsular i les Balears | ODbL |
 
 ### 🇦🇩 Andorra
 
@@ -110,6 +111,7 @@ Cada país cobert té els seus propis fluxos oficials — preus i geocodificaci�
 | --- | --- | --- |
 | Preus dels carburants i marques | [Preus dels carburants](https://sig.govern.ad/IPE/PreusCarburants) (sig.govern.ad, Govern d'Andorra — Oficina de l'Energia i del Canvi Climàtic) — la marca es dedueix del nom de l'estació; el flux no porta ni adreça ni horaris | © Govern d'Andorra |
 | Geocodificació i autocompleció | Nomenclàtor (nomenclàtor oficial) & LocatorIDE (sig.govern.ad, IDE Andorra) | © Govern d'Andorra |
+| Geocodificació de reserva, quan els localitzadors de la IDE no responen | [Photon](https://photon.komoot.io), limitat a Andorra | ODbL |
 
 ### 🇵🇹 Portugal
 

@@ -45,8 +45,9 @@ test.beforeEach(async ({ page }) => {
 
 const DOWN = { status: 504, json: {} }
 
-/** Photon serves Portugal and France's backup off one path, told apart by bbox */
-const PHOTON_FRANCE_BBOX = 'bbox=-5.3'
+/** Photon serves Portugal and the other countries' backups off one path, told
+    apart by bbox — these are France's and Spain's */
+const BACKUP_BBOXES = ['bbox=-5.3', 'bbox=-9.4']
 const PHOTON_NICE = {
   json: {
     type: 'FeatureCollection',
@@ -124,13 +125,13 @@ test.describe('several countries', () => {
   })
 
   test('the notice names the countries that did not answer', async ({ page }) => {
-    // France down, backup included; Spain down; Andorra and Portugal answer
+    // France and Spain down, their backups included; Andorra and Portugal answer
     await page.route(GEOPF_ADDRESS, (route) => route.fulfill(DOWN))
     await page.route(GEOPF_POI, (route) => route.fulfill(DOWN))
     await page.route('**/proxy/cartociudad/**', (route) => route.fulfill(DOWN))
     await page.route('**/proxy/ad/**', (route) => route.fulfill({ json: { suggestions: [] } }))
     await page.route('**/proxy/photon/**', (route) =>
-      route.request().url().includes(PHOTON_FRANCE_BBOX)
+      BACKUP_BBOXES.some((bbox) => route.request().url().includes(bbox))
         ? route.fulfill(DOWN)
         : route.fulfill({
             json: {
