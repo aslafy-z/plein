@@ -17,6 +17,7 @@ import { type RouteStation } from '../data/types';
 import type { InfeasibleDiagnostics, RoutePlan } from '../lib/routeOptimizer';
 import ShareIcon from '../components/ShareIcon';
 import EditIcon from '../components/EditIcon';
+import ActionPill, { ActionPills, actionPillInk } from '../components/ActionPill';
 import {
   useApp,
   routeFromLabel,
@@ -31,38 +32,6 @@ import {
 } from '../state/store';
 
 const STRATEGIES: RouteMode[] = ['balanced', 'price', 'detour'];
-
-// The trip header's Share and Edit: tonal pills in the accent-bordered idiom
-// of the fiche's « View on map » — Share a round icon-only one (the picto is
-// universal, and the row must leave the eyebrow room in every locale), Edit
-// labelled. Each is drawn 34px inside a 44px button: the transparent band
-// around it is still the button, so a finger landing just off the pill hits.
-const HEADER_PILL_PX = 34;
-const HEADER_TARGET_PX = 44;
-const HEADER_TARGET_SLACK = (HEADER_TARGET_PX - HEADER_PILL_PX) / 2;
-const headerTargetStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  height: HEADER_TARGET_PX,
-  // The slack overhangs the row instead of growing it
-  margin: `-${HEADER_TARGET_SLACK}px 0`,
-  flexShrink: 0,
-  cursor: 'pointer',
-} as const;
-const headerPillStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 6,
-  height: HEADER_PILL_PX,
-  padding: '0 13px 0 11px',
-  borderRadius: HEADER_PILL_PX / 2,
-  background: C.accentSoft,
-  border: `1px solid ${C.accentBorder}`,
-  color: C.accent,
-  fontSize: 13,
-  fontWeight: 700,
-  whiteSpace: 'nowrap',
-} as const;
 
 function strategyLabel(mode: RouteMode): string {
   switch (mode) {
@@ -579,61 +548,23 @@ export default function RouteTimeline() {
           >
             {m.ribbon_header()}
           </span>
-          {/* Lifted above the trip title, which the buttons' slack
-              overhangs and would otherwise paint over — and take the taps
-              of — their lower edge. */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              // Share's negative margin already hides its side slack, so
-              // this is the drawn gap between the pills — and the slack
-              // reaching into it still stops short of Edit's box
-              gap: 8,
-              flexShrink: 0,
-              position: 'relative',
-              zIndex: 1,
-            }}
-          >
+          <ActionPills>
             {/* The URL already carries the trip, but an installed PWA has no
-                address bar to copy it from — same share path as the map view */}
-            <button
-              className="press"
+                address bar to copy it from — same share path as the map view.
+                Icon-only: a labelled pill squeezes the Catalan eyebrow. */}
+            <ActionPill
               onClick={() => app.shareRoute()}
               aria-label={m.ribbon_share_aria()}
-              title={m.ribbon_share_aria()}
-              // As wide as tall: the round pill's slack reaches sideways too
-              style={{
-                ...headerTargetStyle,
-                width: HEADER_TARGET_PX,
-                justifyContent: 'center',
-                margin: `-${HEADER_TARGET_SLACK}px`,
-              }}
-            >
-              <span
-                style={{
-                  ...headerPillStyle,
-                  width: HEADER_PILL_PX,
-                  padding: 0,
-                  justifyContent: 'center',
-                }}
-              >
-                <ShareIcon color={C.accent} size={15} />
-              </span>
-            </button>
+              icon={<ShareIcon color={actionPillInk('accent')} size={15} />}
+            />
             {/* The endpoints are editable in place above the map — this is
                 the way back to the preferences and the tank */}
-            <button
-              className="press"
+            <ActionPill
               onClick={() => app.editRoute()}
-              style={headerTargetStyle}
-            >
-              <span style={headerPillStyle}>
-                <EditIcon color={C.accent} size={14} />
-                {m.ribbon_edit()}
-              </span>
-            </button>
-          </div>
+              label={m.ribbon_edit()}
+              icon={<EditIcon color={actionPillInk('accent')} size={14} />}
+            />
+          </ActionPills>
         </div>
         <div style={{ fontSize: 22, fontWeight: 800, color: C.ink, marginTop: 4 }}>
           {fromLabel} → {arrivalPlace}

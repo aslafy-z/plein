@@ -16,6 +16,8 @@ import {
   INDEPENDENT_BRAND_ID,
   KNOWN_BRAND_GROUPS,
 } from '../lib/brandIcons';
+import CrossIcon from '../components/CrossIcon';
+import ActionPill, { ActionPills, actionPillInk } from '../components/ActionPill';
 
 // How long the radius slider may rest before its value is committed to the
 // store. Each committed step re-filters the zone, re-sorts the list and
@@ -150,23 +152,18 @@ export default function FiltersSheet() {
     <>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <span style={{ fontSize: 20, fontWeight: 800, color: C.ink, flex: 1 }}>{m.filters_title()}</span>
-        <button
-          onClick={() => app.resetFilters()}
-          style={{ fontSize: 13, fontWeight: 700, color: C.accent }}
-        >
-          {m.filters_reset()}
-        </button>
-        {/* A sheet is dismissed by its handle, a dialog by a cross */}
-        {desktop && (
-          <button
-            onClick={close}
-            aria-label={m.filters_close_aria()}
-            title={m.filters_close_aria()}
-            style={{ color: C.mut, fontSize: 16, fontWeight: 700, padding: '0 2px' }}
-          >
-            ✕
-          </button>
-        )}
+        <ActionPills>
+          <ActionPill onClick={() => app.resetFilters()} label={m.filters_reset()} />
+          {/* A sheet is dismissed by its handle, a dialog by a cross */}
+          {desktop && (
+            <ActionPill
+              tone="neutral"
+              onClick={close}
+              aria-label={m.filters_close_aria()}
+              icon={<CrossIcon color={actionPillInk('neutral')} />}
+            />
+          )}
+        </ActionPills>
       </div>
 
       {/* Fuel */}

@@ -19,6 +19,8 @@ import { stationOpenStatus } from '../lib/hours';
 import BrandAvatar from './BrandAvatar';
 import Freshness from './Freshness';
 import Star from './Star';
+import CrossIcon from './CrossIcon';
+import ActionPill, { ActionPills, actionPillInk } from './ActionPill';
 import ZoneEmpty from './ZoneEmpty';
 
 /**
@@ -93,70 +95,41 @@ export default function ZoneCard({ handle }: { handle?: ReactNode }) {
                   concatenate in French. */}
               {focused ? m.sheet_selected_station() : cardHeading}
             </span>
-            {focused && (
-              <button
-                onClick={() => app.setFocusStation(null)}
-                aria-label={m.sheet_deselect_aria()}
-                title={m.sheet_deselect_aria()}
-                // A 40px touch target around a 14px glyph. The negative margins
-                // give the box back to the layout, and it grows LEFT only (over
-                // the heading, which takes no tap) so it never overlaps the star.
-                style={{
-                  color: C.mut,
-                  fontSize: 14,
-                  fontWeight: 700,
-                  padding: '0 2px',
-                  width: 40,
-                  height: 40,
-                  margin: '-12px 0 -12px -25px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'flex-end',
-                  flexShrink: 0,
-                }}
-              >
-                ✕
-              </button>
-            )}
-            <button
-              onClick={() =>
-                app.toggleFavorite({
-                  id: shown.id,
-                  name: shown.name,
-                  init: shown.init,
-                  city: shown.city,
-                  lat: shown.lat,
-                  lng: shown.lng,
-                })
-              }
-              aria-label={
-                app.isFavorite(shown.id)
-                  ? m.sheet_remove_favorite_aria({ station: shown.name })
-                  : m.sheet_add_favorite_aria({ station: shown.name })
-              }
-              title={
-                app.isFavorite(shown.id)
-                  ? m.sheet_remove_favorite_aria({ station: shown.name })
-                  : m.sheet_add_favorite_aria({ station: shown.name })
-              }
-              // Same 40px target, centred on the star: its 20×16 footprint is
-              // unchanged, the extra 10px each side is the row's own gaps.
-              style={{
-                width: 40,
-                height: 40,
-                margin: '-12px -10px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              <Star
-                filled={app.isFavorite(shown.id)}
-                color={app.isFavorite(shown.id) ? C.accent : C.mut}
-                size={16}
+            <ActionPills>
+              {focused && (
+                <ActionPill
+                  tone="neutral"
+                  onClick={() => app.setFocusStation(null)}
+                  aria-label={m.sheet_deselect_aria()}
+                  icon={<CrossIcon color={actionPillInk('neutral')} />}
+                />
+              )}
+              <ActionPill
+                tone="neutral"
+                onClick={() =>
+                  app.toggleFavorite({
+                    id: shown.id,
+                    name: shown.name,
+                    init: shown.init,
+                    city: shown.city,
+                    lat: shown.lat,
+                    lng: shown.lng,
+                  })
+                }
+                aria-label={
+                  app.isFavorite(shown.id)
+                    ? m.sheet_remove_favorite_aria({ station: shown.name })
+                    : m.sheet_add_favorite_aria({ station: shown.name })
+                }
+                icon={
+                  <Star
+                    filled={app.isFavorite(shown.id)}
+                    color={app.isFavorite(shown.id) ? C.accent : actionPillInk('neutral')}
+                    size={16}
+                  />
+                }
               />
-            </button>
+            </ActionPills>
             <Freshness />
           </div>
 

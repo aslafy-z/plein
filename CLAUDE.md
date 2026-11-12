@@ -173,6 +173,14 @@ width, never pointer type: a window gets resized and the layout has to follow.
   fits. They also share one price-pin markup (`src/lib/pricePin.ts`).
   Mechanism is shared, policy is not: each wrapper keeps when to fit, on what
   bounds, and its own layers.
+- **A card's or sheet's secondary actions are `ActionPill`s**
+  (`src/components/ActionPill.tsx`): Share, Edit, Reset, close, deselect,
+  favorite in a header, « Settings › » at the end of a summary card. A tonal
+  34px pill (round and icon-only, or labelled) inside a 44px hit box, `accent`
+  when it acts on the content, `neutral` for the container or a toggle on it;
+  a run of them goes in `ActionPills`. Never a bare word or a bare glyph — they
+  read as text and are too small to hit. Out of scope: list-row actions and
+  controls floating over a map (the map-control idiom).
 - App-level notices (`UpdatePrompt`, `FallbackBanner`) are bars at the top of
   `.app-main`, not map controls. The install offer is a bar on the phone only
   (`InstallPrompt`); on desktop it lives in the side rail's bottom slot with
