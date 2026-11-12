@@ -14,6 +14,7 @@ import { fuelLabel, openStatusShort } from '../lib/labels';
 import { useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
 import { stationOpenStatus } from '../lib/hours';
+import { fuelOutage } from '../lib/outages';
 import { haversineKm } from '../lib/geo';
 import BrandAvatar from '../components/BrandAvatar';
 import Star from '../components/Star';
@@ -51,10 +52,13 @@ export default function FavoritesScreen() {
   const rows = app.favorites.map((f) => {
     const live = app.stations.data.find((s) => s.id === f.id);
     const held = live ? undefined : app.favoritePrices[f.id];
-    const priced = live ?? (held ? { id: f.id, prices: held.prices } : null);
+    const priced =
+      live ?? (held ? { id: f.id, prices: held.prices, outages: held.outages } : null);
     const priceInfo = priced ? effectivePrice(priced, app.fuel) : undefined;
+    // Read, and out of the selected fuel — not a price still to load
+    const outOfStock = priced != null && fuelOutage(priced, app.fuel) != null;
     const { distKm } = roadReachOf(haversineKm(app.userPos, f), app.roadReach[f.id]);
-    return { f, live, held, priceInfo, price: priceInfo?.value ?? null, distKm };
+    return { f, live, held, priceInfo, price: priceInfo?.value ?? null, outOfStock, distKm };
   });
 
   // « Recommended » ranks on the effective per-litre price: the fuel burnt on
@@ -177,7 +181,7 @@ export default function FavoritesScreen() {
               marginTop: 14,
             }}
           >
-            {favs.map(({ f, live, held, priceInfo, price, distKm }) => {
+            {favs.map(({ f, live, held, priceInfo, price, outOfStock, distKm }) => {
               const liveStatus = live ? stationOpenStatus(live) : null;
               const status = liveStatus ? openStatusShort(liveStatus) : undefined;
               // The source's own update stamp stays the thing shown; a source
@@ -223,11 +227,13 @@ export default function FavoritesScreen() {
                         {[
                           originKnown ? distLabel(distKm) : undefined,
                           status,
-                          ago
-                            ? m.sheet_updated_ago({ ago })
-                            : price == null
-                              ? m.favorites_tap_to_load()
-                              : undefined,
+                          outOfStock
+                            ? m.favorites_out_of_stock()
+                            : ago
+                              ? m.sheet_updated_ago({ ago })
+                              : price == null
+                                ? m.favorites_tap_to_load()
+                                : undefined,
                         ]
                           .filter(Boolean)
                           .join(' · ')}

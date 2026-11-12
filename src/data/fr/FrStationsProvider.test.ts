@@ -10,6 +10,7 @@ import {
   parsePriceField,
   parseServices,
   parseFluxTimestamp,
+  parseOutages,
 } from './FrStationsProvider';
 import type { GeoPoint } from '../../lib/geo';
 import { haversineKm, nearestOnPolyline } from '../../lib/geo';
@@ -229,6 +230,66 @@ describe('parsePrices', () => {
   it('returns nothing when the record carries no price at all', () => {
     expect(parsePrices({})).toEqual({});
     expect(parsePrices({ prix: '[]' })).toEqual({});
+  });
+});
+
+describe('parseOutages', () => {
+  // Shapes from the live dataset (Toulouse, 2026-11-07)
+  it('reads the temporary outages off the per-fuel columns, Paris time', () => {
+    expect(
+      parseOutages(
+        {
+          gazole_rupture_type: 'temporaire',
+          gazole_rupture_debut: '2026-11-07T23:58:52+00:00',
+          e10_rupture_type: 'temporaire',
+          e10_rupture_debut: '2026-11-07T12:07:47+00:00',
+          sp95_rupture_type: 'definitive',
+          sp95_rupture_debut: '2022-03-01T21:39:12+00:00',
+          sp98_rupture_type: null,
+          e85_rupture_type: null,
+          gplc_rupture_type: null,
+        },
+        {},
+      ),
+    ).toEqual({
+      diesel: { since: '2026-11-07T22:58:52.000Z' },
+      e10: { since: '2026-11-07T11:07:47.000Z' },
+    });
+  });
+
+  it('keeps an outage without a start date', () => {
+    expect(parseOutages({ gplc_rupture_type: 'temporaire' }, {})).toEqual({
+      lpg: { since: undefined },
+    });
+  });
+
+  it('lets a published price win over an outage on the same fuel', () => {
+    expect(
+      parseOutages(
+        { gazole_rupture_type: 'temporaire', e85_rupture_type: 'temporaire' },
+        { diesel: { value: 1.789 } },
+      ),
+    ).toEqual({ e85: { since: undefined } });
+  });
+
+  it('falls back to the raw rupture list, latest entry per fuel', () => {
+    const rupture = JSON.stringify([
+      { '@nom': 'Gazole', '@id': '1', '@debut': '2019-09-12 19:42:53', '@fin': '', '@type': 'definitive' },
+      { '@nom': 'Gazole', '@id': '1', '@debut': '2026-11-03 17:44:31', '@fin': '', '@type': 'temporaire' },
+      { '@nom': 'SP98', '@id': '6', '@debut': '2026-10-01 08:00:00', '@fin': '', '@type': 'temporaire' },
+      { '@nom': 'SP98', '@id': '6', '@debut': '2026-11-01 08:00:00', '@fin': '', '@type': 'definitive' },
+      { '@nom': 'E85', '@id': '3', '@debut': '2011-08-16 16:54:00', '@fin': '', '@type': '' },
+      { '@nom': 'GPLc', '@id': '4', '@debut': '2026-11-01 08:00:00', '@fin': '2026-11-02 08:00:00', '@type': 'temporaire' },
+    ]);
+    expect(parseOutages({ rupture }, {})).toEqual({
+      diesel: { since: '2026-11-03T16:44:31.000Z' },
+    });
+  });
+
+  it('returns undefined when nothing is out of stock', () => {
+    expect(parseOutages({}, {})).toBeUndefined();
+    expect(parseOutages({ gazole_rupture_type: null, rupture: null }, {})).toBeUndefined();
+    expect(parseOutages({ rupture: '{not json' }, {})).toBeUndefined();
   });
 });
 

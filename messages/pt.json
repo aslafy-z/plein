@@ -194,6 +194,22 @@
   "sheet_loading": "À procura de postos à sua volta…",
   "sheet_fuel_not_sold": "Nenhum posto vende {fuel} nesta área.",
   "sheet_sold_here": "Vendidos aqui:",
+  "sheet_fuel_out_count": [
+    {
+      "declarations": [
+        "input count",
+        "input fuel",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{fuel}: em rutura em {count} posto da zona.",
+        "countPlural=other": "{fuel}: em rutura em {count} postos da zona."
+      }
+    }
+  ],
   "sheet_no_match": "Nenhum posto corresponde aos seus filtros.",
   "sheet_adjust_filters": "Ajustar os filtros",
   "sheet_active_filters": "Filtros ativos:",
@@ -302,6 +318,7 @@
     }
   ],
   "favorites_subtitle": "Os seus postos habituais, ao preço de hoje.",
+  "favorites_out_of_stock": "Em rutura",
   "favorites_sort_recommended": "Recomendado",
   "favorites_sort_price": "Preço",
   "favorites_sort_distance": "Distância",
@@ -463,6 +480,10 @@
   "detail_add_favorite_aria": "Adicionar aos favoritos",
   "detail_remove_favorite_aria": "Remover dos favoritos",
   "detail_fuel_not_sold": "não vendido",
+  "detail_fuel_out_today": "em rutura desde as {time}",
+  "detail_fuel_out_day": "em rutura desde {date}",
+  "detail_fuel_out": "em rutura",
+  "detail_dormant": "Nenhum combustível disponível desde {date}.",
   "detail_price_above_min": "+{delta} face ao mais baixo",
   "detail_updated_ago": "Atual. {ago}",
   "detail_footer_source": "Atualizado {ago} · fonte: {source}",

@@ -194,6 +194,22 @@
   "sheet_loading": "Recherche des stations autour de vous…",
   "sheet_fuel_not_sold": "Aucune station ne vend du {fuel} dans cette zone.",
   "sheet_sold_here": "Vendus ici :",
+  "sheet_fuel_out_count": [
+    {
+      "declarations": [
+        "input count",
+        "input fuel",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{fuel} : en rupture dans {count} station de la zone.",
+        "countPlural=other": "{fuel} : en rupture dans {count} stations de la zone."
+      }
+    }
+  ],
   "sheet_no_match": "Aucune station ne correspond à vos filtres.",
   "sheet_adjust_filters": "Ajuster les filtres",
   "sheet_active_filters": "Filtres actifs :",
@@ -302,6 +318,7 @@
     }
   ],
   "favorites_subtitle": "Vos stations habituelles, au prix du jour.",
+  "favorites_out_of_stock": "En rupture",
   "favorites_sort_recommended": "Recommandé",
   "favorites_sort_price": "Prix",
   "favorites_sort_distance": "Distance",
@@ -463,6 +480,10 @@
   "detail_add_favorite_aria": "Ajouter aux favoris",
   "detail_remove_favorite_aria": "Retirer des favoris",
   "detail_fuel_not_sold": "non distribué",
+  "detail_fuel_out_today": "en rupture depuis {time}",
+  "detail_fuel_out_day": "en rupture depuis le {date}",
+  "detail_fuel_out": "en rupture",
+  "detail_dormant": "Aucun carburant disponible depuis le {date}.",
   "detail_price_above_min": "+{delta} vs le + bas",
   "detail_updated_ago": "MàJ {ago}",
   "detail_footer_source": "Mis à jour {ago} · source : {source}",

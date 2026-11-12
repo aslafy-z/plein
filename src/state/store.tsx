@@ -114,6 +114,7 @@ import {
   type RouteState,
 } from './routePipeline';
 import { mapUrlQuery, parseMapUrl } from '../lib/mapUrl';
+import { isLiveOutage } from '../lib/outages';
 import {
   coordinateLabel,
   parseRouteUrl,
@@ -2936,6 +2937,22 @@ export const selectZoneFuels = cached((app: AppStore): FuelId[] => {
     for (const f of ALL_FUELS) if (s.prices[f] != null) sold.add(f);
   }
   return ALL_FUELS.filter((f) => sold.has(f));
+});
+
+/**
+ * Zone stations (every filter but the fuel one) with the selected fuel out of
+ * stock — what the empty state names instead of « not sold here », and the
+ * count under the list. Dormant stations (out of everything for a week) are
+ * left out: they are closed, not short. The French flux never prices a fuel
+ * it lists as out, so these are never in the ranked list itself.
+ */
+export const selectZoneOutageCount = cached((app: AppStore): number => {
+  const now = Date.now();
+  let n = 0;
+  for (const s of selectZoneStations(app)) {
+    if (effectivePrice(s, app.fuel) == null && isLiveOutage(s, app.fuel, now)) n++;
+  }
+  return n;
 });
 
 /**

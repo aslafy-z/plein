@@ -194,6 +194,22 @@
   "sheet_loading": "S'estan cercant benzineres al teu voltant…",
   "sheet_fuel_not_sold": "Cap benzinera no ven {fuel} en aquesta zona.",
   "sheet_sold_here": "Es ven aquí:",
+  "sheet_fuel_out_count": [
+    {
+      "declarations": [
+        "input count",
+        "input fuel",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{fuel}: sense existències a {count} estació de la zona.",
+        "countPlural=other": "{fuel}: sense existències a {count} estacions de la zona."
+      }
+    }
+  ],
   "sheet_no_match": "Cap benzinera no coincideix amb els teus filtres.",
   "sheet_adjust_filters": "Ajusta els filtres",
   "sheet_active_filters": "Filtres actius:",
@@ -302,6 +318,7 @@
     }
   ],
   "favorites_subtitle": "Les teves benzineres de sempre, al preu d'avui.",
+  "favorites_out_of_stock": "Sense existències",
   "favorites_sort_recommended": "Recomanat",
   "favorites_sort_price": "Preu",
   "favorites_sort_distance": "Distància",
@@ -463,6 +480,10 @@
   "detail_add_favorite_aria": "Afegeix a preferides",
   "detail_remove_favorite_aria": "Treu de preferides",
   "detail_fuel_not_sold": "no disponible",
+  "detail_fuel_out_today": "sense existències des de les {time}",
+  "detail_fuel_out_day": "sense existències des del {date}",
+  "detail_fuel_out": "sense existències",
+  "detail_dormant": "Cap carburant disponible des del {date}.",
   "detail_price_above_min": "+{delta} respecte al més baix",
   "detail_updated_ago": "Act. {ago}",
   "detail_footer_source": "Actualitzat {ago} · font: {source}",

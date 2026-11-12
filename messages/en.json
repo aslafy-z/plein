@@ -194,6 +194,22 @@
   "sheet_loading": "Looking for stations around you…",
   "sheet_fuel_not_sold": "No station sells {fuel} in this area.",
   "sheet_sold_here": "Sold here:",
+  "sheet_fuel_out_count": [
+    {
+      "declarations": [
+        "input count",
+        "input fuel",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "{fuel}: out of stock at {count} station in this area.",
+        "countPlural=other": "{fuel}: out of stock at {count} stations in this area."
+      }
+    }
+  ],
   "sheet_no_match": "No station matches your filters.",
   "sheet_adjust_filters": "Adjust filters",
   "sheet_active_filters": "Active filters:",
@@ -302,6 +318,7 @@
     }
   ],
   "favorites_subtitle": "The stations you use, at today's price.",
+  "favorites_out_of_stock": "Out of stock",
   "favorites_sort_recommended": "Recommended",
   "favorites_sort_price": "Price",
   "favorites_sort_distance": "Distance",
@@ -463,6 +480,10 @@
   "detail_add_favorite_aria": "Add to favorites",
   "detail_remove_favorite_aria": "Remove from favorites",
   "detail_fuel_not_sold": "not sold here",
+  "detail_fuel_out_today": "out of stock since {time}",
+  "detail_fuel_out_day": "out of stock since {date}",
+  "detail_fuel_out": "out of stock",
+  "detail_dormant": "No fuel available since {date}.",
   "detail_price_above_min": "+{delta} vs the lowest",
   "detail_updated_ago": "Upd. {ago}",
   "detail_footer_source": "Updated {ago} · source: {source}",
