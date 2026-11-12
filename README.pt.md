@@ -78,7 +78,9 @@ Quer ver o que vem a seguir? [staging-plein.zadkiel.workers.dev](https://staging
 4. Antes de uma viagem longa, separador **Trajeto**: introduza o destino e
    compare os postos ao longo do percurso. A partida fica em **A minha
    posição** assim que a localização dá uma, e a pesquisa de qualquer um dos
-   extremos oferece-a como linha — só num deles de cada vez.
+   extremos oferece-a como linha — só num deles de cada vez. **Iniciar o
+   percurso** passa todo o itinerário, paragens para abastecer incluídas, ao
+   Google Maps.
 5. No telemóvel, instale a app (faixa de instalação ou
    *Definições → Aplicação*) para a ter como ícone, em ecrã inteiro e
    offline.

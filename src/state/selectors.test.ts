@@ -1214,6 +1214,47 @@ describe('selectRouteAnalysis', () => {
     expect(a.arrival).toEqual({ kind: 'autonomyShort', limitKm: 50 })
   })
 
+  describe('tripStops — what « Start the trip » hands to Maps', () => {
+    it('is the plan in driving order, not only the stops the user pinned', () => {
+      // Nothing pinned: the CTA must still carry the stops the plan needs —
+      // launching the pins alone would drive past the fuel the tank requires
+      const a = selectRouteAnalysis(routeApp({ startTankPct: 10, routeMode: 'price' }))
+      expect(a.plannedStops).toEqual([])
+      expect(a.planStops.length).toBeGreaterThan(0)
+      expect(a.tripStops?.map((s) => s.id)).toEqual(a.planStops.map((p) => p.station.id))
+      const kms = a.tripStops!.map((s) => s.kmAlong)
+      expect(kms).toEqual([...kms].sort((x, y) => x - y))
+    })
+
+    it('carries a pinned stop, since the plan is constrained to include it', () => {
+      const a = selectRouteAnalysis(routeApp({ plannedStops: { max: true } }))
+      expect(a.tripStops?.map((s) => s.id)).toContain('max')
+    })
+
+    it('is empty for a trip that needs no stop — the CTA still starts it', () => {
+      expect(selectRouteAnalysis(routeApp()).tripStops).toEqual([])
+    })
+
+    it('is null on an infeasible plan and before any plan stands', () => {
+      const infeasible = selectRouteAnalysis(
+        routeApp({
+          startTankPct: 10,
+          routeState: readyState(CORRIDOR.filter((s) => s.kmAlong > 100)),
+        }),
+      )
+      expect(infeasible.plan?.status).toBe('infeasible')
+      expect(infeasible.tripStops).toBeNull()
+      const geometryOnly = commitGeometry(
+        beginGeometry(initialRouteState, 'k'),
+        'k',
+        ROUTE,
+        ENDS,
+        TRIP,
+      )
+      expect(selectRouteAnalysis(app({ routeState: geometryOnly })).tripStops).toBeNull()
+    })
+  })
+
   it('a picked stop is constrained INTO the plan and its litres recomputed', () => {
     const a = selectRouteAnalysis(routeApp({ plannedStops: { max: true } }))
     expect(a.plan?.status).toBe('planned')

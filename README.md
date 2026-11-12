@@ -74,7 +74,8 @@ Want what is coming next? [staging-plein.zadkiel.workers.dev](https://staging-pl
 4. Before a long trip, open the **Route** tab: enter the destination and
    compare the stations along the way. The departure starts on **My position**
    as soon as location has given one, and either endpoint's search offers it
-   as a row — one end at a time.
+   as a row — one end at a time. **Start the trip** hands the whole itinerary,
+   fuel stops included, to Google Maps.
 5. On mobile, install the app (install banner or *Settings → Application*) to
    get it as an icon, full screen and offline.
 

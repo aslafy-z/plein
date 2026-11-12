@@ -654,7 +654,8 @@ export interface AppStore {
   toast: string | null;
   notify(msg: string): void;
   openInMaps(target: Station | RouteStation): void;
-  openPlannedStopsInMaps(): void;
+  /** Hand the whole trip to Google Maps: departure → `stops` (driving order) → arrival */
+  openTripInMaps(stops: readonly Station[]): void;
   shareStation(target: Station | RouteStation): void;
   /** Share the map as it stands — same link the address bar carries */
   shareMapView(): void;
@@ -2321,17 +2322,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [showToast, mapsSite],
   );
 
-  const openPlannedStopsInMaps = useCallback(() => {
-    const stops = routeState.stations.filter((s) => plannedStops[s.id]);
-    if (!stops.length || !toPoint) return;
-    // Multi-stop URLs are a Google Maps feature — used on every platform
-    // (Android/iOS open the Google Maps app via universal links when installed).
-    showToast(m.toast_opening_maps({ site: m.maps_site_google() }));
-    const waypoints = stops.map((s) => `${s.lat},${s.lng}`).join('|');
-    const origin = fromPoint ? `&origin=${fromPoint.lat},${fromPoint.lng}` : '';
-    const url = `https://www.google.com/maps/dir/?api=1${origin}&destination=${toPoint.lat},${toPoint.lng}&waypoints=${encodeURIComponent(waypoints)}&travelmode=driving`;
-    window.open(url, '_blank', 'noopener');
-  }, [fromPoint, plannedStops, routeState.stations, showToast, toPoint]);
+  const openTripInMaps = useCallback(
+    (stops: readonly Station[]) => {
+      if (!toPoint) return;
+      // Multi-stop URLs are a Google Maps feature — used on every platform
+      // (Android/iOS open the Google Maps app via universal links when installed).
+      showToast(m.toast_opening_maps({ site: m.maps_site_google() }));
+      const waypoints = stops.length
+        ? `&waypoints=${encodeURIComponent(stops.map((s) => `${s.lat},${s.lng}`).join('|'))}`
+        : '';
+      const origin = fromPoint ? `&origin=${fromPoint.lat},${fromPoint.lng}` : '';
+      const url = `https://www.google.com/maps/dir/?api=1${origin}&destination=${toPoint.lat},${toPoint.lng}${waypoints}&travelmode=driving`;
+      window.open(url, '_blank', 'noopener');
+    },
+    [fromPoint, showToast, toPoint],
+  );
 
   const copyShareLink = useCallback(
     (url: string) => {
@@ -2546,7 +2551,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toast,
       notify: showToast,
       openInMaps,
-      openPlannedStopsInMaps,
+      openTripInMaps,
       shareStation,
       shareMapView,
       shareRoute,
@@ -2576,7 +2581,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       locale, localeIsExplicit, setLocale, theme, themeIsExplicit, setTheme,
       accent, setAccent, detailId, toast, showToast,
       canInstall, installDismissed, promptInstall, dismissInstallBanner, geoFixed,
-      openInMaps, openPlannedStopsInMaps, shareStation, shareMapView, shareRoute,
+      openInMaps, openTripInMaps, shareStation, shareMapView, shareRoute,
       finishOnboarding, sheetHint, consumeSheetHint,
     ],
   );
@@ -3457,8 +3462,15 @@ export interface RouteAnalysis {
   autonomyKm: number;
   needsStop: boolean;
   arrival: ArrivalEstimate | null;
-  /** Stops the user picked by hand (feed the multi-stop Maps run) */
+  /** Stops the user picked by hand — constrained into the plan */
   plannedStops: RouteStation[];
+  /**
+   * What « Start the trip » hands to Maps: the plan's stops in driving order
+   * (the user's picks are already in it), `[]` for a trip that needs none.
+   * Null while no plan stands, and for an infeasible one — there is no trip
+   * to start on a plan that says the tank cannot make it.
+   */
+  tripStops: RouteStation[] | null;
   /** User picks the optimizer could not place (no usable price / off corridor) */
   invalidPlannedStopIds: string[];
   /**
@@ -3632,6 +3644,12 @@ export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
     needsStop,
     arrival,
     plannedStops: picked,
+    tripStops:
+      plan?.status === 'planned'
+        ? planStops.map((p) => p.station)
+        : plan?.status === 'direct'
+          ? []
+          : null,
     invalidPlannedStopIds,
     detourMinById,
     purchaseLitres: plan ? plan.stops.reduce((a, s) => a + s.purchasedLitres, 0) : null,
