@@ -1,5 +1,6 @@
 // Real routing.
-// – Default: OSRM public demo (fast, but its car profile has no exclusions).
+// – Default: OSRM public demo (fast, but its car profile has no exclusions),
+//   backed up by Valhalla when it fails or is slow to answer.
 // – « Avoid motorways / tolls »: Valhalla (FOSSGIS public server), whose
 //   costing options support use_highways / use_tolls.
 import { IS_DEV } from '../../lib/env';
@@ -288,6 +289,54 @@ function routeKey(from: GeoPoint, to: GeoPoint, opts: RouteOptions): string {
   ].join('|');
 }
 
+/**
+ * How long OSRM gets on its own before Valhalla is asked too. The public demo
+ * server answers a route in well under a second when it is well, and hangs or
+ * refuses when it is not — which is often enough that « is the routing API
+ * up? » was a question the app made its user ask.
+ */
+const BACKUP_AFTER_MS = 3500;
+
+/**
+ * The plain-car route, from OSRM — with Valhalla standing in when OSRM fails
+ * or is slow to answer. The first engine to answer wins; the two disagree on a
+ * trip by a few minutes at most, which is nothing next to no itinerary at all.
+ * Only when both fail does the call fail, on OSRM's own error.
+ */
+function osrmRouteWithBackup(from: GeoPoint, to: GeoPoint, opts: RouteOptions): Promise<Route> {
+  return new Promise<Route>((resolve, reject) => {
+    let primaryError: unknown;
+    let primaryFailed = false;
+    let backupFailed = false;
+    let backupStarted = false;
+    const fail = () => {
+      if (primaryFailed && backupFailed) reject(primaryError);
+    };
+    const startBackup = () => {
+      if (backupStarted) return;
+      backupStarted = true;
+      clearTimeout(timer);
+      valhallaRoute(from, to, opts).then(resolve, () => {
+        backupFailed = true;
+        fail();
+      });
+    };
+    const timer = setTimeout(startBackup, BACKUP_AFTER_MS);
+    osrmRoute(from, to).then(
+      (route) => {
+        clearTimeout(timer);
+        resolve(route);
+      },
+      (err: unknown) => {
+        primaryError = err;
+        primaryFailed = true;
+        startBackup();
+        fail();
+      },
+    );
+  });
+}
+
 export class RealRouteProvider implements RouteProvider {
   async getRoute(from: GeoPoint, to: GeoPoint, options: RouteOptions = {}): Promise<Route> {
     const key = routeKey(from, to, options);
@@ -298,7 +347,7 @@ export class RealRouteProvider implements RouteProvider {
     const route =
       options.avoidMotorway || options.avoidToll || options.vehicle === 'motorcycle'
         ? await valhallaRoute(from, to, options)
-        : await osrmRoute(from, to);
+        : await osrmRouteWithBackup(from, to, options);
     routeMemo.set(key, route);
     return route;
   }
