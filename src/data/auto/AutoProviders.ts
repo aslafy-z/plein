@@ -149,7 +149,7 @@ export class AutoStationsProvider implements StationsProvider {
   // to rank against — the natural key (distance to the polyline) would thin the
   // widest part of the corridor rather than its far end, and a positional cut
   // would simply truncate the route. No single source caps its corridor either
-  // (fr bounds it per sample point, es and ad by the corridor itself), so
+  // (fr asks for discs hugging the road, es and ad filter on the corridor itself), so
   // « auto » would be the only source silently dropping stations off a long
   // route. The corridor is already narrow enough to keep the payload sane.
   async getStationsAlong(polyline: GeoPoint[], corridorKm: number): Promise<Station[]> {

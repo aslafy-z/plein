@@ -143,7 +143,21 @@ function fetchJson(url: string): Promise<{ status: number; body: string }> {
         'curl',
         // --compressed: some egress proxies gzip the response even without
         // Accept-Encoding — let curl negotiate and decode it
-        ['-sS', '--compressed', '--max-time', '25', '-A', UA, '-w', '\n__STATUS__%{http_code}', url],
+        [
+          '-sS',
+          '--compressed',
+          // An egress proxy can front a host through several exits and one of
+          // them may never complete the TLS handshake: give up on a connection
+          // quickly and take another rather than spend the whole budget on it
+          '--connect-timeout', '2',
+          '--retry', '4',
+          '--retry-all-errors',
+          '--retry-delay', '0',
+          '--max-time', '25',
+          '-A', UA,
+          '-w', '\n__STATUS__%{http_code}',
+          url,
+        ],
         { maxBuffer: 64e6 },
         (err, stdout) => {
           if (err) return reject(err)
