@@ -31,6 +31,8 @@ test.describe('a returning user', () => {
     // The news leads; the history waits one tap away, unrolled in place
     await expect(sheet(page).getByRole('heading', { name: LATEST })).toBeVisible()
     await expect(sheet(page).getByRole('heading', { name: EARLIER })).toHaveCount(0)
+    // The short entry links the long version: its release page
+    await expect(sheet(page).getByRole('button', { name: 'Details' })).toBeVisible()
     await sheet(page).getByRole('button', { name: 'See earlier changes' }).click()
     await expect(sheet(page).getByRole('heading', { name: EARLIER })).toBeVisible()
     await expect(sheet(page).getByRole('button', { name: 'See earlier changes' })).toHaveCount(0)

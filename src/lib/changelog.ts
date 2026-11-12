@@ -1,20 +1,36 @@
 // What's new — the hand-written changelog announced to returning users.
 //
-// A deploy is not an announcement: most of them change nothing a user would
-// notice, so nothing is derived from commits or versions. An entry exists
-// because someone wrote one, in the same commit as the change it announces:
+// One entry per production release that has something to tell, and only
+// those: a deploy is not an announcement. A performance pass, a refactor or
+// a fix nobody would notice ships silently — no entry, no sparkle. An entry
+// exists because someone wrote one, in the PR that makes the change (or a
+// later one that groups a few, before the release):
 //
 //   1. add its copy to `messages/fr.json` (the source) and translate it in
 //      the four other catalogs — `changelog_<id>_title` plus one
 //      `changelog_<id>_item_<what>` per bullet, each a whole sentence;
 //   2. put the entry at the TOP of `CHANGELOG` below.
 //
-// The next time a returning user opens a build carrying it — the reload the
-// update bar offers, or any later cold start — a small sparkle wiggles in a
-// corner of the map (`WhatsNewButton`). Nothing more: the app is used behind
-// the wheel, so reading is opt-in. A tap opens the sheet that lists it
-// (`WhatsNewSheet`); Settings › What's new reopens the whole log at any time.
+// Short by rule: at most `MAX_ITEMS` bullets of one sentence each, the news
+// rather than the inventory. The rest is one tap away: `details` links the
+// GitHub Release of the promotion that ships the entry — the entry's English
+// copy over every pull request merged since the previous one.
+//
+// Production promotion is where the two meet (`.github/workflows/deploy.yml`,
+// `scripts/whats-new-release.mjs`): a newest entry not yet released makes the
+// promotion publish the `release-<id>` tag and its Release; with no new entry
+// the promotion refuses to run unless it is marked `silent` on purpose.
+//
+// The next time a returning user opens a build carrying a new entry — the
+// reload the update bar offers, or any later cold start — a small sparkle
+// wiggles in a corner of the map (`WhatsNewButton`). Nothing more: the app is
+// used behind the wheel, so reading is opt-in. A tap opens the sheet that
+// lists it (`WhatsNewSheet`); Settings › What's new reopens the whole log.
 import { m } from '../paraglide/messages.js';
+import type { Locale } from '../paraglide/runtime.js';
+
+/** A catalog message: the current locale by default, another on request */
+type Message = (inputs?: Record<string, never>, options?: { locale?: Locale }) => string;
 
 export interface ChangelogEntry {
   /**
@@ -24,11 +40,26 @@ export interface ChangelogEntry {
    * which still sorts after the first.
    */
   id: string;
-  title: () => string;
-  items: readonly (() => string)[];
+  title: Message;
+  /** At most `MAX_ITEMS`, each one sentence */
+  items: readonly Message[];
+  /** Where the long version lives — `releaseNotesUrl(id)` for an entry
+      shipped by a promotion. The backfilled entries predate releases and
+      have none. */
+  details?: string;
 }
 
-/** Newest first. Never edit an id once shipped: it is what users have seen.
+/** Bullets per entry: what is worth reading at the pump, not the inventory */
+export const MAX_ITEMS = 4;
+
+/** The GitHub Release the promotion shipping entry `id` publishes (tag
+    `release-<id>`, see scripts/whats-new-release.mjs) */
+export function releaseNotesUrl(id: string): string {
+  return `${__REPO_URL__}/releases/tag/release-${id}`;
+}
+
+/** Newest first. Never edit an id once shipped: it is what users have seen,
+    and its release tag is named after it.
     The August entries were written after the fact, from the merge history, so
     the log reads as a history from its first day rather than a lone item. */
 export const CHANGELOG: readonly ChangelogEntry[] = [
@@ -39,10 +70,9 @@ export const CHANGELOG: readonly ChangelogEntry[] = [
       m.changelog_2026_11_10_item_whatsnew,
       m.changelog_2026_11_10_item_accent,
       m.changelog_2026_11_10_item_departure,
-      m.changelog_2026_11_10_item_hours,
-      m.changelog_2026_11_10_item_rotate,
       m.changelog_2026_11_10_item_accessibility,
     ],
+    details: releaseNotesUrl('2026-11-10'),
   },
   {
     id: '2026-08-28',
@@ -70,7 +100,6 @@ export const CHANGELOG: readonly ChangelogEntry[] = [
       m.changelog_2026_08_04_item_force_offline,
       m.changelog_2026_08_04_item_zoom,
       m.changelog_2026_08_04_item_route_position,
-      m.changelog_2026_08_04_item_locate,
       m.changelog_2026_08_04_item_light_theme,
     ],
   },

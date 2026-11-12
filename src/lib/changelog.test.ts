@@ -1,7 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
+  changelogIds,
+  messageKeyPrefix,
+  releaseNotes,
+  releaseTag,
+} from '../../scripts/whats-new-release.mjs';
+import { locales } from '../paraglide/runtime.js';
+import EN_CATALOG from '../../messages/en.json?raw';
+import SOURCE from './changelog.ts?raw';
+import {
   CHANGELOG,
   MAX_ANNOUNCED,
+  MAX_ITEMS,
+  releaseNotesUrl,
   changelogDate,
   latestChangelogId,
   splitChangelog,
@@ -76,6 +87,47 @@ describe('CHANGELOG', () => {
 
   it('stamps the newest entry as seen', () => {
     expect(latestChangelogId(CHANGELOG)).toBe(CHANGELOG[0].id);
+  });
+
+  it('keeps every entry short in every locale', () => {
+    for (const e of CHANGELOG) {
+      expect(e.items.length, e.id).toBeLessThanOrEqual(MAX_ITEMS);
+      for (const locale of locales) {
+        expect(e.title({}, { locale }).length, `${e.id} title (${locale})`).toBeLessThanOrEqual(60);
+        for (const item of e.items) {
+          expect(item({}, { locale }).length, `${e.id} item (${locale})`).toBeLessThanOrEqual(140);
+        }
+      }
+    }
+  });
+
+  it('links details only to an https page', () => {
+    for (const e of CHANGELOG) if (e.details) expect(e.details).toMatch(/^https:\/\//);
+  });
+});
+
+// The promotion job reads the log through scripts/whats-new-release.mjs,
+// as text and before any build: what it reads has to be what the app ships.
+describe('whats-new-release script', () => {
+  const en = JSON.parse(EN_CATALOG) as Record<string, unknown>;
+
+  it('reads the entry ids the app compiles, in order', () => {
+    expect(changelogIds(SOURCE)).toEqual(CHANGELOG.map((e) => e.id));
+  });
+
+  it('writes each entry as the English copy the app shows', () => {
+    for (const e of CHANGELOG) {
+      const t = (msg: typeof e.title) => msg({}, { locale: 'en' });
+      expect(releaseNotes(e.id, en)).toBe(
+        [`## ${t(e.title)}`, '', ...e.items.map((item) => `- ${t(item)}`), ''].join('\n'),
+      );
+    }
+  });
+
+  it('names catalog keys and tags after the id', () => {
+    expect(messageKeyPrefix('2026-11-07.2')).toBe('changelog_2026_11_07_2_');
+    expect(releaseTag('2026-11-07.2')).toBe('release-2026-11-07.2');
+    expect(releaseNotesUrl('2026-11-07.2')).toMatch(/\/releases\/tag\/release-2026-11-07\.2$/);
   });
 });
 
