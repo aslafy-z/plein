@@ -1,5 +1,6 @@
-// The What's new log, newest first, the entries this session announced
-// flagged « New ». Opened from the map's sparkle (WhatsNewButton) or from
+// The What's new log, newest first. No « New » badge: under a « What's new »
+// title it said the same thing twice, and the split below already tells the
+// news from the history. Opened from the map's sparkle (WhatsNewButton) or from
 // Settings › What's new — never on its own. Being open is nav state
 // (`whatsNewOpen`, which also says how it opened), so the system Back closes
 // it like the filters.
@@ -81,23 +82,6 @@ export default function WhatsNewSheet() {
         <time dateTime={e.id.slice(0, 10)} style={{ fontSize: 12, color: C.faint }}>
           {calendarDateLabel(changelogDate(e.id))}
         </time>
-        {app.whatsNewFresh.has(e.id) && (
-          <span
-            style={{
-              fontSize: 10.5,
-              fontWeight: 800,
-              letterSpacing: '.06em',
-              textTransform: 'uppercase',
-              color: C.accent,
-              background: C.accentSoft09,
-              border: `1px solid ${C.accentBorder}`,
-              borderRadius: 999,
-              padding: '1px 7px',
-            }}
-          >
-            {m.whatsnew_new_badge()}
-          </span>
-        )}
         {e.details && (
           // The long version, kept to a corner of the entry's date line: one
           // stacked button per entry next to « See earlier changes » was a
