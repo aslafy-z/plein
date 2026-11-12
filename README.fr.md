@@ -38,7 +38,8 @@ Envie de voir la suite ? [staging-plein.zadkiel.workers.dev](https://staging-ple
   se comparent d'un coup d'œil.
 - 🔎 **Recherche de lieux** — villes, adresses et points d'intérêt (gares,
   aéroports, monuments) dans les quatre pays, classés selon leur
-  correspondance avec ce que vous avez tapé.
+  correspondance avec ce que vous avez tapé, le pays affiché sur la carte en
+  premier.
 - 📋 **Meilleur choix réel** — le carburant brûlé pour le détour est compté :
   une station plus proche peut battre la moins chère.
 - 🛣️ **Plan carburant du trajet** — où s'arrêter le long du parcours, combien

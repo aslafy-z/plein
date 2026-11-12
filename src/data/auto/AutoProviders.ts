@@ -193,19 +193,21 @@ const MAX_RESULTS = 15;
  *
  * `query` is what the sources were asked: with it the merge puts the results
  * answering more of it first (`queryCoverage`), across sources whose own
- * relevance scores cannot be compared.
+ * relevance scores cannot be compared. `lead` is how many of the first lists
+ * are the home ones (see `mergeByKind`).
  */
 export async function mergeAsTheyLand(
   tasks: readonly Promise<GeocodeResult[]>[],
   onPartial?: (results: GeocodeResult[]) => void,
   onIncomplete?: () => void,
   query?: string,
+  lead = 0,
 ): Promise<GeocodeResult[]> {
   const lists: GeocodeResult[][] = tasks.map(() => []);
   let landed = 0;
   let failed = 0;
   let firstReason: unknown;
-  const merged = () => mergeByKind(lists, query).slice(0, MAX_RESULTS);
+  const merged = () => mergeByKind(lists, query, lead).slice(0, MAX_RESULTS);
 
   await Promise.all(
     tasks.map((task, i) =>
@@ -234,6 +236,8 @@ export async function mergeAsTheyLand(
 export interface GeocodeSource {
   country: GeocodeCountry;
   provider: GeocodeProvider;
+  /** Whether a point is in this country — what makes it the home source */
+  covers?(point: GeoPoint): boolean;
 }
 
 /**
@@ -252,7 +256,12 @@ export class MergedGeocodeProvider implements GeocodeProvider {
     // failed). The caller hears about it once, whichever way it happened.
     const down = new Set<GeocodeCountry>();
     let partial = false;
-    const tasks = this.sources.map(({ country, provider }) => {
+    // The country the map is looking at goes first; the others keep the order
+    // they were given in. Near a border two of them can claim the point.
+    const near = opts?.near;
+    const home = near ? this.sources.filter((source) => source.covers?.(near)) : [];
+    const ordered = [...home, ...this.sources.filter((source) => !home.includes(source))];
+    const tasks = ordered.map(({ country, provider }) => {
       const task = provider.search(query, {
         onIncomplete: () => {
           partial = true;
@@ -261,7 +270,7 @@ export class MergedGeocodeProvider implements GeocodeProvider {
       task.catch(() => down.add(country));
       return task;
     });
-    return mergeAsTheyLand(tasks, opts?.onPartial, undefined, query).then((results) => {
+    return mergeAsTheyLand(tasks, opts?.onPartial, undefined, query, home.length).then((results) => {
       if (partial || down.size > 0) {
         opts?.onIncomplete?.(
           this.sources.map((source) => source.country).filter((country) => down.has(country)),
@@ -322,14 +331,14 @@ export function adGeocodeProvider(): GeocodeProvider {
 
 export class AutoGeocodeProvider extends MergedGeocodeProvider {
   constructor() {
-    // Inside one kind the countries interleave in the order given here —
-    // France, Andorra, Portugal, Spain — so none fills the visible rows on its
-    // own.
+    // Inside one kind the country the map is looking at comes first, and the
+    // others interleave in the order given here — France, Andorra, Portugal,
+    // Spain — so none of them fills the visible rows on its own.
     super([
-      { country: 'fr', provider: new FrGeocodeProvider() },
-      { country: 'ad', provider: adGeocodeProvider() },
-      { country: 'pt', provider: new PhotonGeocodeProvider() },
-      { country: 'es', provider: esGeocodeProvider() },
+      { country: 'fr', provider: new FrGeocodeProvider(), covers: (p) => frCoversNear(p, 0) },
+      { country: 'ad', provider: adGeocodeProvider(), covers: (p) => adCoversNear(p, 0) },
+      { country: 'pt', provider: new PhotonGeocodeProvider(), covers: (p) => ptCoversNear(p, 0) },
+      { country: 'es', provider: esGeocodeProvider(), covers: (p) => esCoversNear(p, 0) },
     ]);
   }
 }

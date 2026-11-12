@@ -92,23 +92,34 @@ function samePlace(a: GeocodeResult, b: GeocodeResult): boolean {
  * With the `query` the lists answer, that order only settles the results
  * saying the same share of it: the ones saying more of its words come first
  * (`queryCoverage`).
+ *
+ * The first `lead` lists are the home ones — the country the map is looking
+ * at. Inside one kind their results come whole, before the others interleave:
+ * a priority among equals, which never lifts a street above a town nor a
+ * partial match above the result that says the whole query.
  */
-export function mergeByKind(lists: GeocodeResult[][], query?: string): GeocodeResult[] {
+export function mergeByKind(
+  lists: GeocodeResult[][],
+  query?: string,
+  lead = 0,
+): GeocodeResult[] {
   const out: GeocodeResult[] = [];
   const seen = new Map<string, GeocodeResult[]>();
+  const emit = (r: GeocodeResult | undefined) => {
+    if (!r) return;
+    const twins = seen.get(r.label);
+    if (twins?.some((kept) => samePlace(kept, r))) return;
+    if (twins) twins.push(r);
+    else seen.set(r.label, [r]);
+    out.push(r);
+  };
   for (const kind of PLACE_KIND_ORDER) {
     const tier = lists.map((list) => list.filter((r) => r.kind === kind));
-    const depth = Math.max(0, ...tier.map((list) => list.length));
+    for (const list of tier.slice(0, lead)) list.forEach(emit);
+    const rest = tier.slice(lead);
+    const depth = Math.max(0, ...rest.map((list) => list.length));
     for (let i = 0; i < depth; i++) {
-      for (const list of tier) {
-        const r = list[i];
-        if (!r) continue;
-        const twins = seen.get(r.label);
-        if (twins?.some((kept) => samePlace(kept, r))) continue;
-        if (twins) twins.push(r);
-        else seen.set(r.label, [r]);
-        out.push(r);
-      }
+      for (const list of rest) emit(list[i]);
     }
   }
   if (!query) return out;

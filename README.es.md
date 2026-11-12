@@ -39,7 +39,8 @@ Portugal.
   comparan de un vistazo.
 - 🔎 **Búsqueda de lugares** — ciudades, direcciones y puntos de interés
   (estaciones de tren, aeropuertos, monumentos) en los cuatro países,
-  ordenados según su coincidencia con lo que has escrito.
+  ordenados según su coincidencia con lo que has escrito, con el país del
+  mapa primero.
 - 📋 **Mejor elección real** — el combustible quemado en el desvío se tiene
   en cuenta: una estación más cercana puede ganar a la más barata.
 - 🛣️ **Plan de repostaje en ruta** — dónde parar a lo largo del viaje,

@@ -23,7 +23,11 @@ export function withGeocodeMemo(inner: GeocodeProvider): GeocodeProvider {
   const memo = new TtlLru<GeocodeResult[]>(MAX_ENTRIES, TTL_MS);
   return {
     async search(query: string, opts?: GeocodeSearchOptions): Promise<GeocodeResult[]> {
-      const key = query.trim().toLowerCase();
+      // The home country reorders a merged list, so where the map looks is part
+      // of the question — to ~11 km, which is finer than any border matters.
+      const near = opts?.near;
+      const where = near ? `|${near.lat.toFixed(1)},${near.lng.toFixed(1)}` : '';
+      const key = query.trim().toLowerCase() + where;
       const hit = memo.get(key);
       if (hit) {
         opts?.onPartial?.(hit);

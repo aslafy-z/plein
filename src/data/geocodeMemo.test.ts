@@ -98,4 +98,13 @@ describe('withGeocodeMemo', () => {
     expect((await memo.search('to')).map((r) => r.label)).toEqual(['Toulouse', 'Girona']);
     expect(calls).toEqual(['to', 'to']);
   });
+
+  it('asks again when the map looks somewhere else: the home country reorders the list', async () => {
+    const inner = countingProvider(async (q) => [result(q)]);
+    const memo = withGeocodeMemo(inner);
+    await memo.search('valen', { near: { lat: 43.6, lng: 1.44 } });
+    await memo.search('valen', { near: { lat: 43.61, lng: 1.42 } }); // same spot, to ~11 km
+    await memo.search('valen', { near: { lat: 38.72, lng: -9.14 } });
+    expect(inner.calls).toHaveLength(2);
+  });
 });
