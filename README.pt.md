@@ -23,9 +23,13 @@ Quer ver o que vem a seguir? [staging-plein.zadkiel.workers.dev](https://staging
 
 <br/>
 
-| Os preços à sua volta | A ficha de um posto | No seu trajeto |
-| :---: | :---: | :---: |
-| <img src="docs/screenshots/pt/map.png" width="250" alt="Mapa de preços à volta de Lisboa" /> | <img src="docs/screenshots/pt/station.png" width="250" alt="Ficha de um posto: preço por combustível, diferença para o mais barato, serviços e poupança num depósito" /> | <img src="docs/screenshots/pt/route.png" width="250" alt="Comparação de postos num trajeto Lisboa → Porto" /> |
+<p align="center">
+  <img src="docs/screenshots/pt/map.png" width="23%" alt="Mapa de preços à volta de Lisboa" title="Os preços à sua volta" />
+  <img src="docs/screenshots/pt/station.png" width="23%" alt="Ficha de um posto: preço por combustível, diferença para o mais barato, serviços e poupança num depósito" title="A ficha de um posto" />
+  <img src="docs/screenshots/pt/trip.png" width="23%" alt="Trajeto Lisboa → Porto no mapa, com os postos e os seus preços ao longo do caminho" title="O seu trajeto no mapa" />
+  <img src="docs/screenshots/pt/route.png" width="23%" alt="Comparação de postos num trajeto Lisboa → Porto" title="No seu trajeto" />
+</p>
+<p align="center"><sub>Capturas no tema escuro. Também há um tema claro, e a cor de destaque escolhe-se em Definições › Aparência.</sub></p>
 
 </div>
 

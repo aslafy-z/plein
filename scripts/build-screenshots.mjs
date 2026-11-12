@@ -1,7 +1,8 @@
 // Regenerates docs/screenshots/<locale>/*.png — the screenshots the READMEs
-// embed, one set per app locale (en, fr, es, ca, pt), each image a diagonal
-// light/dark split (light upper-left, dark lower-right) so one picture shows
-// both themes.
+// embed, one set per app locale (en, fr, es, ca, pt), all in the dark theme:
+// at README size, a screen split between both themes is unreadable on either
+// side. A line under the images says the light theme and the accent colors
+// exist.
 //
 // The shots are taken against the LIVE sources (`sourceId: 'auto'`), not the
 // deterministic demo dataset: real prices, real station names and a real OSRM
@@ -13,18 +14,19 @@
 // The UI language is seeded through the persisted `locale` setting (the same
 // switch the Settings screen writes), and every selector string comes from
 // that locale's message catalog — messages/<locale>.json is the single source
-// of truth for what the screen says. Each screen is shot twice, dark then
-// light, by flipping the emulated `prefers-color-scheme` (the app's theme
-// default follows the browser), and the two frames are composited along a
-// diagonal.
+// of truth for what the screen says. The dark theme comes from the emulated
+// `prefers-color-scheme` (the app's theme default follows the browser).
 //
-// The viewport is 480×1064 at DPR 3 (1440×3192), which the READMEs display at
-// width 250. That width is deliberate: the map auto-fit frames the search
-// circle into the viewport and snaps to an integer zoom, so a narrower phone
-// (390 or 430 CSS px) lands one level further out and packs the price bubbles
-// of a dense centre on top of each other. PNGs are re-encoded losslessly
+// The viewport is 480×1064 at DPR 3 (1440×3192), which the READMEs display
+// four abreast, each at 23% of the page width — a row of images rather than a
+// table, whose columns would size off their captions and leave the four
+// screenshots at four different scales. The 480 CSS px width is deliberate:
+// the map auto-fit frames the search circle into the viewport and snaps to an
+// integer zoom, so a narrower phone (390 or 430 CSS px) lands one level
+// further out and packs the price bubbles of a dense centre on top of each
+// other. PNGs are re-encoded losslessly
 // afterwards — Chromium's own encoder leaves roughly 45% on the table.
-// Usage: npm run build:screenshots [map] [station] [route] [en] [fr] [es] [ca] [pt] [--headed] [--parallel]
+// Usage: npm run build:screenshots [map] [station] [trip] [route] [en] [fr] [es] [ca] [pt] [--headed] [--parallel]
 // Naming shots and/or locales regenerates only those — handy to refresh one
 // language's fiche without reshooting every map with the prices of another day.
 // --headed opens a visible browser window to watch the run navigate — the
@@ -47,7 +49,7 @@ const PORT = 5199;
 const BASE = `http://localhost:${PORT}`;
 const VIEWPORT = { width: 480, height: 1064 };
 
-const SHOTS = ['map', 'station', 'route'];
+const SHOTS = ['map', 'station', 'trip', 'route'];
 const LOCALES = ['en', 'fr', 'es', 'ca', 'pt'];
 // Full BCP 47 tags for the browser context, so Intl formats match the catalog
 const CONTEXT_LOCALE = { en: 'en-US', fr: 'fr-FR', es: 'es-ES', ca: 'ca-ES', pt: 'pt-PT' };
@@ -151,9 +153,14 @@ async function loadMessages(locale) {
 
 /** Boots the Vite dev server and resolves once it answers. */
 async function startServer() {
+  // Vite's own entry point under this Node, not `npx vite`: npx stays as a
+  // parent process, so `server.kill()` stopped only the wrapper — the server
+  // outlived the run, kept the port and held the inherited stdout open: a pipe
+  // reading the run never closed, and the next run talked to the stale server
+  // instead of its own.
   const server = spawn(
-    'npx',
-    ['vite', '--port', String(PORT), '--strictPort', '--logLevel', 'error'],
+    process.execPath,
+    [join(ROOT, 'node_modules/vite/bin/vite.js'), '--port', String(PORT), '--strictPort', '--logLevel', 'error'],
     { cwd: ROOT, stdio: ['ignore', 'inherit', 'inherit'] },
   );
   const deadline = Date.now() + 60_000;
@@ -191,34 +198,11 @@ async function setTheme(page, scheme) {
   await page.waitForTimeout(2000);
 }
 
-/**
- * Screenshots the page in both themes and composites them along a diagonal:
- * light keeps the upper-left, dark the lower-right, with a hairline divider.
- * The PNG is re-encoded losslessly on the way out.
- */
+/** Screenshots the page in the dark theme, re-encoding the PNG losslessly. */
 async function shoot(page, locale, name) {
-  await setTheme(page, 'light');
-  const light = await page.screenshot();
   await setTheme(page, 'dark');
-  const dark = await page.screenshot();
-
-  const { width: W, height: H } = await sharp(light).metadata();
-  // The split line runs through the center, leaning right: from 62% of the
-  // width at the top edge down to 38% at the bottom, so every UI region
-  // (header, map, sheet) shows up once per theme.
-  const xTop = Math.round(W * 0.62);
-  const xBottom = Math.round(W * 0.38);
-  const darkSide = Buffer.from(
-    `<svg width="${W}" height="${H}"><polygon points="${xTop},0 ${W},0 ${W},${H} ${xBottom},${H}" fill="#fff"/></svg>`,
-  );
-  const divider = Buffer.from(
-    `<svg width="${W}" height="${H}"><line x1="${xTop}" y1="0" x2="${xBottom}" y2="${H}" stroke="rgba(127,127,127,0.9)" stroke-width="6"/></svg>`,
-  );
-  const darkMasked = await sharp(dark).composite([{ input: darkSide, blend: 'dest-in' }]).toBuffer();
-
   const path = join(OUT, locale, `${name}.png`);
-  await sharp(light)
-    .composite([{ input: darkMasked }, { input: divider }])
+  await sharp(await page.screenshot())
     .png({ compressionLevel: 9, effort: 10 })
     .toFile(path);
   console.log(`✓ ${locale}/${name}.png`);
@@ -338,7 +322,10 @@ async function shootLocale(browser, locale) {
     }
 
     // ── Route screen: the scene's trip, deep-linked ──
-    if (wanted('route')) {
+    // Two shots of one computed trip: `trip` is the itinerary itself, drawn on
+    // the map with its priced stops under the collapsed sheet; `route` then
+    // expands the sheet over it to show the plan's timeline.
+    if (wanted('trip') || wanted('route')) {
       // The shareable route URL (routeUrl.ts) fully specifies the trip, and a
       // link whose endpoints carry coordinates never touches a geocoder — the
       // ribbon header shows the `al`/`dl` labels, the plan runs on the tank
@@ -360,14 +347,6 @@ async function shootLocale(browser, locale) {
         .replaceAll('\\{count\\}', '\\d+');
       const planLabel = new RegExp(`${reEscape(msg.ribbon_recommended_stop)}|${stopCounter}`);
       await page.getByText(planLabel).first().waitFor({ timeout: T(60_000) });
-      // Expand the sheet so the shot shows the plan's timeline rather than
-      // one collapsed row (openRouteSheet in e2e/fixtures.ts, same handle)
-      const expand = page.locator(`[aria-label="${msg.route_sheet_expand_aria}"]`);
-      if ((await expand.count()) > 0) {
-        await expand.click();
-        // the sheet's height transition (.3s)
-        await page.waitForTimeout(600);
-      }
       // The plan lands before the corridor's priced pins are drawn on the
       // route map — wait for at least one price bubble inside it, or the
       // shot shows a bare line between two endpoint dots.
@@ -381,7 +360,20 @@ async function shootLocale(browser, locale) {
         .catch(() => {});
       await page.waitForLoadState('networkidle').catch(() => {});
       await page.waitForTimeout(4000);
-      await shoot(page, locale, 'route');
+      if (wanted('trip')) await shoot(page, locale, 'trip');
+
+      if (wanted('route')) {
+        // Expand the sheet so the shot shows the plan's timeline rather than
+        // one collapsed row (openRouteSheet in e2e/fixtures.ts, same handle)
+        const expand = page.locator(`[aria-label="${msg.route_sheet_expand_aria}"]`);
+        if ((await expand.count()) > 0) {
+          await expand.click();
+          // the sheet's height transition (.3s)
+          await page.waitForTimeout(600);
+        }
+        await page.waitForTimeout(1000);
+        await shoot(page, locale, 'route');
+      }
     }
   } finally {
     await ctx.close();

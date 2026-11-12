@@ -23,9 +23,13 @@ Portugal.
 
 <br/>
 
-| Los precios a tu alrededor | La ficha de una estación | En tu ruta |
-| :---: | :---: | :---: |
-| <img src="docs/screenshots/es/map.png" width="250" alt="Mapa de precios alrededor de Madrid" /> | <img src="docs/screenshots/es/station.png" width="250" alt="Ficha de una estación: precio por combustible, diferencia con la más barata, servicios y ahorro en un depósito" /> | <img src="docs/screenshots/es/route.png" width="250" alt="Comparación de estaciones en una ruta Madrid → Barcelona" /> |
+<p align="center">
+  <img src="docs/screenshots/es/map.png" width="23%" alt="Mapa de precios alrededor de Madrid" title="Los precios a tu alrededor" />
+  <img src="docs/screenshots/es/station.png" width="23%" alt="Ficha de una estación: precio por combustible, diferencia con la más barata, servicios y ahorro en un depósito" title="La ficha de una estación" />
+  <img src="docs/screenshots/es/trip.png" width="23%" alt="Ruta Madrid → Barcelona en el mapa, con las estaciones y sus precios a lo largo del trayecto" title="Tu ruta en el mapa" />
+  <img src="docs/screenshots/es/route.png" width="23%" alt="Comparación de estaciones en una ruta Madrid → Barcelona" title="En tu ruta" />
+</p>
+<p align="center"><sub>Capturas en tema oscuro. También hay un tema claro, y el color de acento se elige en Ajustes › Apariencia.</sub></p>
 
 </div>
 
