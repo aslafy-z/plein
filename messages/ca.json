@@ -169,6 +169,8 @@
   "search_clear_aria": "Esborra la cerca",
   "search_hint": "Cerca una ciutat o una adreça per veure les benzineres al voltant.",
   "search_no_results": "Cap lloc no coincideix amb aquesta cerca.",
+  "search_incomplete": "Algunes fonts no han respost: la llista pot ser incompleta.",
+  "search_unavailable": "La cerca de llocs no respon en aquest moment. Torna-ho a provar d'aquí a un instant.",
   "sheet_selected_station": "Benzinera seleccionada",
   "sheet_cheapest_nearby": "La més barata a prop teu",
   "sheet_cheapest_in_area": "La més barata d'aquesta zona",

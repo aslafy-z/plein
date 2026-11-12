@@ -169,6 +169,8 @@
   "search_clear_aria": "Borrar la búsqueda",
   "search_hint": "Busca una ciudad o una dirección para ver las gasolineras alrededor.",
   "search_no_results": "Ningún lugar coincide con esta búsqueda.",
+  "search_incomplete": "Algunas fuentes no han respondido: la lista puede estar incompleta.",
+  "search_unavailable": "La búsqueda de lugares no responde en este momento. Inténtalo de nuevo en un instante.",
   "sheet_selected_station": "Gasolinera seleccionada",
   "sheet_cheapest_nearby": "La más barata cerca de ti",
   "sheet_cheapest_in_area": "La más barata de esta zona",
