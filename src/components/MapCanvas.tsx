@@ -9,6 +9,7 @@ import { useLeafletMap, type LeafletShell } from '../lib/leafletMap';
 import { setMarkerLabel } from '../lib/markerLabel';
 import { pricePinDotHtml, pricePinHtml } from '../lib/pricePin';
 import { USER_DOT_CLASS, USER_DOT_SIZE, userDotHtml } from '../lib/userDot';
+import { PLACE_PIN_ANCHOR, PLACE_PIN_BOX, PLACE_PIN_CLASS, placePinHtml } from '../lib/placePin';
 import { zoneCircle } from '../lib/zoneCircle';
 import { useDebugMode } from '../lib/debugMode';
 import { fmtAgeMs } from '../lib/debugSnapshot';
@@ -210,6 +211,7 @@ export default function MapCanvas({
   const userDotRef = useRef<L.Marker | null>(null);
   const originLineRef = useRef<L.Polyline | null>(null);
   const reticleRef = useRef<L.Marker | null>(null);
+  const placePinRef = useRef<L.Marker | null>(null);
   /** Glue the center attachments (link line's zone end, center reticle) to
       the DRAWN circle: mid-gesture the glide handler owns the circle's
       position and the throttled searchPos trails it — anything aimed at
@@ -440,6 +442,7 @@ export default function MapCanvas({
       userDotRef.current = null;
       originLineRef.current = null;
       reticleRef.current = null;
+      placePinRef.current = null;
     };
   };
 
@@ -630,6 +633,38 @@ export default function MapCanvas({
       reticleRef.current.setLatLng(pos);
     }
   }, [app.searchPos]);
+
+  // ── Searched-place pin ──────────────────────────────────────────────────────
+  // The search moves the zone onto a place, and the first pan moves it off
+  // again: without a mark of its own the place was simply gone — the pill
+  // back on its prompt, nothing on the map saying where it had been. The pin
+  // stays put through pans and zooms, and a tap brings the zone (and the
+  // pill's name) back onto it. Under every station marker: a station tap must
+  // never be stolen by the pin's touch box.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    placePinRef.current?.remove();
+    placePinRef.current = null;
+    const pin = app.searchPin;
+    if (!pin) return;
+    const marker = L.marker([pin.point.lat, pin.point.lng], {
+      icon: L.divIcon({
+        // The e2e's handle on the pin, like the user dot's
+        className: PLACE_PIN_CLASS,
+        html: placePinHtml(),
+        iconSize: [PLACE_PIN_BOX, PLACE_PIN_BOX],
+        iconAnchor: PLACE_PIN_ANCHOR,
+      }),
+      zIndexOffset: -600,
+    });
+    marker.on('click', () =>
+      appRef.current.setSearchArea(pin.point, pin.label, { pin: true }),
+    );
+    setMarkerLabel(marker, m.map_place_pin_label({ place: pin.label }));
+    marker.addTo(map);
+    placePinRef.current = marker;
+  }, [app.searchPin]);
 
   // ── Station pins: keyed diff so panning/refreshes never blink the markers ──
   // The map shows every loaded station passing the filters (the whole fetched

@@ -526,7 +526,17 @@ export interface AppStore {
   searchedAway: boolean;
   /** Name of the searched place (null when following the user / free pan) */
   searchLabel: string | null;
-  setSearchArea(p: GeoPoint, label?: string): void;
+  /**
+   * The place the search last picked, pinned on the map. Unlike `searchLabel`
+   * it SURVIVES a free pan: the label names what the zone is on and goes with
+   * the first drag, the pin marks where the place is so it can be found — and
+   * tapped — again. Dropped with the search itself (`resetSearchToUser`) or
+   * replaced by the next named area.
+   */
+  searchPin: { point: GeoPoint; label: string } | null;
+  /** `pin` marks a named place on the map — a searched place, not a station,
+      which already wears a pin of its own. */
+  setSearchArea(p: GeoPoint, label?: string, opts?: { pin?: boolean }): void;
   resetSearchToUser(): void;
   /** Which search field is open, null when none. A nav state like the
       filters sheet: opening one stacks a history entry, so the system Back
@@ -906,6 +916,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // the map — or until a shared link says which area to open on.
   const [searchPos, setSearchPos] = useState<GeoPoint>(initialMap.center ?? initialPos);
   const [searchLabel, setSearchLabel] = useState<string | null>(null);
+  const [searchPin, setSearchPin] = useState<AppStore['searchPin']>(null);
   const [focusStationId, setFocusStationId] = useState<string | null>(null);
   // A link-provided area counts as « searched elsewhere »: the geolocation fix
   // landing right after must move the user dot, not the shared view.
@@ -1016,6 +1027,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (!searchMovedRef.current) {
           setSearchPos(p);
           setSearchLabel(null);
+          setSearchPin(null);
         }
         setGeoStatus('granted');
         setGeoHold(false);
@@ -1039,13 +1051,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [endGeoRequest]);
   useEffect(() => () => clearTimeout(geoSpinTimer.current), []);
 
-  const setSearchArea = useCallback((p: GeoPoint, label?: string) => {
+  const setSearchArea = useCallback((p: GeoPoint, label?: string, opts?: { pin?: boolean }) => {
     searchMovedRef.current = true;
     setSearchPos(p);
     setSearchLabel(label ?? null);
     // Picking a named place moves to a new context — drop the map selection
     // (free pans keep it: the user may be locating their selected station)
-    if (label) setFocusStationId(null);
+    // and the previous place's pin. A free pan keeps the pin too: it is what
+    // still says where the searched place is once the zone has left it.
+    if (label) {
+      setFocusStationId(null);
+      setSearchPin(opts?.pin ? { point: p, label } : null);
+    }
     savePersisted({ lastPos: p });
   }, []);
 
@@ -1070,6 +1087,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (geoFixed || searchLabel != null) {
       setSearchPos(userPos);
       setSearchLabel(null);
+      setSearchPin(null);
     }
     requestGeolocation();
   }, [geoFixed, searchLabel, requestGeolocation, userPos]);
@@ -2432,6 +2450,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       searchPos,
       searchedAway: haversineKm(searchPos, userPos) > 0.5,
       searchLabel,
+      searchPin,
       setSearchArea,
       resetSearchToUser,
       searchOpen,
@@ -2514,7 +2533,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [
       screen, prevScreen, go, back, openStation, fuel, setFuel, cycleFuel, sort, radius, setRadius,
       brandSel, toggleBrand, serviceTags, filtersOpen, resetFilters, userPos, geoStatus,
-      geoLocating, requestGeolocation, searchPos, searchLabel, setSearchArea, resetSearchToUser,
+      geoLocating, requestGeolocation, searchPos, searchLabel, searchPin, setSearchArea, resetSearchToUser,
       searchOpen, setSearchOpenNav,
       focusStationId, mapZoom, setMapZoom,
       favorites, toggleFavorite, favoritePrices, stations, roadReach, loadStations,
