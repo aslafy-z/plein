@@ -12,6 +12,8 @@ Portugal.
 
 [![Obrir l'app](https://img.shields.io/badge/%E2%96%B6%EF%B8%8E%20Obrir%20l'app-plein.zadkiel.fr-3ddc84?style=for-the-badge&labelColor=0f1a14)](https://plein.zadkiel.fr)
 
+Voleu veure què ve? [staging-plein.zadkiel.workers.dev](https://staging-plein.zadkiel.workers.dev) serveix l'últim `main`, abans de publicar-se — pot fallar.
+
 [![Llicència MIT](https://img.shields.io/badge/llic%C3%A8ncia-MIT-3ddc84?labelColor=0f1a14)](LICENSE)
 [![PWA](https://img.shields.io/badge/PWA-instal%C2%B7lable-3ddc84?labelColor=0f1a14)](#-ús)
 [![Dades](https://img.shields.io/badge/dades-%F0%9F%87%AB%F0%9F%87%B7%20Fran%C3%A7a%20%C2%B7%20%F0%9F%87%AA%F0%9F%87%B8%20Espanya%20%C2%B7%20%F0%9F%87%A6%F0%9F%87%A9%20Andorra%20%C2%B7%20%F0%9F%87%B5%F0%9F%87%B9%20Portugal-blue?labelColor=0f1a14)](#-fonts-de-dades)
