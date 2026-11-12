@@ -92,6 +92,7 @@ l'app choisit selon la zone affichée (source *Automatique*). Le reste
 | Enseignes des stations | [OpenStreetMap](https://www.openstreetmap.org/) (index statique généré, rapproché des stations par proximité) | ODbL |
 | Géocodage & autocomplétion | [Base Adresse Nationale](https://adresse.data.gouv.fr/), via le service de géocodage de la Géoplateforme (data.geopf.fr) | Licence Ouverte / Open Licence |
 | Points d'intérêt (aéroports, gares, monuments…) | [Service de géocodage de la Géoplateforme](https://geoservices.ign.fr/documentation/services/services-geoplateforme/geocodage) (data.geopf.fr, BD TOPO de l'IGN) | Licence Ouverte / Open Licence |
+| Géocodage de secours, quand la Géoplateforme ne répond pas | [Photon](https://photon.komoot.io) (instance publique Komoot, index OpenStreetMap), borné à la France métropolitaine | ODbL |
 
 ### 🇪🇸 Espagne
 

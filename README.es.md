@@ -93,6 +93,7 @@ geocodificación — que la app elige según la zona mostrada (fuente
 | Rótulos de las estaciones | [OpenStreetMap](https://www.openstreetmap.org/) (índice estático generado, emparejado con las estaciones por proximidad) | ODbL |
 | Geocodificación y autocompletado | [Base Adresse Nationale](https://adresse.data.gouv.fr/), a través del servicio de geocodificación de la Géoplateforme (data.geopf.fr) | Licence Ouverte / Open Licence |
 | Puntos de interés (aeropuertos, estaciones de tren, monumentos…) | [Servicio de geocodificación de la Géoplateforme](https://geoservices.ign.fr/documentation/services/services-geoplateforme/geocodage) (data.geopf.fr, BD TOPO del IGN) | Licence Ouverte / Open Licence |
+| Geocodificación de respaldo, cuando la Géoplateforme no responde | [Photon](https://photon.komoot.io) (instancia pública de Komoot, índice OpenStreetMap), limitado a la Francia metropolitana | ODbL |
 
 ### 🇪🇸 España
 

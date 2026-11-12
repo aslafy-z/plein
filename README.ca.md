@@ -95,6 +95,7 @@ Cada país cobert té els seus propis fluxos oficials — preus i geocodificaci�
 | Marques de les estacions | [OpenStreetMap](https://www.openstreetmap.org/) (índex estàtic generat, aparellat amb les estacions per proximitat) | ODbL |
 | Geocodificació i autocompleció | [Base Adresse Nationale](https://adresse.data.gouv.fr/), a través del servei de geocodificació de la Géoplateforme (data.geopf.fr) | Licence Ouverte / Open Licence |
 | Punts d'interès (aeroports, estacions de tren, monuments…) | [Servei de geocodificació de la Géoplateforme](https://geoservices.ign.fr/documentation/services/services-geoplateforme/geocodage) (data.geopf.fr, BD TOPO de l'IGN) | Licence Ouverte / Open Licence |
+| Geocodificació de reserva, quan la Géoplateforme no respon | [Photon](https://photon.komoot.io) (instància pública de Komoot, índex OpenStreetMap), limitat a la França metropolitana | ODbL |
 
 ### 🇪🇸 Espanya
 

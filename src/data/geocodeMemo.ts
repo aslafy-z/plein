@@ -32,9 +32,9 @@ export function withGeocodeMemo(inner: GeocodeProvider): GeocodeProvider {
       let complete = true;
       const results = await inner.search(query, {
         ...opts,
-        onIncomplete: () => {
+        onIncomplete: (missing) => {
           complete = false;
-          opts?.onIncomplete?.();
+          opts?.onIncomplete?.(missing);
         },
       });
       if (complete) memo.set(key, results);

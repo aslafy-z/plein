@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   AutoStationsProvider,
+  FrGeocodeProvider,
+  MergedGeocodeProvider,
   capNearest,
   frCoversAlong,
   frCoversNear,
@@ -13,7 +15,7 @@ import { AdGeocodeProvider } from '../ad/AdGeocodeProvider'
 import { CartoCiudadGeocodeProvider } from '../es/CartoCiudadGeocodeProvider'
 import { PtStationsProvider } from '../pt/PtStationsProvider'
 import { haversineKm } from '../../lib/geo'
-import type { GeocodeResult, Station } from '../types'
+import type { GeocodeProvider, GeocodeResult, Station } from '../types'
 
 const CENTER = { lat: 42.47, lng: 2.86 } // Le Perthus — France · Spain overlap
 
@@ -378,3 +380,152 @@ describe('two-step geocoders — a failed resolve step', () => {
     expect(onIncomplete).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('MergedGeocodeProvider — naming what did not answer', () => {
+  const place = (label: string): GeocodeResult => ({
+    label,
+    sublabel: '',
+    point: { lat: 43.6, lng: 1.44 },
+    kind: 'locality',
+  })
+  const answering = (label: string): GeocodeProvider => ({ search: async () => [place(label)] })
+  const down: GeocodeProvider = {
+    search: async () => {
+      throw new Error('504')
+    },
+  }
+
+  it('names the countries whose source failed, in display order', async () => {
+    const onIncomplete = vi.fn()
+    const merged = new MergedGeocodeProvider([
+      { country: 'fr', provider: down },
+      { country: 'ad', provider: answering('Encamp') },
+      { country: 'pt', provider: answering('Coimbra') },
+      { country: 'es', provider: down },
+    ])
+    const res = await merged.search('qualquer', { onIncomplete })
+    expect(res.map((r) => r.label)).toEqual(['Encamp', 'Coimbra'])
+    expect(onIncomplete).toHaveBeenCalledTimes(1)
+    expect(onIncomplete).toHaveBeenCalledWith(['fr', 'es'])
+  })
+
+  it('names nobody when a source only lost part of its own list', async () => {
+    const onIncomplete = vi.fn()
+    const partial: GeocodeProvider = {
+      search: async (_q, opts) => {
+        opts?.onIncomplete?.()
+        return [place('Girona')]
+      },
+    }
+    await new MergedGeocodeProvider([
+      { country: 'fr', provider: answering('Toulouse') },
+      { country: 'es', provider: partial },
+    ]).search('qualquer', { onIncomplete })
+    expect(onIncomplete).toHaveBeenCalledWith([])
+  })
+
+  it('stays silent when every source answered', async () => {
+    const onIncomplete = vi.fn()
+    await new MergedGeocodeProvider([{ country: 'fr', provider: answering('Toulouse') }]).search(
+      'toulouse',
+      { onIncomplete },
+    )
+    expect(onIncomplete).not.toHaveBeenCalled()
+  })
+})
+
+describe('FrGeocodeProvider — a backup when the Géoplateforme is down', () => {
+  /** `fetch` answering per host and index; `undefined` is an outage */
+  const stubFetch = (answer: (url: string) => unknown) => {
+    const mock = vi.fn(async (input: unknown) => {
+      const body = answer(String(input))
+      if (body === undefined) return { ok: false, status: 504, json: async () => ({}) }
+      return { ok: true, status: 200, json: async () => body }
+    })
+    vi.stubGlobal('fetch', mock)
+    return mock
+  }
+
+  afterEach(() => vi.unstubAllGlobals())
+
+  const ban = {
+    features: [
+      {
+        geometry: { coordinates: [7.27, 43.7] },
+        properties: { label: 'Nice', context: '06, Alpes-Maritimes', type: 'municipality' },
+      },
+    ],
+  }
+  const poi = {
+    features: [
+      {
+        geometry: { coordinates: [7.21, 43.66] },
+        properties: { toponym: "Aéroport de Nice-Côte d'Azur", category: ['aérodrome'], city: ['Nice'] },
+      },
+    ],
+  }
+  const photon = {
+    features: [
+      {
+        geometry: { coordinates: [7.26, 43.7] },
+        properties: {
+          countrycode: 'FR',
+          type: 'house',
+          housenumber: '4',
+          street: 'Rue Pasteur',
+          postcode: '06000',
+          city: 'Nice',
+          county: 'Alpes-Maritimes',
+        },
+      },
+    ],
+  }
+  const isPhoton = (url: string) => url.includes('photon')
+
+  it('does not ask the backup while the Géoplateforme answers', async () => {
+    const mock = stubFetch((url) => (isPhoton(url) ? photon : url.includes('index=poi') ? poi : ban))
+    const onIncomplete = vi.fn()
+    const res = await new FrGeocodeProvider().search('nice', { onIncomplete })
+    expect(res.map((r) => r.label)).toEqual(['Nice', "Aéroport de Nice-Côte d'Azur"])
+    expect(mock.mock.calls.some(([url]) => isPhoton(String(url)))).toBe(false)
+    expect(onIncomplete).not.toHaveBeenCalled()
+  })
+
+  it('answers from the backup when both indexes are down, as a complete answer', async () => {
+    stubFetch((url) => (isPhoton(url) ? photon : undefined))
+    const onIncomplete = vi.fn()
+    const res = await new FrGeocodeProvider().search('4 rue pasteur nice', { onIncomplete })
+    expect(res).toEqual([
+      {
+        label: '4 Rue Pasteur',
+        sublabel: '06000 Nice, Alpes-Maritimes',
+        point: { lat: 43.7, lng: 7.26 },
+        kind: 'address',
+      },
+    ])
+    // The backup covers named places too: nothing is missing from the list
+    expect(onIncomplete).not.toHaveBeenCalled()
+  })
+
+  it('asks the backup inside metropolitan France', async () => {
+    const mock = stubFetch((url) => (isPhoton(url) ? photon : undefined))
+    await new FrGeocodeProvider().search('4 rue pasteur nice')
+    const url = String(mock.mock.calls.map(([u]) => String(u)).find(isPhoton))
+    expect(url).toContain('bbox=-5.3%2C41.2%2C9.7%2C51.2')
+  })
+
+  it('flags the list when only the points of interest are missing', async () => {
+    const mock = stubFetch((url) => (url.includes('index=address') ? ban : undefined))
+    const onIncomplete = vi.fn()
+    const res = await new FrGeocodeProvider().search('nice', { onIncomplete })
+    expect(res.map((r) => r.label)).toEqual(['Nice'])
+    expect(onIncomplete).toHaveBeenCalledTimes(1)
+    expect(mock.mock.calls.some(([url]) => isPhoton(String(url)))).toBe(false)
+  })
+
+  it('fails when the backup is down too', async () => {
+    stubFetch(() => undefined)
+    await expect(new FrGeocodeProvider().search('nice')).rejects.toThrow()
+  })
+})
+
