@@ -155,6 +155,8 @@
   "map_zoom_out": "Afastar",
   "map_my_position": "A minha posição",
   "map_route_aria": "Mapa da viagem",
+  "map_route_loading_geometry": "A calcular a rota…",
+  "map_route_loading_stations": "À procura de postos na rota…",
   "map_close_list": "Fechar a lista",
   "search_open_aria": "Procurar um local",
   "search_prompt": "Procurar um local ou uma viagem…",

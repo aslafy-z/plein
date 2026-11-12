@@ -155,6 +155,8 @@
   "map_zoom_out": "Zoom out",
   "map_my_position": "My position",
   "map_route_aria": "Map of the route",
+  "map_route_loading_geometry": "Calculating the route…",
+  "map_route_loading_stations": "Searching for stations along the route…",
   "map_close_list": "Close the list",
   "search_open_aria": "Search for a place",
   "search_prompt": "Search a place or a route…",

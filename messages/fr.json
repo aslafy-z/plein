@@ -155,6 +155,8 @@
   "map_zoom_out": "Dézoomer",
   "map_my_position": "Ma position",
   "map_route_aria": "Carte du trajet",
+  "map_route_loading_geometry": "Calcul de l'itinéraire…",
+  "map_route_loading_stations": "Recherche des stations sur le trajet…",
   "map_close_list": "Fermer la liste",
   "search_open_aria": "Rechercher un lieu",
   "search_prompt": "Chercher un lieu ou un trajet…",

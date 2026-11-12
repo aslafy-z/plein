@@ -155,6 +155,8 @@
   "map_zoom_out": "Redueix",
   "map_my_position": "La meva posició",
   "map_route_aria": "Mapa de la ruta",
+  "map_route_loading_geometry": "S'està calculant la ruta…",
+  "map_route_loading_stations": "S'estan cercant benzineres a la ruta…",
   "map_close_list": "Tanca la llista",
   "search_open_aria": "Cerca un lloc",
   "search_prompt": "Cerca un lloc o una ruta…",

@@ -181,6 +181,10 @@ test('the itinerary and its map show before a single station is known', async ({
   // while the stop list is still only placeholders.
   await expect(page.getByText(/243 km ·/).first()).toBeVisible({ timeout: 30_000 })
   await expect(page.locator('[aria-label="Map of the route"]')).toBeVisible()
+  // …and the map says what it is still waiting for
+  await expect(page.getByTestId('route-map-loading')).toHaveText(
+    'Searching for stations along the route…',
+  )
   await openRouteSheet(page)
   await expect(page.locator('.skeleton').first()).toBeVisible()
   await expect(page.getByText('No fuel stop needed')).toHaveCount(0)
@@ -195,6 +199,7 @@ test('the itinerary and its map show before a single station is known', async ({
   })
   await expect(page.locator('.skeleton')).toHaveCount(0)
   await expect(page.getByText(/243 km ·/).first()).toBeVisible()
+  await expect(page.getByTestId('route-map-loading')).toHaveCount(0)
 
   // Matrix stage: the plan's legs upgrade from the geometric estimate to the
   // (stubbed) road matrix — measurable, like the other two commits.
@@ -226,6 +231,9 @@ test('a cold computation shows the trip it is waiting for, not a bare sentence',
   await gotoRoute(page)
   await stubCorridor(page)
   await submitTrip(page, 'Bordeaux')
+
+  // The map shows the wait too, before there is anything to draw on it
+  await expect(page.getByTestId('route-map-loading')).toHaveText('Calculating the route…')
 
   // No geometry yet — but the endpoints are the user's own input, so the wait
   // is the timeline it is turning into rather than « Working out the route… »
@@ -269,6 +277,8 @@ test('recomputing keeps the previous trip on screen, labelled', async ({ page })
   await expect(page.getByText(/243 km ·/).first()).toBeVisible()
   await expect(page.getByText('My position → Bordeaux').first()).toBeVisible()
   await expect(page.getByText('Working out the route…')).toHaveCount(0)
+  // The previous trip stays drawn; the map says a new one is on its way
+  await expect(page.getByTestId('route-map-loading')).toHaveText('Calculating the route…')
 
   // …until the new one replaces it, notice gone.
   routing2.release()
