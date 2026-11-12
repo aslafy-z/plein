@@ -508,6 +508,27 @@ export default function RouteScreen() {
   }, []);
 
   const { panelRef, panelInset } = usePanelInset(desktop, fiche);
+
+  // The endpoint fields float over the map's top edge, and a route is fitted
+  // right up to its bounds: without this the departure of a southbound trip
+  // (or the arrival of a northbound one) is framed BEHIND the fields. Only
+  // the fields row is measured, in both arrangements — the phone's setup
+  // chips under it leave once a route stands.
+  const fieldsRef = useRef<HTMLDivElement>(null);
+  const [topInset, setTopInset] = useState(0);
+  useLayoutEffect(() => {
+    const el = fieldsRef.current;
+    const stage = stageRef.current;
+    if (!el || !stage) return;
+    const measure = () =>
+      setTopInset(
+        Math.max(0, Math.round(el.getBoundingClientRect().bottom - stage.getBoundingClientRect().top)),
+      );
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [desktop]);
   const onCollapsedHeight = useCallback((h: number) => setSheetInset(h), []);
 
   // The submit acknowledges in place: the CTA goes busy while the addresses
@@ -579,6 +600,7 @@ export default function RouteScreen() {
           <RouteMap
             bottomInset={desktop ? 0 : sheetInset}
             leftInset={desktop ? panelInset : 0}
+            topInset={topInset}
           />
 
           {/* The endpoint fields — over the map's top edge, beside the panel
@@ -602,6 +624,7 @@ export default function RouteScreen() {
               }}
             >
               <div
+                ref={fieldsRef}
                 style={{
                   flex: `0 1 ${ENDPOINTS_MAX_WIDTH}px`,
                   minWidth: 240,
@@ -626,7 +649,9 @@ export default function RouteScreen() {
                 pointerEvents: 'none',
               }}
             >
-              <RouteFields />
+              <div ref={fieldsRef}>
+                <RouteFields />
+              </div>
 
               {/* The setup chips ride the overlay — the sheet's copy of the
                   form only shows once expanded, and picking a destination

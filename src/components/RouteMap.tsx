@@ -88,11 +88,14 @@ function endpointHtml(kind: 'from' | 'to'): string {
 export default function RouteMap({
   bottomInset = 0,
   leftInset = 0,
+  topInset = 0,
 }: {
   /** Height of the sheet covering the map's bottom edge (phone) */
   bottomInset?: number;
   /** Width of the floating timeline covering the map's left edge (desktop) */
   leftInset?: number;
+  /** Height of the endpoint fields floating over the map's top edge */
+  topInset?: number;
 }) {
   const app = useApp();
   const analysis = selectRouteAnalysis(app);
@@ -129,6 +132,7 @@ export default function RouteMap({
   const shell = useLeafletMap({
     bottomInset,
     leftInset,
+    topInset,
     setup: (map, sh) => {
       const saved =
         savedRouteView && savedRouteView.routeKey === app.routeState.key ? savedRouteView : null;
