@@ -48,6 +48,10 @@ for (const [name, from, to] of [
     await expect(page.locator('.route-line')).toHaveCount(1)
     await expect(departurePin(page)).toHaveCount(1)
     await expect(arrivalPin(page)).toHaveCount(1)
+    // The final layout: the corridor's « Start the trip » CTA grows the
+    // phone's collapsed sheet AFTER the geometry was fitted, and the trip has
+    // to be re-framed above it (on a slow runner the two land apart)
+    await expect(page.getByTestId('route-start-trip')).toBeVisible()
     await expect(page.locator('.leaflet-map-pane')).not.toHaveClass(/leaflet-zoom-anim/)
 
     // Retried as a whole: the layer is redrawn when the corridor's stations

@@ -381,6 +381,31 @@ export default function RouteMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route, app.routeState.stations, app.fuel, app.routeMode, planKey, analysis.limitKm, app.screen, app.detailId]);
 
+  // The covers move after that fit: on a phone the collapsed sheet grows when
+  // the corridor lands and its « Start the trip » CTA appears, so a route
+  // framed on the geometry alone ended up half a CTA too low, its southern
+  // end behind the sheet. The container does not resize (the sheet floats
+  // over it), so the shell's re-fit never fires: re-frame the standing route
+  // on the new insets here, unless the user has taken over the view. Like
+  // the pre-route framing above, which has the insets as deps for the same
+  // reason.
+  const fittedInsetsRef = useRef({ bottomInset, leftInset, topInset });
+  useEffect(() => {
+    const prev = fittedInsetsRef.current;
+    fittedInsetsRef.current = { bottomInset, leftInset, topInset };
+    if (
+      prev.bottomInset === bottomInset &&
+      prev.leftInset === leftInset &&
+      prev.topInset === topInset
+    ) {
+      return;
+    }
+    const box = frameBoundsRef.current;
+    if (!route || fittedRouteRef.current !== route || !box || userInteractedRef.current) return;
+    shell.fitBounds(box, { pad: 26 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bottomInset, leftInset, topInset]);
+
   // ── Recenter on the user — the zone map's control, on this map's terms ─────
   // The map tab's button resets the SEARCH AREA to the user; this map has no
   // search area, so here it is purely about the view: pan the user's dot back
