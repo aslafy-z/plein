@@ -107,9 +107,10 @@ test('the switch stops station fetches, and releasing it revalidates alone', asy
 })
 
 test('the switch stops basemap tiles, which no store gate can reach', async ({ page }) => {
-  // The basemap fetches from MapLibre's workers (or <img> tiles on the
-  // fallback) — they pass through no provider, so the mode has to be
-  // enforced where the URL is handed out (lib/tileGate.ts). Every tile host
+  // The suite runs without WebGL (playwright.config.ts), so this is the
+  // raster fallback's <img> tiles — they pass through no provider, so the
+  // mode has to be enforced where the URL is handed out (lib/tileGate.ts).
+  // The vector map's own gate is covered in tiles.spec.ts. Every tile host
   // is counted: VersaTiles (tiles and glyph ranges), OSM, and the dev-server
   // proxy the fallback layer uses.
   let tiles = 0

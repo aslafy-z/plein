@@ -1,4 +1,4 @@
-import { test, expect, gotoMap } from './fixtures'
+import { test, expect, gotoMap, WEBGL_LAUNCH } from './fixtures'
 
 // The basemap is VersaTiles vector tiles drawn by a MapLibre GL layer under
 // Leaflet's panes (src/lib/tiles.ts). When VersaTiles cannot be reached, the
@@ -6,6 +6,15 @@ import { test, expect, gotoMap } from './fixtures'
 // of tiles around the viewport so a slight pan never shows tiles loading. The
 // ring must not compete with the visible tiles: off-screen tiles are
 // requested with fetchpriority=low.
+//
+// The rest of the suite runs without WebGL, on the raster fallback
+// (playwright.config.ts says why); this file is where the vector map runs.
+// Software WebGL is slow, so these specs move the map with the keyboard
+// rather than with long drags.
+test.use({ launchOptions: WEBGL_LAUNCH })
+
+/** VersaTiles requests the offline gate stands in front of: tiles and glyphs */
+const GATED = /^https:\/\/tiles\.versatiles\.org\/(tiles|assets\/glyphs)\//
 
 test('the basemap is VersaTiles vector tiles, drawn under the Leaflet panes', async ({ page }) => {
   const vector: number[] = []
@@ -102,4 +111,84 @@ test('an unreachable VersaTiles swaps to OSM raster tiles, ring prefetched so a 
   const after = await tileStats(page)
   expect(after.visible, 'the map must show tiles').toBeGreaterThan(0)
   expect(after.visibleReady, 'a slight pan must not show loading tiles').toBe(after.visible)
+})
+
+test('« Force offline mode » stops the vector map\'s tile and glyph requests', async ({ page }) => {
+  // MapLibre fetches from its own workers, past every provider: the gate is
+  // its transformRequest hook (lib/tileGate.ts), which hands a declined tile
+  // an empty protobuf instead of an address.
+  let requests = 0
+  page.on('request', (req) => {
+    if (GATED.test(req.url())) requests++
+  })
+  await gotoMap(page)
+  await expect.poll(() => requests, { timeout: 20_000 }).toBeGreaterThan(0)
+
+  await page.getByRole('button', { name: 'Settings' }).first().click()
+  const toggle = page.getByTestId('force-offline-toggle')
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-checked', 'true')
+  await page.getByRole('button', { name: 'Map' }).first().click()
+  await expect(page.locator('.leaflet-gl-layer canvas').first()).toBeVisible({ timeout: 20_000 })
+  await page.waitForTimeout(1500) // anything already in flight lands
+
+  // Zoom out twice — with the keyboard, which both arrangements have (the
+  // phone has no zoom buttons): two levels of never-fetched tiles, every one
+  // declined
+  const gated = requests
+  await page.locator('.leaflet-container').first().focus()
+  for (let i = 0; i < 2; i++) {
+    await page.keyboard.press('-')
+    await page.waitForTimeout(1500)
+  }
+  expect(requests).toBe(gated)
+
+  // Released: the map asks for real tiles again
+  await page.getByRole('button', { name: 'Settings' }).first().click()
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-checked', 'false')
+  await page.getByRole('button', { name: 'Map' }).first().click()
+  await expect.poll(() => requests, { timeout: 20_000 }).toBeGreaterThan(gated)
+})
+
+test.describe('a map born without an area', () => {
+  // A shared trip from « My position » mounts the route map behind the
+  // awaited-trip skeleton, in a container with no size yet, while the fix is
+  // still out. MapLibre cannot be created there (its transform has no
+  // inverse at zero size): creating it anyway threw, left the layer half
+  // added, and every zoom after that threw again (lib/tiles.ts,
+  // guardedLayer). The fixture fails the test on any of those page errors.
+  test.use({ seed: { sourceId: 'demo', onboarded: true } })
+
+  test('waits for one, then draws the vector map', async ({ page }) => {
+    await page.addInitScript(() => {
+      let pending: PositionCallback | null = null
+      ;(window as unknown as { __grantFix: () => void }).__grantFix = () => {
+        const ok = pending
+        pending = null
+        ok?.({
+          coords: { latitude: 43.6047, longitude: 1.4442, accuracy: 20 },
+          timestamp: Date.now(),
+        } as GeolocationPosition)
+      }
+      Object.defineProperty(navigator, 'geolocation', {
+        configurable: true,
+        value: {
+          getCurrentPosition: (ok: PositionCallback) => {
+            pending = ok
+          },
+          watchPosition: () => 0,
+          clearWatch: () => {},
+        },
+      })
+    })
+    await page.goto('/route/results?d=44.8378,-0.5792&dl=Bordeaux%20centre&f=diesel')
+    await expect(page.locator('.leaflet-container').first()).toBeVisible({ timeout: 15_000 })
+    await page.waitForTimeout(1_000)
+
+    await page.evaluate(() => (window as unknown as { __grantFix: () => void }).__grantFix())
+
+    await expect(page.getByText('No fuel stop needed').first()).toBeVisible({ timeout: 30_000 })
+    await expect(page.locator('.leaflet-gl-layer canvas').first()).toBeVisible({ timeout: 20_000 })
+  })
 })

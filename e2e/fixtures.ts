@@ -136,6 +136,18 @@ export async function seedStationsCache(
 }
 
 // The zone card appearing means stations are loaded and the map is live.
+/**
+ * Launch options that give the page WebGL — software WebGL, on a GPU-less
+ * runner. The suite runs without it (playwright.config.ts: the vector
+ * basemap renders at a second or so per frame in software, and every drag
+ * timed out), so the specs about the vector map itself opt back in with
+ * `test.use({ launchOptions: WEBGL_LAUNCH })` at the top of the file.
+ */
+export const WEBGL_LAUNCH = {
+  executablePath: process.env.PLEIN_CHROMIUM || undefined,
+  args: ['--enable-unsafe-swiftshader'],
+}
+
 export async function gotoMap(page: import('@playwright/test').Page) {
   await page.goto('/')
   await expect(page.getByText('The cheapest near you')).toBeVisible({ timeout: 15_000 })

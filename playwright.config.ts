@@ -20,10 +20,14 @@ export default defineConfig({
     colorScheme: 'dark',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    // The basemap is a WebGL map (MapLibre): software WebGL on a GPU-less
-    // runner, asked for explicitly rather than through Chromium's deprecated
-    // automatic fallback.
-    launchOptions: { executablePath, args: ['--enable-unsafe-swiftshader'] },
+    // The basemap is a WebGL map (MapLibre). A GPU-less runner can only
+    // render it in software, at a second or so per frame — every drag in the
+    // suite turned into seconds and timed out. So the suite runs WITHOUT
+    // WebGL, on the raster fallback a device without it gets (src/lib/tiles.ts),
+    // and e2e/tiles.spec.ts turns software WebGL back on (`WEBGL_LAUNCH` in
+    // e2e/fixtures.ts) to
+    // cover the vector map itself.
+    launchOptions: { executablePath, args: ['--disable-3d-apis'] },
   },
   projects: [
     { name: 'mobile', use: { ...devices['Pixel 7'] } },

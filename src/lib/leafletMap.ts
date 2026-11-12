@@ -123,6 +123,13 @@ export function useLeafletMap(options: LeafletShellOptions): LeafletShell {
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
     const map = L.map(containerRef.current, {
+      // The map's own ceiling, not the basemap's: Leaflet otherwise takes it
+      // from the tile layers, and the vector basemap is no tile layer — it
+      // may also be absent for a while (loading, or waiting for the map to
+      // have a view). Without one, a fit on a single point (a destination
+      // alone) zooms to Infinity and every layer chokes on it. 19 is as deep
+      // as the fallback's raster tiles go, and the vector map overzooms there.
+      maxZoom: 19,
       zoomControl: false,
       attributionControl: true,
       // Leaflet's stepped arrows/± give way to the smooth loop installed below

@@ -184,17 +184,20 @@ width, never pointer type: a window gets resized and the layout has to follow.
   `useLeafletMap` (`src/lib/leafletMap.ts`): one init, one basemap, one
   keyboard install, one user-takeover rule, one resize/re-fit, inset-aware
   fits. They also share one price-pin markup (`src/lib/pricePin.ts`).
-- **The basemap is the one thing on the map Leaflet does not draw**
-  (`src/lib/tiles.ts`): VersaTiles vector tiles, rendered by a MapLibre GL
-  layer (`@maplibre/maplibre-gl-leaflet`, imported on demand) inside
-  Leaflet's tile pane, which Leaflet keeps in sync. Everything the app draws
-  (pins, circle, route) stays Leaflet. The theme swaps the style, never the
-  tiles; an unreachable VersaTiles or a device without WebGL drops to OSM
-  raster tiles. MapLibre runs one zoom below Leaflet (512 px tiles) and
-  overzooms past z14 — the pyramid prefetch and the debug grid
-  (`vectorTileZoom`, `tileMapZoom`) both depend on that rule.
   Mechanism is shared, policy is not: each wrapper keeps when to fit, on what
   bounds, and its own layers.
+- **The basemap is the one thing on the map Leaflet does not draw**
+  (`src/lib/tiles.ts`): VersaTiles vector tiles, rendered by a MapLibre GL
+  layer (`@maplibre/maplibre-gl-leaflet`, imported on demand, wrapped by
+  `guardedLayer`) inside Leaflet's tile pane, which Leaflet keeps in sync.
+  Everything the app draws (pins, circle, route) stays Leaflet. The theme
+  swaps the style, never the tiles; an unreachable VersaTiles or a device
+  without WebGL drops to OSM raster tiles. MapLibre runs one zoom below
+  Leaflet (512 px tiles) and overzooms past z14 — the pyramid prefetch and
+  the debug grid (`vectorTileZoom`, `tileMapZoom`) both depend on that rule.
+  The map's `maxZoom` (19) is set on the map in `useLeafletMap`: no tile
+  layer supplies one any more, and a fit on a single point without it zooms
+  to Infinity.
 - **A card's or sheet's secondary actions are `ActionPill`s**
   (`src/components/ActionPill.tsx`): Share, Edit, Reset, close, deselect,
   favorite in a header, « Settings › » at the end of a summary card. A tonal
@@ -374,6 +377,12 @@ npm run build       # tsc + vite build
   `seed` to assert on another language — `locale.spec.ts` drives the
   resolution paths and the other catalogs. Mock payloads and the demo dataset
   stay French: that's data, not UI copy.
+- **The suite runs without WebGL** (`--disable-3d-apis` in
+  `playwright.config.ts`), so every spec sees the OSM raster fallback: the
+  vector basemap renders in software on a GPU-less runner, at a second or so
+  per frame, and every drag timed out. `e2e/tiles.spec.ts` turns software
+  WebGL back on (`WEBGL_LAUNCH` from `e2e/fixtures.ts`) and is where the
+  vector map itself is covered; a new spec about the vector map goes there.
 - **Two projects, two layouts.** `mobile` (Pixel 7) and `desktop` (1440×900)
   now see genuinely different arrangements, so a spec must say which one it is
   about: `phoneOnly()` / `desktopOnly()` from `e2e/fixtures.ts` gate on the

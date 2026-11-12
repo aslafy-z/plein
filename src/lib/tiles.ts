@@ -185,6 +185,89 @@ const declined = (e: L.TileEvent): boolean => isBlankTile((e.tile as HTMLImageEl
 type GlLayer = L.Layer & { getMaplibreMap(): GlMap };
 type GlLayerFactory = (options: Record<string, unknown>) => GlLayer;
 
+/** The plugin layer's private surface the guards below wrap (0.1.x) */
+interface GlLayerInternals {
+  _map: L.Map | null;
+  _glMap: (GlMap & { _actualCanvas?: HTMLElement }) | null;
+  _container?: HTMLElement;
+  _update(e?: unknown): void;
+  _pinchZoom(e?: unknown): void;
+  _animateZoom(e: unknown): void;
+  _zoomEnd(): void;
+  _resizeContainer(): void;
+  _transitionEnd(e?: unknown): void;
+  onRemove(map: L.Map): void;
+}
+
+/**
+ * Whether MapLibre can follow this map's view right now. Its transform has
+ * no inverse at a zero size or a non-finite zoom, and `jumpTo` throws on
+ * either — where Leaflet just carries on: a map mounted behind a skeleton
+ * has no size yet, and a fit on a single point with no zoom ceiling lands
+ * on Infinity (lib/leafletMap.ts sets one now; this stays the guard).
+ */
+const drawable = (map: L.Map | null | undefined): boolean => {
+  if (!map || !(map as unknown as { _loaded?: boolean })._loaded) return false;
+  const size = map.getSize();
+  return size.x > 0 && size.y > 0 && Number.isFinite(map.getZoom());
+};
+
+/**
+ * The plugin's layer, made safe for how this app mounts maps. The plugin
+ * assumes a map that is on screen for its whole life; here a map is born in
+ * a container that has no size yet, at no usable zoom (the route map
+ * behind the awaited-trip skeleton), hidden, and torn down mid-animation by
+ * a screen change. Each case threw from a Leaflet event handler: `jumpTo` on
+ * a transform with no inverse, a zoom end reaching a canvas that was never
+ * set, a deferred frame reaching a map already removed. Every sync entry
+ * point now stands down while the map is gone or not drawable — the next
+ * move or resize re-syncs it.
+ */
+function guardedLayer(Base: typeof L.Layer): GlLayerFactory {
+  const base = Base.prototype as unknown as GlLayerInternals;
+  const live = (layer: GlLayerInternals) => layer._glMap != null && drawable(layer._map);
+  const Guarded = Base.extend({
+    _update(this: GlLayerInternals, e?: unknown) {
+      if (live(this)) base._update.call(this, e);
+    },
+    _pinchZoom(this: GlLayerInternals, e?: unknown) {
+      if (live(this)) base._pinchZoom.call(this, e);
+    },
+    _animateZoom(this: GlLayerInternals, e: unknown) {
+      if (live(this) && this._glMap?._actualCanvas) base._animateZoom.call(this, e);
+    },
+    _zoomEnd(this: GlLayerInternals) {
+      if (live(this) && this._glMap?._actualCanvas) base._zoomEnd.call(this);
+    },
+    // The plugin's version defers to a frame that may land after removal
+    _transitionEnd(this: GlLayerInternals) {
+      L.Util.requestAnimFrame(() => {
+        const map = this._map;
+        const gl = this._glMap;
+        if (!map || !gl?._actualCanvas || !drawable(map)) return;
+        const center = map.getCenter();
+        const offset = map.latLngToContainerPoint(map.getBounds().getNorthWest());
+        this._resizeContainer();
+        L.DomUtil.setTransform(gl._actualCanvas, offset, 1);
+        gl.once('moveend', () => this._zoomEnd());
+        gl.jumpTo({ center, zoom: map.getZoom() - 1 });
+      });
+    },
+    _resize(this: GlLayerInternals, e?: unknown) {
+      this._transitionEnd(e);
+    },
+    onRemove(this: GlLayerInternals, map: L.Map) {
+      if (this._glMap) {
+        base.onRemove.call(this, map);
+        return;
+      }
+      // An add that failed halfway: only the container may be standing
+      this._container?.remove();
+    },
+  });
+  return (options) => new (Guarded as unknown as new (o: Record<string, unknown>) => GlLayer)(options);
+}
+
 /** The renderer chunk, imported once for every map of the session */
 let glFactory: Promise<GlLayerFactory> | null = null;
 
@@ -193,7 +276,7 @@ function loadGl(): Promise<GlLayerFactory> {
     import('maplibre-gl'),
     import('@maplibre/maplibre-gl-leaflet'),
     import('maplibre-gl/dist/maplibre-gl.css'),
-  ]).then(([, plugin]) => plugin.maplibreGL as unknown as GlLayerFactory);
+  ]).then(([, plugin]) => guardedLayer(plugin.MaplibreGL as unknown as typeof L.Layer));
   // A failed import (offline on a first visit: the chunk was never cached)
   // must not poison the session — the next attempt re-imports.
   glFactory.catch(() => {
@@ -319,6 +402,25 @@ function mountVector(handle: BasemapHandle): void {
   let loaded = 0;
   let errored = 0;
   let layer: GlLayer | null = null;
+  // Zoom changes abort pending tiles without an error, so a count alone can
+  // miss the failure — the timer catches that case. It starts once the layer
+  // is on the map, not before: a map can wait a long time for an area to
+  // draw in (a route behind its skeleton), which says nothing about the
+  // server. The offline gate is never grounds for the swap: « VersaTiles is
+  // unreachable » lasts the whole session, and releasing the switch has to
+  // find the server where it left it rather than on a verdict the app's own
+  // blanking produced.
+  let giveUp: ReturnType<typeof setTimeout> | undefined;
+  map.on('unload', () => clearTimeout(giveUp));
+
+  // Stands the fallback back up — or hands the handle back to the one that
+  // never left — when the vector layer cannot draw this map
+  const giveBack = () => {
+    if (previous) {
+      handle.layer = previous;
+      handle.onFallback = true;
+    } else mountFallback(handle);
+  };
 
   const swap = () => {
     if (settled || handle.generation !== generation) return;
@@ -326,77 +428,80 @@ function mountVector(handle: BasemapHandle): void {
     vectorUnreachable = true;
     clearTimeout(giveUp);
     if (layer) map.removeLayer(layer);
-    if (previous) {
-      // the fallback never left — hand the handle back to it
-      handle.layer = previous;
-      handle.onFallback = true;
-    } else {
-      mountFallback(handle);
-    }
+    giveBack();
     armRecovery();
   };
 
-  // Zoom changes abort pending tiles without an error, so a count alone can
-  // miss the failure — the timer catches that case. The offline gate is
-  // never grounds for the swap: « VersaTiles is unreachable » lasts the whole
-  // session, and releasing the switch has to find the server where it left
-  // it rather than on a verdict the app's own blanking produced.
-  const giveUp = setTimeout(() => {
-    if (loaded === 0 && !isForcedOffline()) swap();
-  }, GIVE_UP_MS);
-  map.on('unload', () => clearTimeout(giveUp));
+  const add = (maplibreGL: GlLayerFactory) => {
+    // The map unloaded, or another mount took the slot, while we waited
+    if (handle.generation !== generation || !handles.has(handle)) return;
+    try {
+      layer = maplibreGL({
+        style: styleUrl(),
+        transformRequest: gateRequest,
+        className: 'basemap-vector',
+        // A tile that expires while on screen is not worth a refetch: the
+        // ground does not move, and the worker answers cache-first anyway.
+        refreshExpiredTiles: false,
+        attributionControl: false,
+      });
+      // Leaflet's attribution control reads the layer, not the style
+      (layer as unknown as { getAttribution(): string }).getAttribution = () => ATTRIBUTION;
+      track(layer);
+      layer.addTo(map);
+      giveUp = setTimeout(() => {
+        if (loaded === 0 && !isForcedOffline()) swap();
+      }, GIVE_UP_MS);
+    } catch {
+      // The renderer refused this map (a context the browser would not
+      // create, a blocklisted GPU). This map keeps the fallback; the next
+      // one tries again.
+      clearTimeout(giveUp);
+      settled = true;
+      if (layer) map.removeLayer(layer);
+      layer = null;
+      giveBack();
+      return;
+    }
+    handle.layer = layer;
+    handle.onFallback = false;
+    const gl = layer.getMaplibreMap();
+    gl.on('data', (e: { dataType?: string; tile?: unknown }) => {
+      if (e.dataType !== 'source' || !e.tile || isForcedOffline()) return;
+      loaded++;
+      tilesLoaded++;
+      if (!settled) {
+        settled = true;
+        clearTimeout(giveUp);
+        if (previous) map.removeLayer(previous);
+      }
+    });
+    gl.on('error', (e: { tile?: unknown; sourceId?: string }) => {
+      tilesErrored++;
+      if (settled || isForcedOffline()) return;
+      // No style means nothing will ever draw: swap at once. A tile error
+      // only counts once it repeats, like the raster layer's did.
+      errored++;
+      if (!e.tile && !e.sourceId) swap();
+      else if (loaded === 0 && errored >= 2) swap();
+    });
+  };
 
   void loadGl().then(
     (maplibreGL) => {
-      // The map unloaded, or another mount took the slot, while the chunk loaded
       if (handle.generation !== generation || !handles.has(handle)) return;
-      try {
-        layer = maplibreGL({
-          style: styleUrl(),
-          transformRequest: gateRequest,
-          className: 'basemap-vector',
-          // A tile that expires while on screen is not worth a refetch: the
-          // ground does not move, and the worker answers cache-first anyway.
-          refreshExpiredTiles: false,
-          attributionControl: false,
-        });
-        // Leaflet's attribution control reads the layer, not the style
-        (layer as unknown as { getAttribution(): string }).getAttribution = () => ATTRIBUTION;
-        track(layer);
-        layer.addTo(map);
-      } catch {
-        // No WebGL after all (a blocklisted GPU, a context the browser refused)
-        webgl = false;
-        layer = null;
-        if (previous) {
-          handle.layer = previous;
-          handle.onFallback = true;
-        } else mountFallback(handle);
-        clearTimeout(giveUp);
+      // MapLibre cannot be born on a map it cannot follow (no size yet, no
+      // view yet): wait for the resize or the first fit that gives it one.
+      if (drawable(map)) {
+        add(maplibreGL);
         return;
       }
-      handle.layer = layer;
-      handle.onFallback = false;
-      const gl = layer.getMaplibreMap();
-      gl.on('data', (e: { dataType?: string; tile?: unknown }) => {
-        if (e.dataType !== 'source' || !e.tile || isForcedOffline()) return;
-        loaded++;
-        tilesLoaded++;
-        if (!settled) {
-          settled = true;
-          clearTimeout(giveUp);
-          if (previous) map.removeLayer(previous);
-        }
-      });
-      gl.on('error', (e: { tile?: unknown; sourceId?: string }) => {
-        tilesErrored++;
-        if (settled || isForcedOffline()) return;
-        // No style means nothing will ever draw: swap at once. A tile error
-        // only counts once it repeats, like the raster layer's did.
-        errored++;
-        if (!e.tile && !e.sourceId) swap();
-        else if (loaded === 0 && errored >= 2) swap();
-      });
+      const onView = () => {
+        if (!drawable(map)) return;
+        map.off('resize viewreset moveend zoomend', onView);
+        add(maplibreGL);
+      };
+      map.on('resize viewreset moveend zoomend', onView);
     },
     () => {
       // The renderer chunk did not load (offline on a first visit): this is
@@ -511,7 +616,7 @@ async function attemptRecovery(): Promise<void> {
 
 /** Below this zoom the whole world is a handful of tiles — nothing to warm */
 const PREFETCH_MIN_ZOOM = 5;
-/** The map's maxZoom — the deepest a zoom-in gesture can go */
+/** The map's maxZoom (lib/leafletMap.ts) — the deepest a zoom-in can go */
 const PREFETCH_MAX_ZOOM = 19;
 /** A pan mid-gesture fires moveend repeatedly; only the settled view counts */
 const PREFETCH_DEBOUNCE_MS = 2000;
@@ -584,6 +689,7 @@ function installPyramidPrefetch(handle: BasemapHandle): void {
 
 async function prefetchPyramid(handle: BasemapHandle): Promise<void> {
   if (!handles.has(handle)) return; // the map went away while we idled
+  if (!drawable(handle.map)) return; // no view to warm around yet
   // Offline is when the cache is SPENT, not fed — and « Force offline mode »
   // means no request at all: these fetches are raw, so the map's own gate
   // never sees them and cannot decline them for us.
