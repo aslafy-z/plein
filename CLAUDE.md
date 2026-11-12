@@ -184,6 +184,15 @@ width, never pointer type: a window gets resized and the layout has to follow.
   `useLeafletMap` (`src/lib/leafletMap.ts`): one init, one basemap, one
   keyboard install, one user-takeover rule, one resize/re-fit, inset-aware
   fits. They also share one price-pin markup (`src/lib/pricePin.ts`).
+- **The basemap is the one thing on the map Leaflet does not draw**
+  (`src/lib/tiles.ts`): VersaTiles vector tiles, rendered by a MapLibre GL
+  layer (`@maplibre/maplibre-gl-leaflet`, imported on demand) inside
+  Leaflet's tile pane, which Leaflet keeps in sync. Everything the app draws
+  (pins, circle, route) stays Leaflet. The theme swaps the style, never the
+  tiles; an unreachable VersaTiles or a device without WebGL drops to OSM
+  raster tiles. MapLibre runs one zoom below Leaflet (512 px tiles) and
+  overzooms past z14 — the pyramid prefetch and the debug grid
+  (`vectorTileZoom`, `tileMapZoom`) both depend on that rule.
   Mechanism is shared, policy is not: each wrapper keeps when to fit, on what
   bounds, and its own layers.
 - **A card's or sheet's secondary actions are `ActionPill`s**
@@ -253,7 +262,7 @@ Anything that does not fit one of them does not get cached.
 | durable, app-owned | settings, filters, favorites, `searchHistory`, `lastPos`, `lastFix` | localStorage `plein.settings.v1` | none; shape migrations in `persist.ts` `migrate()` |
 | durable, app-owned | station arrays per fetched area | IndexedDB `plein.cache` (`src/data/cacheStore.ts`) | three tiers, below |
 | memory | province/district memos, `roadReach`, selector memos, brand POI index, geocode + route LRUs | JS maps | the session |
-| static, SW-owned | bundles, icons, fonts, shell, tiles, `/brands-fr.json`, `/brand-icons/*` | Cache Storage (`public/sw.js`) | cache-name version bump + FIFO caps; the tiles also fall to « Clear offline data » |
+| static, SW-owned | bundles, icons, fonts, shell, tiles, the basemap's style/sprite/glyphs, `/brands-fr.json`, `/brand-icons/*` | Cache Storage (`public/sw.js`) | cache-name version bump + FIFO caps; the tiles also fall to « Clear offline data » |
 
 - **Where the map looks and where the user is are two different values.**
   `lastPos` is the area the map opened on — a searched place included — and
@@ -288,12 +297,13 @@ Anything that does not fit one of them does not get cached.
   what the Settings « Data » section renders — the instrumentation is data,
   since the e2e fixture fails on a console error. The tile figure is entries ×
   a flat per-tile average: weighing them would mean reading every cached body.
-  The tiles are requested in CORS mode and the worker stores only `ok`
+  The tiles (VersaTiles vector tiles, OSM raster on the fallback) are
+  requested in CORS mode and the worker stores only `ok`
   responses — a no-cors tile is opaque, its status hidden, and a cached CDN
   error would answer cache-first from then on. « Clear offline data » drops the station areas, the
   favorite prices AND every `plein-tiles-*` cache generation; the service
-  worker's other caches (shell, assets, brand data) are the app itself, not
-  user data, and stay.
+  worker's other caches (shell, assets, brand data, the basemap's style and
+  glyphs) are the app itself, not user data, and stay.
 - Seeding a cached area in e2e goes through `seedStationsCache()`
   (`e2e/fixtures.ts`), which writes IndexedDB from a loaded page and expects a
   reload; its record shape mirrors `AreaMeta` and the two have to agree.

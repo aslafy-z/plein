@@ -431,17 +431,19 @@ describe('service worker — the offline brand identity', () => {
 })
 
 describe('service worker — tiles and activation', () => {
+  const VT = 'https://tiles.versatiles.org'
+
   it('still bounds the tile cache', async () => {
     const sw = loadSw(async (req) => new Response(req.url, { status: 200 }))
     const max = sw.limits.TILE_MAX_ENTRIES
 
     for (let i = 0; i < max + 5; i += 1) {
-      await sw.fetchEvent(request(`https://basemaps.cartocdn.com/dark_all/10/0/${i}.png`))
+      await sw.fetchEvent(request(`${VT}/tiles/osm/10/0/${i}`))
     }
 
-    const tiles = sw.caches.stores.get('plein-tiles-v3')
+    const tiles = sw.caches.stores.get('plein-tiles-v4')
     expect(tiles?.entries.size).toBe(max)
-    expect(tiles?.entries.has('https://basemaps.cartocdn.com/dark_all/10/0/0.png')).toBe(false)
+    expect(tiles?.entries.has(`${VT}/tiles/osm/10/0/0`)).toBe(false)
   })
 
   it('refreshes a hit tile so the cap evicts least-recently-used, not oldest-inserted', async () => {
@@ -449,38 +451,38 @@ describe('service worker — tiles and activation', () => {
     const max = sw.limits.TILE_MAX_ENTRIES
 
     for (let i = 0; i < max; i += 1) {
-      await sw.fetchEvent(request(`https://basemaps.cartocdn.com/dark_all/10/0/${i}.png`))
+      await sw.fetchEvent(request(`${VT}/tiles/osm/10/0/${i}`))
     }
     // Touch the oldest entry (a cache hit), then overflow the cap by one:
     // the hit moved tile 0 to the tail, so tile 1 is now the eviction victim.
-    await sw.fetchEvent(request('https://basemaps.cartocdn.com/dark_all/10/0/0.png'))
-    await sw.fetchEvent(request(`https://basemaps.cartocdn.com/dark_all/10/0/${max}.png`))
+    await sw.fetchEvent(request(`${VT}/tiles/osm/10/0/0`))
+    await sw.fetchEvent(request(`${VT}/tiles/osm/10/0/${max}`))
 
-    const tiles = sw.caches.stores.get('plein-tiles-v3')
+    const tiles = sw.caches.stores.get('plein-tiles-v4')
     expect(tiles?.entries.size).toBe(max)
-    expect(tiles?.entries.has('https://basemaps.cartocdn.com/dark_all/10/0/0.png')).toBe(true)
-    expect(tiles?.entries.has('https://basemaps.cartocdn.com/dark_all/10/0/1.png')).toBe(false)
+    expect(tiles?.entries.has(`${VT}/tiles/osm/10/0/0`)).toBe(true)
+    expect(tiles?.entries.has(`${VT}/tiles/osm/10/0/1`)).toBe(false)
   })
 
-  it('never caches a tile the CDN refused, and asks again next time', async () => {
+  it('never caches a tile the server refused, and asks again next time', async () => {
     let status = 429
     let calls = 0
     const sw = loadSw(async () => {
       calls += 1
       return new Response(`tile ${status}`, { status })
     })
-    const url = 'https://a.basemaps.cartocdn.com/dark_all/10/2/3.png'
+    const url = `${VT}/tiles/osm/10/2/3`
 
     const refused = await sw.fetchEvent(request(url))
-    // The page still gets the real answer — Leaflet's tileerror depends on it
+    // The page still gets the real answer — the map's error handling depends on it
     expect(refused.res?.status).toBe(429)
-    expect(sw.caches.stores.get('plein-tiles-v3')?.entries.size ?? 0).toBe(0)
+    expect(sw.caches.stores.get('plein-tiles-v4')?.entries.size ?? 0).toBe(0)
 
     status = 200
     const { res } = await sw.fetchEvent(request(url))
     expect(await res?.text()).toBe('tile 200')
     expect(calls).toBe(2)
-    expect(sw.caches.stores.get('plein-tiles-v3')?.entries.has(url)).toBe(true)
+    expect(sw.caches.stores.get('plein-tiles-v4')?.entries.has(url)).toBe(true)
   })
 
   it('never caches an opaque tile response — its status cannot be read', async () => {
@@ -495,43 +497,25 @@ describe('service worker — tiles and activation', () => {
 
     expect(res).toBe(opaque)
     expect(waitCount).toBe(0)
-    expect(sw.caches.stores.get('plein-tiles-v3')?.entries.size ?? 0).toBe(0)
+    expect(sw.caches.stores.get('plein-tiles-v4')?.entries.size ?? 0).toBe(0)
   })
 
-  it('caches a keyed tile under its keyless URL, and answers either form', async () => {
-    // The CARTO key authorizes the request; it is not part of the tile's
-    // identity. Cached with it, a rotated key (or the tiles warmed before
-    // CARTO required one) would miss on every single tile.
+  it('caches the OSM fallback tiles with the vector ones', async () => {
     const sw = loadSw(async (req) => new Response(req.url, { status: 200 }))
-    const url = 'https://a.basemaps.cartocdn.com/dark_all/10/2/3.png'
-
-    const first = await sw.fetchEvent(request(`${url}?key=cb1_key`))
-    expect(await first.res?.text()).toBe(`${url}?key=cb1_key`)
-
-    const tiles = sw.caches.stores.get('plein-tiles-v3')
-    expect([...(tiles?.entries.keys() ?? [])]).toEqual([url])
-
-    // Both the rotated key and no key at all hit that one entry
-    for (const asked of [`${url}?key=rotated`, url]) {
-      const { res } = await sw.fetchEvent(request(asked))
-      expect(await res?.text()).toBe(`${url}?key=cb1_key`)
-    }
-    expect(tiles?.entries.size).toBe(1)
+    await sw.fetchEvent(request('https://tile.openstreetmap.org/10/2/3.png'))
+    await sw.fetchEvent(request(`${VT}/tiles/landcover-vectors/9/1/1`))
+    expect([...(sw.caches.stores.get('plein-tiles-v4')?.entries.keys() ?? [])]).toEqual([
+      'https://tile.openstreetmap.org/10/2/3.png',
+      `${VT}/tiles/landcover-vectors/9/1/1`,
+    ])
   })
 
   it('lets a queried tile URL — the reachability probe — pass by untouched', async () => {
     const sw = loadSw(async (req) => new Response(req.url, { status: 200 }))
-    const tiles = await sw.caches.open('plein-tiles-v3')
-    await tiles.put(
-      'https://a.basemaps.cartocdn.com/dark_all/3/4/2.png',
-      new Response('cached tile'),
-    )
+    const tiles = await sw.caches.open('plein-tiles-v4')
+    await tiles.put(`${VT}/tiles/osm/3/4/2`, new Response('cached tile'))
 
-    // The probe carries the CARTO key like any other tile request — what
-    // must keep it out of the cache is the `probe` parameter next to it.
-    const { res } = await sw.fetchEvent(
-      request('https://a.basemaps.cartocdn.com/dark_all/3/4/2.png?probe=123&key=cb1_key'),
-    )
+    const { res } = await sw.fetchEvent(request(`${VT}/tiles/osm/3/4/2?probe=123`))
 
     // Not intercepted at all: the probe must reach the network (or fail),
     // never be answered by a cached tile — and never pollute the cache.
@@ -539,27 +523,52 @@ describe('service worker — tiles and activation', () => {
     expect(tiles.entries.size).toBe(1)
   })
 
+  it('keeps the style, sprite and glyphs in their own uncapped cache, served cached first', async () => {
+    // An offline map without its style draws nothing at all; and the tile
+    // cap must never evict what every tile needs to be drawn with.
+    let version = 1
+    const sw = loadSw(async (req) => new Response(`${req.url} v${version}`, { status: 200 }))
+    const style = `${VT}/assets/styles/gray-dark/style.json`
+    const glyphs = `${VT}/assets/glyphs/noto_sans_regular/0-255.pbf`
+
+    await sw.fetchEvent(request(style))
+    await sw.fetchEvent(request(glyphs))
+    const basemap = sw.caches.stores.get('plein-basemap-v1')
+    expect([...(basemap?.entries.keys() ?? [])]).toEqual([style, glyphs])
+    expect(sw.caches.stores.get('plein-tiles-v4')?.entries.size ?? 0).toBe(0)
+
+    // Stale-while-revalidate: the cached copy answers, the refresh lands behind
+    version = 2
+    const { res } = await sw.fetchEvent(request(style))
+    expect(await res?.text()).toBe(`${style} v1`)
+    expect(await (await basemap?.match(style))?.text()).toBe(`${style} v2`)
+  })
+
   it('drops caches that are no longer in the keep list', async () => {
     const sw = loadSw(async () => new Response('', { status: 200 }))
     await sw.caches.open('plein-assets-v2')
     await sw.caches.open('plein-shell-v1')
-    await sw.caches.open('plein-tiles-v3')
+    await sw.caches.open('plein-tiles-v4')
     await sw.caches.open('plein-data-v2')
+    await sw.caches.open('plein-basemap-v1')
     // v1 may hold index.html under a removed chunk's URL — the bump sweeps it
     await sw.caches.open('plein-assets-v1')
     // The previous tile generations: v1 was warmed by keyless requests, so it
     // may hold tiles CARTO stamped « API key required »; v2 by no-cors ones,
-    // whose opaque responses let CDN errors in — the bumps must sweep both.
+    // whose opaque responses let CDN errors in; v3 is the CARTO raster
+    // basemap the app no longer draws — the bumps must sweep them all.
     await sw.caches.open('plein-tiles-v1')
     await sw.caches.open('plein-tiles-v2')
+    await sw.caches.open('plein-tiles-v3')
 
     await sw.activate()
 
     expect(await sw.caches.keys()).toEqual([
       'plein-assets-v2',
       'plein-shell-v1',
-      'plein-tiles-v3',
+      'plein-tiles-v4',
       'plein-data-v2',
+      'plein-basemap-v1',
     ])
   })
 })

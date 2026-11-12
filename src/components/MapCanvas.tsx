@@ -13,7 +13,7 @@ import { PLACE_PIN_ANCHOR, PLACE_PIN_BOX, PLACE_PIN_CLASS, placePinHtml } from '
 import { zoneCircle } from '../lib/zoneCircle';
 import { useDebugMode } from '../lib/debugMode';
 import { fmtAgeMs } from '../lib/debugSnapshot';
-import { readCachedTiles, type CachedTile, type TileStyle } from '../lib/tileCache';
+import { readCachedTiles, tileMapZoom, type CachedTile, type TileStyle } from '../lib/tileCache';
 import { tileToBounds } from '../lib/tilePyramid';
 import { readAllCachedAreas } from '../data/stationsCache';
 import ShareIcon from './ShareIcon';
@@ -74,12 +74,12 @@ const OFFSET_FAR_DECAY = 0.15;
  */
 const DEBUG_CACHE_COLOR = '#8b5cf6';
 
-/** Tile-cache inspector colors, one per cached style — literals for the same
+/** Tile-cache inspector colors, one per cached source — literals for the same
     reason as DEBUG_CACHE_COLOR, and none of them violet: tiles and areas
     stay tellable apart when both debug layers are on. */
 const DEBUG_TILE_COLORS: Record<TileStyle, string> = {
-  dark: '#22d3ee',
-  light: '#f59e0b',
+  vector: '#22d3ee',
+  landcover: '#f59e0b',
   fallback: '#10b981',
 };
 /** Zooms drawn around the current one — all 15 levels at once is unreadable;
@@ -855,8 +855,10 @@ export default function MapCanvas({
   // ── Debug mode: the SW tile cache drawn as tile footprints ────────────────
   // Same honesty as the cached-areas layer, for the basemap: every entry of
   // the service worker's tile cache near the current zoom draws its
-  // geographic footprint — cyan for dark CARTO, amber for light, green for
-  // the OSM fallback — off-screen tiles included. Other zooms render at their
+  // geographic footprint — cyan for the VersaTiles streets, amber for its
+  // landcover, green for the OSM fallback — off-screen tiles included. A tile
+  // is filed under the map zoom it paints at (tileMapZoom: a 512 px vector
+  // tile at z paints at Leaflet's z + 1). Other zooms render at their
   // true size, so the offline pyramid (lib/tiles.ts) shows up as it is:
   // nested squares around wherever the map settled.
   //
@@ -898,15 +900,16 @@ export default function MapCanvas({
       // Nearest levels win the ring budget: a level deeper holds 4× the
       // tiles, so an unbounded set is dominated by whichever zoom was
       // panned the most. The overlay's per-zoom counts stay the full truth.
+      const dist = (t: CachedTile) => Math.abs(tileMapZoom(t) - zoom);
       const near = tiles
-        .filter((t) => Math.abs(t.z - zoom) <= DEBUG_TILE_ZOOM_SPAN)
-        .sort((a, b) => Math.abs(a.z - zoom) - Math.abs(b.z - zoom))
+        .filter((t) => dist(t) <= DEBUG_TILE_ZOOM_SPAN)
+        .sort((a, b) => dist(a) - dist(b))
         .slice(0, DEBUG_TILE_MAX_RINGS);
 
       const buckets = new Map<string, L.LatLngExpression[][]>();
       for (const t of near) {
         const b = tileToBounds(t);
-        const key = `${t.style}|${Math.abs(t.z - zoom)}`;
+        const key = `${t.style}|${dist(t)}`;
         const rings = buckets.get(key) ?? [];
         rings.push([
           [b.south, b.west],

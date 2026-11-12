@@ -13,6 +13,7 @@ import { setDebugEnabled, useDebugMode } from '../lib/debugMode';
 import { setForcedOffline, useForcedOffline } from '../lib/connectivity';
 import {
   SW_ASSET_CACHE,
+  SW_BASEMAP_CACHE,
   SW_DATA_CACHE,
   SW_SHELL_CACHE,
   SW_TILE_CACHE,
@@ -103,6 +104,7 @@ const SW_CACHE_NAMES: Record<string, string> = {
   [SW_ASSET_CACHE]: 'App assets',
   [SW_SHELL_CACHE]: 'App shell',
   [SW_TILE_CACHE]: 'Basemap tiles',
+  [SW_BASEMAP_CACHE]: 'Basemap style & fonts',
   [SW_DATA_CACHE]: 'Brand data',
 };
 
@@ -1223,7 +1225,8 @@ export default function Settings() {
           </div>
           <div>
             {m.settings_credits_misc()}{' '}
-            <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" style={CREDIT_LINK}>OpenStreetMap</a> · © CARTO
+            <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" style={CREDIT_LINK}>OpenStreetMap</a> ·{' '}
+            <a href="https://versatiles.org" target="_blank" rel="noreferrer" style={CREDIT_LINK}>VersaTiles</a>
           </div>
         </div>
       </div>

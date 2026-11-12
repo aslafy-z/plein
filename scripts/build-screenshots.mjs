@@ -182,19 +182,20 @@ async function startServer() {
 async function setTheme(page, scheme) {
   await page.emulateMedia({ colorScheme: scheme });
   await page.waitForLoadState('networkidle').catch(() => {});
-  // The basemap swaps to its light_all/dark_all URL and refetches every
-  // visible tile — screenshot only once they have all painted, or the freshly
-  // themed UI sits on the other theme's map.
+  // The vector basemap swaps its style (the tiles stay); the raster fallback,
+  // if the run landed on it, refetches nothing either. Wait for whichever
+  // stands to be on screen — the style request is what networkidle covered.
   await page
     .waitForFunction(
       () => {
+        if (document.querySelector('.leaflet-gl-layer canvas')) return true;
         const tiles = document.querySelectorAll('.leaflet-tile');
         return tiles.length > 0 && [...tiles].every((t) => t.classList.contains('leaflet-tile-loaded'));
       },
       { timeout: 20_000 },
     )
     .catch(() => {});
-  // The tiles' own fade-in and the View Transitions cross-fade
+  // The labels' own fade-in and the View Transitions cross-fade
   await page.waitForTimeout(2000);
 }
 
@@ -261,7 +262,7 @@ async function shootLocale(browser, locale) {
     await page.goto(BASE);
     await page.getByText(zoneLead).first().waitFor({ timeout: T(60_000) });
     await page.waitForLoadState('networkidle').catch(() => {});
-    // Leaflet keeps painting after the network settles: tiles fade in and the
+    // The map keeps painting after the network settles: labels fade in and the
     // price pins are laid out once their road distances land.
     await page.waitForTimeout(4000);
     if (wanted('map')) await shoot(page, locale, 'map');
@@ -386,6 +387,8 @@ const server = await startServer();
 const browser = await chromium.launch({
   executablePath: process.env.PLEIN_CHROMIUM || undefined,
   headless: !headed,
+  // The basemap is a WebGL map: software WebGL where there is no GPU
+  args: ['--enable-unsafe-swiftshader'],
 });
 try {
   if (parallel) {

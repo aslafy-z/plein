@@ -5,7 +5,9 @@
 // with nothing to boot from offline). After that, hashed build assets are
 // cache-first (immutable); navigations are network-first with the cached
 // shell as offline fallback; basemap tiles are cached lazily (cache-first,
-// capped) so panning around an already-seen area doesn't refetch every tile.
+// capped) so panning around an already-seen area doesn't refetch every tile,
+// and the vector basemap's style, sprite and glyphs are kept next to them so
+// an offline map still has something to draw the tiles with.
 //
 // Prices are deliberately NOT cached here: the app keeps its own `fetchedAt`
 // per fetched area and that has to stay the single source of truth about how
@@ -29,15 +31,26 @@ const SHELL_CACHE = 'plein-shell-v1';
 // kept answering cache-first. The app now asks for its tiles in CORS mode and
 // only `ok` responses are stored (tileFromCacheFirst); the bump sweeps what
 // the old rule let in.
+// v4: the basemap moved from CARTO raster to VersaTiles vector tiles
+// (src/lib/tiles.ts); not one v3 entry is ever asked for again, and the bump
+// hands their space back on activation.
 // The name is mirrored in src/lib/swCaches.ts, which nothing here can import.
-const TILE_CACHE = 'plein-tiles-v3';
+const TILE_CACHE = 'plein-tiles-v4';
+// The vector basemap's style, sprite and glyph ranges (VersaTiles /assets/):
+// a few dozen stable URLs every map needs before it can draw a single tile.
+// Kept apart from the tiles so the tile cap never evicts them, and out of
+// « Clear offline data »'s sweep — they are the app's chrome, not user data.
+// The name is mirrored in src/lib/swCaches.ts, which nothing here can import.
+const BASEMAP_CACHE = 'plein-basemap-v1';
 // Build-time data the app enriches its stations with. Separate from the assets
 // because it is not content-hashed: it is revalidated, not immutable.
 const DATA_CACHE = 'plein-data-v2';
 
-// Tile hosts used by src/lib/tiles.ts (CARTO primary, OSM fallback)
-const TILE_HOSTS = ['basemaps.cartocdn.com', 'tile.openstreetmap.org'];
-// ~256×256 PNGs are small; 600 tiles ≈ a handful of city neighbourhoods
+// The hosts src/lib/tiles.ts draws from (VersaTiles primary, OSM fallback)
+const VERSATILES_HOST = 'tiles.versatiles.org';
+const OSM_TILE_HOST = 'tile.openstreetmap.org';
+// A vector tile covers four 256 px raster tiles and is overzoomed past z14,
+// so 600 of them ≈ a few cities plus the pyramids around them
 const TILE_MAX_ENTRIES = 600;
 // Build output is content-hashed: every deploy adds a fresh set of URLs that
 // never overwrite the previous one, so without a cap the asset cache would
@@ -48,26 +61,17 @@ const TILE_MAX_ENTRIES = 600;
 // worth of chunks for an offline list to keep its avatars.
 const ASSET_MAX_ENTRIES = 160;
 
-// The CARTO CDN takes the account key as `?key=…` (src/lib/cartoKey.ts), and
-// that is the ONLY parameter a real tile URL carries; any other marks a
-// request that must NOT be answered from this cache — src/lib/tiles.ts probes
-// CDN reachability with `?probe=<ts>`, and a cached tile would say nothing
-// about the network.
-const CARTO_KEY_PARAM = 'key';
+// A real tile URL carries no query at all; one that does marks a request
+// that must NOT be answered from this cache — src/lib/tiles.ts probes the
+// server's reachability with `?probe=<ts>`, and a cached tile would say
+// nothing about the network.
 const isTileRequest = (url) =>
-  [...url.searchParams.keys()].every((p) => p === CARTO_KEY_PARAM) &&
-  TILE_HOSTS.some((h) => url.hostname === h || url.hostname.endsWith('.' + h));
+  url.search === '' &&
+  ((url.hostname === VERSATILES_HOST && url.pathname.startsWith('/tiles/')) ||
+    url.hostname === OSM_TILE_HOST);
 
-// The key authorizes the request; it is not part of the tile's identity, so
-// entries go in under the keyless URL (the rule is mirrored in
-// src/lib/cartoKey.ts, which nothing here can import). Rotating the key then
-// leaves every warmed tile answering, and the tiles cached before CARTO
-// required one still hit.
-const tileCacheKey = (url) => {
-  const keyless = new URL(url);
-  keyless.searchParams.delete(CARTO_KEY_PARAM);
-  return keyless.href;
-};
+const isBasemapAsset = (url) =>
+  url.search === '' && url.hostname === VERSATILES_HOST && url.pathname.startsWith('/assets/');
 
 // The host's single-page-application fallback answers ANY unknown path with
 // index.html and a 200, so `ok` alone does not say the response is the thing
@@ -82,9 +86,8 @@ async function trimCache(cache, max) {
   if (excess > 0) await Promise.all(keys.slice(0, excess).map((k) => cache.delete(k)));
 }
 
-// `key` is the cache identity (keyless — see tileCacheKey); `req` is what
-// goes on the wire, key included.
-async function tileFromCacheFirst(event, req, key) {
+async function tileFromCacheFirst(event, req) {
+  const key = req.url;
   const cache = await caches.open(TILE_CACHE);
   const hit = await cache.match(key);
   if (hit) {
@@ -98,7 +101,8 @@ async function tileFromCacheFirst(event, req, key) {
   }
   const res = await fetch(req);
   // Only a readable success is stored. The app requests its tiles in CORS
-  // mode (crossOrigin on the Leaflet layers, src/lib/tiles.ts) precisely so
+  // mode (MapLibre's fetches, crossOrigin on the fallback layer — see
+  // src/lib/tiles.ts) precisely so
   // the status is visible here: an opaque response (status 0) could be a
   // 403/429/5xx as easily as a tile, and a cached error would answer
   // cache-first from then on — each hit refreshing its recency, so it would
@@ -109,6 +113,23 @@ async function tileFromCacheFirst(event, req, key) {
     event.waitUntil(cache.put(key, copy).then(() => trimCache(cache, TILE_MAX_ENTRIES)));
   }
   return res;
+}
+
+// The basemap's style, sprite and glyphs: served from the cache at once and
+// refreshed behind the page, like the brand index below — they change when
+// VersaTiles ships a new style, never between two loads, and an offline map
+// without them draws nothing at all. A sprite or glyph range the server
+// revises is picked up on the next visit.
+async function basemapAssetFromCache(event, req) {
+  const cache = await caches.open(BASEMAP_CACHE);
+  const hit = await cache.match(req.url);
+  const fromNetwork = fetch(req).then(async (res) => {
+    if (res.ok) await cache.put(req.url, res.clone());
+    return res;
+  });
+  if (!hit) return fromNetwork;
+  event.waitUntil(fromNetwork.catch(() => {}));
+  return hit;
 }
 
 // The brand index is a ~110 kB build-time snapshot that changes between
@@ -176,7 +197,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
-      const keep = [ASSET_CACHE, SHELL_CACHE, TILE_CACHE, DATA_CACHE];
+      const keep = [ASSET_CACHE, SHELL_CACHE, TILE_CACHE, DATA_CACHE, BASEMAP_CACHE];
       for (const key of await caches.keys()) {
         if (!keep.includes(key)) await caches.delete(key);
       }
@@ -193,7 +214,11 @@ self.addEventListener('fetch', (event) => {
   // Basemap tiles: lazy cache-first, so a slight map move (or coming back to
   // an area) reuses tiles instead of hitting the CDN again.
   if (isTileRequest(url)) {
-    event.respondWith(tileFromCacheFirst(event, req, tileCacheKey(url)));
+    event.respondWith(tileFromCacheFirst(event, req));
+    return;
+  }
+  if (isBasemapAsset(url)) {
+    event.respondWith(basemapAssetFromCache(event, req));
     return;
   }
 

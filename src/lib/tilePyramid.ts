@@ -1,8 +1,8 @@
-// Slippy-map tile math for the offline zoom-out pyramid (see lib/tiles).
-// Pure and Leaflet-free on purpose: the enumeration and the URL fidelity
-// (subdomain pick, retina suffix) are what make a prefetched tile land in the
-// service-worker cache under the EXACT URL Leaflet will later request, and
-// that is testable in node.
+// Slippy-map tile math for the offline zoom pyramid (see lib/tiles).
+// Pure and Leaflet-free on purpose: the enumeration, the map-zoom → tile-zoom
+// rule of the vector basemap and the URL fidelity are what make a prefetched
+// tile land in the service-worker cache under the EXACT URL the map will
+// later request, and that is testable in node.
 
 export interface TileCoords {
   z: number;
@@ -76,22 +76,55 @@ export function tileToBounds(t: TileCoords): {
 }
 
 /**
- * Expand a Leaflet URL template exactly as Leaflet would: {s} picks the
- * subdomain by `Math.abs(x + y) % subdomains.length` (Leaflet's own rule) and
- * {r} is the retina suffix. A URL that differs by one character caches a tile
- * the map never asks for.
+ * Expand a `{z}/{x}/{y}` URL template. A URL that differs by one character
+ * caches a tile the map never asks for, so the template is the one the layer
+ * itself was given.
  */
-export function tileUrl(
-  template: string,
-  tile: TileCoords,
-  opts: { subdomains?: string; retina?: boolean } = {},
-): string {
-  const subs = opts.subdomains ?? '';
-  const s = subs === '' ? '' : subs.charAt(Math.abs(tile.x + tile.y) % subs.length);
+export function tileUrl(template: string, tile: TileCoords): string {
   return template
-    .replace('{s}', s)
     .replace('{z}', String(tile.z))
     .replace('{x}', String(tile.x))
-    .replace('{y}', String(tile.y))
-    .replace('{r}', opts.retina ? '@2x' : '');
+    .replace('{y}', String(tile.y));
+}
+
+/**
+ * The zoom of the vector tiles the basemap draws at a Leaflet zoom.
+ *
+ * The MapLibre map behind the Leaflet layer runs one level below Leaflet
+ * (its tiles are 512 px, Leaflet's grid 256 px — `@maplibre/maplibre-gl-leaflet`
+ * jumps it to `zoom - 1`), and a vector source loads `floor(zoom)` up to its
+ * own `maxzoom`, past which it OVERZOOMS: street level is drawn from the
+ * deepest tile, no new request. Null where the source has nothing (a negative
+ * level, at a Leaflet zoom below 1).
+ */
+export function vectorTileZoom(leafletZoom: number, sourceMaxZoom: number): number | null {
+  const z = Math.min(sourceMaxZoom, Math.floor(leafletZoom - 1));
+  return z < 0 ? null : z;
+}
+
+/**
+ * The vector tile levels worth warming around a view at `leafletZoom`: every
+ * level a gesture between `minLeafletZoom` and `maxLeafletZoom` would draw,
+ * nearest first, the one on screen left out (the map loads it itself). The
+ * overzoom collapses every street-level Leaflet zoom onto `sourceMaxZoom`, so
+ * the list is short — and so is the pyramid.
+ */
+export function vectorPyramidZooms(
+  leafletZoom: number,
+  minLeafletZoom: number,
+  maxLeafletZoom: number,
+  sourceMaxZoom: number,
+): number[] {
+  const current = vectorTileZoom(leafletZoom, sourceMaxZoom);
+  const zooms: number[] = [];
+  const add = (lz: number) => {
+    const z = vectorTileZoom(lz, sourceMaxZoom);
+    if (z != null && z !== current && !zooms.includes(z)) zooms.push(z);
+  };
+  const base = Math.round(leafletZoom);
+  for (let d = 1; base - d >= minLeafletZoom || base + d <= maxLeafletZoom; d += 1) {
+    if (base - d >= minLeafletZoom) add(base - d);
+    if (base + d <= maxLeafletZoom) add(base + d);
+  }
+  return zooms;
 }

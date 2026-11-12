@@ -20,7 +20,10 @@ export default defineConfig({
     colorScheme: 'dark',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    launchOptions: { executablePath },
+    // The basemap is a WebGL map (MapLibre): software WebGL on a GPU-less
+    // runner, asked for explicitly rather than through Chromium's deprecated
+    // automatic fallback.
+    launchOptions: { executablePath, args: ['--enable-unsafe-swiftshader'] },
   },
   projects: [
     { name: 'mobile', use: { ...devices['Pixel 7'] } },

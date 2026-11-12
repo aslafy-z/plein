@@ -857,21 +857,21 @@ button,
 .leaflet-control-attribution a {
   color: var(--c-mut) !important;
 }
-/* Tiles are re-toned to the app palette (neutral cool grays, no loud hues):
-   readable in daylight, blending with the app surfaces. The basemap itself
-   swaps between CARTO dark_all and light_all with the theme (lib/tiles.ts);
-   these filters only finish the blend, per theme. */
-.tiles-carto {
-  filter: grayscale(0.55) saturate(0.55) brightness(1.5) contrast(0.9);
+/* The basemap is re-toned to the app palette (neutral cool grays, no loud
+   hues): readable in daylight, blending with the app surfaces. The vector
+   map itself swaps between the VersaTiles `gray` and `gray-dark` styles with
+   the theme (lib/tiles.ts); these filters only finish the blend, per theme. */
+.basemap-vector {
+  filter: saturate(0.6) brightness(1.08) contrast(0.95);
 }
 /* The map is the largest light surface on screen, so it is toned to the same
    paper the shell sits on rather than left at full daylight — a white-hot
    basemap under a tinted UI is the other half of the glare, and it is what
    makes a green pin read as neon instead of as a price. */
-[data-theme='light'] .tiles-carto {
-  filter: grayscale(0.3) saturate(0.65) brightness(0.97) contrast(0.96);
+[data-theme='light'] .basemap-vector {
+  filter: saturate(0.65) brightness(0.97) contrast(0.96);
 }
-/* OSM fallback (inverted to dark), same neutral treatment */
+/* OSM raster fallback (inverted to dark), same neutral treatment */
 .tiles-dark {
   filter: invert(1) hue-rotate(180deg) grayscale(0.45) saturate(0.45) brightness(0.95)
     contrast(0.88);
@@ -881,7 +881,7 @@ button,
   filter: grayscale(0.35) saturate(0.6) brightness(1.02) contrast(0.95);
 }
 
-/* Lite-effects mode (Gecko — lib/fx.ts): a CSS filter on the tile pane is
+/* Lite-effects mode (Gecko — lib/fx.ts): a CSS filter on the map pane is
    re-rasterized on every frame of a pan/zoom animation there, which is the
    other half of what made opening the panels stutter on Firefox. The blend
    filters go: the basemap already swaps dark/light per theme (lib/tiles.ts),
@@ -889,7 +889,7 @@ button,
    filter that stays CORRECT per theme — inverted to dark under the dark
    theme (daylight tiles under a dark UI would be glare, and the fallback is
    the rare path), bare daylight in light. */
-:root[data-fx='lite'] .tiles-carto {
+:root[data-fx='lite'] .basemap-vector {
   filter: none;
 }
 :root[data-fx='lite'] .tiles-dark {

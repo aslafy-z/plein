@@ -6,24 +6,25 @@ import {
   readCachedTiles,
   summarizeCachedTiles,
   tileCacheStats,
+  tileMapZoom,
   TILE_BYTES_ESTIMATE,
 } from './tileCache'
 
+const VT = 'https://tiles.versatiles.org'
+
 describe('parseTileUrl', () => {
-  it('parses CARTO tiles with style, subdomain, and retina suffix', () => {
-    expect(parseTileUrl('https://c.basemaps.cartocdn.com/dark_all/12/2064/1495.png')).toEqual({
-      style: 'dark',
+  it('parses the two VersaTiles vector sources', () => {
+    expect(parseTileUrl(`${VT}/tiles/osm/12/2064/1495`)).toEqual({
+      style: 'vector',
       z: 12,
       x: 2064,
       y: 1495,
-      retina: false,
     })
-    expect(parseTileUrl('https://a.basemaps.cartocdn.com/light_all/5/16/11@2x.png')).toEqual({
-      style: 'light',
+    expect(parseTileUrl(`${VT}/tiles/landcover-vectors/5/16/11`)).toEqual({
+      style: 'landcover',
       z: 5,
       x: 16,
       y: 11,
-      retina: true,
     })
   })
 
@@ -33,35 +34,42 @@ describe('parseTileUrl', () => {
       z: 7,
       x: 64,
       y: 45,
-      retina: false,
     })
     expect(parseTileUrl('/tiles/9/258/186.png')).toEqual({
       style: 'fallback',
       z: 9,
       x: 258,
       y: 186,
-      retina: false,
     })
   })
 
-  it('rejects probe URLs and foreign entries', () => {
+  it('rejects probe URLs, basemap assets and foreign entries', () => {
     // A queried tile URL is the reachability probe — sw.js never caches it,
     // and parsing one would hide that bug instead of surfacing it.
-    expect(parseTileUrl('https://a.basemaps.cartocdn.com/dark_all/3/4/2.png?probe=123')).toBeNull()
+    expect(parseTileUrl(`${VT}/tiles/osm/3/4/2?probe=123`)).toBeNull()
+    expect(parseTileUrl(`${VT}/assets/glyphs/noto_sans_regular/0-255.pbf`)).toBeNull()
     expect(parseTileUrl('https://example.com/5/1/2.png')).toBeNull()
     expect(parseTileUrl('/assets/icon.svg')).toBeNull()
-    expect(parseTileUrl('https://basemaps.cartocdn.com/dark_all/not/a/tile.png')).toBeNull()
+    expect(parseTileUrl(`${VT}/tiles/osm/not/a/tile`)).toBeNull()
+  })
+})
+
+describe('tileMapZoom', () => {
+  it('files a 512 px vector tile one Leaflet level deeper than its own zoom', () => {
+    expect(tileMapZoom({ style: 'vector', z: 12, x: 0, y: 0 })).toBe(13)
+    expect(tileMapZoom({ style: 'landcover', z: 8, x: 0, y: 0 })).toBe(9)
+    expect(tileMapZoom({ style: 'fallback', z: 12, x: 0, y: 0 })).toBe(12)
   })
 })
 
 describe('summarizeCachedTiles', () => {
-  it('counts per zoom (ascending) and per style', () => {
+  it('counts per zoom (ascending) and per source', () => {
     const tiles = [
-      { style: 'dark', z: 12, x: 1, y: 1, retina: false },
-      { style: 'dark', z: 5, x: 1, y: 1, retina: false },
-      { style: 'dark', z: 5, x: 2, y: 1, retina: false },
-      { style: 'light', z: 12, x: 1, y: 1, retina: false },
-      { style: 'fallback', z: 7, x: 1, y: 1, retina: false },
+      { style: 'vector', z: 12, x: 1, y: 1 },
+      { style: 'vector', z: 5, x: 1, y: 1 },
+      { style: 'vector', z: 5, x: 2, y: 1 },
+      { style: 'landcover', z: 12, x: 1, y: 1 },
+      { style: 'fallback', z: 7, x: 1, y: 1 },
     ] as const
     const summary = summarizeCachedTiles([...tiles])
     expect(summary.entries).toBe(5)
@@ -70,7 +78,7 @@ describe('summarizeCachedTiles', () => {
       ['z7', 1],
       ['z12', 2],
     ])
-    expect(summary.byStyle).toEqual({ dark: 3, light: 1, fallback: 1 })
+    expect(summary.byStyle).toEqual({ vector: 3, landcover: 1, fallback: 1 })
   })
 })
 
@@ -81,13 +89,13 @@ describe('cachedTileUrls', () => {
     vi.stubGlobal('caches', {
       open: async () => ({
         keys: async () => [
-          { url: 'https://a.basemaps.cartocdn.com/dark_all/5/16/11.png' },
-          { url: 'https://b.basemaps.cartocdn.com/dark_all/5/17/11.png' },
+          { url: `${VT}/tiles/osm/5/16/11` },
+          { url: `${VT}/tiles/osm/5/17/11` },
         ],
       }),
     })
     const urls = await cachedTileUrls()
-    expect(urls.has('https://a.basemaps.cartocdn.com/dark_all/5/16/11.png')).toBe(true)
+    expect(urls.has(`${VT}/tiles/osm/5/16/11`)).toBe(true)
     expect(urls.size).toBe(2)
   })
 
@@ -182,14 +190,14 @@ describe('readCachedTiles', () => {
     vi.stubGlobal('caches', {
       open: async () => ({
         keys: async () => [
-          { url: 'https://a.basemaps.cartocdn.com/dark_all/5/16/11.png' },
-          { url: 'https://a.basemaps.cartocdn.com/dark_all/3/4/2.png?probe=1' },
+          { url: `${VT}/tiles/osm/5/16/11` },
+          { url: `${VT}/tiles/osm/3/4/2?probe=1` },
           { url: 'https://tile.openstreetmap.org/5/16/11.png' },
         ],
       }),
     })
     const tiles = await readCachedTiles()
     expect(tiles).toHaveLength(2)
-    expect(tiles.map((t) => t.style)).toEqual(['dark', 'fallback'])
+    expect(tiles.map((t) => t.style)).toEqual(['vector', 'fallback'])
   })
 })

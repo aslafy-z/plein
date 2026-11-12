@@ -6,7 +6,7 @@
 // – `cachedTileUrls` is what the pyramid prefetcher plans against: knowing
 //   which URLs are already held turns a blind burst of fetches into the few
 //   the cache is actually missing.
-// – `readCachedTiles` parses the keys back into tile coordinates + style, so
+// – `readCachedTiles` parses the keys back into tile coordinates + source, so
 //   the overlay can count them per zoom and the map's debug layer can draw
 //   every cached tile's footprint — off-screen tiles and other zooms
 //   included, which is what makes the pyramid visible instead of deduced.
@@ -23,17 +23,26 @@
 import type { TileCoords } from './tilePyramid';
 import { SW_TILE_CACHE, SW_TILE_CACHE_PREFIX } from './swCaches';
 
-/** Which basemap a cached tile belongs to. The dev proxy path counts as the
-    fallback it stands in for. */
-export type TileStyle = 'dark' | 'light' | 'fallback';
+/** Which basemap source a cached tile belongs to: the two VersaTiles vector
+    sources (the same in both themes), or the raster fallback. The dev proxy
+    path counts as the fallback it stands in for. */
+export type TileStyle = 'vector' | 'landcover' | 'fallback';
 
-export interface CachedTile extends TileCoords {
-  style: TileStyle;
-  retina: boolean;
-}
+export type CachedTile = TileCoords & { style: TileStyle };
 
-const CARTO_PATH = /^\/(dark_all|light_all)\/(\d+)\/(\d+)\/(\d+)(@2x)?\.png$/;
+const VERSATILES_HOST = 'tiles.versatiles.org';
+const VECTOR_PATH = /^\/tiles\/(osm|landcover-vectors)\/(\d+)\/(\d+)\/(\d+)$/;
 const ZXY_PATH = /^\/(\d+)\/(\d+)\/(\d+)\.png$/;
+
+/**
+ * The Leaflet zoom a cached tile is drawn at natively. A vector tile is 512 px
+ * and the MapLibre map behind Leaflet runs one level below it, so its tiles
+ * paint at `z + 1` (lib/tilePyramid.ts, vectorTileZoom); a raster tile at `z`.
+ * What the debug grid compares against the map's zoom.
+ */
+export function tileMapZoom(tile: CachedTile): number {
+  return tile.style === 'fallback' ? tile.z : tile.z + 1;
+}
 
 /**
  * Parse one cached URL back into a tile; null for anything that is not a
@@ -49,15 +58,14 @@ export function parseTileUrl(raw: string): CachedTile | null {
   }
   if (url.search !== '') return null;
   const host = url.hostname;
-  if (host === 'basemaps.cartocdn.com' || host.endsWith('.basemaps.cartocdn.com')) {
-    const m = CARTO_PATH.exec(url.pathname);
+  if (host === VERSATILES_HOST) {
+    const m = VECTOR_PATH.exec(url.pathname);
     if (!m) return null;
     return {
-      style: m[1] === 'light_all' ? 'light' : 'dark',
+      style: m[1] === 'osm' ? 'vector' : 'landcover',
       z: Number(m[2]),
       x: Number(m[3]),
       y: Number(m[4]),
-      retina: m[5] != null,
     };
   }
   const path =
@@ -69,7 +77,7 @@ export function parseTileUrl(raw: string): CachedTile | null {
   if (path == null) return null;
   const m = ZXY_PATH.exec(path);
   if (!m) return null;
-  return { style: 'fallback', z: Number(m[1]), x: Number(m[2]), y: Number(m[3]), retina: false };
+  return { style: 'fallback', z: Number(m[1]), x: Number(m[2]), y: Number(m[3]) };
 }
 
 /**
@@ -97,14 +105,14 @@ export async function readCachedTiles(): Promise<CachedTile[]> {
 
 // What one cached tile is counted as. The entries are CORS responses, so
 // their bodies could be read — but summing hundreds of blobs for a counter
-// is not worth the IO; a plain CARTO/OSM 256px PNG runs ~10–30 kB and the
-// @2x tiles retina screens load run heavier, so the counter charges a flat
-// average and the UI presents the result as approximate.
+// is not worth the IO; a VersaTiles vector tile runs ~20–100 kB (the low
+// zooms are the heavy ones), an OSM 256px PNG ~10–30 kB, so the counter
+// charges a flat average and the UI presents the result as approximate.
 // (`navigator.storage.estimate()` is no alternative: it covers the whole
 // origin, and Chromium pads any opaque response a previous tile cache
 // generation still holds by ~7 MB — the debug details show that figure, with
 // the caveat spelled out next to it.)
-export const TILE_BYTES_ESTIMATE = 20_000;
+export const TILE_BYTES_ESTIMATE = 40_000;
 
 export interface TileCacheStats {
   tiles: number;
@@ -155,7 +163,7 @@ export interface TileCacheDebug {
 
 export function summarizeCachedTiles(tiles: CachedTile[]): TileCacheDebug {
   const zoomCounts = new Map<number, number>();
-  const byStyle: Record<TileStyle, number> = { dark: 0, light: 0, fallback: 0 };
+  const byStyle: Record<TileStyle, number> = { vector: 0, landcover: 0, fallback: 0 };
   for (const t of tiles) {
     zoomCounts.set(t.z, (zoomCounts.get(t.z) ?? 0) + 1);
     byStyle[t.style] += 1;

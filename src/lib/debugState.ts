@@ -24,15 +24,18 @@ export function lastAreaLoadDebug(): { path: AreaLoadPath; at: number } | null {
 }
 
 // ── Tile layer ──────────────────────────────────────────────────────────────
-// The counters live in lib/tiles.ts, which imports Leaflet — a module the
+// The counters live in lib/tiles.ts, which imports Leaflet (and MapLibre) — a module the
 // node unit suite (and anything else leaflet-free) must never pull in just to
 // type a snapshot. tiles.ts registers its getter here at load; before any map
 // existed the neutral reading below is also the truthful one.
 
 export interface TileLayerDebug {
   /** Layer new maps get right now (the session-wide fallback decision) */
-  active: 'carto' | 'fallback';
-  cartoUnreachable: boolean;
+  active: 'vector' | 'fallback';
+  /** VersaTiles failed to answer this session (until a probe sees it back) */
+  vectorUnreachable: boolean;
+  /** Whether this device can run the vector map — null until a map tried */
+  webgl: boolean | null;
   tilesLoaded: number;
   tilesErrored: number;
   /** Tiles « Force offline mode » declined to request (lib/tileGate.ts) */
@@ -51,8 +54,9 @@ export function registerTileDebugSource(source: () => TileLayerDebug): void {
 export function tileLayerDebugSnapshot(): TileLayerDebug {
   return (
     tileDebugSource?.() ?? {
-      active: 'carto',
-      cartoUnreachable: false,
+      active: 'vector',
+      vectorUnreachable: false,
+      webgl: null,
       tilesLoaded: 0,
       tilesErrored: 0,
       tilesSkipped: 0,
