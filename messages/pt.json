@@ -169,6 +169,8 @@
   "search_clear_aria": "Limpar a pesquisa",
   "search_hint": "Procure uma cidade ou uma morada para ver os postos à volta.",
   "search_no_results": "Nenhum local corresponde a esta pesquisa.",
+  "search_incomplete": "Algumas fontes não responderam: a lista pode estar incompleta.",
+  "search_unavailable": "A pesquisa de locais não está a responder neste momento. Tente novamente dentro de instantes.",
   "sheet_selected_station": "Posto selecionado",
   "sheet_cheapest_nearby": "O mais barato perto de si",
   "sheet_cheapest_in_area": "O mais barato nesta área",

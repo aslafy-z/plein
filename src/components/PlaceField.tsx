@@ -108,6 +108,11 @@ export default function PlaceField(props: PlaceFieldProps) {
       next answer lands, and Enter must not take a row from an older query */
   const [answeredQuery, setAnsweredQuery] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
+  /** Which of the sources behind the answer on screen did not answer. The
+      list of the ones that did is still shown — but a national geocoder down
+      looks exactly like a search that matched nothing in that country, and
+      the rows left over then read as the app's best guess. */
+  const [unanswered, setUnanswered] = useState<'none' | 'some' | 'all'>('none');
   /** Enter came before the answer for the current text: pick when it lands */
   const [enterPending, setEnterPending] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -122,6 +127,7 @@ export default function PlaceField(props: PlaceFieldProps) {
       setSuggestions([]);
       setAnsweredQuery(null);
       setSearching(false);
+      setUnanswered('none');
       return;
     }
     const id = ++reqId.current;
@@ -129,6 +135,7 @@ export default function PlaceField(props: PlaceFieldProps) {
     // search is already under way, and geocoders can take seconds to answer.
     setSearching(true);
     timer.current = setTimeout(() => {
+      let incomplete = false;
       app
         // « Automatic » queries several geocoders: show each country's hits
         // as they land, and keep spinning until the last one has answered.
@@ -138,18 +145,23 @@ export default function PlaceField(props: PlaceFieldProps) {
             setSuggestions(res);
             setAnsweredQuery(text);
           },
+          onIncomplete: () => {
+            incomplete = true;
+          },
         })
         .then((res) => {
           if (id !== reqId.current) return;
           setSuggestions(res);
           setAnsweredQuery(text);
           setSearching(false);
+          setUnanswered(incomplete ? 'some' : 'none');
         })
         .catch(() => {
           if (id !== reqId.current) return;
           setSuggestions([]);
           setAnsweredQuery(text);
           setSearching(false);
+          setUnanswered('all');
         });
     }, 300);
   };
@@ -161,6 +173,7 @@ export default function PlaceField(props: PlaceFieldProps) {
     setSuggestions([]);
     setAnsweredQuery(null);
     setSearching(false);
+    setUnanswered('none');
     setEnterPending(false);
   };
 
@@ -526,6 +539,22 @@ export default function PlaceField(props: PlaceFieldProps) {
           )}
         </div>
       ))}
+      {/* Said under the rows it qualifies, and only once the search has
+          concluded: while it still runs, a source is merely late. */}
+      {unanswered === 'some' && !searching && suggestions.length > 0 && (
+        <div
+          data-testid="search-incomplete"
+          style={{
+            padding: phone ? '12px 18px 14px' : '8px 16px 10px',
+            borderTop: `1px solid ${C.border08}`,
+            color: C.mut,
+            fontSize: 12,
+            lineHeight: 1.4,
+          }}
+        >
+          {m.search_incomplete()}
+        </div>
+      )}
     </>
   );
 
@@ -735,9 +764,11 @@ export default function PlaceField(props: PlaceFieldProps) {
               >
                 {searching
                   ? null
-                  : panelText.trim().length >= MIN_QUERY
-                    ? m.search_no_results()
-                    : props.emptyHint}
+                  : panelText.trim().length < MIN_QUERY
+                    ? props.emptyHint
+                    : unanswered === 'none'
+                      ? m.search_no_results()
+                      : m.search_unavailable()}
               </div>
             )}
           </div>,
