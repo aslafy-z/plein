@@ -23,9 +23,9 @@ Voleu veure què ve? [staging-plein.zadkiel.workers.dev](https://staging-plein.z
 
 <br/>
 
-| Els preus al vostre voltant | La fitxa d'una estació | Al vostre trajecte |
-| :---: | :---: | :---: |
-| <img src="docs/screenshots/ca/map.png" width="250" alt="Mapa de preus al voltant d'Andorra la Vella" /> | <img src="docs/screenshots/ca/station.png" width="250" alt="Fitxa d'una estació: preu per combustible, diferència amb la més barata, serveis i estalvi en un dipòsit" /> | <img src="docs/screenshots/ca/route.png" width="250" alt="Comparació d'estacions en un trajecte Andorra la Vella → Barcelona" /> |
+| Els preus al vostre voltant | La fitxa d'una estació | El vostre trajecte al mapa | Al vostre trajecte |
+| :---: | :---: | :---: | :---: |
+| <img src="docs/screenshots/ca/map.png" width="200" alt="Mapa de preus al voltant d'Andorra la Vella" /> | <img src="docs/screenshots/ca/station.png" width="200" alt="Fitxa d'una estació: preu per combustible, diferència amb la més barata, serveis i estalvi en un dipòsit" /> | <img src="docs/screenshots/ca/trip.png" width="200" alt="Trajecte Andorra la Vella → Barcelona al mapa, amb les estacions i els seus preus al llarg del recorregut" /> | <img src="docs/screenshots/ca/route.png" width="200" alt="Comparació d'estacions en un trajecte Andorra la Vella → Barcelona" /> |
 
 </div>
 

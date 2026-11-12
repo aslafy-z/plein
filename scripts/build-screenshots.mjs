@@ -19,12 +19,12 @@
 // diagonal.
 //
 // The viewport is 480×1064 at DPR 3 (1440×3192), which the READMEs display at
-// width 250. That width is deliberate: the map auto-fit frames the search
+// width 200, four abreast. That width is deliberate: the map auto-fit frames the search
 // circle into the viewport and snaps to an integer zoom, so a narrower phone
 // (390 or 430 CSS px) lands one level further out and packs the price bubbles
 // of a dense centre on top of each other. PNGs are re-encoded losslessly
 // afterwards — Chromium's own encoder leaves roughly 45% on the table.
-// Usage: npm run build:screenshots [map] [station] [route] [en] [fr] [es] [ca] [pt] [--headed] [--parallel]
+// Usage: npm run build:screenshots [map] [station] [trip] [route] [en] [fr] [es] [ca] [pt] [--headed] [--parallel]
 // Naming shots and/or locales regenerates only those — handy to refresh one
 // language's fiche without reshooting every map with the prices of another day.
 // --headed opens a visible browser window to watch the run navigate — the
@@ -47,7 +47,7 @@ const PORT = 5199;
 const BASE = `http://localhost:${PORT}`;
 const VIEWPORT = { width: 480, height: 1064 };
 
-const SHOTS = ['map', 'station', 'route'];
+const SHOTS = ['map', 'station', 'trip', 'route'];
 const LOCALES = ['en', 'fr', 'es', 'ca', 'pt'];
 // Full BCP 47 tags for the browser context, so Intl formats match the catalog
 const CONTEXT_LOCALE = { en: 'en-US', fr: 'fr-FR', es: 'es-ES', ca: 'ca-ES', pt: 'pt-PT' };
@@ -338,7 +338,10 @@ async function shootLocale(browser, locale) {
     }
 
     // ── Route screen: the scene's trip, deep-linked ──
-    if (wanted('route')) {
+    // Two shots of one computed trip: `trip` is the itinerary itself, drawn on
+    // the map with its priced stops under the collapsed sheet; `route` then
+    // expands the sheet over it to show the plan's timeline.
+    if (wanted('trip') || wanted('route')) {
       // The shareable route URL (routeUrl.ts) fully specifies the trip, and a
       // link whose endpoints carry coordinates never touches a geocoder — the
       // ribbon header shows the `al`/`dl` labels, the plan runs on the tank
@@ -360,14 +363,6 @@ async function shootLocale(browser, locale) {
         .replaceAll('\\{count\\}', '\\d+');
       const planLabel = new RegExp(`${reEscape(msg.ribbon_recommended_stop)}|${stopCounter}`);
       await page.getByText(planLabel).first().waitFor({ timeout: T(60_000) });
-      // Expand the sheet so the shot shows the plan's timeline rather than
-      // one collapsed row (openRouteSheet in e2e/fixtures.ts, same handle)
-      const expand = page.locator(`[aria-label="${msg.route_sheet_expand_aria}"]`);
-      if ((await expand.count()) > 0) {
-        await expand.click();
-        // the sheet's height transition (.3s)
-        await page.waitForTimeout(600);
-      }
       // The plan lands before the corridor's priced pins are drawn on the
       // route map — wait for at least one price bubble inside it, or the
       // shot shows a bare line between two endpoint dots.
@@ -381,7 +376,20 @@ async function shootLocale(browser, locale) {
         .catch(() => {});
       await page.waitForLoadState('networkidle').catch(() => {});
       await page.waitForTimeout(4000);
-      await shoot(page, locale, 'route');
+      if (wanted('trip')) await shoot(page, locale, 'trip');
+
+      if (wanted('route')) {
+        // Expand the sheet so the shot shows the plan's timeline rather than
+        // one collapsed row (openRouteSheet in e2e/fixtures.ts, same handle)
+        const expand = page.locator(`[aria-label="${msg.route_sheet_expand_aria}"]`);
+        if ((await expand.count()) > 0) {
+          await expand.click();
+          // the sheet's height transition (.3s)
+          await page.waitForTimeout(600);
+        }
+        await page.waitForTimeout(1000);
+        await shoot(page, locale, 'route');
+      }
     }
   } finally {
     await ctx.close();

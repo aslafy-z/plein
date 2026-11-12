@@ -22,9 +22,9 @@ Want what is coming next? [staging-plein.zadkiel.workers.dev](https://staging-pl
 
 <br/>
 
-| Prices around you | A station's page | Along your route |
-| :---: | :---: | :---: |
-| <img src="docs/screenshots/en/map.png" width="250" alt="Price map around Toulouse" /> | <img src="docs/screenshots/en/station.png" width="250" alt="A station's page: price per fuel, gap to the cheapest, services and savings on a full tank" /> | <img src="docs/screenshots/en/route.png" width="250" alt="Station comparison on a Toulouse → Lille route" /> |
+| Prices around you | A station's page | Your route on the map | Along your route |
+| :---: | :---: | :---: | :---: |
+| <img src="docs/screenshots/en/map.png" width="200" alt="Price map around Toulouse" /> | <img src="docs/screenshots/en/station.png" width="200" alt="A station's page: price per fuel, gap to the cheapest, services and savings on a full tank" /> | <img src="docs/screenshots/en/trip.png" width="200" alt="Toulouse → Lille route on the map, with the priced stations along it" /> | <img src="docs/screenshots/en/route.png" width="200" alt="Station comparison on a Toulouse → Lille route" /> |
 
 </div>
 

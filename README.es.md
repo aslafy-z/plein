@@ -23,9 +23,9 @@ Portugal.
 
 <br/>
 
-| Los precios a tu alrededor | La ficha de una estación | En tu ruta |
-| :---: | :---: | :---: |
-| <img src="docs/screenshots/es/map.png" width="250" alt="Mapa de precios alrededor de Madrid" /> | <img src="docs/screenshots/es/station.png" width="250" alt="Ficha de una estación: precio por combustible, diferencia con la más barata, servicios y ahorro en un depósito" /> | <img src="docs/screenshots/es/route.png" width="250" alt="Comparación de estaciones en una ruta Madrid → Barcelona" /> |
+| Los precios a tu alrededor | La ficha de una estación | Tu ruta en el mapa | En tu ruta |
+| :---: | :---: | :---: | :---: |
+| <img src="docs/screenshots/es/map.png" width="200" alt="Mapa de precios alrededor de Madrid" /> | <img src="docs/screenshots/es/station.png" width="200" alt="Ficha de una estación: precio por combustible, diferencia con la más barata, servicios y ahorro en un depósito" /> | <img src="docs/screenshots/es/trip.png" width="200" alt="Ruta Madrid → Barcelona en el mapa, con las estaciones y sus precios a lo largo del trayecto" /> | <img src="docs/screenshots/es/route.png" width="200" alt="Comparación de estaciones en una ruta Madrid → Barcelona" /> |
 
 </div>
 
