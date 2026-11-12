@@ -575,6 +575,30 @@ export default function RouteScreen() {
     </button>
   );
 
+  // Results: the trip CTA rides the same bottom edge. It hands Maps the plan
+  // on screen — never a result for older inputs (provisional, or a failed
+  // recompute) nor one whose stations are still loading — and is absent on an
+  // infeasible plan: there is no trip to start on a tank that cannot make it.
+  const tripStops = selectRouteAnalysis(app).tripStops;
+  const tripCta =
+    phase === 'ready' &&
+    tripStops != null &&
+    routeState.corridor === 'ready' &&
+    !routeState.provisional &&
+    routeState.geometry !== 'error' ? (
+      <button
+        className="press"
+        data-testid="route-start-trip"
+        onClick={() => app.openTripInMaps(tripStops)}
+        style={ctaStyle(true)}
+      >
+        {tripStops.length
+          ? m.ribbon_start_trip({ count: tripStops.length })
+          : m.ribbon_start_trip_direct()}
+      </button>
+    ) : null;
+  const footerCta = phase === 'form' ? cta : tripCta;
+
   const content =
     phase === 'form' ? (
       <RouteForm withTitle={desktop} />
@@ -727,13 +751,13 @@ export default function RouteScreen() {
                 <StationDetail />
               </div>
             )}
-            {phase === 'form' && !fiche && (
+            {footerCta && !fiche && (
               // The CTA sticks to the panel's bottom edge, whatever the form
-              // scrolls above it
+              // or the timeline scrolls above it
               <div
                 style={{ flexShrink: 0, padding: '14px 18px 18px', borderTop: `1px solid ${C.border}` }}
               >
-                {cta}
+                {footerCta}
               </div>
             )}
           </div>
@@ -758,8 +782,9 @@ export default function RouteScreen() {
 
         {/* Phone: the bottom sheet — the map sheet's gesture engine with the
             route's content. Collapsed leads (recap / recommended stop), the
-            CTA rides the bottom edge during setup, expanding reveals the
-            whole form or the whole timeline. */}
+            CTA rides the bottom edge (« Compare » during setup, « Start the
+            trip » once a plan stands), expanding reveals the whole form or
+            the whole timeline. */}
         {!desktop && (
           <SheetShell
             stageH={stageH}
@@ -802,7 +827,7 @@ export default function RouteScreen() {
               </div>
             )}
             footer={
-              phase === 'form' ? <div style={{ padding: '4px 16px 14px' }}>{cta}</div> : undefined
+              footerCta ? <div style={{ padding: '4px 16px 14px' }}>{footerCta}</div> : undefined
             }
           />
         )}

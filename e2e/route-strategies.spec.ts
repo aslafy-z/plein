@@ -100,8 +100,10 @@ test('a sufficient tank crosses without any stop — stations stay optional', as
   await openRouteSheet(page)
   await expect(page.getByText(/left on arrival/)).toBeVisible()
   // Cheap corridor stations are still browsable, but never crowned
-  await expect(page.getByText('Other stations on the route')).toBeVisible()
+  await expect(page.getByTestId('plan-alternative').first()).toBeVisible()
   await expect(page.getByText('Recommended stop')).toHaveCount(0)
+  // A stop-free trip still starts from the bottom edge — straight to the arrival
+  await expect(page.getByTestId('route-start-trip')).toHaveText('Start the trip')
 })
 
 test('a low departure tank caps the autonomy and plans a reachable stop', async ({ page }) => {
@@ -126,6 +128,25 @@ test('a low departure tank caps the autonomy and plans a reachable stop', async 
   )
   // The dry-point marker still sits on the timeline
   await expect(page.getByText(/range limit without stopping/)).toBeVisible()
+
+  // One road from departure to arrival: the plan's stop, the alternatives
+  // and the dry point in kilometre order, nothing listed past the arrival
+  await expect(page.getByTestId('plan-alternative').first()).toBeVisible()
+  const line = await page.evaluate(() =>
+    [
+      ...document.querySelectorAll(
+        '[data-testid="plan-stop"], [data-testid="plan-alternative"], [data-testid="limit-marker"], [data-testid="route-arrival"]',
+      ),
+    ].map((n) => ({
+      kind: (n as HTMLElement).dataset.testid,
+      km: Number(/KM (\d+)/.exec(n.textContent ?? '')?.[1]),
+    })),
+  )
+  expect(line.at(-1)?.kind).toBe('route-arrival')
+  const kms = line.slice(0, -1).map((e) => e.km)
+  expect(kms.every((km) => Number.isFinite(km))).toBe(true)
+  expect(kms).toEqual([...kms].sort((a, b) => a - b))
+  expect(line.map((e) => e.kind)).toContain('limit-marker')
 })
 
 test.describe('a vehicle that cannot bridge the corridor gaps', () => {

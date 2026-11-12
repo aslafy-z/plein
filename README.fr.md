@@ -79,7 +79,8 @@ Envie de voir la suite ? [staging-plein.zadkiel.workers.dev](https://staging-ple
 4. Avant de partir loin, onglet **Trajet** : saisissez la destination et
    comparez les stations le long du parcours. Le départ est sur **Ma position**
    dès que la localisation en a donné une, et la recherche de chacun des deux
-   points la propose en tête — sur un seul des deux à la fois.
+   points la propose en tête — sur un seul des deux à la fois. **Lancer le
+   trajet** confie tout l'itinéraire, arrêts carburant compris, à Google Maps.
 5. Sur mobile, installez l'app (bannière d'installation ou
    *Réglages → Application*) pour l'avoir en icône, plein écran et hors-ligne.
 

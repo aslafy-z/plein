@@ -79,7 +79,9 @@ Portugal.
 4. Antes de un viaje largo, pestaña **Ruta**: introduce el destino y compara
    las estaciones a lo largo del recorrido. El origen parte de **Mi posición**
    en cuanto la ubicación da una, y la búsqueda de cualquiera de los dos
-   extremos la ofrece como fila — solo en uno de los dos a la vez.
+   extremos la ofrece como fila — solo en uno de los dos a la vez. **Iniciar
+   la ruta** pasa todo el itinerario, paradas de repostaje incluidas, a Google
+   Maps.
 5. En el móvil, instala la app (banner de instalación o
    *Ajustes → Aplicación*) para tenerla como icono, a pantalla completa y sin
    conexión.

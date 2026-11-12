@@ -79,7 +79,8 @@ Voleu veure què ve? [staging-plein.zadkiel.workers.dev](https://staging-plein.z
 4. Abans d'un viatge llarg, pestanya **Trajecte**: introduïu la destinació i
    compareu les estacions al llarg del recorregut. L'origen surt de **La meva
    posició** així que la ubicació en dona una, i la cerca de qualsevol dels
-   dos extrems l'ofereix com a fila — només en un dels dos alhora.
+   dos extrems l'ofereix com a fila — només en un dels dos alhora. **Inicia la
+   ruta** passa tot l'itinerari, parades per repostar incloses, a Google Maps.
 5. Al mòbil, instal·leu l'app (bàner d'instal·lació o
    *Ajustos → Aplicació*) per tenir-la com a icona, a pantalla completa i
    fora de línia.
