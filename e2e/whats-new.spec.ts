@@ -24,7 +24,6 @@ test.describe('a returning user', () => {
 
     await sparkle(page).click()
     await expect(sheet(page)).toBeVisible()
-    await expect(sheet(page).getByText('New', { exact: true })).toBeVisible()
     // Opening the sheet is reading the news: the sparkle is gone behind it
     await expect(sparkle(page)).toHaveCount(0)
 
@@ -55,9 +54,8 @@ test('Settings reopens the log, and Back closes it without leaving the screen', 
 
   await page.getByRole('button', { name: /What's new/ }).click()
   await expect(sheet(page)).toBeVisible()
-  // Nothing was announced this session: no entry is flagged, and the whole
-  // history is open at once — nothing to unroll
-  await expect(sheet(page).getByText('New', { exact: true })).toHaveCount(0)
+  // Nothing was announced this session: the whole history is open at once,
+  // nothing to unroll
   await expect(sheet(page).getByRole('heading', { name: LATEST })).toBeVisible()
   await expect(sheet(page).getByRole('heading', { name: EARLIER })).toBeAttached()
   await expect(sheet(page).getByRole('button', { name: 'See earlier changes' })).toHaveCount(0)

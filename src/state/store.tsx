@@ -693,7 +693,7 @@ export interface AppStore {
   whatsNewOpen: WhatsNewView | null;
   setWhatsNewOpen(view: WhatsNewView | null): void;
   /** Ids the log had to announce when this session started — the sheet
-      flags them « New » even after opening it stamped them seen */
+      still leads with them after opening it stamped them seen */
   whatsNewFresh: ReadonlySet<string>;
 }
 

@@ -244,9 +244,10 @@ that groups a few before the next promotion.
   (`whatsNewOpen`), so Back closes it.
 - **The log is a history, not a headline.** `whatsNewOpen` is a
   `WhatsNewView`: from the sparkle it is `'unread'` — the news this session
-  announced leads, flagged « New », and every earlier entry waits behind
-  « See earlier changes », unrolled in place; from Settings › App ›
-  « What's new » it is `'all'`, the whole history open. `splitChangelog()`
+  announced leads (no « New » badge: the title already says it), and every
+  earlier entry waits behind « See earlier changes », unrolled in place;
+  from Settings › App › « What's new » it is `'all'`, the whole history
+  open. `splitChangelog()`
   is the one rule (an `'unread'` view with nothing announced falls back to
   the whole history rather than an empty sheet). The August 2026 entries
   were backfilled from the merge history.
