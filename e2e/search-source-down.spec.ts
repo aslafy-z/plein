@@ -58,6 +58,12 @@ test('a list one source is missing from says so', async ({ page }) => {
   await expect(page.getByTestId('search-incomplete')).toHaveText(
     'Some sources did not answer: the list may be incomplete.',
   )
+
+  // Above the rows: read without scrolling past a dozen suggestions, and on a
+  // phone never behind the keyboard's accessory bar.
+  const notice = await page.getByTestId('search-incomplete').boundingBox()
+  const row = await page.getByRole('button', { name: 'Directions to Bayonne' }).boundingBox()
+  expect(notice!.y + notice!.height).toBeLessThanOrEqual(row!.y)
 })
 
 test('a complete list carries no notice', async ({ page }) => {
