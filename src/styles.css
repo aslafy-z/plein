@@ -667,9 +667,13 @@ button,
   background: transparent;
 }
 /* Firefox draws its scrollbars from here (the property inherits) — the same
-   subtle thumb the WebKit rules above paint */
-html {
-  scrollbar-color: var(--c-border-12) transparent;
+   subtle thumb the WebKit rules above paint. Gated to engines WITHOUT the
+   WebKit pseudo-elements: Chromium 121+ reads `scrollbar-color` too, and once
+   it is set there every `::-webkit-scrollbar` rule above is ignored. */
+@supports not selector(::-webkit-scrollbar) {
+  html {
+    scrollbar-color: var(--c-border-12) transparent;
+  }
 }
 
 /* ── App shell ────────────────────────────────────────────────────────
