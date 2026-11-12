@@ -153,9 +153,14 @@ async function loadMessages(locale) {
 
 /** Boots the Vite dev server and resolves once it answers. */
 async function startServer() {
+  // Vite's own entry point under this Node, not `npx vite`: npx stays as a
+  // parent process, so `server.kill()` stopped only the wrapper — the server
+  // outlived the run, kept the port and held the inherited stdout open: a pipe
+  // reading the run never closed, and the next run talked to the stale server
+  // instead of its own.
   const server = spawn(
-    'npx',
-    ['vite', '--port', String(PORT), '--strictPort', '--logLevel', 'error'],
+    process.execPath,
+    [join(ROOT, 'node_modules/vite/bin/vite.js'), '--port', String(PORT), '--strictPort', '--logLevel', 'error'],
     { cwd: ROOT, stdio: ['ignore', 'inherit', 'inherit'] },
   );
   const deadline = Date.now() + 60_000;
