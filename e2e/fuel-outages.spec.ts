@@ -59,6 +59,8 @@ test('the fiche says a dry pump is out of stock, not « not sold here »', async
   await expect(page.getByText('out of stock since Nov 3')).toBeVisible()
   // E10 is neither priced nor in outage: still « not sold here »
   await expect(page.getByText('not sold here')).toBeVisible()
+  // No diesel price, no fill-up to compare: the savings card stays out
+  await expect(page.getByText(/on a \d+ L fill-up/)).toHaveCount(0)
 })
 
 test('a station out of everything for weeks reads as such on its fiche', async ({ page }) => {
