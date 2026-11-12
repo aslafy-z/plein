@@ -264,6 +264,14 @@ export interface GeocodeSearchOptions {
    * of its own list.
    */
   onIncomplete?(missing?: readonly GeocodeCountry[]): void;
+  /**
+   * The countries whose source has not concluded yet, in display order —
+   * published when a merge of several countries starts and again each time
+   * one of them answers or fails (empty once all have). A view names them
+   * while the search runs, the way `onIncomplete` names the ones that failed.
+   * Only a merged search calls it; a single national geocoder does not.
+   */
+  onPending?(waiting: readonly GeocodeCountry[]): void;
 }
 
 export interface GeocodeProvider {

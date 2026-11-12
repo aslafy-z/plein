@@ -434,6 +434,86 @@ describe('MergedGeocodeProvider — naming what did not answer', () => {
   })
 })
 
+describe('MergedGeocodeProvider — naming what is still out', () => {
+  const place = (label: string): GeocodeResult => ({
+    label,
+    sublabel: '',
+    point: { lat: 43.6, lng: 1.44 },
+    kind: 'locality',
+  })
+  /** A geocoder on a leash: it answers (or fails) when the test says so */
+  const leashed = () => {
+    let settle!: (value: GeocodeResult[]) => void
+    let fail!: (reason: unknown) => void
+    const promise = new Promise<GeocodeResult[]>((resolve, reject) => {
+      settle = resolve
+      fail = reject
+    })
+    const provider: GeocodeProvider = { search: () => promise }
+    return { provider, settle, fail }
+  }
+  const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
+
+  it('names every country at the start, then drops each one as it concludes', async () => {
+    const fr = leashed()
+    const es = leashed()
+    const pt = leashed()
+    const waiting: string[][] = []
+    const search = new MergedGeocodeProvider([
+      { country: 'fr', provider: fr.provider },
+      { country: 'es', provider: es.provider },
+      { country: 'pt', provider: pt.provider },
+    ]).search('qualquer', { onPending: (countries) => waiting.push([...countries]) })
+
+    expect(waiting).toEqual([['fr', 'es', 'pt']])
+    es.settle([place('Girona')])
+    await flush()
+    expect(waiting[waiting.length - 1]).toEqual(['fr', 'pt'])
+    // A failure concludes a source too: it is no longer awaited
+    fr.fail(new Error('504'))
+    await flush()
+    expect(waiting[waiting.length - 1]).toEqual(['pt'])
+    pt.settle([place('Coimbra')])
+    await search
+    expect(waiting[waiting.length - 1]).toEqual([])
+  })
+
+  it('updates the waiting list before publishing the rows of the source that landed', async () => {
+    const fr = leashed()
+    const es = leashed()
+    const events: string[] = []
+    const search = new MergedGeocodeProvider([
+      { country: 'fr', provider: fr.provider },
+      { country: 'es', provider: es.provider },
+    ]).search('qualquer', {
+      onPending: (countries) => events.push(`pending:${countries.join(',')}`),
+      onPartial: (res) => events.push(`rows:${res.map((r) => r.label).join(',')}`),
+    })
+    fr.settle([place('Toulouse')])
+    await flush()
+    expect(events).toEqual(['pending:fr,es', 'pending:es', 'rows:Toulouse'])
+    es.settle([])
+    await search
+  })
+
+  it('keeps the given order when the home country is asked first', async () => {
+    const fr = leashed()
+    const pt = leashed()
+    const waiting: string[][] = []
+    const search = new MergedGeocodeProvider([
+      { country: 'fr', provider: fr.provider, covers: () => false },
+      { country: 'pt', provider: pt.provider, covers: () => true },
+    ]).search('valen', {
+      near: { lat: 38.7, lng: -9.1 },
+      onPending: (countries) => waiting.push([...countries]),
+    })
+    expect(waiting).toEqual([['fr', 'pt']])
+    fr.settle([])
+    pt.settle([])
+    await search
+  })
+})
+
 describe('MergedGeocodeProvider — the country the map looks at', () => {
   const place = (label: string): GeocodeResult => ({
     label,

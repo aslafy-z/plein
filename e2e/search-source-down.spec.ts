@@ -154,6 +154,36 @@ test.describe('several countries', () => {
       'No answer for: France, Spain. The list may be incomplete.',
     )
   })
+  test('a running search names the countries it is still waiting for', async ({ page }) => {
+    // France, Spain and Portugal answer at once; Andorra is held back until
+    // the notice has been read
+    await page.route(GEOPF_ADDRESS, (route) => route.fulfill({ json: ADDRESSES }))
+    await page.route('**/proxy/cartociudad/**', (route) => route.fulfill({ json: [] }))
+    await page.route('**/proxy/photon/**', (route) =>
+      route.fulfill({ json: { type: 'FeatureCollection', features: [] } }),
+    )
+    let release!: () => void
+    const held = new Promise<void>((resolve) => (release = resolve))
+    await page.route('**/proxy/ad/**/GeocodeServer/suggest*', async (route) => {
+      await held
+      await route.fulfill({ json: { suggestions: [] } }).catch(() => {})
+    })
+    await search(page, 'Bayonne')
+
+    // Same slot as the failure notice: above the rows already landed
+    await expect(page.getByTestId('search-waiting')).toHaveText('Waiting for: Andorra.', {
+      timeout: 10_000,
+    })
+    const notice = await page.getByTestId('search-waiting').boundingBox()
+    const row = await page.getByRole('button', { name: 'Directions to Bayonne' }).boundingBox()
+    expect(notice!.y + notice!.height).toBeLessThanOrEqual(row!.y)
+
+    release()
+    await expect(page.getByRole('status', { name: 'Searching…' })).toHaveCount(0)
+    await expect(page.getByTestId('search-waiting')).toHaveCount(0)
+    await expect(page.getByTestId('search-incomplete')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Directions to Bayonne' })).toBeVisible()
+  })
 })
 
 test.describe('phone', () => {

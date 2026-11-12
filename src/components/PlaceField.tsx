@@ -117,6 +117,10 @@ export default function PlaceField(props: PlaceFieldProps) {
   /** The countries whose source did not answer at all — named in the notice.
       Empty when a source only lost part of its own list. */
   const [downCountries, setDownCountries] = useState<readonly GeocodeCountry[]>([]);
+  /** The countries whose source is still being asked, while a merged search
+      runs — the counterpart of `downCountries`, named in the same notice slot
+      so a slow source reads as late rather than as a list that is complete. */
+  const [waitingCountries, setWaitingCountries] = useState<readonly GeocodeCountry[]>([]);
   /** Enter came before the answer for the current text: pick when it lands */
   const [enterPending, setEnterPending] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -132,12 +136,14 @@ export default function PlaceField(props: PlaceFieldProps) {
       setAnsweredQuery(null);
       setSearching(false);
       setUnanswered('none');
+      setWaitingCountries([]);
       return;
     }
     const id = ++reqId.current;
     // The spinner covers the debounce too: from the typist's point of view the
     // search is already under way, and geocoders can take seconds to answer.
     setSearching(true);
+    setWaitingCountries([]);
     timer.current = setTimeout(() => {
       let incomplete = false;
       let down: readonly GeocodeCountry[] = [];
@@ -154,12 +160,17 @@ export default function PlaceField(props: PlaceFieldProps) {
             incomplete = true;
             down = missing ?? [];
           },
+          onPending: (waiting) => {
+            if (id !== reqId.current) return;
+            setWaitingCountries(waiting);
+          },
         })
         .then((res) => {
           if (id !== reqId.current) return;
           setSuggestions(res);
           setAnsweredQuery(text);
           setSearching(false);
+          setWaitingCountries([]);
           setUnanswered(incomplete ? 'some' : 'none');
           setDownCountries(down);
         })
@@ -168,6 +179,7 @@ export default function PlaceField(props: PlaceFieldProps) {
           setSuggestions([]);
           setAnsweredQuery(text);
           setSearching(false);
+          setWaitingCountries([]);
           setUnanswered('all');
         });
     }, 300);
@@ -180,6 +192,7 @@ export default function PlaceField(props: PlaceFieldProps) {
     setSuggestions([]);
     setAnsweredQuery(null);
     setSearching(false);
+    setWaitingCountries([]);
     setUnanswered('none');
     setEnterPending(false);
   };
@@ -244,7 +257,11 @@ export default function PlaceField(props: PlaceFieldProps) {
       desktop dropdown, the phone's empty state, the blur that dismisses)
       would otherwise unmount it — including out from under its own click. */
   const showsPosition = props.onPickCurrentPosition != null;
-  const hasList = rows.length > 0 || showsPosition;
+  /** A merged search under way names the sources it still waits for — before
+      any row has landed too, so the first seconds of a slow search say what
+      they are waiting on instead of showing nothing. */
+  const showsWaiting = searching && waitingCountries.length > 0;
+  const hasList = rows.length > 0 || showsPosition || showsWaiting;
 
   /** What every pick does to the field itself, place or position alike */
   const closeAfterPick = () => {
@@ -315,6 +332,16 @@ export default function PlaceField(props: PlaceFieldProps) {
     fontFamily: 'Archivo, sans-serif',
     padding: 0,
   };
+
+  /** The one notice line above the rows: what is still out, or what did not
+      answer — the same slot and the same look, one after the other */
+  const noticeStyle = (phone: boolean) => ({
+    padding: phone ? '10px 18px' : '8px 16px',
+    borderBottom: `1px solid ${C.border08}`,
+    color: C.mut,
+    fontSize: 12,
+    lineHeight: 1.4,
+  });
 
   const spinner = searching && (
     <span
@@ -392,17 +419,13 @@ export default function PlaceField(props: PlaceFieldProps) {
           under them it sat past a dozen suggestions, and on a phone behind
           the keyboard's accessory bar. Only once the search has concluded —
           while it still runs, a source is merely late. */}
+      {showsWaiting && (
+        <div data-testid="search-waiting" style={noticeStyle(phone)}>
+          {m.search_waiting_named({ countries: listLabel(waitingCountries.map(countryName)) })}
+        </div>
+      )}
       {unanswered === 'some' && !searching && suggestions.length > 0 && (
-        <div
-          data-testid="search-incomplete"
-          style={{
-            padding: phone ? '10px 18px' : '8px 16px',
-            borderBottom: `1px solid ${C.border08}`,
-            color: C.mut,
-            fontSize: 12,
-            lineHeight: 1.4,
-          }}
-        >
+        <div data-testid="search-incomplete" style={noticeStyle(phone)}>
           {downCountries.length > 0
             ? m.search_incomplete_named({ countries: listLabel(downCountries.map(countryName)) })
             : m.search_incomplete()}
