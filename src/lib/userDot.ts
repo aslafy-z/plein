@@ -22,12 +22,22 @@ export const USER_DOT_SIZE = 34;
  */
 export const USER_DOT_CLASS = 'user-dot';
 
-/** Accent dot inside a soft accent halo, centered on the user's position. */
-export function userDotHtml(): string {
+/**
+ * The shape itself: a ringed dot inside a soft halo, centered in its box. The
+ * user dot is its accent tone; the searched-place dot (lib/placePin) is the
+ * same shape in neutral ink — a variant, so the two read as one family of
+ * « a point on the map » while the accent stays reserved for the user.
+ */
+export function haloDotHtml(tone: { halo: string; fill: string; ring: string }): string {
   return (
     `<div style="width:${USER_DOT_SIZE}px;height:${USER_DOT_SIZE}px;border-radius:50%;` +
-    `background:${C.accentSoft15};display:flex;align-items:center;justify-content:center">` +
-    `<div style="width:14px;height:14px;border-radius:50%;background:${C.accent};` +
-    `border:3px solid ${C.accentDeep};box-sizing:border-box"></div></div>`
+    `background:${tone.halo};display:flex;align-items:center;justify-content:center">` +
+    `<div style="width:14px;height:14px;border-radius:50%;background:${tone.fill};` +
+    `border:3px solid ${tone.ring};box-sizing:border-box"></div></div>`
   );
+}
+
+/** Accent dot inside a soft accent halo, centered on the user's position. */
+export function userDotHtml(): string {
+  return haloDotHtml({ halo: C.accentSoft15, fill: C.accent, ring: C.accentDeep });
 }
