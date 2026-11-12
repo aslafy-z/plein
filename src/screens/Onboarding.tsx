@@ -3,6 +3,7 @@ import { C, ctaStyle, display, mono } from '../theme';
 import { useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
 import { LogoLockup } from '../components/Logo';
+import { userDotHtml } from '../lib/userDot';
 
 export default function Onboarding() {
   const app = useApp();
@@ -127,22 +128,16 @@ export default function Onboarding() {
             gap: 12,
           }}
         >
-          <div
-            style={{
-              width: 30,
-              height: 30,
-              borderRadius: '50%',
-              background: C.accentSoft,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <div
-              style={{ width: 10, height: 10, borderRadius: '50%', border: `2.5px solid ${C.accent}` }}
-            />
-          </div>
+          {/* The very dot the map will draw on the user (lib/userDot), halo
+              wave included: the row asks for the position, so it shows what
+              granting it puts on screen. The markup comes from the one
+              builder both maps use — a trusted string of theme tokens, no
+              user data — so the three can never drift apart. */}
+          <span
+            aria-hidden
+            style={{ display: 'flex', flexShrink: 0 }}
+            dangerouslySetInnerHTML={{ __html: userDotHtml() }}
+          />
           <div style={{ flex: 1, fontSize: 12.5, lineHeight: 1.4, color: C.mut }}>
             <strong style={{ color: C.ink }}>{m.onboarding_location_title()}</strong> —{' '}
             {m.onboarding_location_body()}
