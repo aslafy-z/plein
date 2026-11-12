@@ -25,6 +25,6 @@ test.describe('with geolocation granted', () => {
 
     // Settings reflects the granted permission
     await page.getByText('Settings', { exact: true }).click()
-    await expect(page.getByText('on, the map follows your position')).toBeVisible()
+    await expect(page.getByText('on: the map follows your position')).toBeVisible()
   })
 })
