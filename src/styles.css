@@ -148,12 +148,19 @@
      an element. Barely-there ON PURPOSE: past ~6% alpha it reads as a stain. */
   --c-glow-top: rgba(var(--c-accent-rgb), 0.05);
   /* Atmosphere: a static film grain tiled under the shell surfaces — texture
-     felt rather than seen (the map and every card paint over it). A data URI
-     per theme because a background layer has no opacity of its own: the
-     alpha is baked into the SVG rect — a hair stronger on the dark ground,
-     where noise reads weaker than on paper. A static image composites once;
-     none of the per-frame cost lite-effects mode exists for. */
-  --c-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+     felt rather than seen (the map and every card paint over it). Mid-grey
+     noise BLENDED in `overlay` (.app-shell), never painted over: grey 50% is
+     overlay's identity, so the grain moves pixels both ways around the ground
+     and the ground's own color stays put on average — painted with an alpha,
+     a noise layer greys a near-black page and dims the paper. The filter runs
+     in sRGB, where 0.5 IS mid-grey (the default linearRGB shifts it to ~73%).
+     Overlay already scales the grain with the ground's distance to black or
+     white, and both grounds sit as close to their end, so only the
+     perception differs: the eye resolves a step on a dark ground that it
+     misses on paper, hence a softer contrast slope here (0.5) than in light
+     (1). A static image composites once; none of the per-frame cost
+     lite-effects mode exists for. */
+  --c-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='.33 .33 .33 0 0 .33 .33 .33 0 0 .33 .33 .33 0 0 0 0 0 0 1'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.5' intercept='0.25'/%3E%3CfeFuncG type='linear' slope='0.5' intercept='0.25'/%3E%3CfeFuncB type='linear' slope='0.5' intercept='0.25'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 /* ── Motion ───────────────────────────────────────────────────────────────
@@ -306,7 +313,7 @@
   /* Near-white glass takes a stronger top light to show its edge at all */
   --c-glass-edge: rgba(255, 255, 255, 0.65);
   --c-glow-top: rgba(var(--c-accent-rgb), 0.05);
-  --c-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  --c-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='.33 .33 .33 0 0 .33 .33 .33 0 0 .33 .33 .33 0 0 0 0 0 0 1'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='1' intercept='0.0'/%3E%3CfeFuncG type='linear' slope='1' intercept='0.0'/%3E%3CfeFuncB type='linear' slope='1' intercept='0.0'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 /* ── Accent presets ───────────────────────────────────────────────────────
@@ -706,6 +713,8 @@ button,
   background-image:
     var(--c-grain),
     radial-gradient(120% 55% at 50% -10%, var(--c-glow-top), transparent 60%);
+  /* The grain blends (see --c-grain), the bloom paints as before */
+  background-blend-mode: overlay, normal;
   background-color: var(--c-bg);
   display: flex;
   /* flex-direction comes from React: `column` under the tab bar, `row`
