@@ -123,6 +123,7 @@
     }
   ],
   "map_pin_label": "{name}, {price} € per litre",
+  "map_place_pin_label": "Back to {place}",
   "map_pin_cap_hint": [
     {
       "declarations": [

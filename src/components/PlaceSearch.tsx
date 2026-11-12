@@ -7,7 +7,9 @@
 // full screen on a phone — is PlaceField, shared with the route's departure
 // and arrival fields. What stays here is the map's own policy: the collapsed
 // pill showing the searched place (clearable back to « my position »), the
-// `setSearchArea` side effect, and the route shortcut per row.
+// `setSearchArea` side effect — which also pins the place on the map, so it
+// stays findable once the zone is dragged off it — and the route shortcut
+// per row.
 import { C } from '../theme';
 import { m } from '../paraglide/messages.js';
 import type { GeocodeResult } from '../data/types';
@@ -118,7 +120,7 @@ export default function PlaceSearch() {
   // place and closes. The route shortcut leaves the search behind on its own
   // history entry, so Back out of the route setup returns to it.
   const pickArea = (r: GeocodeResult) => {
-    app.setSearchArea(r.point, r.label);
+    app.setSearchArea(r.point, r.label, { pin: true });
   };
   const pickRoute = (r: GeocodeResult) => {
     app.setTo(r.label, r.point);
