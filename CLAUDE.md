@@ -23,6 +23,17 @@ it lives only in `messages/fr.json`.
   `messages/en.json` copy — the Settings « Data » section, the
   « Directions › » shortcut — never the French name (« réglages »,
   « Données », « Itinéraire »).
+- **Em dashes in the catalogs are rare, not banned.** The brand headline
+  (`app_title`, the page `<title>`, the manifest name) and the share titles
+  and texts (`share_*`) keep their « Plein. — … » form. Everywhere else in
+  the UI copy, join two clauses with what the sentence actually means: a
+  colon when the second part explains the first (« Offline: the prices
+  shown may be out of date. »), a comma or a new sentence for a follow-up or
+  an action (« Prices are out of date. Tap to reload »), parentheses for a
+  qualifier (« CNG (compressed natural gas) »), and « · » between a status
+  and the action that fixes it (« Last known position · turn location back
+  on »). A lone « — » standing in for a missing value is a placeholder, not
+  punctuation, and stays.
 - **Never hard-wrap commit messages or PR descriptions.** Write each
   paragraph as one long line and let the renderer wrap; only actual
   paragraph breaks get a newline.
