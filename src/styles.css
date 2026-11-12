@@ -1080,7 +1080,15 @@ button,
    through --stagger. `backwards` holds the from-state through the delay so
    late elements don't flash in place before their turn. Rare-screen budget:
    the everyday screens mount instantly on purpose — speed is their
-   experience. */
+   experience.
+
+   It does NOT ride --ease-out. That curve is built for a sheet crossing half
+   the screen, and the spring it upgrades to reaches its end at ~19% of the
+   duration: on an 18px fade that is the whole move done in the first
+   ~100ms — exactly the frames a cold-booting phone drops — so the entrance
+   read as a pop. Here the motion IS the content, so it gets its own long,
+   gentle decelerate (an ease-out quart, no overshoot): ~40% at 100ms, ~70%
+   at 200ms, settled past 500ms. */
 @keyframes enter-up {
   from {
     opacity: 0;
@@ -1096,7 +1104,7 @@ button,
 .enter-up {
   /* `backwards`, not `both`: a forwards fill would pin the final keyframe's
      transform over any later hover/press transition on the same element */
-  animation: enter-up 0.5s var(--ease-out) backwards;
+  animation: enter-up 0.8s cubic-bezier(0.25, 1, 0.5, 1) backwards;
   animation-delay: var(--stagger, 0ms);
 }
 /* Station rows arriving in a fresh zone list — same idea, no blur (dozens of

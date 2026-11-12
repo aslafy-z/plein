@@ -150,7 +150,7 @@ export default function FavoritesScreen() {
             </span>
             <span
               className="enter-up"
-              style={{ fontSize: 15, fontWeight: 700, color: C.body, ['--stagger' as string]: '60ms' }}
+              style={{ fontSize: 15, fontWeight: 700, color: C.body, ['--stagger' as string]: '90ms' }}
             >
               {m.favorites_empty_title()}
             </span>
@@ -161,7 +161,7 @@ export default function FavoritesScreen() {
                 color: C.mut,
                 lineHeight: 1.5,
                 maxWidth: 300,
-                ['--stagger' as string]: '120ms',
+                ['--stagger' as string]: '180ms',
               }}
             >
               {m.favorites_empty_body()}
@@ -172,7 +172,7 @@ export default function FavoritesScreen() {
               style={{
                 ...accentPill(14, '11px 22px'),
                 marginTop: 6,
-                ['--stagger' as string]: '180ms',
+                ['--stagger' as string]: '270ms',
               }}
             >
               {m.favorites_explore_map()}

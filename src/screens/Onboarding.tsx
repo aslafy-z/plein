@@ -40,7 +40,7 @@ export default function Onboarding() {
       {/* Logo row — « 2a Goutte-repère ». The screen is the app's one
           first-impression moment, so it gets the one choreographed entrance
           (enter-up + --stagger, styles.css): logo → headline → intro →
-          steps → actions, whole sequence done under 800ms. Every other
+          steps → actions, every element settled within ~0.9s. Every other
           screen mounts instantly on purpose. */}
       <div className="enter-up" style={{ ['--stagger' as string]: '0ms' }}>
         <LogoLockup />
@@ -58,7 +58,7 @@ export default function Onboarding() {
           // The browser evens the headline's lines out rather than stranding
           // an orphan word (ignored where unsupported)
           textWrap: 'balance',
-          ['--stagger' as string]: '60ms',
+          ['--stagger' as string]: '90ms',
         }}
       >
         {m.onboarding_headline()}
@@ -74,7 +74,7 @@ export default function Onboarding() {
           // card is already a narrow column, and 300px inside it left the
           // intro wrapping three times under a headline twice as wide
           maxWidth: desktop ? undefined : 300,
-          ['--stagger' as string]: '120ms',
+          ['--stagger' as string]: '180ms',
         }}
       >
         {m.onboarding_intro()}
@@ -88,7 +88,7 @@ export default function Onboarding() {
           display: 'flex',
           flexDirection: 'column',
           gap: 20,
-          ['--stagger' as string]: '180ms',
+          ['--stagger' as string]: '270ms',
         }}
       >
         {steps.map((s) => (
@@ -106,7 +106,7 @@ export default function Onboarding() {
       <div
         className="enter-up"
         style={{
-          ['--stagger' as string]: '260ms',
+          ['--stagger' as string]: '380ms',
           // Pushed to the bottom edge on a phone; part of the centered card
           // on a window, where `auto` would strand it a screen further down
           marginTop: desktop ? 34 : 'auto',
