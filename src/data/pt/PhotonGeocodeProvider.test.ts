@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { PhotonGeocodeProvider } from './PhotonGeocodeProvider'
+import { PHOTON_ANDORRA, PHOTON_FRANCE, PHOTON_SPAIN, PhotonGeocodeProvider } from './PhotonGeocodeProvider'
 
 // Photon answers GeoJSON: one feature per hit, `type` saying what it denotes
 // and `countrycode` where it is.
@@ -116,5 +116,72 @@ describe('PhotonGeocodeProvider', () => {
       vi.fn(async () => ({ ok: false, status: 429, json: async () => ({}) }) as Response),
     )
     await expect(provider.search('coimbra')).rejects.toThrow(/429/)
+  })
+
+  it('asks once more when the connection is dropped, and only then', async () => {
+    const answer = { ok: true, status: 200, json: async () => ({ features: [feature({ name: 'Coimbra', type: 'city' })] }) }
+    const dropped = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('fetch failed'))
+      .mockResolvedValueOnce(answer as unknown as Response)
+    vi.stubGlobal('fetch', dropped)
+    expect((await provider.search('coimbra')).map((r) => r.label)).toEqual(['Coimbra'])
+    expect(dropped).toHaveBeenCalledTimes(2)
+
+    const timedOut = vi.fn().mockRejectedValue(Object.assign(new Error('timed out'), { name: 'TimeoutError' }))
+    vi.stubGlobal('fetch', timedOut)
+    await expect(provider.search('coimbra')).rejects.toThrow('timed out')
+    expect(timedOut).toHaveBeenCalledTimes(1)
+  })
+
+  it('answers for France when asked to: its own box, and the commune in the context', async () => {
+    const mock = stubFetch([
+      feature({
+        countrycode: 'FR',
+        type: 'house',
+        housenumber: '4',
+        street: 'Rue Pasteur',
+        postcode: '06000',
+        city: 'Nice',
+        county: 'Alpes-Maritimes',
+      }),
+      feature({ countrycode: 'FR', type: 'city', name: 'Nice', postcode: '06000', county: 'Alpes-Maritimes' }),
+      feature({ countrycode: 'IT', type: 'city', name: 'Nizza Monferrato' }),
+    ])
+    const out = await new PhotonGeocodeProvider(PHOTON_FRANCE).search('nice')
+    expect(String(mock.mock.calls[0][0])).toContain('bbox=-5.3%2C41.2%2C9.7%2C51.2')
+    expect(out.map((r) => [r.label, r.sublabel, r.country])).toEqual([
+      ['Nice', 'Alpes-Maritimes', undefined],
+      ['4 Rue Pasteur', '06000 Nice, Alpes-Maritimes', undefined],
+    ])
+  })
+
+  it('answers for Spain and for Andorra, each in its own box', async () => {
+    let mock = stubFetch([
+      feature({
+        countrycode: 'ES',
+        type: 'house',
+        housenumber: '3',
+        street: 'Calle Mayor',
+        postcode: '28013',
+        city: 'Madrid',
+      }),
+      feature({ countrycode: 'PT', type: 'city', name: 'Madrid' }),
+    ])
+    const es = await new PhotonGeocodeProvider(PHOTON_SPAIN).search('calle mayor 3 madrid')
+    expect(String(mock.mock.calls[0][0])).toContain('bbox=-9.4%2C35.9%2C4.4%2C43.9')
+    expect(es.map((r) => [r.label, r.sublabel, r.country])).toEqual([
+      ['3 Calle Mayor', '28013 Madrid', undefined],
+    ])
+
+    mock = stubFetch([
+      feature({ countrycode: 'AD', type: 'street', name: 'Avinguda Meritxell', city: 'Andorra la Vella' }),
+      feature({ countrycode: 'ES', type: 'city', name: 'La Seu d\'Urgell' }),
+    ])
+    const ad = await new PhotonGeocodeProvider(PHOTON_ANDORRA).search('avinguda meritxell')
+    expect(String(mock.mock.calls[0][0])).toContain('bbox=1.40%2C42.42%2C1.79%2C42.66')
+    expect(ad.map((r) => [r.label, r.sublabel, r.country])).toEqual([
+      ['Avinguda Meritxell', 'Andorra la Vella', 'ad'],
+    ])
   })
 })

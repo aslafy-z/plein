@@ -20,8 +20,9 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { C } from '../theme';
 import { m } from '../paraglide/messages.js';
-import type { GeocodeResult } from '../data/types';
-import { placeSublabel } from '../lib/labels';
+import type { GeocodeCountry, GeocodeResult } from '../data/types';
+import { listLabel } from '../lib/format';
+import { countryName, placeSublabel } from '../lib/labels';
 import { useIsDesktop, useVisualViewport } from '../lib/layout';
 import { useApp, type SearchTarget } from '../state/store';
 import { enterChoice, searchRows } from '../state/searchHistory';
@@ -113,6 +114,9 @@ export default function PlaceField(props: PlaceFieldProps) {
       looks exactly like a search that matched nothing in that country, and
       the rows left over then read as the app's best guess. */
   const [unanswered, setUnanswered] = useState<'none' | 'some' | 'all'>('none');
+  /** The countries whose source did not answer at all — named in the notice.
+      Empty when a source only lost part of its own list. */
+  const [downCountries, setDownCountries] = useState<readonly GeocodeCountry[]>([]);
   /** Enter came before the answer for the current text: pick when it lands */
   const [enterPending, setEnterPending] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -136,6 +140,7 @@ export default function PlaceField(props: PlaceFieldProps) {
     setSearching(true);
     timer.current = setTimeout(() => {
       let incomplete = false;
+      let down: readonly GeocodeCountry[] = [];
       app
         // « Automatic » queries several geocoders: show each country's hits
         // as they land, and keep spinning until the last one has answered.
@@ -145,8 +150,9 @@ export default function PlaceField(props: PlaceFieldProps) {
             setSuggestions(res);
             setAnsweredQuery(text);
           },
-          onIncomplete: () => {
+          onIncomplete: (missing) => {
             incomplete = true;
+            down = missing ?? [];
           },
         })
         .then((res) => {
@@ -155,6 +161,7 @@ export default function PlaceField(props: PlaceFieldProps) {
           setAnsweredQuery(text);
           setSearching(false);
           setUnanswered(incomplete ? 'some' : 'none');
+          setDownCountries(down);
         })
         .catch(() => {
           if (id !== reqId.current) return;
@@ -396,7 +403,9 @@ export default function PlaceField(props: PlaceFieldProps) {
             lineHeight: 1.4,
           }}
         >
-          {m.search_incomplete()}
+          {downCountries.length > 0
+            ? m.search_incomplete_named({ countries: listLabel(downCountries.map(countryName)) })
+            : m.search_incomplete()}
         </div>
       )}
       {/* Above everything, and never filtered by the query: it answers no

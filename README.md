@@ -34,6 +34,9 @@ Want what is coming next? [staging-plein.zadkiel.workers.dev](https://staging-pl
   good deals in green, the priciest in orange.
 - 🇫🇷🇪🇸🇦🇩🇵🇹 **Four countries on one map** — the official feeds of France,
   Spain, Andorra and Portugal combined; border fill-ups compare at a glance.
+- 🔎 **Place search** — towns, addresses and points of interest (railway
+  stations, airports, monuments) across the four countries, ranked by how
+  well they match what you typed.
 - 📋 **Real best choice** — the fuel burned for the detour is counted, so a
   closer station can beat the cheapest one.
 - 🛣️ **Route fuel plan** — where to stop along your trip, how many liters at
@@ -89,6 +92,7 @@ rest (routing, basemaps) is shared by all four.
 | Station brands | [OpenStreetMap](https://www.openstreetmap.org/) (generated static index, matched to stations by proximity) | ODbL |
 | Geocoding & autocompletion | [Base Adresse Nationale](https://adresse.data.gouv.fr/), through the Géoplateforme geocoding service (data.geopf.fr) | Licence Ouverte / Open Licence |
 | Points of interest (airports, railway stations, monuments…) | [Géoplateforme geocoding service](https://geoservices.ign.fr/documentation/services/services-geoplateforme/geocodage) (data.geopf.fr, IGN BD TOPO) | Licence Ouverte / Open Licence |
+| Backup geocoding, when the Géoplateforme does not answer | [Photon](https://photon.komoot.io) (public Komoot instance, OpenStreetMap index), bounded to metropolitan France | ODbL |
 
 ### 🇪🇸 Spain
 
@@ -96,6 +100,7 @@ rest (routing, basemaps) is shared by all four.
 | --- | --- | --- |
 | Fuel prices, hours & brands | [Precios de carburantes](https://geoportalgasolineras.es) (sedeaplicaciones.minetur.gob.es, MITECO) — the brand (*rótulo*) is carried by the feed | Datos abiertos |
 | Geocoding & autocompletion | [CartoCiudad](https://www.cartociudad.es) (IGN) | CC BY 4.0 |
+| Backup geocoding, when CartoCiudad does not answer | [Photon](https://photon.komoot.io), bounded to mainland Spain and the Balearics | ODbL |
 
 ### 🇦🇩 Andorra
 
@@ -103,6 +108,7 @@ rest (routing, basemaps) is shared by all four.
 | --- | --- | --- |
 | Fuel prices & brands | [Preus dels carburants](https://sig.govern.ad/IPE/PreusCarburants) (sig.govern.ad, Govern d'Andorra — Oficina de l'Energia i del Canvi Climàtic) — the brand is derived from the station name; the feed carries neither address nor opening hours | © Govern d'Andorra |
 | Geocoding & autocompletion | Nomenclàtor (official gazetteer) & LocatorIDE (sig.govern.ad, IDE Andorra) | © Govern d'Andorra |
+| Backup geocoding, when the IDE locators do not answer | [Photon](https://photon.komoot.io), bounded to Andorra | ODbL |
 
 ### 🇵🇹 Portugal
 
@@ -121,7 +127,9 @@ rest (routing, basemaps) is shared by all four.
 The app has **no backend**: the browser queries these public services
 directly. Sources are pluggable (`src/data/types.ts`). Offline or when a feed
 is down, the app keeps the last loaded stations (per-area cache) with an
-explicit banner and retries as soon as the connection returns.
+explicit banner and retries as soon as the connection returns. When a
+country's geocoder does not answer, Photon stands in for it; if that fails
+too, the search says which countries are missing from the list.
 
 ## 🛠️ Built with
 

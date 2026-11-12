@@ -37,6 +37,9 @@ Voleu veure què ve? [staging-plein.zadkiel.workers.dev](https://staging-plein.z
 - 🇫🇷🇪🇸🇦🇩🇵🇹 **Quatre països en un mapa** — els fluxos oficials de França,
   Espanya, Andorra i Portugal combinats; els proveïments fronterers es
   comparen d'un cop d'ull.
+- 🔎 **Cerca de llocs** — ciutats, adreces i punts d'interès (estacions de
+  tren, aeroports, monuments) als quatre països, ordenats segons la
+  coincidència amb el que heu escrit.
 - 📋 **Millor tria real** — el combustible cremat en el desviament es té en
   compte: una estació més propera pot guanyar la més barata.
 - 🛣️ **Pla de proveïment en ruta** — on parar al llarg del viatge, quants
@@ -95,6 +98,7 @@ Cada país cobert té els seus propis fluxos oficials — preus i geocodificaci�
 | Marques de les estacions | [OpenStreetMap](https://www.openstreetmap.org/) (índex estàtic generat, aparellat amb les estacions per proximitat) | ODbL |
 | Geocodificació i autocompleció | [Base Adresse Nationale](https://adresse.data.gouv.fr/), a través del servei de geocodificació de la Géoplateforme (data.geopf.fr) | Licence Ouverte / Open Licence |
 | Punts d'interès (aeroports, estacions de tren, monuments…) | [Servei de geocodificació de la Géoplateforme](https://geoservices.ign.fr/documentation/services/services-geoplateforme/geocodage) (data.geopf.fr, BD TOPO de l'IGN) | Licence Ouverte / Open Licence |
+| Geocodificació de reserva, quan la Géoplateforme no respon | [Photon](https://photon.komoot.io) (instància pública de Komoot, índex OpenStreetMap), limitat a la França metropolitana | ODbL |
 
 ### 🇪🇸 Espanya
 
@@ -102,6 +106,7 @@ Cada país cobert té els seus propis fluxos oficials — preus i geocodificaci�
 | --- | --- | --- |
 | Preus dels carburants, horaris i marques | [Precios de carburantes](https://geoportalgasolineras.es) (sedeaplicaciones.minetur.gob.es, MITECO) — la marca (*rótulo*) l'aporta el flux | Datos abiertos |
 | Geocodificació i autocompleció | [CartoCiudad](https://www.cartociudad.es) (IGN) | CC BY 4.0 |
+| Geocodificació de reserva, quan CartoCiudad no respon | [Photon](https://photon.komoot.io), limitat a l'Espanya peninsular i les Balears | ODbL |
 
 ### 🇦🇩 Andorra
 
@@ -109,6 +114,7 @@ Cada país cobert té els seus propis fluxos oficials — preus i geocodificaci�
 | --- | --- | --- |
 | Preus dels carburants i marques | [Preus dels carburants](https://sig.govern.ad/IPE/PreusCarburants) (sig.govern.ad, Govern d'Andorra — Oficina de l'Energia i del Canvi Climàtic) — la marca es dedueix del nom de l'estació; el flux no porta ni adreça ni horaris | © Govern d'Andorra |
 | Geocodificació i autocompleció | Nomenclàtor (nomenclàtor oficial) & LocatorIDE (sig.govern.ad, IDE Andorra) | © Govern d'Andorra |
+| Geocodificació de reserva, quan els localitzadors de la IDE no responen | [Photon](https://photon.komoot.io), limitat a Andorra | ODbL |
 
 ### 🇵🇹 Portugal
 
@@ -128,7 +134,9 @@ L'app no té **cap backend**: el navegador consulta directament aquests
 serveis públics. Les fonts són connectables (`src/data/types.ts`). Sense
 connexió o amb un flux caigut, l'app conserva les últimes estacions
 carregades (memòria cau per zona) amb un bàner explícit i ho torna a provar
-així que torna la connexió.
+així que torna la connexió. Quan el geocodificador d'un país no respon,
+Photon el substitueix; si també falla, la cerca indica quins països falten
+a la llista.
 
 ## 🛠️ Construït amb
 

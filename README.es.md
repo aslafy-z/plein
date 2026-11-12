@@ -37,6 +37,9 @@ Portugal.
 - 🇫🇷🇪🇸🇦🇩🇵🇹 **Cuatro países en un mapa** — los flujos oficiales de Francia,
   España, Andorra y Portugal combinados; los repostajes fronterizos se
   comparan de un vistazo.
+- 🔎 **Búsqueda de lugares** — ciudades, direcciones y puntos de interés
+  (estaciones de tren, aeropuertos, monumentos) en los cuatro países,
+  ordenados según su coincidencia con lo que has escrito.
 - 📋 **Mejor elección real** — el combustible quemado en el desvío se tiene
   en cuenta: una estación más cercana puede ganar a la más barata.
 - 🛣️ **Plan de repostaje en ruta** — dónde parar a lo largo del viaje,
@@ -93,6 +96,7 @@ geocodificación — que la app elige según la zona mostrada (fuente
 | Rótulos de las estaciones | [OpenStreetMap](https://www.openstreetmap.org/) (índice estático generado, emparejado con las estaciones por proximidad) | ODbL |
 | Geocodificación y autocompletado | [Base Adresse Nationale](https://adresse.data.gouv.fr/), a través del servicio de geocodificación de la Géoplateforme (data.geopf.fr) | Licence Ouverte / Open Licence |
 | Puntos de interés (aeropuertos, estaciones de tren, monumentos…) | [Servicio de geocodificación de la Géoplateforme](https://geoservices.ign.fr/documentation/services/services-geoplateforme/geocodage) (data.geopf.fr, BD TOPO del IGN) | Licence Ouverte / Open Licence |
+| Geocodificación de respaldo, cuando la Géoplateforme no responde | [Photon](https://photon.komoot.io) (instancia pública de Komoot, índice OpenStreetMap), limitado a la Francia metropolitana | ODbL |
 
 ### 🇪🇸 España
 
@@ -100,6 +104,7 @@ geocodificación — que la app elige según la zona mostrada (fuente
 | --- | --- | --- |
 | Precios de carburantes, horarios y rótulos | [Precios de carburantes](https://geoportalgasolineras.es) (sedeaplicaciones.minetur.gob.es, MITECO) — el rótulo lo aporta el flujo | Datos abiertos |
 | Geocodificación y autocompletado | [CartoCiudad](https://www.cartociudad.es) (IGN) | CC BY 4.0 |
+| Geocodificación de respaldo, cuando CartoCiudad no responde | [Photon](https://photon.komoot.io), limitado a la España peninsular y Baleares | ODbL |
 
 ### 🇦🇩 Andorra
 
@@ -107,6 +112,7 @@ geocodificación — que la app elige según la zona mostrada (fuente
 | --- | --- | --- |
 | Precios de carburantes y marcas | [Preus dels carburants](https://sig.govern.ad/IPE/PreusCarburants) (sig.govern.ad, Govern d'Andorra — Oficina de l'Energia i del Canvi Climàtic) — la marca se deduce del nombre de la estación; el flujo no incluye ni dirección ni horarios | © Govern d'Andorra |
 | Geocodificación y autocompletado | Nomenclàtor (nomenclátor oficial) & LocatorIDE (sig.govern.ad, IDE Andorra) | © Govern d'Andorra |
+| Geocodificación de respaldo, cuando los localizadores de la IDE no responden | [Photon](https://photon.komoot.io), limitado a Andorra | ODbL |
 
 ### 🇵🇹 Portugal
 
@@ -126,7 +132,9 @@ La app no tiene **ningún backend**: el navegador consulta directamente estos
 servicios públicos. Las fuentes son conectables (`src/data/types.ts`). Sin
 conexión o con un flujo caído, la app conserva las últimas estaciones
 cargadas (caché por zona) con un banner explícito y reintenta en cuanto
-vuelve la conexión.
+vuelve la conexión. Cuando el geocodificador de un país no responde, Photon
+lo sustituye; si también falla, la búsqueda indica qué países faltan en la
+lista.
 
 ## 🛠️ Construido con
 
