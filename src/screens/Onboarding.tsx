@@ -139,7 +139,7 @@ export default function Onboarding() {
             dangerouslySetInnerHTML={{ __html: userDotHtml() }}
           />
           <div style={{ flex: 1, fontSize: 12.5, lineHeight: 1.4, color: C.mut }}>
-            <strong style={{ color: C.ink }}>{m.onboarding_location_title()}</strong> —{' '}
+            <strong style={{ color: C.ink }}>{m.onboarding_location_title()}</strong>
             {m.onboarding_location_body()}
           </div>
         </div>

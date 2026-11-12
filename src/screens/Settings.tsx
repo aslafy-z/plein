@@ -502,7 +502,7 @@ export default function Settings() {
   // Diagnostic block the mail and the GitHub issue both arrive with — data,
   // not copy, so it is assembled in English rather than through the catalog
   const environment = environmentLines();
-  const diagnostics = `—\n${environment}`;
+  const diagnostics = `--\n${environment}`;
   // The message functions re-run on every render, so the prefilled mail
   // follows a locale switch without any extra wiring
   const feedbackHref = `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent(

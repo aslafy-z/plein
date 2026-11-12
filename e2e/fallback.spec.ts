@@ -12,8 +12,8 @@ test.use({
   seed: { sourceId: 'fr', onboarded: true, lastFix: { lat: 43.6047, lng: 1.4442 } },
 })
 
-const SOURCE_DOWN = 'Live source unavailable — the prices shown may be out of date.'
-const OFFLINE = 'Offline — the prices shown may be out of date.'
+const SOURCE_DOWN = 'Live source unavailable: the prices shown may be out of date.'
+const OFFLINE = 'Offline: the prices shown may be out of date.'
 
 // Deterministic gouv flux: echo one station near the queried center.
 function fulfillStations(route: import('@playwright/test').Route) {

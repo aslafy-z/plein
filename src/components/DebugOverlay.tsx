@@ -459,7 +459,7 @@ export default function DebugOverlay() {
         <button
           onClick={report}
           disabled={!snapshot}
-          title="Copy the snapshot and open the bug form — paste it in"
+          title="Copy the snapshot and open the bug form, then paste it in"
           style={buttonStyle}
         >
           Report

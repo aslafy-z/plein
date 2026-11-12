@@ -13,7 +13,7 @@ async function expectUsableMap(page: import('@playwright/test').Page) {
     .getByText(/^The (cheapest|best choice) (near you|in this area)$/)
     .or(page.getByText('No station matches'))
     .or(page.getByText('The stations for this area could not be loaded.'))
-    .or(page.getByText('Offline — no stations stored for this area.'))
+    .or(page.getByText('Offline: no stations stored for this area.'))
   await expect(usable.first()).toBeVisible({ timeout: 90_000 })
 }
 

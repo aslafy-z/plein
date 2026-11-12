@@ -23,7 +23,7 @@ const formCta = (page: import('@playwright/test').Page) =>
   page.getByRole('button', { name: 'Compare the stations along the route' })
 
 const unknownToast = (page: import('@playwright/test').Page) =>
-  page.getByText('Position unknown — turn location on or enter a departure')
+  page.getByText('Position unknown: turn location on or enter a departure')
 
 /** Geolocation that answers only when the test says so */
 async function stubLateFix(page: import('@playwright/test').Page) {

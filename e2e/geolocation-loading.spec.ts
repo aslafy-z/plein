@@ -99,5 +99,5 @@ test('Settings reports a fix under way over the status it will replace', async (
   await expect(row).toHaveAttribute('aria-busy', 'true')
 
   await grantFix(page)
-  await expect(row).toContainText('on — the map follows your position')
+  await expect(row).toContainText('on: the map follows your position')
 })
