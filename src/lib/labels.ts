@@ -6,6 +6,7 @@ import type {
   DataSourceId,
   ExtraProductId,
   FuelId,
+  GeocodeCountry,
   GeocodeResult,
   ServiceTag,
   VehicleId,
@@ -79,6 +80,20 @@ export function accentLabel(accent: Accent): string {
  */
 export function brandGroupLabel(group: string): string {
   return group === INDEPENDENT_BRAND_ID ? m.brand_independent() : group;
+}
+
+/** A country the search covers, as the active locale names it */
+export function countryName(country: GeocodeCountry): string {
+  switch (country) {
+    case 'fr':
+      return m.place_france();
+    case 'es':
+      return m.place_spain();
+    case 'ad':
+      return m.place_andorra();
+    case 'pt':
+      return m.place_portugal();
+  }
 }
 
 /**

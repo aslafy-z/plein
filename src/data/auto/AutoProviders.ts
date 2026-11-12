@@ -12,6 +12,7 @@
 import type { GeoPoint } from '../../lib/geo';
 import { haversineKm, nearestOnPolyline } from '../../lib/geo';
 import type {
+  GeocodeCountry,
   GeocodeProvider,
   GeocodeResult,
   GeocodeSearchOptions,
@@ -28,7 +29,7 @@ import { CartoCiudadGeocodeProvider } from '../es/CartoCiudadGeocodeProvider';
 import { AdStationsProvider, adCoversAlong, adCoversNear } from '../ad/AdStationsProvider';
 import { AdGeocodeProvider } from '../ad/AdGeocodeProvider';
 import { PtStationsProvider, ptCoversAlong, ptCoversNear } from '../pt/PtStationsProvider';
-import { PhotonGeocodeProvider } from '../pt/PhotonGeocodeProvider';
+import { PHOTON_FRANCE, PhotonGeocodeProvider } from '../pt/PhotonGeocodeProvider';
 import { mergeByKind } from '../geocodeRank';
 
 // ── French flux coverage ─────────────────────────────────────────────────────
@@ -223,57 +224,90 @@ export async function mergeAsTheyLand(
   return merged();
 }
 
+/** One country's geocoder inside a merged search */
+export interface GeocodeSource {
+  country: GeocodeCountry;
+  provider: GeocodeProvider;
+}
+
 /**
- * Several geocoders behind one search box: every source is asked at once and
- * the list is `mergeAsTheyLand`'s — by kind first, and inside one kind the
- * sources interleave in the order given, so pass them in display order.
+ * Several countries' geocoders behind one search box: every source is asked at
+ * once and the list is `mergeAsTheyLand`'s — by how much of the query a result
+ * answers, then by kind, and inside one kind the sources interleave in the
+ * order given, so pass them in display order.
  */
 export class MergedGeocodeProvider implements GeocodeProvider {
-  constructor(private readonly sources: readonly GeocodeProvider[]) {}
+  constructor(private readonly sources: readonly GeocodeSource[]) {}
 
   search(query: string, opts?: GeocodeSearchOptions): Promise<GeocodeResult[]> {
-    const sources = this.sources;
-    // A source that answered with part of its own list (some detail calls
-    // failed) makes the merge incomplete just like a source that failed whole;
-    // the caller hears about it once, whichever way it happened.
-    let incomplete = false;
-    const onIncomplete = () => {
-      incomplete = true;
-    };
-    return mergeAsTheyLand(
-      sources.map((source) => source.search(query, { onIncomplete })),
-      opts?.onPartial,
-      onIncomplete,
-      query,
-    ).then((results) => {
-      if (incomplete) opts?.onIncomplete?.();
+    // Two ways a merge ends up incomplete, told apart because a view names
+    // only the first: a country whose source did not answer at all, and a
+    // source that answered with part of its own list (some detail calls
+    // failed). The caller hears about it once, whichever way it happened.
+    const down = new Set<GeocodeCountry>();
+    let partial = false;
+    const tasks = this.sources.map(({ country, provider }) => {
+      const task = provider.search(query, {
+        onIncomplete: () => {
+          partial = true;
+        },
+      });
+      task.catch(() => down.add(country));
+      return task;
+    });
+    return mergeAsTheyLand(tasks, opts?.onPartial, undefined, query).then((results) => {
+      if (partial || down.size > 0) {
+        opts?.onIncomplete?.(
+          this.sources.map((source) => source.country).filter((country) => down.has(country)),
+        );
+      }
       return results;
     });
   }
 }
 
 /**
- * France: the BAN knows addresses and nothing else, so the IGN's points of
+ * France. The BAN knows addresses and nothing else, so the IGN's points of
  * interest (airports, railway stations, monuments…) are merged next to it.
+ * Both are served by the Géoplateforme, which has outages of its own: when the
+ * address index does not answer, Photon answers in its place — OpenStreetMap
+ * addresses AND named places, so a point-of-interest index that is down at the
+ * same time (it usually is) takes nothing away from that answer.
  */
-export class FrGeocodeProvider extends MergedGeocodeProvider {
-  constructor() {
-    super([new BanGeocodeProvider(), new GeopfPoiGeocodeProvider()]);
+export class FrGeocodeProvider implements GeocodeProvider {
+  private readonly addresses = new BanGeocodeProvider();
+  private readonly pois = new GeopfPoiGeocodeProvider();
+  private readonly backup = new PhotonGeocodeProvider(PHOTON_FRANCE);
+
+  search(query: string, opts?: GeocodeSearchOptions): Promise<GeocodeResult[]> {
+    let onBackup = false;
+    const addresses = this.addresses.search(query).catch(() => {
+      onBackup = true;
+      return this.backup.search(query);
+    });
+    /** Whether the backup answered, once the address side has concluded */
+    const covered = addresses.then(
+      () => onBackup,
+      () => false,
+    );
+    const pois = this.pois.search(query).catch(async (reason: unknown) => {
+      if (await covered) return [];
+      throw reason;
+    });
+    return mergeAsTheyLand([addresses, pois], opts?.onPartial, () => opts?.onIncomplete?.(), query);
   }
 }
 
 export class AutoGeocodeProvider extends MergedGeocodeProvider {
   constructor() {
-    // Localities of all four countries first, then their points of interest,
-    // streets and house numbers; inside one kind the sources interleave in the
-    // order given here — France, Andorra, Portugal, Spain — so no country
-    // fills the visible rows on its own.
+    // Inside one kind the countries interleave in the order given here —
+    // France, Andorra, Portugal, Spain — so none fills the visible rows on its
+    // own.
     super([
-      new BanGeocodeProvider(),
-      new GeopfPoiGeocodeProvider(),
-      new AdGeocodeProvider(),
-      new PhotonGeocodeProvider(),
-      new CartoCiudadGeocodeProvider(),
+      { country: 'fr', provider: new FrGeocodeProvider() },
+      { country: 'ad', provider: new AdGeocodeProvider() },
+      { country: 'pt', provider: new PhotonGeocodeProvider() },
+      { country: 'es', provider: new CartoCiudadGeocodeProvider() },
     ]);
   }
 }
