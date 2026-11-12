@@ -5,7 +5,7 @@
 // A variant of the user dot (lib/userDot `haloDotHtml`): same ringed dot in a
 // soft halo, in neutral ink instead of the accent — a place, not the user,
 // not a station and not a price tier. Colors are C tokens, so the dot
-// re-tints with the theme; the halo is the ink itself, thinned.
+// re-tints with the theme; the halo and the glow are the ink itself, thinned.
 
 import { C } from '../theme';
 import { haloDotHtml } from './userDot';
@@ -22,16 +22,17 @@ export const PLACE_PIN_ANCHOR: [number, number] = [PLACE_PIN_BOX / 2, PLACE_PIN_
  */
 export const PLACE_PIN_CLASS = 'place-pin';
 
-/** Ink dot inside a soft ink halo, centered in its touch box. */
+/** Glowing ink dot inside a radiating ink halo, centered in its touch box. */
 export function placePinHtml(): string {
   return (
     `<div style="width:${PLACE_PIN_BOX}px;height:${PLACE_PIN_BOX}px;display:flex;` +
     `align-items:center;justify-content:center;cursor:pointer">` +
     haloDotHtml({
-      halo: `color-mix(in srgb, ${C.ink} 18%, transparent)`,
+      halo: `color-mix(in srgb, ${C.ink} 26%, transparent)`,
       fill: C.ink,
       ring: C.bg,
-    }) +
+      glow: `color-mix(in srgb, ${C.ink} 50%, transparent)`,
+        }) +
     `</div>`
   );
 }
