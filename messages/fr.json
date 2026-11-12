@@ -279,7 +279,7 @@
   "whatsnew_done": "C'est noté",
   "settings_whatsnew_title": "Nouveautés",
   "whatsnew_earlier_show": "Voir les changements précédents",
-  "whatsnew_details": "Détails",
+  "whatsnew_details_aria": "Notes de version complètes",
   "settings_whatsnew_sub": "L'historique des changements de l'application",
   "changelog_2026_11_10_title": "Votre couleur, et un journal des nouveautés",
   "changelog_2026_11_10_item_whatsnew": "Une petite étoile sur la carte signale les nouveautés, et Réglages › Nouveautés en garde l'historique.",

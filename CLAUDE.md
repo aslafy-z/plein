@@ -212,7 +212,7 @@ that groups a few before the next promotion.
   the news rather than the inventory; `changelog.test.ts` caps the length in
   every locale. The long version is the entry's `details` link,
   `releaseNotesUrl(id)`: the GitHub Release its promotion publishes, which the
-  sheet opens from a « Details » `ActionPill`.
+  sheet opens from a round ↗ `ActionPill` on the entry's date line.
 - **Production promotion enforces it** (`deploy-production` in
   `.github/workflows/deploy.yml`, through `scripts/whats-new-release.mjs`,
   which reads the log as text before any build). The newest entry at the

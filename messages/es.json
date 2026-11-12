@@ -279,7 +279,7 @@
   "whatsnew_done": "Entendido",
   "settings_whatsnew_title": "Novedades",
   "whatsnew_earlier_show": "Ver los cambios anteriores",
-  "whatsnew_details": "Detalles",
+  "whatsnew_details_aria": "Notas completas de la versión",
   "settings_whatsnew_sub": "El historial de cambios de la aplicación",
   "changelog_2026_11_10_title": "Tu color, y un registro de novedades",
   "changelog_2026_11_10_item_whatsnew": "Una pequeña estrella en el mapa señala las novedades, y Ajustes › Novedades guarda el historial.",

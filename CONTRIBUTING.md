@@ -85,7 +85,7 @@ Two things that are easy to forget:
 ## Adding things
 
 - **A data source**: implement the `StationsProvider` / `GeocodeProvider` / `RouteProvider` interfaces and register it in `src/data/providers.ts`.
-- **A What's new entry**: only for a change users would notice (a performance pass or an invisible fix gets none). Add an entry at the top of `CHANGELOG` in `src/lib/changelog.ts` (id `YYYY-MM-DD`, at most four one-sentence bullets, `details: releaseNotesUrl(id)`) and its `changelog_<id>_*` copy in all five catalogs. Returning users see a small sparkle on the map the next time they open the app, and read it when they choose to. Promoting to production publishes the entry as the `release-<id>` GitHub Release, the « Details » page; a promotion with no new entry has to be marked `silent`.
+- **A What's new entry**: only for a change users would notice (a performance pass or an invisible fix gets none). Add an entry at the top of `CHANGELOG` in `src/lib/changelog.ts` (id `YYYY-MM-DD`, at most four one-sentence bullets, `details: releaseNotesUrl(id)`) and its `changelog_<id>_*` copy in all five catalogs. Returning users see a small sparkle on the map the next time they open the app, and read it when they choose to. Promoting to production publishes the entry as the `release-<id>` GitHub Release, the page its ↗ button opens; a promotion with no new entry has to be marked `silent`.
 - **A locale**: add it to `project.inlang/settings.json`, add `messages/<locale>.json`, add its name to `localeName()` in `Settings.tsx`, add `README.<locale>.md` and its entry in every README's language-switcher line.
 
 ## License

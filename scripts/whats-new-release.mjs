@@ -5,7 +5,7 @@
 // CHANGELOG entry at the promoted commit tells which: an entry without its
 // `release-<id>` tag yet has never reached production, so this promotion is
 // the one that ships it — the job publishes a GitHub Release under that tag,
-// whose page is the « Details » link the entry shows in the app. An entry
+// whose page the entry links from the app (its ↗ button). An entry
 // that is already tagged means there is no news, and the job asks for that
 // to be said on purpose (the `silent` input): a performance pass or a fix
 // users would not notice ships without a sparkle, a forgotten entry does not.

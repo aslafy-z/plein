@@ -279,7 +279,7 @@
   "whatsnew_done": "Got it",
   "settings_whatsnew_title": "What's new",
   "whatsnew_earlier_show": "See earlier changes",
-  "whatsnew_details": "Details",
+  "whatsnew_details_aria": "Full release notes",
   "settings_whatsnew_sub": "The history of changes to the app",
   "changelog_2026_11_10_title": "Your color, and a what's new log",
   "changelog_2026_11_10_item_whatsnew": "A small sparkle on the map flags what's new, and Settings › What's new keeps the history.",

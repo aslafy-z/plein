@@ -279,7 +279,7 @@
   "whatsnew_done": "Entesos",
   "settings_whatsnew_title": "Novetats",
   "whatsnew_earlier_show": "Mostra els canvis anteriors",
-  "whatsnew_details": "Detalls",
+  "whatsnew_details_aria": "Notes completes de la versió",
   "settings_whatsnew_sub": "L'historial de canvis de l'aplicació",
   "changelog_2026_11_10_title": "El teu color, i un registre de novetats",
   "changelog_2026_11_10_item_whatsnew": "Una petita estrella al mapa assenyala les novetats, i Configuració › Novetats en guarda l'historial.",
