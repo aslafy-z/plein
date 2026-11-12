@@ -58,6 +58,7 @@ export const C = {
   accentSoft10: 'var(--c-accent-soft-10)',
   accentSoft14: 'var(--c-accent-soft-14)',
   accentSoft15: 'var(--c-accent-soft-15)',
+  accentSoft30: 'var(--c-accent-soft-30)', // halo of the user dot
   accentPale: 'var(--c-accent-pale)', // ring of a focused deal pin
   accentDeep: 'var(--c-accent-deep)', // ring around the geolocation dot
   accentGlow25: 'var(--c-accent-glow-25)', // accent-tinted shadows

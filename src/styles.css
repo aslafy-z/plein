@@ -106,6 +106,7 @@
   --c-accent-soft-10: rgba(var(--c-accent-rgb), 0.1);
   --c-accent-soft-14: rgba(var(--c-accent-rgb), 0.14);
   --c-accent-soft-15: rgba(var(--c-accent-rgb), 0.15);
+  --c-accent-soft-30: rgba(var(--c-accent-rgb), 0.3);
   --c-accent-pale: #eafff3;
   --c-accent-deep: #0c2116;
   --c-accent-glow-25: rgba(var(--c-accent-rgb), 0.25);
@@ -260,6 +261,7 @@
   --c-accent-soft-10: rgba(var(--c-accent-rgb), 0.09);
   --c-accent-soft-14: rgba(var(--c-accent-rgb), 0.12);
   --c-accent-soft-15: rgba(var(--c-accent-rgb), 0.13);
+  --c-accent-soft-30: rgba(var(--c-accent-rgb), 0.26);
   --c-accent-pale: #05301a;
   --c-accent-deep: #ffffff;
   --c-accent-glow-25: rgba(var(--c-accent-rgb), 0.2);
@@ -943,6 +945,27 @@ button,
   }
 }
 
+/* The user dot and the searched-place dot (lib/userDot haloDotHtml): a wave
+   of their own halo keeps leaving the dot, so either one is found at a
+   glance under the price bubbles. Its color is set inline per tone. */
+.halo-pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: halo-pulse 2.4s ease-out infinite;
+}
+@keyframes halo-pulse {
+  from {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(2.1);
+    opacity: 0;
+  }
+}
+
 /* Price pin markers (Leaflet divIcon) */
 .pin-bubble {
   font-family: 'Spline Sans Mono', ui-monospace, monospace;
@@ -1105,6 +1128,7 @@ button,
   .list-enter,
   .sheet-hint,
   .skeleton-row::after,
+  .halo-pulse,
   .spin {
     animation: none;
   }

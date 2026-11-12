@@ -7,7 +7,7 @@ import { USER_DOT_SIZE, userDotHtml } from './userDot'
 describe('userDotHtml', () => {
   it('draws the accent dot inside a soft accent halo', () => {
     const html = userDotHtml()
-    expect(html).toContain('background:var(--c-accent-soft-15)')
+    expect(html).toContain('background:var(--c-accent-soft-30)')
     expect(html).toContain('background:var(--c-accent)')
     expect(html).toContain('border:3px solid var(--c-accent-deep)')
   })
