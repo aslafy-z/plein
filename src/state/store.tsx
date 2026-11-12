@@ -181,8 +181,8 @@ export function filtersResetTarget(vehicle: VehicleId): { radius: number; fuel: 
 }
 /** Default departure tank level (%) — adjustable on the route setup */
 const DEFAULT_START_TANK_PCT = 70;
-/** Default arrival floor (%): none — only the per-leg reserve shapes the plan */
-const DEFAULT_ARRIVAL_TANK_PCT = 0;
+/** Default arrival floor (%) — a plan should not land on fumes unless asked to */
+const DEFAULT_ARRIVAL_TANK_PCT = 10;
 /**
  * Points of one fuel-plan matrix call: origin + candidate stations +
  * destination. This is OUR budget, not a backend limit — 32 keeps the request
@@ -888,10 +888,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
   const [arrivalTankPct, setArrivalTankPctState] = useState<number>(
     // A link that names a trip but predates this setting was shared without
-    // a floor: it opens as it was computed, not on the reader's own floor
+    // a floor: it opens as it was computed, on neither the reader's own
+    // floor nor the default
     initialRoute.arrivalTankPct ??
-      (linkNamesTrip ? undefined : persisted.arrivalTankPct) ??
-      DEFAULT_ARRIVAL_TANK_PCT,
+      (linkNamesTrip ? 0 : (persisted.arrivalTankPct ?? DEFAULT_ARRIVAL_TANK_PCT)),
   );
   // Forced migration to « Automatic »: legacy persisted ids ('gouv' before
   // the country rename) and new installs land on 'auto'; only explicit choices
