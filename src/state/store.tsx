@@ -3420,6 +3420,12 @@ export interface RouteAnalysis {
   planStops: PlanStopView[];
   /** Best candidates OUTSIDE the plan, km order — browsing, never « the » plan */
   alternatives: RouteStation[];
+  /**
+   * Every other station the plan could have stopped at, best first — on the
+   * route map as plain dots, so a pump the list has no row for is still there
+   * to open and to add.
+   */
+  otherCandidates: RouteStation[];
   limitKm: number;
   autonomyKm: number;
   needsStop: boolean;
@@ -3448,6 +3454,33 @@ export interface RouteAnalysis {
 
 /** Number of alternative stations offered around the plan */
 const MAX_ALTERNATIVES = 4;
+
+/**
+ * Two pumps this close along the road are the same place to stop. The list
+ * holds four rows for the whole trip: the three best-scored pumps of the
+ * departure town at KM 1–3 said one thing three times, and left the rest of
+ * the road — the last town before the mountains — unmentioned.
+ */
+const ALTERNATIVE_SPACING_KM = 5;
+
+/**
+ * The first `max` of a best-first list, at most one per stretch of
+ * `ALTERNATIVE_SPACING_KM` — the best of each place, in ranking order. When
+ * the road does not hold `max` distinct places, the leftover slots go back to
+ * the ranking alone: a short list is not better than a second pump in town.
+ */
+function spreadAlongRoute(ranked: readonly RouteStation[], max: number): RouteStation[] {
+  const kept: RouteStation[] = [];
+  for (const s of ranked) {
+    if (kept.length >= max) break;
+    if (kept.every((k) => Math.abs(k.kmAlong - s.kmAlong) >= ALTERNATIVE_SPACING_KM)) kept.push(s);
+  }
+  for (const s of ranked) {
+    if (kept.length >= max) break;
+    if (!kept.includes(s)) kept.push(s);
+  }
+  return kept;
+}
 
 /**
  * What a lone stop at candidate `i` would add to the trip — DRIVING km and
@@ -3506,7 +3539,7 @@ export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
   }
   const planIds = new Set(plan?.stops.map((s) => s.stationId) ?? []);
   const legs = plan ? selectPlanLegs(app) : null;
-  const alternatives = !legs
+  const ranked = !legs
     ? []
     : candidates
         .map((c, i) => ({ c, detour: alternativeDetour(legs, i) }))
@@ -3523,9 +3556,12 @@ export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
         // stops that precede it. The timeline's « range limit » marker
         // is what says where the dry point falls.
         .sort((a, b) => a.score - b.score || (a.station.id < b.station.id ? -1 : 1))
-        .slice(0, MAX_ALTERNATIVES)
-        .map((e) => e.station)
-        .sort((a, b) => a.kmAlong - b.kmAlong);
+        .map((e) => e.station);
+  const alternatives = spreadAlongRoute(ranked, MAX_ALTERNATIVES).sort(
+    (a, b) => a.kmAlong - b.kmAlong,
+  );
+  const offeredIds = new Set(alternatives.map((s) => s.id));
+  const otherCandidates = ranked.filter((s) => !offeredIds.has(s.id));
 
   const picked = routeState.stations.filter((s) => app.plannedStops[s.id]);
   const candidateIds = new Set(candidates.map((c) => c.station.id));
@@ -3561,6 +3597,7 @@ export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
     plan,
     planStops,
     alternatives,
+    otherCandidates,
     limitKm,
     autonomyKm,
     needsStop,

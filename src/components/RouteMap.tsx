@@ -15,7 +15,7 @@ import { fmtPrice } from '../lib/format';
 import { cumulativeKm, radiusBounds, type GeoPoint } from '../lib/geo';
 import { useLeafletMap } from '../lib/leafletMap';
 import { setMarkerLabel } from '../lib/markerLabel';
-import { pricePinHtml } from '../lib/pricePin';
+import { pricePinDotHtml, pricePinHtml } from '../lib/pricePin';
 import { USER_DOT_CLASS, USER_DOT_SIZE, userDotHtml } from '../lib/userDot';
 import LocateIcon from './LocateIcon';
 import { useApp, selectRouteAnalysis, effectivePrice, routeDeparturePoint } from '../state/store';
@@ -107,6 +107,8 @@ export default function RouteMap({
     ...analysis.planStops.map((p) => p.station.id),
     '|',
     ...analysis.alternatives.map((s) => s.id),
+    '|',
+    ...analysis.otherCandidates.map((s) => s.id),
   ].join(',');
 
   const layerRef = useRef<L.LayerGroup | null>(null);
@@ -342,6 +344,26 @@ export default function RouteMap({
         // The selected pin rises above the recommendation, which rises above
         // the rest — same order the zone map keeps
         zIndexOffset: focused ? 2000 : recommended ? 1000 : 0,
+      });
+      marker.on('click', () => app.openStation(st.id));
+      setMarkerLabel(marker, m.map_pin_label({ name: st.name, price: fmtPrice(price) }));
+      marker.addTo(layer);
+    }
+
+    // Every other station the plan could stop at, as a plain dot under the
+    // bubbles — the zone map's idiom for a station past its pin cap. The list
+    // has four rows for the whole road; a pump it has no row for is still on
+    // the map, one tap from its fiche and from « add as a stop ».
+    for (const st of analysis.otherCandidates) {
+      const price = effectivePrice(st, app.fuel)?.value;
+      if (price == null) continue;
+      const focused = st.id === selectedId;
+      const html = focused
+        ? pricePinHtml(fmtPrice(price), { focused })
+        : pricePinDotHtml();
+      const marker = L.marker([st.lat, st.lng], {
+        icon: L.divIcon({ className: '', html, iconSize: [0, 0], iconAnchor: [0, 0] }),
+        zIndexOffset: focused ? 2000 : -400,
       });
       marker.on('click', () => app.openStation(st.id));
       setMarkerLabel(marker, m.map_pin_label({ name: st.name, price: fmtPrice(price) }));
