@@ -609,25 +609,29 @@ export default function StationDetail() {
           )}
         </div>
 
-        {/* Savings */}
-        <div
-          style={{
-            background: C.accentSoft09,
-            border: `1px solid ${C.accentBorder}`,
-            borderRadius: 16,
-            padding: '14px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-          }}
-        >
-          <div style={{ font: mono(700, 20), color: C.accent, whiteSpace: 'nowrap' }}>
-            {dSaveStr} €
+        {/* Savings — only for a station that prices the selected fuel: a dry
+            pump or a fuel it doesn't sell saves nothing on a fill-up, and a
+            « 0.00 € » card would read as a comparison that was made */}
+        {cur != null && (
+          <div
+            style={{
+              background: C.accentSoft09,
+              border: `1px solid ${C.accentBorder}`,
+              borderRadius: 16,
+              padding: '14px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+            }}
+          >
+            <div style={{ font: mono(700, 20), color: C.accent, whiteSpace: 'nowrap' }}>
+              {dSaveStr} €
+            </div>
+            <div style={{ color: C.body2, fontSize: 12.5, lineHeight: 1.45 }}>
+              {m.detail_saving_on_tank({ tank: app.tank, scope: scopeSave })}
+            </div>
           </div>
-          <div style={{ color: C.body2, fontSize: 12.5, lineHeight: 1.45 }}>
-            {m.detail_saving_on_tank({ tank: app.tank, scope: scopeSave })}
-          </div>
-        </div>
+        )}
 
       </div>
 
