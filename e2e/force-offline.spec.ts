@@ -15,7 +15,7 @@ test.use({
   seed: { sourceId: 'fr', onboarded: true, lastFix: { lat: 43.6047, lng: 1.4442 } },
 })
 
-const FORCED = 'Offline mode forced — the prices shown may be out of date.'
+const FORCED = 'Offline mode forced: the prices shown may be out of date.'
 
 // Deterministic gouv flux: echo one station near the queried center.
 function fulfillStations(route: import('@playwright/test').Route) {
@@ -77,7 +77,7 @@ test('the switch stops station fetches, and releasing it revalidates alone', asy
   // Drag beyond the fetched 25 km area: the attempt is skipped as offline,
   // so the failure state lands without the request counter ever moving
   await page.getByRole('button', { name: 'Map' }).first().click()
-  const failedZone = page.getByText('Offline — no stations stored for this area.')
+  const failedZone = page.getByText('Offline: no stations stored for this area.')
   for (let i = 0; i < 12 && !(await failedZone.isVisible()); i++) {
     await drag(page, 240, 140)
     await page.waitForTimeout(500)

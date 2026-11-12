@@ -542,7 +542,7 @@ export default function PlaceField(props: PlaceFieldProps) {
               }}
             >
               {placeSublabel(r)}
-              {props.rowHint ? ` — ${props.rowHint}` : ''}
+              {props.rowHint ? ` · ${props.rowHint}` : ''}
             </div>
           </button>
           {props.rowAction && (

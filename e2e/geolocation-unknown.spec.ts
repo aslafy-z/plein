@@ -63,7 +63,7 @@ test('a fix that times out is not reported as location turned off', async ({ pag
 
   await page.getByText('Settings', { exact: true }).click()
   const row = page.getByRole('button', { name: /Device position/ })
-  await expect(row).toContainText('no position found — tap to retry')
+  await expect(row).toContainText('no position found, tap to retry')
   await expect(row).not.toContainText('denied')
 })
 
@@ -71,7 +71,7 @@ test('a refused fix leaves the default area unclaimed', async ({ page }) => {
   await stubRefusedFix(page)
   await page.goto('/')
 
-  await expect(page.getByText('Default position: Toulouse — turn location on')).toBeVisible()
+  await expect(page.getByText('Default position: Toulouse · turn location on')).toBeVisible()
   await expect(page.locator(USER_DOT)).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Recentre on my position' })).toHaveAttribute(
     'data-locate-active',
@@ -170,7 +170,7 @@ test('a trip cannot depart from a position the app never had', async ({ page }) 
   // Picking a destination is the submit — with no fix it can only be the ask
   await pickRoutePlace(page, 'to', 'Bordeaux', 'Bordeaux centre')
   await expect(
-    page.getByText('Position unknown — turn location on or enter a departure'),
+    page.getByText('Position unknown: turn location on or enter a departure'),
   ).toBeVisible()
 
   // Nothing was computed from the default area: the setup form still stands
@@ -211,7 +211,7 @@ test.describe('a device located before', () => {
     await stubRefusedFix(page)
     await page.goto('/')
 
-    await expect(page.getByText('Last known position — turn location back on')).toBeVisible()
+    await expect(page.getByText('Last known position · turn location back on')).toBeVisible()
     await expect(page.locator(USER_DOT)).toHaveCount(1)
   })
 
@@ -225,7 +225,7 @@ test.describe('a device located before', () => {
 
     await page.getByText('Settings', { exact: true }).click()
     await expect(page.getByRole('button', { name: /Device position/ })).toContainText(
-      'no position found — tap to retry',
+      'no position found, tap to retry',
     )
     // `geoGranted` is what holds the next boot's first load for the fix: a
     // request that merely ran out of time must not clear it
