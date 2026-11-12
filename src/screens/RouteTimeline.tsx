@@ -16,6 +16,7 @@ import { m } from '../paraglide/messages.js';
 import { type RouteStation } from '../data/types';
 import type { InfeasibleDiagnostics, RoutePlan } from '../lib/routeOptimizer';
 import ShareIcon from '../components/ShareIcon';
+import EditIcon from '../components/EditIcon';
 import {
   useApp,
   routeFromLabel,
@@ -31,22 +32,36 @@ import {
 
 const STRATEGIES: RouteMode[] = ['balanced', 'price', 'detour'];
 
-// The trip header's Share and Edit: a bare icon and a bare word, each inside a
-// finger-sized box (44px tall, at least 40 wide) whose overhang the negative
-// margins hide from the layout.
+// The trip header's Share and Edit: tonal pills in the accent-bordered idiom
+// of the fiche's « View on map » — Share a round icon-only one (the picto is
+// universal, and the row must leave the eyebrow room in every locale), Edit
+// labelled. Each is drawn 34px inside a 44px button: the transparent band
+// around it is still the button, so a finger landing just off the pill hits.
+const HEADER_PILL_PX = 34;
 const HEADER_TARGET_PX = 44;
-/** Vertical overhang: 44px box over a ~16px line */
-const HEADER_TARGET_OVERHANG = 14;
-/** Edit's right padding — the row's own 22px padding leaves it room */
-const HEADER_TARGET_PAD = 16;
+const HEADER_TARGET_SLACK = (HEADER_TARGET_PX - HEADER_PILL_PX) / 2;
 const headerTargetStyle = {
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'center',
   height: HEADER_TARGET_PX,
+  // The slack overhangs the row instead of growing it
+  margin: `-${HEADER_TARGET_SLACK}px 0`,
   flexShrink: 0,
-  color: C.accent,
   cursor: 'pointer',
+} as const;
+const headerPillStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  height: HEADER_PILL_PX,
+  padding: '0 13px 0 11px',
+  borderRadius: HEADER_PILL_PX / 2,
+  background: C.accentSoft,
+  border: `1px solid ${C.accentBorder}`,
+  color: C.accent,
+  fontSize: 13,
+  fontWeight: 700,
+  whiteSpace: 'nowrap',
 } as const;
 
 function strategyLabel(mode: RouteMode): string {
@@ -556,50 +571,67 @@ export default function RouteTimeline() {
               textTransform: 'uppercase',
               color: C.mut,
               flex: 1,
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
             }}
           >
             {m.ribbon_header()}
           </span>
-          {/* Two finger-sized targets drawn as a bare icon and a bare word.
-              Negative margins keep the row as tall as the glyphs; the boxes
-              butt against each other (no gap, no overlap), and the group is
-              lifted above the trip title, which the boxes overhang and would
-              otherwise paint over — and take the taps of — their lower part. */}
+          {/* Lifted above the trip title, which the buttons' slack
+              overhangs and would otherwise paint over — and take the taps
+              of — their lower edge. */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
+              // Share's negative margin already hides its side slack, so
+              // this is the drawn gap between the pills — and the slack
+              // reaching into it still stops short of Edit's box
+              gap: 8,
               flexShrink: 0,
               position: 'relative',
               zIndex: 1,
-              // Pulls back the share box's slack left of the icon and the
-              // Edit box's padding right of the word
-              margin: `-${HEADER_TARGET_OVERHANG}px -${HEADER_TARGET_PAD}px -${HEADER_TARGET_OVERHANG}px -${(HEADER_TARGET_PX - 15) / 2}px`,
             }}
           >
             {/* The URL already carries the trip, but an installed PWA has no
                 address bar to copy it from — same share path as the map view */}
             <button
+              className="press"
               onClick={() => app.shareRoute()}
               aria-label={m.ribbon_share_aria()}
               title={m.ribbon_share_aria()}
-              style={{ ...headerTargetStyle, width: HEADER_TARGET_PX }}
+              // As wide as tall: the round pill's slack reaches sideways too
+              style={{
+                ...headerTargetStyle,
+                width: HEADER_TARGET_PX,
+                justifyContent: 'center',
+                margin: `-${HEADER_TARGET_SLACK}px`,
+              }}
             >
-              <ShareIcon color={C.accent} size={15} />
+              <span
+                style={{
+                  ...headerPillStyle,
+                  width: HEADER_PILL_PX,
+                  padding: 0,
+                  justifyContent: 'center',
+                }}
+              >
+                <ShareIcon color={C.accent} size={15} />
+              </span>
             </button>
             {/* The endpoints are editable in place above the map — this is
                 the way back to the preferences and the tank */}
             <button
+              className="press"
               onClick={() => app.editRoute()}
-              style={{
-                ...headerTargetStyle,
-                justifyContent: 'flex-start',
-                padding: `0 ${HEADER_TARGET_PAD}px 0 4px`,
-                fontSize: 12.5,
-                fontWeight: 700,
-              }}
+              style={headerTargetStyle}
             >
-              {m.ribbon_edit()}
+              <span style={headerPillStyle}>
+                <EditIcon color={C.accent} size={14} />
+                {m.ribbon_edit()}
+              </span>
             </button>
           </div>
         </div>
