@@ -31,6 +31,7 @@ import PlaceField from '../components/PlaceField';
 import SheetShell from '../components/SheetShell';
 import RouteTimeline, {
   RouteAwaited,
+  infeasibleTitle,
   litresLabel,
   retryStyle,
   stageSentence,
@@ -267,6 +268,44 @@ function RouteForm({ withTitle }: { withTitle: boolean }) {
         </div>
       </div>
 
+      {/* Arrival floor — what the plan must leave in the tank at the
+          destination. 0 keeps the per-leg reserve as the only rule. */}
+      <div
+        data-sheet-no-drag=""
+        style={{
+          background: C.surface2,
+          border: `1px solid ${C.border08}`,
+          borderRadius: 14,
+          padding: '12px 16px',
+          marginTop: 12,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 6 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: C.ink, flex: 1 }}>
+            {m.route_arrival_tank()}
+          </span>
+          <span style={{ font: mono(700, 14), color: C.accent }}>
+            {m.unit_percent({ percent: app.arrivalTankPct })}
+          </span>
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={80}
+          step={5}
+          value={app.arrivalTankPct}
+          onChange={(e) => app.setArrivalTankPct(+e.target.value)}
+          aria-label={m.route_arrival_tank()}
+          aria-valuetext={m.unit_percent({ percent: app.arrivalTankPct })}
+          style={{ width: '100%', cursor: 'pointer' }}
+        />
+        <div style={{ fontSize: 11.5, color: C.faint, marginTop: 4 }}>
+          {m.route_arrival_tank_hint({
+            litres: litresLabel((app.tank * app.arrivalTankPct) / 100),
+          })}
+        </div>
+      </div>
+
       {/* Info card */}
       <div
         style={{
@@ -407,7 +446,7 @@ function RouteLead({ phase }: { phase: Phase }) {
               marginTop: 2,
             }}
           >
-            {infeasible ? m.ribbon_infeasible_title() : m.ribbon_no_stop_needed()}
+            {infeasible ? infeasibleTitle(plan.diagnostics, app.arrivalTankPct) : m.ribbon_no_stop_needed()}
           </div>
         </div>
       );

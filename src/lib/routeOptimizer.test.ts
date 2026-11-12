@@ -37,6 +37,7 @@ interface Spec {
   routeKm: number
   stations: SpecStation[]
   startFuel: number
+  minDestinationFuel?: number
   tank?: number
   cons?: number
   strategy?: RouteStrategy
@@ -81,6 +82,7 @@ function buildInput(spec: Spec): OptimizerInput {
     tankLitres: spec.tank ?? 50,
     consumptionLitresPer100Km: spec.cons ?? 6.5,
     startFuelLitres: spec.startFuel,
+    minDestinationFuelLitres: spec.minDestinationFuel,
     strategy: spec.strategy ?? 'balanced',
     requiredStationIds: spec.required,
     quality: spec.quality ?? 'routed',
@@ -718,5 +720,60 @@ describe('solver budget', () => {
     expect(plan.status).toBe('planned')
     // Generous CI margin; interactive use sits far below this.
     expect(elapsed).toBeLessThan(500)
+  })
+})
+
+describe('arrival floor', () => {
+  // 100 km burns 6.5 L: 20 L on board arrive with 13.5 L, no stop needed
+  const SHORT: Spec = {
+    routeKm: 100,
+    startFuel: 20,
+    stations: [{ id: 's1', km: 50, price: 1.2 }],
+  }
+
+  it('leaves a plan alone when it already arrives above the floor', () => {
+    const plan = planRoute(buildInput({ ...SHORT, minDestinationFuel: 10 }))
+    expect(plan.status).toBe('direct')
+    expect(plan.destinationFuelLitres).toBeGreaterThanOrEqual(10)
+  })
+
+  it('plans a stop the range alone did not need, to arrive with the fuel asked for', () => {
+    const plan = planRoute(buildInput({ ...SHORT, minDestinationFuel: 25 }))
+    expect(plan.status).toBe('planned')
+    expect(plan.stops.map((s) => s.stationId)).toEqual(['s1'])
+    expect(plan.destinationFuelLitres).toBeGreaterThanOrEqual(25)
+    // …and not a litre more than the floor needs at the only pump there is
+    expect(plan.destinationFuelLitres).toBeLessThan(26)
+  })
+
+  it('buys more at the stops the trip needed anyway', () => {
+    const free = planRoute(buildInput(THREE_WAY))
+    const kept = planRoute(buildInput({ ...THREE_WAY, minDestinationFuel: 20 }))
+    expect(kept.status).toBe('planned')
+    expect(kept.destinationFuelLitres).toBeGreaterThanOrEqual(20)
+    expect(kept.totalPurchaseCostCents).toBeGreaterThan(free.totalPurchaseCostCents)
+  })
+
+  it('a floor no station can deliver is its own diagnosis, not a range problem', () => {
+    // The only pump is 400 km (≈ 26 L) before the destination: a full 50 L
+    // tank cannot arrive with 40 L.
+    const plan = planRoute(
+      buildInput({
+        routeKm: 450,
+        startFuel: 45,
+        stations: [{ id: 's1', km: 50, price: 1.2 }],
+        minDestinationFuel: 40,
+      }),
+    )
+    expect(plan.status).toBe('infeasible')
+    expect(plan.diagnostics?.arrivalFloorUnmet).toBe(true)
+  })
+
+  it('a trip short of range stays a range problem whatever the floor', () => {
+    const plan = planRoute(
+      buildInput({ routeKm: 300, startFuel: 5, stations: [], minDestinationFuel: 10 }),
+    )
+    expect(plan.status).toBe('infeasible')
+    expect(plan.diagnostics?.arrivalFloorUnmet).toBeUndefined()
   })
 })

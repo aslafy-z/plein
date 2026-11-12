@@ -28,6 +28,7 @@ const K = {
   tank: 't',
   consumption: 'c',
   startTankPct: 'tp',
+  arrivalTankPct: 'ap',
   avoid: 'x',
 } as const;
 
@@ -40,6 +41,7 @@ const MAX_LABEL_LEN = 120;
 const TANK_RANGE = { min: 5, max: 80 };
 const CONSUMPTION_RANGE = { min: 3, max: 12 };
 const START_TANK_RANGE = { min: 10, max: 100 };
+const ARRIVAL_TANK_RANGE = { min: 0, max: 80 };
 
 export interface RouteUrlView {
   /** null while the departure means « My position » or is not yet resolved */
@@ -57,6 +59,7 @@ export interface RouteUrlView {
   tank: number;
   consumption: number;
   startTankPct: number;
+  arrivalTankPct: number;
   avoidMotorway: boolean;
   avoidToll: boolean;
 }
@@ -73,6 +76,7 @@ export interface ParsedRouteUrl {
   tank: number | null;
   consumption: number | null;
   startTankPct: number | null;
+  arrivalTankPct: number | null;
   /** null when the link says nothing about avoids (`x` absent) */
   avoidMotorway: boolean | null;
   avoidToll: boolean | null;
@@ -89,6 +93,7 @@ const EMPTY: ParsedRouteUrl = {
   tank: null,
   consumption: null,
   startTankPct: null,
+  arrivalTankPct: null,
   avoidMotorway: null,
   avoidToll: null,
 };
@@ -149,6 +154,11 @@ export function parseRouteUrl(search: string): ParsedRouteUrl {
     rawStartTank == null
       ? null
       : Math.round(clamp(rawStartTank, START_TANK_RANGE.min, START_TANK_RANGE.max));
+  const rawArrivalTank = num(q.get(K.arrivalTankPct));
+  const arrivalTankPct =
+    rawArrivalTank == null
+      ? null
+      : Math.round(clamp(rawArrivalTank, ARRIVAL_TANK_RANGE.min, ARRIVAL_TANK_RANGE.max));
 
   // `x` absent → the link says nothing; `x` present → the flags it lists are
   // on and the others OFF, so a shared trip never inherits the reader's avoids
@@ -169,6 +179,7 @@ export function parseRouteUrl(search: string): ParsedRouteUrl {
     tank,
     consumption,
     startTankPct,
+    arrivalTankPct,
     avoidMotorway: avoid == null ? null : avoid.has('motorway'),
     avoidToll: avoid == null ? null : avoid.has('toll'),
   };
@@ -211,6 +222,7 @@ export function routeUrlQuery(view: RouteUrlView): string {
   add(K.tank, round(view.tank, 0));
   add(K.consumption, round(view.consumption, 1));
   add(K.startTankPct, round(view.startTankPct, 0));
+  add(K.arrivalTankPct, round(view.arrivalTankPct, 0));
   const avoid = [view.avoidMotorway ? 'motorway' : null, view.avoidToll ? 'toll' : null]
     .filter(Boolean)
     .join(',');

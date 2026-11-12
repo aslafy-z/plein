@@ -95,6 +95,7 @@ function app(over: Partial<AppStore> = {}): AppStore {
     consumption: 6.5,
     tank: 50,
     startTankPct: 70,
+    arrivalTankPct: 0,
     routeMode: 'balanced',
     plannedStops: {},
     routeState: initialRouteState,

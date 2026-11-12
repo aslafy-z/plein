@@ -19,6 +19,7 @@ const VIEW: RouteUrlView = {
   tank: 50,
   consumption: 6.5,
   startTankPct: 70,
+  arrivalTankPct: 15,
   avoidMotorway: false,
   avoidToll: false,
 };
@@ -29,7 +30,7 @@ describe('routeUrlQuery', () => {
     // shared, so a renamed key breaks every trip already in the wild.
     expect(routeUrlQuery(VIEW)).toBe(
       '?a=43.60465,1.44421&al=Toulouse&d=44.8378,-0.5792&dl=Bordeaux%20centre' +
-        '&f=diesel&m=balanced&v=car&t=50&c=6.5&tp=70',
+        '&f=diesel&m=balanced&v=car&t=50&c=6.5&tp=70&ap=15',
     );
   });
 
@@ -98,6 +99,7 @@ describe('parseRouteUrl', () => {
       tank: 50,
       consumption: 6.5,
       startTankPct: 70,
+      arrivalTankPct: 15,
       avoidMotorway: null,
       avoidToll: null,
     });
@@ -121,6 +123,7 @@ describe('parseRouteUrl', () => {
       tank: null,
       consumption: null,
       startTankPct: null,
+      arrivalTankPct: null,
       avoidMotorway: null,
       avoidToll: null,
     });
@@ -163,6 +166,8 @@ describe('parseRouteUrl', () => {
     expect(parseRouteUrl('?c=99').consumption).toBe(12);
     expect(parseRouteUrl('?tp=200').startTankPct).toBe(100);
     expect(parseRouteUrl('?tp=0').startTankPct).toBe(10);
+    expect(parseRouteUrl('?ap=200').arrivalTankPct).toBe(80);
+    expect(parseRouteUrl('?ap=-5').arrivalTankPct).toBe(0);
     expect(parseRouteUrl('?t=abc').tank).toBeNull();
   });
 

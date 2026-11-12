@@ -47,6 +47,34 @@ test.describe('with a 20 % departure tank', () => {
   })
 })
 
+test.describe('with a 60 % tank asked for on arrival', () => {
+  test.use({ seed: { sourceId: 'demo', onboarded: true, lastFix: TOULOUSE, arrivalTankPct: 60 } })
+
+  test('a trip the tank covers still plans the stop that delivers the arrival floor', async ({
+    page,
+  }) => {
+    // The default 70 % tank reaches Bordeaux without stopping (route-share
+    // pins « No fuel stop needed ») — but lands near 40 %, under the floor
+    await computeBordeauxRoute(page)
+    await expect(page.getByText('Recommended stop').first()).toBeVisible({ timeout: 30_000 })
+    await openRouteSheet(page)
+    await expect(page.getByText(/L left on arrival/)).toBeVisible()
+  })
+
+  test('the floor is set from the route form and travels in the trip link', async ({ page }) => {
+    await gotoMap(page)
+    await page.getByText('Route', { exact: true }).click()
+    await openRouteSheet(page)
+    const slider = page.getByRole('slider', { name: 'Tank on arrival' })
+    await expect(slider).toHaveValue('60')
+    await slider.fill('0')
+    await closeRouteSheet(page)
+    await pickRoutePlace(page, 'to', 'Bordeaux', 'Bordeaux centre')
+    await expect(page.getByText('No fuel stop needed').first()).toBeVisible({ timeout: 30_000 })
+    await expect.poll(() => new URL(page.url()).searchParams.get('ap')).toBe('0')
+  })
+})
+
 test.describe('with a small 15 L tank', () => {
   test.use({
     seed: { sourceId: 'demo', onboarded: true, lastFix: TOULOUSE, tank: 15, startTankPct: 20 },
@@ -84,7 +112,7 @@ test('a low departure tank caps the autonomy and plans a reachable stop', async 
   // it; the CTA stays reachable either way (pinned to the bottom edge).
   await openRouteSheet(page)
   // « Tank at departure » 10 % → 5 L / 6.5 L/100 km ≈ 77 km, limit 60 km
-  await page.locator('input[type=range]').fill('10')
+  await page.getByRole('slider', { name: 'Tank at departure' }).fill('10')
   // The expanded sheet covers the endpoint fields on a phone — fold it back
   await closeRouteSheet(page)
   await pickRoutePlace(page, 'to', 'Bordeaux', 'Bordeaux centre')

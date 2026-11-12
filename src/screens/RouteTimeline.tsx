@@ -48,8 +48,23 @@ const detourLabel = (detourMin: number) =>
 /** Litres with locale decimals — one digit under 10 L, whole litres above */
 export const litresLabel = (litres: number) => fmtDecimal(litres, litres < 10 ? 1 : 0);
 
+/** Headline of the no-plan block: short of range, or short of the arrival floor */
+export function infeasibleTitle(
+  diag: InfeasibleDiagnostics | undefined,
+  arrivalTankPct: number,
+): string {
+  return diag?.arrivalFloorUnmet
+    ? m.ribbon_infeasible_arrival_title({ percent: arrivalTankPct })
+    : m.ribbon_infeasible_title();
+}
+
 /** Why no plan exists — structured diagnostics become one clear sentence */
-function infeasibleLabel(diag: InfeasibleDiagnostics | undefined, limitKm: number): string {
+function infeasibleLabel(
+  diag: InfeasibleDiagnostics | undefined,
+  limitKm: number,
+  arrivalTankPct: number,
+): string {
+  if (diag?.arrivalFloorUnmet) return m.ribbon_infeasible_arrival({ percent: arrivalTankPct });
   const km = Math.round(diag?.furthestReachableKm ?? limitKm);
   if (!diag || diag.noStationInRange) return m.ribbon_infeasible_no_station({ km });
   return m.ribbon_infeasible_gap({ km });
@@ -66,6 +81,8 @@ function arrivalLabel(arrival: ArrivalEstimate | null): string {
       });
     case 'autonomyShort':
       return m.ribbon_arrival_autonomy_short({ km: arrival.limitKm });
+    case 'arrivalFloorUnmet':
+      return m.ribbon_arrival_floor_unmet({ percent: arrival.percent });
     case 'direct':
       return m.ribbon_arrival_direct({ time: clockLabel(new Date(arrival.at)) });
   }
@@ -742,10 +759,10 @@ export default function RouteTimeline() {
                   }}
                 >
                   <div style={{ fontSize: 13.5, fontWeight: 800, color: C.warn }}>
-                    {m.ribbon_infeasible_title()}
+                    {infeasibleTitle(plan.diagnostics, app.arrivalTankPct)}
                   </div>
                   <div style={{ fontSize: 12, color: C.mut, marginTop: 3, lineHeight: 1.45 }}>
-                    {infeasibleLabel(plan.diagnostics, analysis.limitKm)}
+                    {infeasibleLabel(plan.diagnostics, analysis.limitKm, app.arrivalTankPct)}
                   </div>
                 </div>
               </div>
