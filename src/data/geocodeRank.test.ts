@@ -168,3 +168,34 @@ describe('ranking against the query', () => {
     expect(out.map((r) => r.label)).toEqual(['Toulouse', 'Toulon']);
   });
 });
+
+describe('the home country first', () => {
+  const fr = [at('Valence', 'locality'), at('Rue de Valence', 'street')];
+  const pt = [at('Valença', 'locality'), at('Valença do Douro', 'locality'), at('Rua de Valença', 'street')];
+
+  it('interleaves the countries when none is home', () => {
+    expect(mergeByKind([fr, pt], 'valen').map((r) => r.label)).toEqual([
+      'Valence',
+      'Valença',
+      'Valença do Douro',
+      'Rue de Valence',
+      'Rua de Valença',
+    ]);
+  });
+
+  it('puts every home result of a kind before the others, kind by kind', () => {
+    expect(mergeByKind([pt, fr], 'valen', 1).map((r) => r.label)).toEqual([
+      'Valença',
+      'Valença do Douro',
+      'Valence',
+      'Rua de Valença',
+      'Rue de Valence',
+    ]);
+  });
+
+  it('never lifts a home result above one that answers more of the query', () => {
+    const out = mergeByKind([[at('Rua de Valença', 'street')], [at('Valence centre', 'locality')]], 'valence centre', 1);
+    expect(out.map((r) => r.label)).toEqual(['Valence centre', 'Rua de Valença']);
+  });
+});
+

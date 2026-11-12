@@ -434,6 +434,44 @@ describe('MergedGeocodeProvider — naming what did not answer', () => {
   })
 })
 
+describe('MergedGeocodeProvider — the country the map looks at', () => {
+  const place = (label: string): GeocodeResult => ({
+    label,
+    sublabel: '',
+    point: { lat: 40, lng: -8 },
+    kind: 'locality',
+  })
+  const merged = () =>
+    new MergedGeocodeProvider([
+      { country: 'fr', provider: { search: async () => [place('Valence')] }, covers: (p) => p.lng > 0 },
+      { country: 'pt', provider: { search: async () => [place('Valença')] }, covers: (p) => p.lng < 0 },
+    ])
+
+  it('keeps the given order when the map is nowhere in particular', async () => {
+    expect((await merged().search('valen')).map((r) => r.label)).toEqual(['Valence', 'Valença'])
+  })
+
+  it('puts the home country first', async () => {
+    const res = await merged().search('valen', { near: { lat: 38.7, lng: -9.1 } })
+    expect(res.map((r) => r.label)).toEqual(['Valença', 'Valence'])
+  })
+
+  it('still names the missing countries in the order they were given', async () => {
+    const onIncomplete = vi.fn()
+    const down: GeocodeProvider = {
+      search: async () => {
+        throw new Error('504')
+      },
+    }
+    await new MergedGeocodeProvider([
+      { country: 'fr', provider: down, covers: () => false },
+      { country: 'pt', provider: { search: async () => [place('Valença')] }, covers: () => true },
+      { country: 'es', provider: down, covers: () => false },
+    ]).search('valen', { near: { lat: 38.7, lng: -9.1 }, onIncomplete })
+    expect(onIncomplete).toHaveBeenCalledWith(['fr', 'es'])
+  })
+})
+
 describe('FrGeocodeProvider — a backup when the Géoplateforme is down', () => {
   /** `fetch` answering per host and index; `undefined` is an outage */
   const stubFetch = (answer: (url: string) => unknown) => {

@@ -39,7 +39,7 @@ Quer ver o que vem a seguir? [staging-plein.zadkiel.workers.dev](https://staging
   comparam-se num relance.
 - 🔎 **Pesquisa de locais** — cidades, moradas e pontos de interesse
   (estações de comboio, aeroportos, monumentos) nos quatro países, ordenados
-  pela correspondência com o que escreveu.
+  pela correspondência com o que escreveu, com o país do mapa primeiro.
 - 📋 **Melhor escolha real** — o combustível gasto no desvio é contabilizado:
   um posto mais próximo pode bater o mais barato.
 - 🛣️ **Plano de abastecimento na rota** — onde parar ao longo da viagem,

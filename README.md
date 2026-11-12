@@ -36,7 +36,7 @@ Want what is coming next? [staging-plein.zadkiel.workers.dev](https://staging-pl
   Spain, Andorra and Portugal combined; border fill-ups compare at a glance.
 - 🔎 **Place search** — towns, addresses and points of interest (railway
   stations, airports, monuments) across the four countries, ranked by how
-  well they match what you typed.
+  well they match what you typed, the country on the map first.
 - 📋 **Real best choice** — the fuel burned for the detour is counted, so a
   closer station can beat the cheapest one.
 - 🛣️ **Route fuel plan** — where to stop along your trip, how many liters at

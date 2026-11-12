@@ -222,6 +222,12 @@ export type GeocodeCountry = 'fr' | 'es' | 'ad' | 'pt';
 
 export interface GeocodeSearchOptions {
   /**
+   * Where the map is looking. A merged search puts the country around that
+   * point first among results that answer the query equally well — someone
+   * browsing Portugal who types « Valen » means Valença before Valence.
+   */
+  near?: GeoPoint;
+  /**
    * Suggestions known SO FAR, published each time a source lands. « Automatic »
    * queries four national geocoders at once and one of them can be seconds
    * behind the others: the list fills in as they answer instead of waiting for

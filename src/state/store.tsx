@@ -1993,8 +1993,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setFuel(target.fuel);
   }, [setFuel, setRadius, vehicle]);
 
+  // Read through a ref: the callback must not change identity with every map
+  // move, and a search only needs where the map looks when it is typed.
+  const searchPosRef = useRef(searchPos);
+  searchPosRef.current = searchPos;
   const searchPlaces = useCallback(
-    (q: string, opts?: GeocodeSearchOptions) => getProviders(sourceId).geocode.search(q, opts),
+    (q: string, opts?: GeocodeSearchOptions) =>
+      getProviders(sourceId).geocode.search(q, { ...opts, near: searchPosRef.current }),
     [sourceId],
   );
 
