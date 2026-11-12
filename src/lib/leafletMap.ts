@@ -26,8 +26,8 @@ export interface LeafletShell {
   userInteractedRef: MutableRefObject<boolean>;
   /** Epoch ms until which move/zoom events are the app's own, not the user's */
   programmaticUntilRef: MutableRefObject<number>;
-  /** Inset-aware fit — pads past the floating panel and the bottom sheet so
-      the bounds land in the VISIBLE part of the map */
+  /** Inset-aware fit — pads past the floating panel, the bottom sheet and
+      the top overlay so the bounds land in the VISIBLE part of the map */
   fitBounds(bounds: L.LatLngBounds, opts?: { pad?: number; maxZoom?: number }): void;
   /** Center of the VISIBLE map — the stage minus the floating panel */
   visibleCenterPoint(map: L.Map): L.Point;
@@ -38,6 +38,13 @@ export interface LeafletShellOptions {
   bottomInset?: number;
   /** Width of the floating panel covering the map's left edge (desktop) */
   leftInset?: number;
+  /**
+   * Height of whatever floats over the map's TOP edge (the route's endpoint
+   * fields). Fits only: a route runs right up to its bounds, so its departure
+   * or arrival pin landed behind the fields — while the centering math stays
+   * on the two big covers, a thin strip does not move « the middle ».
+   */
+  topInset?: number;
   /**
    * Runs once, right after the map exists: set the initial view, add layers
    * and listeners. The returned cleanup runs before the map is removed (the
@@ -72,6 +79,8 @@ export function useLeafletMap(options: LeafletShellOptions): LeafletShell {
   bottomInsetRef.current = options.bottomInset ?? 0;
   const leftInsetRef = useRef(options.leftInset ?? 0);
   leftInsetRef.current = options.leftInset ?? 0;
+  const topInsetRef = useRef(options.topInset ?? 0);
+  topInsetRef.current = options.topInset ?? 0;
   const optionsRef = useRef(options);
   optionsRef.current = options;
 
@@ -89,7 +98,7 @@ export function useLeafletMap(options: LeafletShellOptions): LeafletShell {
         // The fit's own move/zoom events must not read as a user takeover
         programmaticUntilRef.current = Date.now() + PROGRAMMATIC_MS;
         map.fitBounds(bounds, {
-          paddingTopLeft: [pad + leftInsetRef.current, pad],
+          paddingTopLeft: [pad + leftInsetRef.current, pad + topInsetRef.current],
           paddingBottomRight: [pad, pad + bottomInsetRef.current],
           ...(opts?.maxZoom != null ? { maxZoom: opts.maxZoom } : null),
         });
