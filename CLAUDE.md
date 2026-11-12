@@ -23,6 +23,18 @@ it lives only in `messages/fr.json`.
   `messages/en.json` copy — the Settings « Data » section, the
   « Directions › » shortcut — never the French name (« réglages »,
   « Données », « Itinéraire »).
+- **Em dashes in the catalogs are rare, not banned.** Use one where it is
+  the right mark: the brand headline (`app_title`, the page `<title>`, the
+  manifest name), the share titles and texts (`share_*`), and a real aside
+  or afterthought in running prose (the price disclaimer's « — the detour
+  is your call »). It is never a catch-all joiner standing in for the
+  punctuation the sentence actually means: a colon when the second part
+  explains the first (« Offline: the prices shown may be out of date. »), a
+  comma or a new sentence for a follow-up or an action (« Prices are out of
+  date. Tap to reload »), parentheses for a qualifier (« CNG (compressed
+  natural gas) »), and « · » between a status and the action that fixes it
+  (« Last known position · turn location back on »). A lone « — » standing
+  in for a missing value is a placeholder, not punctuation, and stays.
 - **Never hard-wrap commit messages or PR descriptions.** Write each
   paragraph as one long line and let the renderer wrap; only actual
   paragraph breaks get a newline.
@@ -173,6 +185,14 @@ width, never pointer type: a window gets resized and the layout has to follow.
   fits. They also share one price-pin markup (`src/lib/pricePin.ts`).
   Mechanism is shared, policy is not: each wrapper keeps when to fit, on what
   bounds, and its own layers.
+- **A card's or sheet's secondary actions are `ActionPill`s**
+  (`src/components/ActionPill.tsx`): Share, Edit, Reset, close, deselect,
+  favorite in a header, « Settings › » at the end of a summary card. A tonal
+  34px pill (round and icon-only, or labelled) inside a 44px hit box, `accent`
+  when it acts on the content, `neutral` for the container or a toggle on it;
+  a run of them goes in `ActionPills`. Never a bare word or a bare glyph — they
+  read as text and are too small to hit. Out of scope: list-row actions and
+  controls floating over a map (the map-control idiom).
 - App-level notices (`UpdatePrompt`, `FallbackBanner`) are bars at the top of
   `.app-main`, not map controls. The install offer is a bar on the phone only
   (`InstallPrompt`); on desktop it lives in the side rail's bottom slot with

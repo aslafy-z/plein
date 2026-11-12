@@ -11,6 +11,7 @@ import type { DayHours, StationHours } from '../../lib/hours';
 import { titleCase } from '../../lib/text';
 import type {
   FuelId,
+  FuelOutage,
   FuelPrice,
   ServiceTag,
   SourceCapabilities,
@@ -21,20 +22,33 @@ import type {
 
 // In dev the call goes through the Vite proxy (see vite.config.ts) so the app
 // gets live data even when the browser has no direct internet access.
-const ENDPOINT =
+const DATASET =
   (IS_DEV ? '/proxy/fr' : 'https://data.economie.gouv.fr') +
-  '/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records';
+  '/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2';
+const ENDPOINT = DATASET + '/records';
+const EXPORT_ENDPOINT = DATASET + '/exports/json';
 
 const PAGE = 100;
 const NEAR_CAP = 300;
-// Hard ceiling per corridor disc, so a pathological disc cannot page forever
-// against a public API. The densest disc a route asks for (Île-de-France at
-// the 10-sample spacing of a very long trip) stays well under it.
-const ALONG_DISC_CAP = 2000;
-const SAMPLE_KM = 40;
-const MAX_SAMPLES = 10;
-const CONCURRENCY = 4;
 const TIMEOUT_MS = 9000;
+
+// ── Corridor fetch ───────────────────────────────────────────────────────────
+// A route's stations come from the dataset's EXPORT endpoint, which answers a
+// query whole instead of 100 rows at a time. The corridor used to be ten wide
+// discs paged through `/records`: 14 pages for Toulouse → Nice, 23 for Turin →
+// Lille, some 300 kB of JSON each, most of it stations tens of km off the road
+// — and one page lost in that many was enough to fail the whole stage. It is
+// now a string of small discs hugging the road, OR-ed into a handful of
+// requests (five for those 1000 km).
+/** Spacing of the discs along the route */
+const ALONG_STEP_KM = 15;
+/** Discs OR-ed into one request: ~240 km of road, a URL well under 2 kB */
+const ALONG_DISCS_PER_REQUEST = 16;
+const CONCURRENCY = 4;
+/** One retry: a public endpoint drops the odd connection, and the stage is
+    all-or-nothing — a stretch without its stations would be planned as empty */
+const ALONG_ATTEMPTS = 2;
+const ALONG_RETRY_DELAY_MS = 400;
 
 const MIN_PRICE = 0.5;
 const MAX_PRICE = 3.5;
@@ -176,17 +190,8 @@ function fuelFromName(name: string): FuelId | null {
   return null;
 }
 
-export interface RawPrice {
-  name: string;
-  value: number;
-  maj?: string;
-}
-
-/**
- * `prix` may be a JSON string, a single object, or an already-parsed array.
- * @internal exported for unit tests
- */
-export function parsePriceField(v: unknown): RawPrice[] {
+/** A JSON string, a single object or an array → its objects */
+function parseRawList(v: unknown): Raw[] {
   let data: unknown = v;
   if (typeof v === 'string') {
     const s = v.trim();
@@ -198,10 +203,22 @@ export function parsePriceField(v: unknown): RawPrice[] {
     }
   }
   const arr = Array.isArray(data) ? data : data && typeof data === 'object' ? [data] : [];
+  return arr.filter((item): item is Raw => item != null && typeof item === 'object');
+}
+
+export interface RawPrice {
+  name: string;
+  value: number;
+  maj?: string;
+}
+
+/**
+ * `prix` may be a JSON string, a single object, or an already-parsed array.
+ * @internal exported for unit tests
+ */
+export function parsePriceField(v: unknown): RawPrice[] {
   const out: RawPrice[] = [];
-  for (const item of arr) {
-    if (!item || typeof item !== 'object') continue;
-    const o = item as Raw;
+  for (const o of parseRawList(v)) {
     const name = toStr(o['@nom'] ?? o.nom);
     const value = toNum(o['@valeur'] ?? o.valeur);
     const maj = toStr(o['@maj'] ?? o.maj);
@@ -228,6 +245,70 @@ export function parsePrices(rec: Raw): Partial<Record<FuelId, FuelPrice>> {
     }
   }
   return out;
+}
+
+// ── Outages (« ruptures ») ───────────────────────────────────────────────────
+// The ODS dataset republishes `instantane_ruptures`, flattened: per fuel a
+// `<col>_rupture_type` (« temporaire » | « definitive ») and a
+// `<col>_rupture_debut`, plus the raw `rupture` list as a JSON string. The
+// raw list can name a fuel twice (an old definitive outage, then a recent
+// temporary one) and carries `@type=""` leftovers; the columns are the
+// already-reduced answer, latest entry per fuel, so they come first.
+const OUTAGE_COL: ReadonlyArray<readonly [FuelId, string]> = [
+  ['diesel', 'gazole'],
+  ['e10', 'e10'],
+  ['unleaded98', 'sp98'],
+  ['unleaded95', 'sp95'],
+  ['e85', 'e85'],
+  ['lpg', 'gplc'],
+];
+
+const TEMPORARY = /^temporaire$/i;
+
+/**
+ * Temporary outages of a record. Definitive ones are left out (the station
+ * stopped selling the fuel — a missing price already says so), and a fuel that
+ * still has a price is not out of stock whatever the outage list claims.
+ * @internal exported for unit tests
+ */
+export function parseOutages(
+  rec: Raw,
+  prices: Partial<Record<FuelId, FuelPrice>>,
+): Partial<Record<FuelId, FuelOutage>> | undefined {
+  const out: Partial<Record<FuelId, FuelOutage>> = {};
+  const hasColumns = OUTAGE_COL.some(([, col]) => `${col}_rupture_type` in rec);
+  if (hasColumns) {
+    for (const [fuel, col] of OUTAGE_COL) {
+      const type = toStr(rec[`${col}_rupture_type`]);
+      if (!type || !TEMPORARY.test(type.trim())) continue;
+      out[fuel] = { since: parseFluxTimestamp(rec[`${col}_rupture_debut`]) };
+    }
+  } else {
+    // Latest entry per fuel decides, as the columns do
+    const latest = new Map<FuelId, { type: string; debut: string; fin: string }>();
+    for (const r of parseRawList(rec.rupture)) {
+      const name = toStr(r['@nom'] ?? r.nom);
+      const fuel = name ? fuelFromName(name) : null;
+      if (!fuel) continue;
+      const debut = toStr(r['@debut'] ?? r.debut) ?? '';
+      const prev = latest.get(fuel);
+      if (prev && prev.debut > debut) continue;
+      latest.set(fuel, {
+        type: toStr(r['@type'] ?? r.type) ?? '',
+        debut,
+        fin: toStr(r['@fin'] ?? r.fin) ?? '',
+      });
+    }
+    for (const [fuel, r] of latest) {
+      // An outage with an end date is over
+      if (!TEMPORARY.test(r.type.trim()) || r.fin.trim()) continue;
+      out[fuel] = { since: parseFluxTimestamp(r.debut) };
+    }
+  }
+  for (const fuel of Object.keys(out) as FuelId[]) {
+    if (prices[fuel] != null) delete out[fuel];
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 // ── Services + tags ──────────────────────────────────────────────────────────
@@ -382,6 +463,7 @@ function parseRecord(rec: Raw): Station | null {
     city: ville,
     postalCode: toStr(rec.cp),
     prices,
+    outages: parseOutages(rec, prices),
     tags: deriveTags(services, rec),
     services,
     highway: isHighway(rec),
@@ -452,6 +534,82 @@ async function fetchPageWithTotal(url: string, lowPriority = false): Promise<Pag
 
 async function fetchPage(url: string, lowPriority = false): Promise<unknown[]> {
   return (await fetchPageWithTotal(url, lowPriority)).results;
+}
+
+/**
+ * The columns `parseRecord` reads — an export carries only these, which more
+ * than halves the payload (the flux repeats every price and every shortage in
+ * four or five derived columns).
+ */
+const EXPORT_COLUMNS = [
+  'id',
+  'latitude',
+  'longitude',
+  'geom',
+  'cp',
+  'pop',
+  'adresse',
+  'ville',
+  'horaires',
+  'horaires_automate_24_24',
+  'services',
+  'prix',
+  ...FUEL_COLS.flatMap(([, priceCol, updatedCol]) => [priceCol, updatedCol]),
+].join(',');
+
+/** `where` clause matching every station inside any of `discs` */
+function discsClause(discs: readonly GeoPoint[], radiusKm: number): string {
+  return discs
+    .map(
+      (c) =>
+        // 5 decimals ≈ 1 m: the radius is rounded up by a whole km anyway
+        `within_distance(geom, geom'POINT(${c.lng.toFixed(5)} ${c.lat.toFixed(5)})', ${radiusKm}km)`,
+    )
+    .join(' or ');
+}
+
+const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Every row matching `where`, in one answer. Transport failures, timeouts,
+ * 429 and 5xx are retried once; any other refusal is final. A 400 on the
+ * column list (the flux renaming one of them) falls back to whole records
+ * rather than lose the corridor to a `select`.
+ */
+async function fetchExport(where: string): Promise<unknown[]> {
+  let select: string | null = EXPORT_COLUMNS;
+  let lastError: unknown;
+  for (let attempt = 0; attempt < ALONG_ATTEMPTS; attempt++) {
+    if (attempt > 0) await wait(ALONG_RETRY_DELAY_MS);
+    const params = new URLSearchParams({ where });
+    if (select) params.set('select', select);
+    try {
+      const res = await fetch(`${EXPORT_ENDPOINT}?${params.toString()}`, {
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (res.status === 400 && select) {
+        select = null;
+        attempt--;
+        continue;
+      }
+      if (!res.ok) {
+        const err = new FluxHttpError(res.status);
+        if (res.status !== 429 && res.status < 500) throw err;
+        lastError = err;
+        continue;
+      }
+      // The export is a bare array; a `{ results }` envelope is read too, so
+      // anything answering in the `/records` shape still parses.
+      const json = (await res.json()) as unknown;
+      if (Array.isArray(json)) return json;
+      const results = (json as { results?: unknown } | null)?.results;
+      return Array.isArray(results) ? results : [];
+    } catch (err) {
+      if (err instanceof FluxHttpError && err.status !== 429 && err.status < 500) throw err;
+      lastError = err;
+    }
+  }
+  throw lastError;
 }
 
 export class FrStationsProvider implements StationsProvider {
@@ -545,58 +703,54 @@ export class FrStationsProvider implements StationsProvider {
   }
 
   async getStationsAlong(polyline: GeoPoint[], corridorKm: number): Promise<Station[]> {
-    let samples = samplePolyline(polyline, SAMPLE_KM);
-    if (samples.length > MAX_SAMPLES) {
-      // Spread the picks over the whole index range, BOTH ends included: a
-      // floor(i × n / MAX) pick never reaches the last sample, and the end of
-      // the route — the destination — went unqueried.
-      const n = samples.length;
-      const picked: GeoPoint[] = [];
-      for (let i = 0; i < MAX_SAMPLES; i++) {
-        picked.push(samples[Math.round((i * (n - 1)) / (MAX_SAMPLES - 1))]);
-      }
-      samples = picked;
-    }
+    const discs = samplePolyline(polyline, ALONG_STEP_KM);
+    if (!discs.length) return [];
 
     // The discs must cover the whole corridor, so their radius is measured
-    // rather than assumed from an average spacing (the picks above are not
-    // evenly spaced, and neither are a polyline's vertices): the farthest any
-    // route vertex sits from its nearest sample, plus the corridor width. The
-    // corridor filter below is vertex-based too, so this is exactly its reach.
+    // rather than assumed from the spacing (a polyline's vertices are not
+    // evenly spaced, and a long straight segment has none for km): the
+    // farthest any route vertex sits from its nearest disc centre, plus the
+    // corridor width. The corridor filter below is vertex-based too, so this
+    // is exactly its reach. Centres follow the route, so the nearest one is
+    // found walking forward — never a scan of every disc per vertex.
     let reachKm = 0;
+    let near = 0;
     for (const v of polyline) {
-      let nearest = Infinity;
-      for (const s of samples) nearest = Math.min(nearest, haversineKm(v, s));
-      if (nearest > reachKm) reachKm = nearest;
+      let best = haversineKm(v, discs[near]);
+      while (near + 1 < discs.length) {
+        const next = haversineKm(v, discs[near + 1]);
+        if (next > best) break;
+        best = next;
+        near++;
+      }
+      if (best > reachKm) reachKm = best;
     }
-    const queryKm = Math.ceil(reachKm + corridorKm + 1);
+    const radiusKm = Math.ceil(reachKm + corridorKm + 1);
+
+    const groups: GeoPoint[][] = [];
+    for (let i = 0; i < discs.length; i += ALONG_DISCS_PER_REQUEST) {
+      groups.push(discs.slice(i, i + ALONG_DISCS_PER_REQUEST));
+    }
 
     const byId = new Map<string, Station>();
-    // Split the sample points across a few concurrent lanes (concurrency ≤ 4).
-    const lanes: GeoPoint[][] = Array.from({ length: CONCURRENCY }, () => []);
-    samples.forEach((pt, i) => lanes[i % CONCURRENCY].push(pt));
-
-    const runLane = async (pts: GeoPoint[]) => {
-      for (const pt of pts) {
-        // A disc holds more than one page as soon as it touches a city (137
-        // stations within 25 km of Toulouse, 363 within 51 km of Lyon): page
-        // it until exhausted, on a stable order so offsets stay consistent
-        // from one page to the next.
-        for (let offset = 0; offset < ALONG_DISC_CAP; offset += PAGE) {
-          const results = await fetchPage(`${buildUrl(pt, queryKm, PAGE, offset)}&order_by=id`);
-          for (const r of results) {
-            if (r && typeof r === 'object') {
-              const st = parseRecord(r as Raw);
-              if (st && !byId.has(st.id)) byId.set(st.id, st);
-            }
+    // A few lanes share the requests, so a very long route never opens more
+    // than CONCURRENCY connections on a public API at once.
+    let nextGroup = 0;
+    const runLane = async () => {
+      while (nextGroup < groups.length) {
+        const rows = await fetchExport(discsClause(groups[nextGroup++], radiusKm));
+        for (const r of rows) {
+          if (r && typeof r === 'object') {
+            const st = parseRecord(r as Raw);
+            // Neighbouring requests overlap by a disc's width
+            if (st && !byId.has(st.id)) byId.set(st.id, st);
           }
-          if (results.length < PAGE) break;
         }
       }
     };
 
     const poisPromise = fuelPoisAlong(polyline, corridorKm).catch(() => []);
-    await Promise.all(lanes.map(runLane));
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, groups.length) }, runLane));
     const inCorridor = [...byId.values()].filter(
       (st) => nearestOnPolyline({ lat: st.lat, lng: st.lng }, polyline).distKm <= corridorKm,
     );

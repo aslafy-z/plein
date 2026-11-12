@@ -37,9 +37,27 @@ test('route comparison: map-first shell, tour, station detail and history', asyn
   await page.getByText('Lowest price').click()
   await expect(page.getByText('Recommended stop').first()).toBeVisible()
 
-  // add the planned stop to the tour
-  await page.getByRole('button', { name: 'Add to the run' }).first().click()
-  await expect(page.getByText('Start the run ›')).toBeVisible()
+  // The trip CTA on the bottom edge hands Maps the whole plan — its stop
+  // included before anything is pinned
+  const startTrip = page.getByTestId('route-start-trip')
+  await expect(startTrip).toHaveText('Start the trip · 1 stop')
+  // pin the planned stop: the toggle flips, the trip keeps its one stop
+  await page.getByRole('button', { name: 'Add to the trip' }).first().click()
+  await expect(page.getByRole('button', { name: 'Remove from the trip' }).first()).toBeVisible()
+  await expect(startTrip).toHaveText('Start the trip · 1 stop')
+  await page.evaluate(() => {
+    const w = window as unknown as { __opened: string[] }
+    w.__opened = []
+    window.open = (url?: string | URL) => {
+      w.__opened.push(String(url))
+      return null
+    }
+  })
+  await startTrip.click()
+  const opened = await page.evaluate(() => (window as unknown as { __opened: string[] }).__opened)
+  expect(opened).toHaveLength(1)
+  expect(opened[0]).toContain('google.com/maps/dir/')
+  expect(opened[0]).toContain('&waypoints=')
 
   // ── Station detail from the planned stop ──
   await page.getByRole('button', { name: /Details for/ }).first().click()

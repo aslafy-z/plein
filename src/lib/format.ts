@@ -164,3 +164,13 @@ export function agoLabel(iso: string | undefined): string {
   if (!isFinite(t)) return EM_DASH;
   return agoLabelFrom(t);
 }
+
+/**
+ * A plain enumeration: ["France", "Spain"] -> "France, Spain". The five
+ * locales the app ships all separate a bare list with a comma and a space;
+ * `Intl.ListFormat` would say so itself, but it sits outside the ES lib this
+ * project compiles against.
+ */
+export function listLabel(items: readonly string[]): string {
+  return items.join(', ');
+}

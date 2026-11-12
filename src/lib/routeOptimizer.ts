@@ -90,6 +90,11 @@ export interface OptimizerInput {
   tankLitres: number;
   consumptionLitresPer100Km: number;
   startFuelLitres: number;
+  /**
+   * Least fuel the plan may reach the destination with (litres) — the user's
+   * « Tank on arrival » floor. Absent or 0: only the per-leg reserve applies.
+   */
+  minDestinationFuelLitres?: number;
   strategy: RouteStrategy;
   /** Stations the plan MUST stop at (user-picked), by id */
   requiredStationIds?: readonly string[];
@@ -123,6 +128,12 @@ export interface InfeasibleDiagnostics {
   strandedStationId?: string;
   /** A user-required stop no feasible sequence can reach */
   unreachableRequiredStationId?: string;
+  /**
+   * The destination IS reachable, but never with the fuel the user asked to
+   * keep on arrival — a different problem from running short of range, and
+   * one only the arrival floor (or a fuller tank) can fix.
+   */
+  arrivalFloorUnmet?: boolean;
 }
 
 export interface RoutePlan {
@@ -415,7 +426,16 @@ export function planRoute(input: OptimizerInput): RoutePlan {
   let bestAdjusted: CostTuple | undefined;
   let bestFuel = 0;
   const destRow = arrive[DEST];
-  for (let f = 0; f <= tankUnits; f++) {
+  // The arrival floor is a filter on terminal states, nothing more: the DP
+  // keeps the best way to reach the destination at EVERY fuel level, so the
+  // optimum among the levels at or above the floor is already in the row.
+  // Rounded up to the grid (and arrival levels are floored), so the plan
+  // never lands under what was asked.
+  const minDestUnits = Math.min(
+    tankUnits,
+    Math.max(0, Math.ceil((input.minDestinationFuelLitres ?? 0) / unit - EPS)),
+  );
+  for (let f = minDestUnits; f <= tankUnits; f++) {
     const s = destRow[f];
     if (!s) continue;
     const adjusted: CostTuple = { ...s, money: s.money - creditMilli * f };
@@ -468,6 +488,7 @@ export function planRoute(input: OptimizerInput): RoutePlan {
         strandedStationId: strandedK >= 0 ? stationAt(strandedK).id : undefined,
         unreachableRequiredStationId:
           unreachableRequired != null ? stationAt(unreachableRequired).id : undefined,
+        arrivalFloorUnmet: destRow.some(Boolean) || undefined,
       },
     };
   }

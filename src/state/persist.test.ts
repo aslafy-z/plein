@@ -219,7 +219,7 @@ describe('loadPersisted shape validation', () => {
   })
 
   it('drops numbers that are not finite or that no slider can set', () => {
-    stubBlob({ radius: 0, tank: 500, consumption: 0, startTankPct: -5 })
+    stubBlob({ radius: 0, tank: 500, consumption: 0, startTankPct: -5, arrivalTankPct: 85 })
     expect(loadPersisted()).toEqual({})
     // JSON has no NaN/Infinity: they come back as null, strings stay strings
     stubBlob({ radius: null, tank: '50', consumption: [6.5], startTankPct: {} })
@@ -227,10 +227,10 @@ describe('loadPersisted shape validation', () => {
   })
 
   it('keeps numbers on the bounds the sliders stop at', () => {
-    const low = { radius: 1, tank: 5, consumption: 3, startTankPct: 10 }
+    const low = { radius: 1, tank: 5, consumption: 3, startTankPct: 10, arrivalTankPct: 0 }
     stubBlob(low)
     expect(loadPersisted()).toEqual(low)
-    const high = { radius: 25, tank: 80, consumption: 12, startTankPct: 100 }
+    const high = { radius: 25, tank: 80, consumption: 12, startTankPct: 100, arrivalTankPct: 80 }
     stubBlob(high)
     expect(loadPersisted()).toEqual(high)
   })

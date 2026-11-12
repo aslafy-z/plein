@@ -25,6 +25,13 @@ function dropNulls(settings: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(Object.entries(settings).filter(([, v]) => v != null))
 }
 
+// The French geocoder is ONE endpoint serving two indexes, told apart by the
+// `index` query parameter alone: addresses (the BAN) and points of interest.
+// A spec mocks each through its own pattern — a bare `**/proxy/geopf/**` would
+// answer both calls with one payload.
+export const GEOPF_ADDRESS = '**/proxy/geopf/**index=address*'
+export const GEOPF_POI = '**/proxy/geopf/**index=poi*'
+
 export const test = base.extend<Options>({
   seed: [{ sourceId: 'demo', onboarded: true }, { option: true }],
 
@@ -48,6 +55,19 @@ export const test = base.extend<Options>({
       localStorage.clear()
       localStorage.setItem('plein.settings.v1', JSON.stringify(settings))
     }, dropNulls({ ...BASE_SEED, ...seed }))
+
+    // France's point-of-interest index rides along with every address search.
+    // Specs mock the addresses and assert on the exact rows, so this one
+    // answers empty unless a spec routes it itself (a later route wins) — left
+    // alone it would reach the live index through the dev proxy. Only where a
+    // spec leaves the demo source, which never asks it: a route puts EVERY
+    // request of the page through the test process, map tiles included, and
+    // the frame-timing specs (map-keyboard) run on the demo source.
+    if (seed.sourceId !== 'demo') {
+      await page.route(GEOPF_POI, (route) =>
+        route.fulfill({ json: { type: 'FeatureCollection', features: [] } }),
+      )
+    }
 
     await use(page)
 

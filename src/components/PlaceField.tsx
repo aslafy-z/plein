@@ -18,10 +18,11 @@
 // (« Directions › ») and the wording of the empty state.
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { C } from '../theme';
+import { C, kicker } from '../theme';
 import { m } from '../paraglide/messages.js';
-import type { GeocodeResult } from '../data/types';
-import { placeSublabel } from '../lib/labels';
+import type { GeocodeCountry, GeocodeResult } from '../data/types';
+import { listLabel } from '../lib/format';
+import { countryName, placeSublabel } from '../lib/labels';
 import { useIsDesktop, useVisualViewport } from '../lib/layout';
 import { useApp, type SearchTarget } from '../state/store';
 import { enterChoice, searchRows } from '../state/searchHistory';
@@ -108,6 +109,14 @@ export default function PlaceField(props: PlaceFieldProps) {
       next answer lands, and Enter must not take a row from an older query */
   const [answeredQuery, setAnsweredQuery] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
+  /** Which of the sources behind the answer on screen did not answer. The
+      list of the ones that did is still shown — but a national geocoder down
+      looks exactly like a search that matched nothing in that country, and
+      the rows left over then read as the app's best guess. */
+  const [unanswered, setUnanswered] = useState<'none' | 'some' | 'all'>('none');
+  /** The countries whose source did not answer at all — named in the notice.
+      Empty when a source only lost part of its own list. */
+  const [downCountries, setDownCountries] = useState<readonly GeocodeCountry[]>([]);
   /** Enter came before the answer for the current text: pick when it lands */
   const [enterPending, setEnterPending] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -122,6 +131,7 @@ export default function PlaceField(props: PlaceFieldProps) {
       setSuggestions([]);
       setAnsweredQuery(null);
       setSearching(false);
+      setUnanswered('none');
       return;
     }
     const id = ++reqId.current;
@@ -129,6 +139,8 @@ export default function PlaceField(props: PlaceFieldProps) {
     // search is already under way, and geocoders can take seconds to answer.
     setSearching(true);
     timer.current = setTimeout(() => {
+      let incomplete = false;
+      let down: readonly GeocodeCountry[] = [];
       app
         // « Automatic » queries several geocoders: show each country's hits
         // as they land, and keep spinning until the last one has answered.
@@ -138,18 +150,25 @@ export default function PlaceField(props: PlaceFieldProps) {
             setSuggestions(res);
             setAnsweredQuery(text);
           },
+          onIncomplete: (missing) => {
+            incomplete = true;
+            down = missing ?? [];
+          },
         })
         .then((res) => {
           if (id !== reqId.current) return;
           setSuggestions(res);
           setAnsweredQuery(text);
           setSearching(false);
+          setUnanswered(incomplete ? 'some' : 'none');
+          setDownCountries(down);
         })
         .catch(() => {
           if (id !== reqId.current) return;
           setSuggestions([]);
           setAnsweredQuery(text);
           setSearching(false);
+          setUnanswered('all');
         });
     }, 300);
   };
@@ -161,6 +180,7 @@ export default function PlaceField(props: PlaceFieldProps) {
     setSuggestions([]);
     setAnsweredQuery(null);
     setSearching(false);
+    setUnanswered('none');
     setEnterPending(false);
   };
 
@@ -368,6 +388,26 @@ export default function PlaceField(props: PlaceFieldProps) {
   // box where the same lines would only add noise.
   const listContent = (phone: boolean) => (
     <>
+      {/* Said ABOVE the rows it qualifies, where it is read without scrolling:
+          under them it sat past a dozen suggestions, and on a phone behind
+          the keyboard's accessory bar. Only once the search has concluded —
+          while it still runs, a source is merely late. */}
+      {unanswered === 'some' && !searching && suggestions.length > 0 && (
+        <div
+          data-testid="search-incomplete"
+          style={{
+            padding: phone ? '10px 18px' : '8px 16px',
+            borderBottom: `1px solid ${C.border08}`,
+            color: C.mut,
+            fontSize: 12,
+            lineHeight: 1.4,
+          }}
+        >
+          {downCountries.length > 0
+            ? m.search_incomplete_named({ countries: listLabel(downCountries.map(countryName)) })
+            : m.search_incomplete()}
+        </div>
+      )}
       {/* Above everything, and never filtered by the query: it answers no
           search — it is the one place the app already knows. */}
       {showsPosition && (
@@ -414,16 +454,7 @@ export default function PlaceField(props: PlaceFieldProps) {
         </div>
       )}
       {historyCount > 0 && (
-        <div
-          style={{
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: '.1em',
-            textTransform: 'uppercase',
-            color: C.mut,
-            padding: '10px 16px 2px',
-          }}
-        >
+        <div style={{ ...kicker(), padding: '10px 16px 2px' }}>
           {m.search_recents_title()}
         </div>
       )}
@@ -502,7 +533,7 @@ export default function PlaceField(props: PlaceFieldProps) {
               }}
             >
               {placeSublabel(r)}
-              {props.rowHint ? ` — ${props.rowHint}` : ''}
+              {props.rowHint ? ` · ${props.rowHint}` : ''}
             </div>
           </button>
           {props.rowAction && (
@@ -631,12 +662,8 @@ export default function PlaceField(props: PlaceFieldProps) {
               // the app, a bare input no longer says which one this is.
               <div
                 style={{
+                  ...kicker(),
                   padding: 'calc(12px + env(safe-area-inset-top, 0px)) 20px 0',
-                  fontSize: 12,
-                  fontWeight: 700,
-                  letterSpacing: '.1em',
-                  textTransform: 'uppercase',
-                  color: C.mut,
                 }}
               >
                 {props.title}
@@ -715,7 +742,11 @@ export default function PlaceField(props: PlaceFieldProps) {
                   overflowY: 'auto',
                   overscrollBehavior: 'contain',
                   WebkitOverflowScrolling: 'touch',
-                  paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+                  // Room past the last row: Chrome on Android lays its keyboard
+                  // accessory bar (passwords, cards) OVER the page without
+                  // shrinking the visual viewport, and the last suggestion
+                  // could not be scrolled out from under it.
+                  paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 56px)',
                 }}
               >
                 {listContent(true)}
@@ -735,9 +766,11 @@ export default function PlaceField(props: PlaceFieldProps) {
               >
                 {searching
                   ? null
-                  : panelText.trim().length >= MIN_QUERY
-                    ? m.search_no_results()
-                    : props.emptyHint}
+                  : panelText.trim().length < MIN_QUERY
+                    ? props.emptyHint
+                    : unanswered === 'none'
+                      ? m.search_no_results()
+                      : m.search_unavailable()}
               </div>
             )}
           </div>,

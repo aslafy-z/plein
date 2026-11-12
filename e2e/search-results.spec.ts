@@ -1,4 +1,4 @@
-import { test, expect, gotoMap, phoneOnly, desktopOnly } from './fixtures'
+import { test, expect, gotoMap, phoneOnly, desktopOnly, GEOPF_ADDRESS, GEOPF_POI } from './fixtures'
 
 // The place search used to show whatever fitted, capped at a handful of rows.
 // Geocoders return a dozen candidates: the panel keeps them all behind a
@@ -44,7 +44,7 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/brands-fr.json', (route) =>
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
-  await page.route('**/proxy/ban/**', (route) =>
+  await page.route(GEOPF_ADDRESS, (route) =>
     route.fulfill({ json: { type: 'FeatureCollection', features: BAN_FEATURES } }),
   )
 })
@@ -116,7 +116,7 @@ test.describe('phone', () => {
   })
 
   test('an unmatched search says so instead of showing a blank screen', async ({ page }) => {
-    await page.route('**/proxy/ban/**', (route) =>
+    await page.route(GEOPF_ADDRESS, (route) =>
       route.fulfill({ json: { type: 'FeatureCollection', features: [] } }),
     )
     await gotoMap(page)
@@ -168,4 +168,41 @@ test('the suggestion list ranks localities first', async ({ page }) => {
 
   // The list scrolls: it keeps every answer, however little room there is.
   expect(await list.evaluate((el) => getComputedStyle(el).overflowY)).toBe('auto')
+})
+
+// The BAN only knows addresses: a railway station or an airport comes from
+// the IGN's point-of-interest index, merged into the same list.
+test('a point of interest ranks between the town and its streets', async ({ page }) => {
+  await page.route(GEOPF_POI, (route) =>
+    route.fulfill({
+      json: {
+        type: 'FeatureCollection',
+        features: [
+          {
+            geometry: { coordinates: [-1.4704, 43.4969] },
+            properties: {
+              toponym: 'Gare de Bayonne',
+              category: ['gare voyageurs uniquement', 'transport'],
+              postcode: ['64100'],
+              city: ['Bayonne'],
+              score: 0.9,
+            },
+          },
+        ],
+      },
+    }),
+  )
+  await gotoMap(page)
+  await page.getByLabel('Search for a place').click()
+  await page.getByPlaceholder('Town, address…').fill('Bayonne')
+
+  const list = page.getByTestId('search-suggestions')
+  const rows = list.getByRole('button', { name: /Directions to/ })
+  await expect(rows).toHaveCount(BAN_FEATURES.length + 1, { timeout: 10_000 })
+
+  const labels = await rows.evaluateAll((els) =>
+    els.map((el) => el.getAttribute('aria-label')?.replace('Directions to ', '') ?? ''),
+  )
+  expect(labels.slice(0, 3)).toEqual(['Bayonne', 'Gare de Bayonne', 'Rue de Bayonne'])
+  await expect(list.getByText('64100 Bayonne')).toBeVisible()
 })

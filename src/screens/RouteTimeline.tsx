@@ -1,14 +1,24 @@
 // The computed route as a timeline: header (trip, distance, strategy chips),
-// then the departure, the fuel-stop PLAN (zero, one or several stops with the
-// litres to buy at each), the autonomy limit, the arrival and the browsable
-// alternatives. Presentation of the READY state only — the route shell
-// (RouteScreen) owns the stage, the sheet/panel this scrolls in, and the
-// computing/error states.
+// then the road from departure to arrival in kilometre order — the fuel-stop
+// PLAN (zero, one or several stops with the litres to buy at each), the
+// browsable alternatives and the autonomy limit all sit on the one line, so
+// where a station falls against the dry point is read off its position.
+// Presentation of the READY state only — the route shell (RouteScreen) owns
+// the stage, the sheet/panel this scrolls in, the computing/error states and
+// the « Start the trip » CTA on its bottom edge.
 //
 // The stop cards keep their own presentation on purpose: they are a timeline
-// with a « add to my run » toggle, not the scannable rows ZoneList draws.
-import { type ReactNode } from 'react';
-import { C, mono } from '../theme';
+// with an « add to the trip » toggle, not the scannable rows ZoneList draws.
+import {
+  type ReactNode,
+  type Ref,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
+import { C, display, kicker, mono } from '../theme';
 import { clockLabel, fmtDecimal, fmtPrice, durationLabel } from '../lib/format';
 import { fuelLabel } from '../lib/labels';
 import { useIsDesktop } from '../lib/layout';
@@ -16,6 +26,8 @@ import { m } from '../paraglide/messages.js';
 import { type RouteStation } from '../data/types';
 import type { InfeasibleDiagnostics, RoutePlan } from '../lib/routeOptimizer';
 import ShareIcon from '../components/ShareIcon';
+import EditIcon from '../components/EditIcon';
+import ActionPill, { ActionPills, actionPillInk } from '../components/ActionPill';
 import {
   useApp,
   routeFromLabel,
@@ -48,8 +60,23 @@ const detourLabel = (detourMin: number) =>
 /** Litres with locale decimals — one digit under 10 L, whole litres above */
 export const litresLabel = (litres: number) => fmtDecimal(litres, litres < 10 ? 1 : 0);
 
+/** Headline of the no-plan block: short of range, or short of the arrival floor */
+export function infeasibleTitle(
+  diag: InfeasibleDiagnostics | undefined,
+  arrivalTankPct: number,
+): string {
+  return diag?.arrivalFloorUnmet
+    ? m.ribbon_infeasible_arrival_title({ percent: arrivalTankPct })
+    : m.ribbon_infeasible_title();
+}
+
 /** Why no plan exists — structured diagnostics become one clear sentence */
-function infeasibleLabel(diag: InfeasibleDiagnostics | undefined, limitKm: number): string {
+function infeasibleLabel(
+  diag: InfeasibleDiagnostics | undefined,
+  limitKm: number,
+  arrivalTankPct: number,
+): string {
+  if (diag?.arrivalFloorUnmet) return m.ribbon_infeasible_arrival({ percent: arrivalTankPct });
   const km = Math.round(diag?.furthestReachableKm ?? limitKm);
   if (!diag || diag.noStationInRange) return m.ribbon_infeasible_no_station({ km });
   return m.ribbon_infeasible_gap({ km });
@@ -66,6 +93,8 @@ function arrivalLabel(arrival: ArrivalEstimate | null): string {
       });
     case 'autonomyShort':
       return m.ribbon_arrival_autonomy_short({ km: arrival.limitKm });
+    case 'arrivalFloorUnmet':
+      return m.ribbon_arrival_floor_unmet({ percent: arrival.percent });
     case 'direct':
       return m.ribbon_arrival_direct({ time: clockLabel(new Date(arrival.at)) });
   }
@@ -200,8 +229,8 @@ const departureNode = (place: string, sub: string) => (
   </div>
 );
 
-const arrivalNode = (place: string, sub: string) => (
-  <div style={{ position: 'relative' }}>
+const arrivalNode = (place: string, sub: string, ref?: Ref<HTMLDivElement>) => (
+  <div ref={ref} data-testid="route-arrival" style={{ position: 'relative' }}>
     <div
       style={{
         position: 'absolute',
@@ -255,9 +284,14 @@ export function RouteAwaited() {
   );
 }
 
-/** Where the tank runs dry on the timeline — between two stops, or after the last one */
-const limitMarker = (limitKm: number) => (
-  <div key="limit-marker" style={{ position: 'relative', padding: '0 0 14px' }}>
+/** Where the tank runs dry on the timeline — between two stations, or after the last one */
+const limitMarker = (limitKm: number, ref?: Ref<HTMLDivElement>) => (
+  <div
+    key="limit-marker"
+    ref={ref}
+    data-testid="limit-marker"
+    style={{ position: 'relative', padding: '0 0 14px' }}
+  >
     <div
       style={{
         position: 'absolute',
@@ -285,6 +319,45 @@ export default function RouteTimeline() {
   // for; only a screen with no result yet shows what is being requested.
   const fromLabel = route ? routeState.endpoints.from : routeFromLabel(app);
   const arrivalPlace = route ? routeState.endpoints.to : routeToLabel(app);
+
+  // The rail is measured, not proportional: it ends ON the arrival square
+  // and turns grey AT the range-limit dot, wherever the rows between them
+  // put those two. A percentage of the column's height drew the dry point
+  // between the wrong rows as soon as cards of different heights stacked up.
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const markerRef = useRef<HTMLDivElement>(null);
+  const arrivalRef = useRef<HTMLDivElement>(null);
+  const [rail, setRail] = useState<{ end: number; split: number | null } | null>(null);
+  // The last values set, compared BEFORE calling setRail: the effect runs on
+  // every commit, and even a no-op updater schedules a synchronous re-render
+  // from a layout effect — enough to trip React's nested-update limit.
+  const railRef = useRef(rail);
+  const measureRail = useCallback(() => {
+    const arrival = arrivalRef.current;
+    if (!arrival) return;
+    // Centres of the arrival square (14px at top 0) and the limit dot (10px
+    // at top 5), in the body's coordinates
+    const end = arrival.offsetTop + 7;
+    const marker = markerRef.current;
+    const split = marker ? marker.offsetTop + 10 : null;
+    const last = railRef.current;
+    if (last && last.end === end && last.split === split) return;
+    railRef.current = { end, split };
+    setRail(railRef.current);
+  }, []);
+  // Rows reorder without the column changing height (a strategy chip swaps
+  // which station is the stop): re-measure after every commit, cheaply…
+  useLayoutEffect(measureRail);
+  // …and on reflow the commits do not see (a resized panel rewraps names).
+  // The body mounts with the first route, so that is when to observe it.
+  const hasRoute = route != null;
+  useEffect(() => {
+    const body = bodyRef.current;
+    if (!body) return;
+    const ro = new ResizeObserver(measureRail);
+    ro.observe(body);
+    return () => ro.disconnect();
+  }, [measureRail, hasRoute]);
 
   const toggleStyle = (id: string, size: number) => {
     const inRun = !!app.plannedStops[id];
@@ -316,7 +389,7 @@ export default function RouteTimeline() {
     const st = view.station;
     const inRun = !!app.plannedStops[st.id];
     return (
-      <div key={st.id} style={{ position: 'relative', padding: '0 0 14px' }}>
+      <div key={st.id} data-testid="plan-stop" style={{ position: 'relative', padding: '0 0 14px' }}>
         <div
           style={{
             position: 'absolute',
@@ -347,16 +420,7 @@ export default function RouteTimeline() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span
-              style={{
-                fontSize: 11,
-                fontWeight: 800,
-                letterSpacing: '.1em',
-                textTransform: 'uppercase',
-                color: C.accent,
-                flex: 1,
-              }}
-            >
+            <span style={{ ...kicker(C.accent), flex: 1 }}>
               {count > 1
                 ? m.ribbon_plan_stop_index({ index: index + 1, count })
                 : m.ribbon_recommended_stop()}
@@ -397,31 +461,18 @@ export default function RouteTimeline() {
               </div>
             </div>
           </button>
+          {/* « Go there » is the station alone — a secondary action now
+              that « Start the trip » (the sheet's CTA) hands over the whole
+              itinerary, this stop included */}
           <div style={{ display: 'flex', gap: 10, marginTop: 12, alignItems: 'center' }}>
-            <button
-              className="press"
-              onClick={() => app.openInMaps(st)}
-              style={{
-                flex: 1,
-                background: C.accent,
-                color: C.onAccent,
-                fontSize: 13.5,
-                fontWeight: 800,
-                borderRadius: 20,
-                padding: '11px 0',
-                textAlign: 'center',
-                cursor: 'pointer',
-                boxShadow: `0 8px 20px ${C.accentGlow25}`,
-              }}
-            >
-              {m.ribbon_go_there()}
-            </button>
+            <ActionPill onClick={() => app.openInMaps(st)} label={m.ribbon_go_there()} />
+            <div style={{ flex: 1 }} />
             <button
               className="press"
               onClick={() => app.togglePlannedStop(st.id)}
               title={m.ribbon_add_stop_title()}
               aria-label={inRun ? m.ribbon_remove_stop_aria() : m.ribbon_add_stop_aria()}
-              style={toggleStyle(st.id, 40)}
+              style={toggleStyle(st.id, 34)}
             >
               {inRun ? '✓' : '+'}
             </button>
@@ -431,16 +482,22 @@ export default function RouteTimeline() {
     );
   };
 
-  // ── Plain stop (alternatives) ───────────────────────────────────────────────
+  // ── Alternative: a compact row on the line ─────────────────────────────────
+  // Lighter than a plan stop on purpose — a hollow dot and no frame — so the
+  // plan's cards stay the headline while the alternatives sit at their km.
   const plainNode = (st: RouteStation) => {
     const inRun = !!app.plannedStops[st.id];
     return (
-      <div key={st.id} style={{ position: 'relative', padding: '0 0 14px' }}>
+      <div
+        key={st.id}
+        data-testid="plan-alternative"
+        style={{ position: 'relative', padding: '0 0 14px' }}
+      >
         <div
           style={{
             position: 'absolute',
             left: -24,
-            top: 16,
+            top: 13,
             width: 14,
             height: 14,
             borderRadius: '50%',
@@ -450,10 +507,8 @@ export default function RouteTimeline() {
         />
         <div
           style={{
-            background: C.surface,
-            border: inRun ? `1.5px solid ${C.accentBorder40}` : `1px solid ${C.border}`,
-            borderRadius: 14,
-            padding: '12px 14px',
+            borderRadius: 12,
+            padding: '4px 0 4px 2px',
             display: 'flex',
             alignItems: 'center',
             gap: 12,
@@ -463,14 +518,24 @@ export default function RouteTimeline() {
             onClick={() => app.openStation(st.id)}
             style={{ flex: 1, minWidth: 0, cursor: 'pointer', textAlign: 'left' }}
           >
-            <div style={{ fontSize: 12, color: C.mut, fontWeight: 700 }}>
+            <div style={{ fontSize: 11.5, color: C.mut, fontWeight: 700 }}>
               {m.ribbon_km_marker({ km: Math.round(st.kmAlong) })} · {detourLabel(detourOf(st))}
             </div>
-            <div style={{ fontSize: 14.5, fontWeight: 700, color: C.ink, marginTop: 2 }}>
+            <div
+              style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: C.body,
+                marginTop: 1,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
               {st.name}
             </div>
           </button>
-          <div style={{ font: mono(700, 17), color: C.ink, whiteSpace: 'nowrap' }}>
+          <div style={{ font: mono(700, 15), color: C.body, whiteSpace: 'nowrap' }}>
             {fmtPrice(effectivePrice(st, fuel)?.value)} €
           </div>
           <button
@@ -492,71 +557,81 @@ export default function RouteTimeline() {
   const plan = analysis.plan;
   const limitPct = Math.max(8, Math.min(92, (analysis.limitKm / route.distanceKm) * 100));
 
-  // The optimal sequence, with the autonomy marker threaded between stops
-  const stopNodes: ReactNode[] = [];
-  let markerDone = false;
+  // The road in kilometre order: the plan's stops, the alternatives and the
+  // dry point on one line. A station AT the limit is still reachable, so it
+  // sorts before the marker; the sort is stable, so equal kms keep the plan
+  // ahead of an alternative.
   const count = analysis.planStops.length;
-  analysis.planStops.forEach((view, i) => {
-    if (analysis.needsStop && !markerDone && view.station.kmAlong > analysis.limitKm) {
-      markerDone = true;
-      stopNodes.push(limitMarker(analysis.limitKm));
-    }
-    stopNodes.push(planStopNode(view, i, count));
-  });
-  // Autonomy runs out after the last stop → the marker still belongs on the line
-  if (analysis.needsStop && !markerDone) stopNodes.push(limitMarker(analysis.limitKm));
+  const onLine: { km: number; rank: number; node: ReactNode }[] = [];
+  if (plan?.status === 'planned') {
+    analysis.planStops.forEach((view, i) =>
+      onLine.push({ km: view.station.kmAlong, rank: 0, node: planStopNode(view, i, count) }),
+    );
+  }
+  for (const st of analysis.alternatives) {
+    onLine.push({ km: st.kmAlong, rank: 1, node: plainNode(st) });
+  }
+  if (analysis.needsStop) {
+    onLine.push({ km: analysis.limitKm, rank: 2, node: limitMarker(analysis.limitKm, markerRef) });
+  }
+  onLine.sort((a, b) => a.km - b.km || a.rank - b.rank);
 
-  const nStops = analysis.plannedStops.length;
+  // Measured once laid out; the proportional split only stands in for the
+  // first paint. No dry point on the line → the whole road is within range.
+  const railTop = 8;
+  const railStyle = rail
+    ? {
+        top: railTop,
+        height: Math.max(0, rail.end - railTop),
+        background:
+          rail.split != null
+            ? `linear-gradient(${C.accent} 0 ${rail.split - railTop}px, ${C.toggleOff} ${rail.split - railTop}px)`
+            : analysis.needsStop
+              ? `linear-gradient(${C.accent} 0 ${limitPct}%, ${C.toggleOff} ${limitPct}%)`
+              : C.accent,
+      }
+    : {
+        top: railTop,
+        bottom: railTop,
+        background: `linear-gradient(${C.accent} 0 ${limitPct}%, ${C.toggleOff} ${limitPct}%)`,
+      };
 
   return (
     <div style={{ padding: '16px 0 20px' }}>
       {/* Header */}
       <div style={{ padding: '0 22px' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span
             style={{
-              fontSize: 12,
-              fontWeight: 700,
-              letterSpacing: '.14em',
-              textTransform: 'uppercase',
-              color: C.mut,
+              ...kicker(),
               flex: 1,
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
             }}
           >
             {m.ribbon_header()}
           </span>
-          {/* The URL already carries the trip, but an installed PWA has no
-              address bar to copy it from — same share path as the map view */}
-          <button
-            onClick={() => app.shareRoute()}
-            aria-label={m.ribbon_share_aria()}
-            title={m.ribbon_share_aria()}
-            // A 40px touch target around the 15px icon; the negative margins
-            // keep its footprint (and its baseline) where the bare icon was
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 40,
-              height: 40,
-              margin: -12.5,
-              flexShrink: 0,
-              color: C.accent,
-              cursor: 'pointer',
-            }}
-          >
-            <ShareIcon color={C.accent} size={15} />
-          </button>
-          {/* The endpoints are editable in place above the map — this is the
-              way back to the preferences and the tank */}
-          <button
-            onClick={() => app.editRoute()}
-            style={{ fontSize: 12.5, fontWeight: 700, color: C.accent, cursor: 'pointer' }}
-          >
-            {m.ribbon_edit()}
-          </button>
+          <ActionPills>
+            {/* The URL already carries the trip, but an installed PWA has no
+                address bar to copy it from — same share path as the map view.
+                Icon-only: a labelled pill squeezes the Catalan eyebrow. */}
+            <ActionPill
+              onClick={() => app.shareRoute()}
+              aria-label={m.ribbon_share_aria()}
+              icon={<ShareIcon color={actionPillInk('accent')} size={15} />}
+            />
+            {/* The endpoints are editable in place above the map — this is
+                the way back to the preferences and the tank */}
+            <ActionPill
+              onClick={() => app.editRoute()}
+              label={m.ribbon_edit()}
+              icon={<EditIcon color={actionPillInk('accent')} size={14} />}
+            />
+          </ActionPills>
         </div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: C.ink, marginTop: 4 }}>
+        <div style={{ ...display(22), marginTop: 4 }}>
           {fromLabel} → {arrivalPlace}
         </div>
         <div
@@ -669,16 +744,15 @@ export default function RouteTimeline() {
       ) : null}
 
       {/* Timeline body */}
-      <div style={{ position: 'relative', margin: '14px 22px 0', paddingLeft: 26 }}>
+      <div ref={bodyRef} style={{ position: 'relative', margin: '14px 22px 0', paddingLeft: 26 }}>
         <div
+          aria-hidden="true"
           style={{
             position: 'absolute',
             left: 7,
-            top: 8,
-            bottom: 8,
             width: 4,
             borderRadius: 2,
-            background: `linear-gradient(${C.accent} 0 ${limitPct}%, ${C.toggleOff} ${limitPct}%)`,
+            ...railStyle,
           }}
         />
 
@@ -742,16 +816,15 @@ export default function RouteTimeline() {
                   }}
                 >
                   <div style={{ fontSize: 13.5, fontWeight: 800, color: C.warn }}>
-                    {m.ribbon_infeasible_title()}
+                    {infeasibleTitle(plan.diagnostics, app.arrivalTankPct)}
                   </div>
                   <div style={{ fontSize: 12, color: C.mut, marginTop: 3, lineHeight: 1.45 }}>
-                    {infeasibleLabel(plan.diagnostics, analysis.limitKm)}
+                    {infeasibleLabel(plan.diagnostics, analysis.limitKm, app.arrivalTankPct)}
                   </div>
                 </div>
               </div>
             )}
-            {plan?.status === 'planned' && stopNodes}
-            {plan?.status !== 'planned' && analysis.needsStop && limitMarker(analysis.limitKm)}
+            {onLine.map((e) => e.node)}
             {routeState.corridor === 'ready' && routeState.stations.length === 0 && (
               <div
                 style={{ position: 'relative', padding: '0 0 14px', fontSize: 12.5, color: C.mut }}
@@ -767,54 +840,8 @@ export default function RouteTimeline() {
           </>
         )}
 
-        {/* Tour bar */}
-        {nStops > 0 && (
-          <div style={{ position: 'relative', padding: '0 0 16px' }}>
-            <button
-              onClick={() => app.openPlannedStopsInMaps()}
-              style={{
-                width: '100%',
-                background: C.accentSoft10,
-                border: `1px solid ${C.accentBorder30}`,
-                borderRadius: 14,
-                padding: '12px 16px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                cursor: 'pointer',
-              }}
-            >
-              <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: C.accent, textAlign: 'left' }}>
-                {m.ribbon_selected_stops({ count: nStops })}
-              </span>
-              <span style={{ fontSize: 12.5, fontWeight: 800, color: C.accent, whiteSpace: 'nowrap' }}>
-                {m.ribbon_start_run()}
-              </span>
-            </button>
-          </div>
-        )}
-
         {/* Arrival */}
-        {arrivalNode(arrivalPlace, arrivalLabel(analysis.arrival))}
-
-        {/* Alternatives — candidates worth a look, never « the » plan */}
-        {analysis.alternatives.length > 0 && (
-          <div style={{ paddingTop: 22 }} data-testid="plan-alternatives">
-            <div
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: '.12em',
-                textTransform: 'uppercase',
-                color: C.mut,
-                paddingBottom: 10,
-              }}
-            >
-              {m.ribbon_alternatives_title()}
-            </div>
-            {analysis.alternatives.map(plainNode)}
-          </div>
-        )}
+        {arrivalNode(arrivalPlace, arrivalLabel(analysis.arrival), arrivalRef)}
       </div>
     </div>
   );

@@ -47,12 +47,50 @@ test('the zone card favorite star and deselect control are full touch targets', 
   await expect(page.getByText(/The cheapest/).first()).toBeVisible()
 })
 
-test('the route share control is a full touch target', async ({ page }) => {
+/** A box on paper is not a target if a neighbour paints over part of it:
+    every point of a 3×3 grid across the box must hit-test to the control. */
+async function expectUncovered(control: import('@playwright/test').Locator) {
+  const box = await control.boundingBox()
+  if (!box) throw new Error('control has no box')
+  const handle = await control.elementHandle()
+  for (const fx of [0.1, 0.5, 0.9]) {
+    for (const fy of [0.1, 0.5, 0.9]) {
+      const owned = await handle!.evaluate(
+        (el, [x, y]) => {
+          const hit = document.elementFromPoint(x, y)
+          return hit != null && el.contains(hit)
+        },
+        [box.x + box.width * fx, box.y + box.height * fy],
+      )
+      expect(owned, `point (${fx}, ${fy}) of the box`).toBe(true)
+    }
+  }
+}
+
+test('the route header share and edit controls are full touch targets', async ({ page }) => {
   test.slow() // a route compute
   await gotoMap(page)
   await page.getByText('Route', { exact: true }).click()
   await pickRoutePlace(page, 'to', 'Bordeaux', 'Bordeaux centre')
   await expect(page.getByText('No fuel stop needed').first()).toBeVisible({ timeout: 30_000 })
   await openRouteSheet(page)
-  await expectTouchTarget(page.getByRole('button', { name: 'Share the trip' }))
+  const share = page.getByRole('button', { name: 'Share the trip' })
+  const edit = page.getByRole('button', { name: 'Edit', exact: true })
+  for (const control of [share, edit]) {
+    await expectTouchTarget(control)
+    await expectUncovered(control)
+  }
+  // A finger near the edge of the enlarged box still edits the trip
+  const box = (await edit.boundingBox())!
+  await page.touchscreen.tap(box.x + box.width - 4, box.y + box.height - 4)
+  await expect(edit).toBeHidden()
+  await expect(page.getByRole('button', { name: 'Compare the stations along the route' })).toBeVisible()
+})
+
+test('the filters sheet « Reset » is a full touch target', async ({ page }) => {
+  await gotoMap(page)
+  await page.getByTitle('Filters').first().click()
+  const reset = page.getByRole('button', { name: 'Reset', exact: true })
+  await expectTouchTarget(reset)
+  await expectUncovered(reset)
 })

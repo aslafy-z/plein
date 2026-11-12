@@ -159,3 +159,114 @@ describe('getTravelMatrix on Valhalla', () => {
     expect(fetchMock.mock.calls[0][0]).toContain('/table/');
   });
 });
+
+describe('getRoute, OSRM backed up by Valhalla', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  const osrmOk = {
+    ok: true,
+    status: 200,
+    json: async () => ({
+      code: 'Ok',
+      routes: [
+        {
+          distance: 245_000,
+          duration: 9_000,
+          geometry: { coordinates: [[1.44, 43.6], [-0.58, 44.84]] },
+        },
+      ],
+    }),
+  };
+  const valhallaOk = {
+    ok: true,
+    status: 200,
+    json: async () => ({
+      trip: {
+        summary: { length: 250, time: 9_600 },
+        legs: [{ shape: encodePolyline6([{ lat: 43.6, lng: 1.44 }, { lat: 44.84, lng: -0.58 }]) }],
+      },
+    }),
+  };
+
+  type Answer = { ok: boolean; status: number; json?: () => Promise<unknown> } | 'network' | 'hang';
+
+  /** Script each engine; records which were asked, in order */
+  function stubEngines(osrm: Answer, valhalla: Answer) {
+    const asked: string[] = [];
+    vi.stubGlobal('fetch', (input: string) => {
+      const engine = String(input).includes('/route/v1/') ? 'osrm' : 'valhalla';
+      asked.push(engine);
+      const answer = engine === 'osrm' ? osrm : valhalla;
+      if (answer === 'hang') return new Promise(() => {});
+      if (answer === 'network') return Promise.reject(new TypeError('Failed to fetch'));
+      return Promise.resolve(answer);
+    });
+    return asked;
+  }
+
+  // The provider memoizes routes per endpoints: every test takes its own trip
+  let trip = 0;
+  const endpoints = (): [GeoPoint, GeoPoint] => {
+    trip++;
+    return [{ lat: 43.6 + trip / 100, lng: 1.44 }, { lat: 44.84, lng: -0.58 }];
+  };
+
+  it('never asks Valhalla when OSRM answers', async () => {
+    const asked = stubEngines(osrmOk, valhallaOk);
+
+    const route = await new RealRouteProvider().getRoute(...endpoints());
+
+    expect(route.distanceKm).toBe(245);
+    expect(asked).toEqual(['osrm']);
+  });
+
+  it.each<[string, Answer]>([
+    ['is unreachable', 'network'],
+    ['answers 502', { ok: false, status: 502 }],
+    ['answers 429', { ok: false, status: 429 }],
+  ])('answers from Valhalla when OSRM %s', async (_label, osrm) => {
+    const asked = stubEngines(osrm, valhallaOk);
+
+    const route = await new RealRouteProvider().getRoute(...endpoints());
+
+    expect(route.distanceKm).toBe(250);
+    expect(route.durationMin).toBe(160);
+    expect(route.polyline).toHaveLength(2);
+    expect(asked).toEqual(['osrm', 'valhalla']);
+  });
+
+  it('asks Valhalla too once OSRM has been silent for a while, and takes its answer', async () => {
+    vi.useFakeTimers();
+    const asked = stubEngines('hang', valhallaOk);
+
+    const pending = new RealRouteProvider().getRoute(...endpoints());
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(asked).toEqual(['osrm']);
+    await vi.advanceTimersByTimeAsync(1000);
+    const route = await pending;
+
+    expect(route.distanceKm).toBe(250);
+    expect(asked).toEqual(['osrm', 'valhalla']);
+  });
+
+  it('fails on the OSRM error when both engines are down', async () => {
+    const asked = stubEngines({ ok: false, status: 503 }, 'network');
+
+    await expect(new RealRouteProvider().getRoute(...endpoints())).rejects.toThrow('OSRM HTTP 503');
+
+    expect(asked).toEqual(['osrm', 'valhalla']);
+  });
+
+  it('keeps the avoid options on Valhalla alone: OSRM cannot honour them', async () => {
+    const asked = stubEngines(osrmOk, { ok: false, status: 503 });
+
+    await expect(
+      new RealRouteProvider().getRoute(...endpoints(), { avoidToll: true }),
+    ).rejects.toThrow('Valhalla HTTP 503');
+
+    expect(asked).toEqual(['valhalla']);
+  });
+});

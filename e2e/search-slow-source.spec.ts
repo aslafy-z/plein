@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures'
+import { test, expect, GEOPF_ADDRESS } from './fixtures'
 
 // Regression: when one of the « Automatic » mode's geocoders turns very
 // slow (CartoCiudad has spells of 7 s and more per request), the whole
@@ -16,7 +16,7 @@ test('suggestions do not wait for the slowest source', async ({ page }) => {
   await page.route('**/brands-fr.json', (route) =>
     route.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
-  await page.route('**/proxy/ban/**', (route) =>
+  await page.route(GEOPF_ADDRESS, (route) =>
     route.fulfill({
       json: {
         type: 'FeatureCollection',

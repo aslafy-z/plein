@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
-import { C, ctaStyle, mono, stickyBarStyle } from '../theme';
+import { C, ctaStyle, display, kicker, mono, stickyBarStyle } from '../theme';
 import {
   ALL_FUELS,
   MAIN_FUELS,
@@ -20,8 +20,9 @@ import {
 } from '../state/store';
 import { routeBusy } from '../state/routePipeline';
 import { stationCountry } from '../data/stationIds';
-import { fmtPrice, distLabel, agoLabel, durationLabel } from '../lib/format';
-import { fuelLabel, openStatusLabel, serviceLabel } from '../lib/labels';
+import { fmtPrice, distLabel, agoLabel, dayMonthLabel, durationLabel } from '../lib/format';
+import { fuelLabel, openStatusLabel, outageNote, serviceLabel } from '../lib/labels';
+import { dormantSince, fuelOutage } from '../lib/outages';
 import { useIsDesktop } from '../lib/layout';
 import { pinInitialsHtml } from '../lib/text';
 import { m } from '../paraglide/messages.js';
@@ -30,6 +31,8 @@ import { brandIconSrc } from '../lib/brandIcons';
 import { addBasemap } from '../lib/tiles';
 import Star from '../components/Star';
 import ShareIcon from '../components/ShareIcon';
+import CrossIcon from '../components/CrossIcon';
+import ActionPill, { ActionPills, actionPillInk } from '../components/ActionPill';
 
 /** Static mini-map centred on the station (replaces the prototype's photo slot) */
 function StationMiniMap({ station }: { station: Station }) {
@@ -184,8 +187,12 @@ export default function StationDetail() {
         })
       : null;
 
-  // Fuels to display: any priced fuel + always the main fuels
-  const shownFuels = ALL_FUELS.filter((f) => s.prices[f] != null || MAIN_FUELS.includes(f));
+  // Fuels to display: any priced or out-of-stock fuel + always the main fuels
+  const shownFuels = ALL_FUELS.filter(
+    (f) => s.prices[f] != null || fuelOutage(s, f) != null || MAIN_FUELS.includes(f),
+  );
+  // Out of everything for a week: say it once above the rows
+  const dormant = dormantSince(s);
 
   // Comparison set per fuel: stations along the route, or the stations
   // passing the current filters around the user — the SAME set the list
@@ -257,16 +264,6 @@ export default function StationDetail() {
     ? m.detail_remove_favorite_aria()
     : m.detail_add_favorite_aria();
 
-  /** Round icon button of the desktop header row */
-  const headerButton = {
-    width: 34,
-    height: 34,
-    borderRadius: '50%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  } as const;
 
   // The fiche itself — the same document in both arrangements. It fills the
   // screen on a phone, opening on a mini-map that gives the address a place.
@@ -283,36 +280,38 @@ export default function StationDetail() {
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 4,
-            padding: '10px 12px 0',
+            padding: '12px 16px 0',
             flexShrink: 0,
           }}
         >
-          <button
+          <ActionPill
+            tone="neutral"
             onClick={() => app.back()}
             aria-label={m.detail_close_aria()}
-            title={m.detail_close_aria()}
-            style={{ ...headerButton, color: C.ink, fontSize: 15, fontWeight: 700 }}
-          >
-            ✕
-          </button>
+            icon={<CrossIcon color={actionPillInk('neutral')} />}
+          />
           <span style={{ flex: 1 }} />
-          {/* Share the fiche — native sheet where it exists, clipboard elsewhere */}
-          <button
-            onClick={() => app.shareStation(s)}
-            aria-label={m.detail_share_aria()}
-            style={headerButton}
-          >
-            <ShareIcon color={C.ink} size={17} />
-          </button>
-          {/* Pin to Favorites */}
-          <button onClick={onToggleFavorite} aria-label={favoriteAria} style={headerButton}>
-            <Star
-              filled={app.isFavorite(s.id)}
-              color={app.isFavorite(s.id) ? C.accent : C.ink}
-              size={18}
+          <ActionPills>
+            {/* Share the fiche — native sheet where it exists, clipboard elsewhere */}
+            <ActionPill
+              onClick={() => app.shareStation(s)}
+              aria-label={m.detail_share_aria()}
+              icon={<ShareIcon color={actionPillInk('accent')} size={15} />}
             />
-          </button>
+            {/* Pin to Favorites */}
+            <ActionPill
+              tone="neutral"
+              onClick={onToggleFavorite}
+              aria-label={favoriteAria}
+              icon={
+                <Star
+                  filled={app.isFavorite(s.id)}
+                  color={app.isFavorite(s.id) ? C.accent : actionPillInk('neutral')}
+                  size={16}
+                />
+              }
+            />
+          </ActionPills>
         </div>
       ) : (
         <div style={{ position: 'relative', height: 160, flexShrink: 0, background: C.mapBg }}>
@@ -403,7 +402,7 @@ export default function StationDetail() {
       <div style={{ padding: '18px 20px 8px', display: 'flex', flexDirection: 'column', gap: 18 }}>
         {/* Title + chips */}
         <div>
-          <div style={{ color: C.ink, fontSize: 21, fontWeight: 700 }}>{s.name}</div>
+          <div style={display(21, 700)}>{s.name}</div>
           {s.address && (
             <div style={{ color: C.mut, fontSize: 13, marginTop: 4 }}>
               {s.address}
@@ -463,6 +462,22 @@ export default function StationDetail() {
           </div>
         </div>
 
+        {dormant != null && (
+          <div
+            role="note"
+            style={{
+              background: C.warnSoft,
+              color: C.warnText,
+              borderRadius: 12,
+              padding: '10px 14px',
+              fontSize: 13,
+              fontWeight: 600,
+            }}
+          >
+            {m.detail_dormant({ date: dayMonthLabel(dormant) })}
+          </div>
+        )}
+
         {/* Prices card */}
         <div
           style={{
@@ -477,7 +492,11 @@ export default function StationDetail() {
             const min = rangeFor(f)?.min ?? null;
             let note = '';
             let noteColor: string = C.mut;
-            if (price == null) {
+            const outage = fuelOutage(s, f);
+            if (outage) {
+              note = outageNote(outage);
+              noteColor = C.warn;
+            } else if (price == null) {
               note = m.detail_fuel_not_sold();
             } else if (min != null && priceCents(price) <= priceCents(min)) {
               // Cent precision, like everywhere: a station reading the same
@@ -533,18 +552,7 @@ export default function StationDetail() {
 
         {/* Services */}
         <div>
-          <div
-            style={{
-              color: C.mut,
-              fontSize: 11.5,
-              fontWeight: 700,
-              letterSpacing: '.12em',
-              textTransform: 'uppercase',
-              marginBottom: 10,
-            }}
-          >
-            {m.detail_services()}
-          </div>
+          <div style={{ ...kicker(), marginBottom: 10 }}>{m.detail_services()}</div>
           {s.services.length > 0 ? (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {s.services.map((sv, i) => {
@@ -584,25 +592,29 @@ export default function StationDetail() {
           )}
         </div>
 
-        {/* Savings */}
-        <div
-          style={{
-            background: C.accentSoft09,
-            border: `1px solid ${C.accentBorder}`,
-            borderRadius: 16,
-            padding: '14px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-          }}
-        >
-          <div style={{ font: mono(700, 20), color: C.accent, whiteSpace: 'nowrap' }}>
-            {dSaveStr} €
+        {/* Savings — only for a station that prices the selected fuel: a dry
+            pump or a fuel it doesn't sell saves nothing on a fill-up, and a
+            « 0.00 € » card would read as a comparison that was made */}
+        {cur != null && (
+          <div
+            style={{
+              background: C.accentSoft09,
+              border: `1px solid ${C.accentBorder}`,
+              borderRadius: 16,
+              padding: '14px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+            }}
+          >
+            <div style={{ font: mono(700, 20), color: C.accent, whiteSpace: 'nowrap' }}>
+              {dSaveStr} €
+            </div>
+            <div style={{ color: C.body2, fontSize: 12.5, lineHeight: 1.45 }}>
+              {m.detail_saving_on_tank({ tank: app.tank, scope: scopeSave })}
+            </div>
           </div>
-          <div style={{ color: C.body2, fontSize: 12.5, lineHeight: 1.45 }}>
-            {m.detail_saving_on_tank({ tank: app.tank, scope: scopeSave })}
-          </div>
-        </div>
+        )}
 
       </div>
 

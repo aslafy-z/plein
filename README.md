@@ -11,6 +11,8 @@ you and along your routes, in France, Spain, Andorra and Portugal.
 
 [![Open the app](https://img.shields.io/badge/%E2%96%B6%EF%B8%8E%20Open%20the%20app-plein.zadkiel.fr-3ddc84?style=for-the-badge&labelColor=0f1a14)](https://plein.zadkiel.fr)
 
+Want what is coming next? [staging-plein.zadkiel.workers.dev](https://staging-plein.zadkiel.workers.dev) runs the latest `main`, before it is released — it may break.
+
 [![MIT license](https://img.shields.io/badge/license-MIT-3ddc84?labelColor=0f1a14)](LICENSE)
 [![PWA](https://img.shields.io/badge/PWA-installable-3ddc84?labelColor=0f1a14)](#-usage)
 [![Data](https://img.shields.io/badge/data-%F0%9F%87%AB%F0%9F%87%B7%20France%20%C2%B7%20%F0%9F%87%AA%F0%9F%87%B8%20Spain%20%C2%B7%20%F0%9F%87%A6%F0%9F%87%A9%20Andorra%20%C2%B7%20%F0%9F%87%B5%F0%9F%87%B9%20Portugal-blue?labelColor=0f1a14)](#-data-sources)
@@ -32,6 +34,9 @@ you and along your routes, in France, Spain, Andorra and Portugal.
   good deals in green, the priciest in orange.
 - 🇫🇷🇪🇸🇦🇩🇵🇹 **Four countries on one map** — the official feeds of France,
   Spain, Andorra and Portugal combined; border fill-ups compare at a glance.
+- 🔎 **Place search** — towns, addresses and points of interest (railway
+  stations, airports, monuments) across the four countries, ranked by how
+  well they match what you typed, the country on the map first.
 - 📋 **Real best choice** — the fuel burned for the detour is counted, so a
   closer station can beat the cheapest one.
 - 🛣️ **Route fuel plan** — where to stop along your trip, how many liters at
@@ -42,6 +47,8 @@ you and along your routes, in France, Spain, Andorra and Portugal.
   brands, services and AdBlue.
 - 🕐 **Real opening hours** — "Open 24/7", "Closed · opens at 6:30 am" — with
   price freshness flagged.
+- 🚫 **Shortages flagged** — a dry pump reads "out of stock since Nov 3"
+  instead of "not sold here", and an area counts its dry stations (France).
 - 🏷️ **Recognized brands** — station names and logos from the official feeds
   and OpenStreetMap.
 - 🧭 **Directions** — opens the station in your GPS app.
@@ -67,7 +74,8 @@ you and along your routes, in France, Spain, Andorra and Portugal.
 4. Before a long trip, open the **Route** tab: enter the destination and
    compare the stations along the way. The departure starts on **My position**
    as soon as location has given one, and either endpoint's search offers it
-   as a row — one end at a time.
+   as a row — one end at a time. **Start the trip** hands the whole itinerary,
+   fuel stops included, to Google Maps.
 5. On mobile, install the app (install banner or *Settings → Application*) to
    get it as an icon, full screen and offline.
 
@@ -85,7 +93,9 @@ rest (routing, basemaps) is shared by all four.
 | --- | --- | --- |
 | Fuel prices & opening hours | [Prix des carburants — real-time feed](https://data.economie.gouv.fr/explore/dataset/prix-des-carburants-en-france-flux-instantane-v2/) (data.economie.gouv.fr) | Licence Ouverte / Open Licence |
 | Station brands | [OpenStreetMap](https://www.openstreetmap.org/) (generated static index, matched to stations by proximity) | ODbL |
-| Geocoding & autocompletion | [Base Adresse Nationale](https://adresse.data.gouv.fr/) (api-adresse.data.gouv.fr) | Licence Ouverte / Open Licence |
+| Geocoding & autocompletion | [Base Adresse Nationale](https://adresse.data.gouv.fr/), through the Géoplateforme geocoding service (data.geopf.fr) | Licence Ouverte / Open Licence |
+| Points of interest (airports, railway stations, monuments…) | [Géoplateforme geocoding service](https://geoservices.ign.fr/documentation/services/services-geoplateforme/geocodage) (data.geopf.fr, IGN BD TOPO) | Licence Ouverte / Open Licence |
+| Backup geocoding, when the Géoplateforme does not answer | [Photon](https://photon.komoot.io) (public Komoot instance, OpenStreetMap index), bounded to metropolitan France | ODbL |
 
 ### 🇪🇸 Spain
 
@@ -93,6 +103,7 @@ rest (routing, basemaps) is shared by all four.
 | --- | --- | --- |
 | Fuel prices, hours & brands | [Precios de carburantes](https://geoportalgasolineras.es) (sedeaplicaciones.minetur.gob.es, MITECO) — the brand (*rótulo*) is carried by the feed | Datos abiertos |
 | Geocoding & autocompletion | [CartoCiudad](https://www.cartociudad.es) (IGN) | CC BY 4.0 |
+| Backup geocoding, when CartoCiudad does not answer | [Photon](https://photon.komoot.io), bounded to mainland Spain and the Balearics | ODbL |
 
 ### 🇦🇩 Andorra
 
@@ -100,6 +111,7 @@ rest (routing, basemaps) is shared by all four.
 | --- | --- | --- |
 | Fuel prices & brands | [Preus dels carburants](https://sig.govern.ad/IPE/PreusCarburants) (sig.govern.ad, Govern d'Andorra — Oficina de l'Energia i del Canvi Climàtic) — the brand is derived from the station name; the feed carries neither address nor opening hours | © Govern d'Andorra |
 | Geocoding & autocompletion | Nomenclàtor (official gazetteer) & LocatorIDE (sig.govern.ad, IDE Andorra) | © Govern d'Andorra |
+| Backup geocoding, when the IDE locators do not answer | [Photon](https://photon.komoot.io), bounded to Andorra | ODbL |
 
 ### 🇵🇹 Portugal
 
@@ -118,7 +130,9 @@ rest (routing, basemaps) is shared by all four.
 The app has **no backend**: the browser queries these public services
 directly. Sources are pluggable (`src/data/types.ts`). Offline or when a feed
 is down, the app keeps the last loaded stations (per-area cache) with an
-explicit banner and retries as soon as the connection returns.
+explicit banner and retries as soon as the connection returns. When a
+country's geocoder does not answer, Photon stands in for it; if that fails
+too, the search says which countries are missing from the list.
 
 ## 🛠️ Built with
 

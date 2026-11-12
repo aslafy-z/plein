@@ -48,6 +48,7 @@ import {
   selectZoneBrandCounts,
   selectZoneDelta,
   selectZoneFuels,
+  selectZoneOutageCount,
   sortFavoriteRows,
   effectiveFavSort,
   type AppStore,
@@ -94,6 +95,7 @@ function app(over: Partial<AppStore> = {}): AppStore {
     consumption: 6.5,
     tank: 50,
     startTankPct: 70,
+    arrivalTankPct: 0,
     routeMode: 'balanced',
     plannedStops: {},
     routeState: initialRouteState,
@@ -301,6 +303,28 @@ describe('selectVisible', () => {
     // …and the brand/service filters narrow it like any other zone selector
     expect(selectZoneFuels(app({ ...base, brandSel: ['Shell'] }))).toEqual(['diesel', 'e85'])
     expect(selectZoneFuels(app({ ...base, serviceTags: { carWash: true } }))).toEqual(['unleaded98'])
+  })
+
+  it('selectZoneOutageCount counts live shortages of the selected fuel in the zone', () => {
+    const recent = { since: new Date(Date.now() - 3600_000).toISOString() }
+    const weeksAgo = { since: new Date(Date.now() - 40 * 24 * 3600_000).toISOString() }
+    const data = [
+      // Out of diesel, still selling E85: counts
+      station({ id: 'fr-1', ...north(1), prices: { e85: { value: 0.9 } }, outages: { diesel: recent } }),
+      // Out of everything since today: a shortage, counts
+      station({ id: 'fr-2', ...north(2), outages: { diesel: recent, e10: weeksAgo } }),
+      // Out of everything for weeks: dormant, not counted
+      station({ id: 'fr-3', ...north(3), outages: { diesel: weeksAgo, e10: weeksAgo } }),
+      // Priced diesel wins over a stale outage entry
+      station({ id: 'fr-4', ...north(4), prices: { diesel: { value: 1.8 } }, outages: { diesel: recent } }),
+      // Out of the radius
+      station({ id: 'fr-5', ...north(30), outages: { diesel: recent } }),
+      station({ id: 'fr-6', ...north(1), prices: { e10: { value: 1.9 } }, outages: { e85: recent } }),
+    ]
+    const base = app({ fuel: 'diesel', stations: { status: 'ready', data, activeSource: 'fr', refreshing: false } })
+    expect(selectZoneOutageCount(base)).toBe(2)
+    expect(selectZoneOutageCount(app({ ...base, fuel: 'e85' }))).toBe(1)
+    expect(selectZoneOutageCount(app({ ...base, fuel: 'lpg' }))).toBe(0)
   })
 })
 
@@ -1077,6 +1101,57 @@ describe('selectRouteAnalysis', () => {
     expect(offered('detour')).toEqual(['onroute-a', 'onroute-b', 'onroute-c', 'onroute-d'])
   })
 
+  it('offers the best pump of each place, not several pumps of one town', () => {
+    // Three good prices packed at the departure, then one fair pump per town
+    // down the road. Ranked alone, the departure trio takes three of the four
+    // rows and the road past KM 3 gets a single mention.
+    const wide: RouteStation[] = [
+      corridorStation('town-best', 1.6, 2, 0),
+      corridorStation('town-second', 1.61, 3, 0),
+      corridorStation('town-third', 1.62, 4, 0),
+      corridorStation('mid-a', 1.7, 60, 0),
+      corridorStation('mid-b', 1.72, 110, 0),
+      corridorStation('last-before-arrival', 1.75, 200, 0),
+    ]
+    const a = selectRouteAnalysis(routeApp({ routeMode: 'price', routeState: readyState(wide) }))
+
+    expect(a.alternatives.map((s) => s.id)).toEqual([
+      'town-best',
+      'mid-a',
+      'mid-b',
+      'last-before-arrival',
+    ])
+    // The pumps the list has no row for are still handed over, best first —
+    // the route map draws them as dots
+    expect(a.otherCandidates.map((s) => s.id)).toEqual(['town-second', 'town-third'])
+  })
+
+  it('fills the list from the ranking when the road holds fewer places than rows', () => {
+    const wide: RouteStation[] = [
+      corridorStation('town-best', 1.6, 2, 0),
+      corridorStation('town-second', 1.61, 3, 0),
+      corridorStation('town-third', 1.62, 4, 0),
+      corridorStation('elsewhere', 1.7, 120, 0),
+    ]
+    const a = selectRouteAnalysis(routeApp({ routeMode: 'price', routeState: readyState(wide) }))
+
+    // Two places only: a short list would hide two real options
+    expect(a.alternatives.map((s) => s.id)).toEqual([
+      'town-best',
+      'town-second',
+      'town-third',
+      'elsewhere',
+    ])
+    expect(a.otherCandidates).toEqual([])
+  })
+
+  it('never lists a plan stop among the other candidates', () => {
+    const a = selectRouteAnalysis(routeApp({ startTankPct: 10, routeMode: 'price' }))
+    const planIds = a.planStops.map((p) => p.station.id)
+    expect(planIds.length).toBeGreaterThan(0)
+    for (const s of [...a.alternatives, ...a.otherCandidates]) expect(planIds).not.toContain(s.id)
+  })
+
   it('ranks alternatives on the strategy alone, not on the departure tank reach', () => {
     // A low tank makes only the first stations reachable without stopping, and
     // they are the WORST of the corridor here: two pumps far off the road at
@@ -1137,6 +1212,47 @@ describe('selectRouteAnalysis', () => {
     expect(a.limitKm).toBe(Math.round(reach / 10) * 10)
     expect(a.limitKm).toBe(50)
     expect(a.arrival).toEqual({ kind: 'autonomyShort', limitKm: 50 })
+  })
+
+  describe('tripStops — what « Start the trip » hands to Maps', () => {
+    it('is the plan in driving order, not only the stops the user pinned', () => {
+      // Nothing pinned: the CTA must still carry the stops the plan needs —
+      // launching the pins alone would drive past the fuel the tank requires
+      const a = selectRouteAnalysis(routeApp({ startTankPct: 10, routeMode: 'price' }))
+      expect(a.plannedStops).toEqual([])
+      expect(a.planStops.length).toBeGreaterThan(0)
+      expect(a.tripStops?.map((s) => s.id)).toEqual(a.planStops.map((p) => p.station.id))
+      const kms = a.tripStops!.map((s) => s.kmAlong)
+      expect(kms).toEqual([...kms].sort((x, y) => x - y))
+    })
+
+    it('carries a pinned stop, since the plan is constrained to include it', () => {
+      const a = selectRouteAnalysis(routeApp({ plannedStops: { max: true } }))
+      expect(a.tripStops?.map((s) => s.id)).toContain('max')
+    })
+
+    it('is empty for a trip that needs no stop — the CTA still starts it', () => {
+      expect(selectRouteAnalysis(routeApp()).tripStops).toEqual([])
+    })
+
+    it('is null on an infeasible plan and before any plan stands', () => {
+      const infeasible = selectRouteAnalysis(
+        routeApp({
+          startTankPct: 10,
+          routeState: readyState(CORRIDOR.filter((s) => s.kmAlong > 100)),
+        }),
+      )
+      expect(infeasible.plan?.status).toBe('infeasible')
+      expect(infeasible.tripStops).toBeNull()
+      const geometryOnly = commitGeometry(
+        beginGeometry(initialRouteState, 'k'),
+        'k',
+        ROUTE,
+        ENDS,
+        TRIP,
+      )
+      expect(selectRouteAnalysis(app({ routeState: geometryOnly })).tripStops).toBeNull()
+    })
   })
 
   it('a picked stop is constrained INTO the plan and its litres recomputed', () => {

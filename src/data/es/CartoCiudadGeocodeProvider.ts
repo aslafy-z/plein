@@ -19,7 +19,8 @@ const MAX_RESULTS = 8;
 
 /**
  * CartoCiudad `type` — a geographic taxonomy rather than an address one:
- * « Municipio » / « poblacion » / « toponimo » for places, « callejero » for a
+ * « Municipio » / « poblacion » for places, « toponimo » for a point of
+ * interest (an airport, a railway station, a hospital), « callejero » for a
  * street and « carretera » for a road, « portal » for a house number.
  */
 function kindOf(type: unknown): PlaceKind {
@@ -28,9 +29,10 @@ function kindOf(type: unknown): PlaceKind {
     case 'poblacion':
     case 'provincia':
     case 'comunidad autonoma':
-    case 'toponimo':
     case 'ngbe':
       return 'locality';
+    case 'toponimo':
+      return 'poi';
     case 'callejero':
     case 'carretera':
       return 'street';
@@ -114,6 +116,7 @@ export class CartoCiudadGeocodeProvider implements GeocodeProvider {
     // twice as poblacion + Municipio.
     return rankByKind(
       resolved.filter((r): r is GeocodeResult => r !== null && r !== FAILED),
+      q,
     );
   }
 }

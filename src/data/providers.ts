@@ -3,15 +3,18 @@ import { withGeocodeMemo } from './geocodeMemo';
 import { isForcedOffline } from '../lib/connectivity';
 import type { DataSourceId, GeocodeProvider, ProviderBundle } from './types';
 import { FrStationsProvider } from './fr/FrStationsProvider';
-import { BanGeocodeProvider } from './fr/BanGeocodeProvider';
 import { RealRouteProvider } from './fr/OsrmRouteProvider';
 import { EsStationsProvider } from './es/EsStationsProvider';
-import { CartoCiudadGeocodeProvider } from './es/CartoCiudadGeocodeProvider';
 import { AdStationsProvider } from './ad/AdStationsProvider';
-import { AdGeocodeProvider } from './ad/AdGeocodeProvider';
 import { PtStationsProvider } from './pt/PtStationsProvider';
 import { PhotonGeocodeProvider } from './pt/PhotonGeocodeProvider';
-import { AutoGeocodeProvider, AutoStationsProvider } from './auto/AutoProviders';
+import {
+  AutoGeocodeProvider,
+  AutoStationsProvider,
+  FrGeocodeProvider,
+  adGeocodeProvider,
+  esGeocodeProvider,
+} from './auto/AutoProviders';
 import {
   DemoGeocodeProvider,
   DemoRouteProvider,
@@ -31,14 +34,14 @@ function createBundle(id: DataSourceId): ProviderBundle {
   if (id === 'fr') {
     return {
       stations: new FrStationsProvider(),
-      geocode: new BanGeocodeProvider(),
+      geocode: new FrGeocodeProvider(),
       route: new RealRouteProvider(),
     };
   }
   if (id === 'es') {
     return {
       stations: new EsStationsProvider(),
-      geocode: new CartoCiudadGeocodeProvider(),
+      geocode: esGeocodeProvider(),
       // OSRM / Valhalla public servers cover Spain too
       route: new RealRouteProvider(),
     };
@@ -46,7 +49,7 @@ function createBundle(id: DataSourceId): ProviderBundle {
   if (id === 'ad') {
     return {
       stations: new AdStationsProvider(),
-      geocode: new AdGeocodeProvider(),
+      geocode: adGeocodeProvider(),
       // OSRM / Valhalla public servers cover Andorra too (OSM-based)
       route: new RealRouteProvider(),
     };

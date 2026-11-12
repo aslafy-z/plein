@@ -12,7 +12,7 @@
 // no silent recompute), the timeline / computing / error states otherwise.
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { C, ctaStyle, floatingPanelStyle, mono } from '../theme';
+import { C, ctaStyle, display, floatingPanelStyle, kicker, mono } from '../theme';
 import type { GeocodeResult } from '../data/types';
 import { fmtPrice, durationLabel } from '../lib/format';
 import { fuelLabel } from '../lib/labels';
@@ -31,11 +31,13 @@ import PlaceField from '../components/PlaceField';
 import SheetShell from '../components/SheetShell';
 import RouteTimeline, {
   RouteAwaited,
+  infeasibleTitle,
   litresLabel,
   retryStyle,
   stageSentence,
 } from './RouteTimeline';
 import StationDetail from './StationDetail';
+import ActionPill from '../components/ActionPill';
 
 /** Same cap as the map screen's overlay: fields dragged across a window are
     unreadable, and the width belongs to the map */
@@ -218,9 +220,7 @@ function RouteForm({ withTitle }: { withTitle: boolean }) {
     <div style={{ padding: withTitle ? '20px 22px 8px' : '4px 22px 8px' }}>
       {withTitle && (
         <>
-          <div style={{ fontSize: 24, fontWeight: 800, color: C.ink }}>
-            {m.route_setup_title()}
-          </div>
+          <div style={display(24)}>{m.route_setup_title()}</div>
           <div style={{ fontSize: 13, color: C.mut, marginTop: 4 }}>
             {m.route_setup_subtitle()}
           </div>
@@ -267,6 +267,44 @@ function RouteForm({ withTitle }: { withTitle: boolean }) {
         </div>
       </div>
 
+      {/* Arrival floor — what the plan must leave in the tank at the
+          destination. 0 keeps the per-leg reserve as the only rule. */}
+      <div
+        data-sheet-no-drag=""
+        style={{
+          background: C.surface2,
+          border: `1px solid ${C.border08}`,
+          borderRadius: 14,
+          padding: '12px 16px',
+          marginTop: 12,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 6 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: C.ink, flex: 1 }}>
+            {m.route_arrival_tank()}
+          </span>
+          <span style={{ font: mono(700, 14), color: C.accent }}>
+            {m.unit_percent({ percent: app.arrivalTankPct })}
+          </span>
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={80}
+          step={5}
+          value={app.arrivalTankPct}
+          onChange={(e) => app.setArrivalTankPct(+e.target.value)}
+          aria-label={m.route_arrival_tank()}
+          aria-valuetext={m.unit_percent({ percent: app.arrivalTankPct })}
+          style={{ width: '100%', cursor: 'pointer' }}
+        />
+        <div style={{ fontSize: 11.5, color: C.faint, marginTop: 4 }}>
+          {m.route_arrival_tank_hint({
+            litres: litresLabel((app.tank * app.arrivalTankPct) / 100),
+          })}
+        </div>
+      </div>
+
       {/* Info card */}
       <div
         style={{
@@ -284,18 +322,7 @@ function RouteForm({ withTitle }: { withTitle: boolean }) {
           <strong style={{ color: C.ink }}>{fuelLabel(fuel)}</strong> ·{' '}
           {m.route_settings_recap({ tank })}
         </div>
-        <button
-          onClick={() => app.go('settings')}
-          style={{
-            fontSize: 12.5,
-            fontWeight: 700,
-            color: C.accent,
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {m.route_settings_link()}
-        </button>
+        <ActionPill onClick={() => app.go('settings')} label={m.route_settings_link()} />
       </div>
     </div>
   );
@@ -332,19 +359,8 @@ function RouteLead({ phase }: { phase: Phase }) {
   const app = useApp();
   const analysis = selectRouteAnalysis(app);
 
-  const kicker = (text: string, accent = false) => (
-    <div
-      style={{
-        fontSize: 11.5,
-        fontWeight: 700,
-        letterSpacing: '.12em',
-        textTransform: 'uppercase',
-        color: accent ? C.accent : C.mut,
-        marginBottom: 6,
-      }}
-    >
-      {text}
-    </div>
+  const kickerLine = (text: string, accent = false) => (
+    <div style={{ ...kicker(accent ? C.accent : C.mut), marginBottom: 6 }}>{text}</div>
   );
 
   if (phase === 'ready') {
@@ -357,7 +373,7 @@ function RouteLead({ phase }: { phase: Phase }) {
       const count = analysis.planStops.length;
       return (
         <div>
-          {kicker(
+          {kickerLine(
             count > 1
               ? m.ribbon_plan_stop_index({ index: 1, count })
               : m.ribbon_recommended_stop(),
@@ -395,7 +411,7 @@ function RouteLead({ phase }: { phase: Phase }) {
       const infeasible = plan.status === 'infeasible';
       return (
         <div>
-          {kicker(m.ribbon_header())}
+          {kickerLine(m.ribbon_header())}
           <div style={{ fontSize: 17, fontWeight: 700, color: C.ink }}>
             {app.routeState.endpoints.from} → {app.routeState.endpoints.to}
           </div>
@@ -407,7 +423,7 @@ function RouteLead({ phase }: { phase: Phase }) {
               marginTop: 2,
             }}
           >
-            {infeasible ? m.ribbon_infeasible_title() : m.ribbon_no_stop_needed()}
+            {infeasible ? infeasibleTitle(plan.diagnostics, app.arrivalTankPct) : m.ribbon_no_stop_needed()}
           </div>
         </div>
       );
@@ -417,7 +433,7 @@ function RouteLead({ phase }: { phase: Phase }) {
     // computed for (a recompute keeps the previous trip under its own labels).
     return (
       <div>
-        {kicker(m.ribbon_header())}
+        {kickerLine(m.ribbon_header())}
         <div style={{ fontSize: 17, fontWeight: 700, color: C.ink }}>
           {route ? app.routeState.endpoints.from : routeFromLabel(app)} →{' '}
           {route ? app.routeState.endpoints.to : routeToLabel(app)}
@@ -440,7 +456,7 @@ function RouteLead({ phase }: { phase: Phase }) {
     // distance, no duration, no station.
     return (
       <div>
-        {kicker(m.route_setup_title())}
+        {kickerLine(m.route_setup_title())}
         <div style={{ fontSize: 17, fontWeight: 700, color: C.ink }}>
           {routeFromLabel(app)} → {routeToLabel(app)}
         </div>
@@ -453,7 +469,7 @@ function RouteLead({ phase }: { phase: Phase }) {
 
   return (
     <div>
-      {kicker(m.route_setup_title())}
+      {kickerLine(m.route_setup_title())}
       <div style={{ fontSize: 13.5, color: phase === 'error' ? C.warn : C.mut }}>
         {phase === 'error'
           ? (app.routeState.geometryError ?? m.ribbon_error_fallback())
@@ -508,6 +524,27 @@ export default function RouteScreen() {
   }, []);
 
   const { panelRef, panelInset } = usePanelInset(desktop, fiche);
+
+  // The endpoint fields float over the map's top edge, and a route is fitted
+  // right up to its bounds: without this the departure of a southbound trip
+  // (or the arrival of a northbound one) is framed BEHIND the fields. Only
+  // the fields row is measured, in both arrangements — the phone's setup
+  // chips under it leave once a route stands.
+  const fieldsRef = useRef<HTMLDivElement>(null);
+  const [topInset, setTopInset] = useState(0);
+  useLayoutEffect(() => {
+    const el = fieldsRef.current;
+    const stage = stageRef.current;
+    if (!el || !stage) return;
+    const measure = () =>
+      setTopInset(
+        Math.max(0, Math.round(el.getBoundingClientRect().bottom - stage.getBoundingClientRect().top)),
+      );
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [desktop]);
   const onCollapsedHeight = useCallback((h: number) => setSheetInset(h), []);
 
   // The submit acknowledges in place: the CTA goes busy while the addresses
@@ -537,6 +574,30 @@ export default function RouteScreen() {
       )}
     </button>
   );
+
+  // Results: the trip CTA rides the same bottom edge. It hands Maps the plan
+  // on screen — never a result for older inputs (provisional, or a failed
+  // recompute) nor one whose stations are still loading — and is absent on an
+  // infeasible plan: there is no trip to start on a tank that cannot make it.
+  const tripStops = selectRouteAnalysis(app).tripStops;
+  const tripCta =
+    phase === 'ready' &&
+    tripStops != null &&
+    routeState.corridor === 'ready' &&
+    !routeState.provisional &&
+    routeState.geometry !== 'error' ? (
+      <button
+        className="press"
+        data-testid="route-start-trip"
+        onClick={() => app.openTripInMaps(tripStops)}
+        style={ctaStyle(true)}
+      >
+        {tripStops.length
+          ? m.ribbon_start_trip({ count: tripStops.length })
+          : m.ribbon_start_trip_direct()}
+      </button>
+    ) : null;
+  const footerCta = phase === 'form' ? cta : tripCta;
 
   const content =
     phase === 'form' ? (
@@ -579,6 +640,7 @@ export default function RouteScreen() {
           <RouteMap
             bottomInset={desktop ? 0 : sheetInset}
             leftInset={desktop ? panelInset : 0}
+            topInset={topInset}
           />
 
           {/* The endpoint fields — over the map's top edge, beside the panel
@@ -602,6 +664,7 @@ export default function RouteScreen() {
               }}
             >
               <div
+                ref={fieldsRef}
                 style={{
                   flex: `0 1 ${ENDPOINTS_MAX_WIDTH}px`,
                   minWidth: 240,
@@ -626,7 +689,9 @@ export default function RouteScreen() {
                 pointerEvents: 'none',
               }}
             >
-              <RouteFields />
+              <div ref={fieldsRef}>
+                <RouteFields />
+              </div>
 
               {/* The setup chips ride the overlay — the sheet's copy of the
                   form only shows once expanded, and picking a destination
@@ -686,13 +751,13 @@ export default function RouteScreen() {
                 <StationDetail />
               </div>
             )}
-            {phase === 'form' && !fiche && (
+            {footerCta && !fiche && (
               // The CTA sticks to the panel's bottom edge, whatever the form
-              // scrolls above it
+              // or the timeline scrolls above it
               <div
                 style={{ flexShrink: 0, padding: '14px 18px 18px', borderTop: `1px solid ${C.border}` }}
               >
-                {cta}
+                {footerCta}
               </div>
             )}
           </div>
@@ -717,8 +782,9 @@ export default function RouteScreen() {
 
         {/* Phone: the bottom sheet — the map sheet's gesture engine with the
             route's content. Collapsed leads (recap / recommended stop), the
-            CTA rides the bottom edge during setup, expanding reveals the
-            whole form or the whole timeline. */}
+            CTA rides the bottom edge (« Compare » during setup, « Start the
+            trip » once a plan stands), expanding reveals the whole form or
+            the whole timeline. */}
         {!desktop && (
           <SheetShell
             stageH={stageH}
@@ -761,7 +827,7 @@ export default function RouteScreen() {
               </div>
             )}
             footer={
-              phase === 'form' ? <div style={{ padding: '4px 16px 14px' }}>{cta}</div> : undefined
+              footerCta ? <div style={{ padding: '4px 16px 14px' }}>{footerCta}</div> : undefined
             }
           />
         )}

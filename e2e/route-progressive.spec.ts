@@ -1,4 +1,4 @@
-import { test, expect, openRouteSheet, closeRouteSheet, pickRoutePlace } from './fixtures'
+import { test, expect, openRouteSheet, closeRouteSheet, pickRoutePlace, GEOPF_ADDRESS } from './fixtures'
 import type { Page, Route as PwRoute } from '@playwright/test'
 
 // The route is computed in three stages: the itinerary as soon as the routing
@@ -59,23 +59,25 @@ function osrmRoute(distanceM: number) {
   }
 }
 
-/** One priced station in the corridor, echoed near whatever point was queried */
+/** One priced station per disc the corridor request asks for, echoed at its
+    centre — the request ORs a string of discs along the road (see
+    FrStationsProvider.getStationsAlong), and the boot zone asks for one. */
 function corridorStations(route: PwRoute) {
   const where = new URL(route.request().url()).searchParams.get('where') ?? ''
-  const m = /POINT\(([-\d.]+) ([-\d.]+)\)/.exec(where)
-  const lng = m ? parseFloat(m[1]) : TOULOUSE.lng
-  const lat = m ? parseFloat(m[2]) : TOULOUSE.lat
+  const centers = [...where.matchAll(/POINT\(([-\d.]+) ([-\d.]+)\)/g)].map((m) => ({
+    lng: parseFloat(m[1]),
+    lat: parseFloat(m[2]),
+  }))
+  if (!centers.length) centers.push(TOULOUSE)
   return {
-    total_count: 1,
-    results: [
-      {
-        id: `e2e-${lat.toFixed(2)}-${lng.toFixed(2)}`,
-        ville: 'Testville',
-        adresse: '1 rue du Test',
-        geom: { lat, lon: lng },
-        gazole_prix: '1.70',
-      },
-    ],
+    total_count: centers.length,
+    results: centers.map(({ lat, lng }) => ({
+      id: `e2e-${lat.toFixed(2)}-${lng.toFixed(2)}`,
+      ville: 'Testville',
+      adresse: '1 rue du Test',
+      geom: { lat, lon: lng },
+      gazole_prix: '1.70',
+    })),
   }
 }
 
@@ -108,7 +110,7 @@ async function stubStatics(page: Page) {
   await page.route('**/brands-fr.json', (r) =>
     r.fulfill({ json: { v: 1, labels: [], pois: [] } }),
   )
-  await page.route('**/proxy/ban/**', (r) =>
+  await page.route(GEOPF_ADDRESS, (r) =>
     r.fulfill({ json: banResponse(new URL(r.request().url()).searchParams.get('q') ?? '') }),
   )
   await stubTravelMatrix(page)

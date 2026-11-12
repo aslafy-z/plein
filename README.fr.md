@@ -12,6 +12,8 @@ au Portugal.
 
 [![Ouvrir l'app](https://img.shields.io/badge/%E2%96%B6%EF%B8%8E%20Ouvrir%20l'app-plein.zadkiel.fr-3ddc84?style=for-the-badge&labelColor=0f1a14)](https://plein.zadkiel.fr)
 
+Envie de voir la suite ? [staging-plein.zadkiel.workers.dev](https://staging-plein.zadkiel.workers.dev) sert le dernier `main`, avant sa mise en production — il peut casser.
+
 [![Licence MIT](https://img.shields.io/badge/licence-MIT-3ddc84?labelColor=0f1a14)](LICENSE)
 [![PWA](https://img.shields.io/badge/PWA-installable-3ddc84?labelColor=0f1a14)](#-utilisation)
 [![Données](https://img.shields.io/badge/donn%C3%A9es-%F0%9F%87%AB%F0%9F%87%B7%20France%20%C2%B7%20%F0%9F%87%AA%F0%9F%87%B8%20Espagne%20%C2%B7%20%F0%9F%87%A6%F0%9F%87%A9%20Andorre%20%C2%B7%20%F0%9F%87%B5%F0%9F%87%B9%20Portugal-blue?labelColor=0f1a14)](#-sources-de-données)
@@ -34,6 +36,10 @@ au Portugal.
 - 🇫🇷🇪🇸🇦🇩🇵🇹 **Quatre pays sur une carte** — les flux officiels de la France,
   de l'Espagne, de l'Andorre et du Portugal combinés ; les pleins frontaliers
   se comparent d'un coup d'œil.
+- 🔎 **Recherche de lieux** — villes, adresses et points d'intérêt (gares,
+  aéroports, monuments) dans les quatre pays, classés selon leur
+  correspondance avec ce que vous avez tapé, le pays affiché sur la carte en
+  premier.
 - 📋 **Meilleur choix réel** — le carburant brûlé pour le détour est compté :
   une station plus proche peut battre la moins chère.
 - 🛣️ **Plan carburant du trajet** — où s'arrêter le long du parcours, combien
@@ -43,6 +49,9 @@ au Portugal.
   rayon, enseignes, services et AdBlue.
 - 🕐 **Horaires réels** — « Ouvert 24/24 », « Fermé · ouvre à 6 h 30 » — avec
   la fraîcheur des prix signalée.
+- 🚫 **Ruptures signalées** — une pompe à sec affiche « en rupture depuis le
+  3 nov. » au lieu de « non distribué », et la zone compte ses stations à sec
+  (France).
 - 🏷️ **Enseignes reconnues** — noms et logos des stations depuis les flux
   officiels et OpenStreetMap.
 - 🧭 **« Y aller »** — ouvre la station dans votre app GPS.
@@ -70,7 +79,8 @@ au Portugal.
 4. Avant de partir loin, onglet **Trajet** : saisissez la destination et
    comparez les stations le long du parcours. Le départ est sur **Ma position**
    dès que la localisation en a donné une, et la recherche de chacun des deux
-   points la propose en tête — sur un seul des deux à la fois.
+   points la propose en tête — sur un seul des deux à la fois. **Lancer le
+   trajet** confie tout l'itinéraire, arrêts carburant compris, à Google Maps.
 5. Sur mobile, installez l'app (bannière d'installation ou
    *Réglages → Application*) pour l'avoir en icône, plein écran et hors-ligne.
 
@@ -88,7 +98,9 @@ l'app choisit selon la zone affichée (source *Automatique*). Le reste
 | --- | --- | --- |
 | Prix des carburants & horaires | [Prix des carburants — flux temps réel](https://data.economie.gouv.fr/explore/dataset/prix-des-carburants-en-france-flux-instantane-v2/) (data.economie.gouv.fr) | Licence Ouverte / Open Licence |
 | Enseignes des stations | [OpenStreetMap](https://www.openstreetmap.org/) (index statique généré, rapproché des stations par proximité) | ODbL |
-| Géocodage & autocomplétion | [Base Adresse Nationale](https://adresse.data.gouv.fr/) (api-adresse.data.gouv.fr) | Licence Ouverte / Open Licence |
+| Géocodage & autocomplétion | [Base Adresse Nationale](https://adresse.data.gouv.fr/), via le service de géocodage de la Géoplateforme (data.geopf.fr) | Licence Ouverte / Open Licence |
+| Points d'intérêt (aéroports, gares, monuments…) | [Service de géocodage de la Géoplateforme](https://geoservices.ign.fr/documentation/services/services-geoplateforme/geocodage) (data.geopf.fr, BD TOPO de l'IGN) | Licence Ouverte / Open Licence |
+| Géocodage de secours, quand la Géoplateforme ne répond pas | [Photon](https://photon.komoot.io) (instance publique Komoot, index OpenStreetMap), borné à la France métropolitaine | ODbL |
 
 ### 🇪🇸 Espagne
 
@@ -96,6 +108,7 @@ l'app choisit selon la zone affichée (source *Automatique*). Le reste
 | --- | --- | --- |
 | Prix des carburants, horaires & enseignes | [Precios de carburantes](https://geoportalgasolineras.es) (sedeaplicaciones.minetur.gob.es, MITECO) — l'enseigne (*rótulo*) est portée par le flux | Datos abiertos |
 | Géocodage & autocomplétion | [CartoCiudad](https://www.cartociudad.es) (IGN) | CC BY 4.0 |
+| Géocodage de secours, quand CartoCiudad ne répond pas | [Photon](https://photon.komoot.io), borné à l'Espagne continentale et aux Baléares | ODbL |
 
 ### 🇦🇩 Andorre
 
@@ -103,6 +116,7 @@ l'app choisit selon la zone affichée (source *Automatique*). Le reste
 | --- | --- | --- |
 | Prix des carburants & enseignes | [Preus dels carburants](https://sig.govern.ad/IPE/PreusCarburants) (sig.govern.ad, Govern d'Andorra — Oficina de l'Energia i del Canvi Climàtic) — l'enseigne est déduite du nom de la station ; le flux ne porte ni adresse ni horaires | © Govern d'Andorra |
 | Géocodage & autocomplétion | Nomenclàtor (gazetteer officiel) & LocatorIDE (sig.govern.ad, IDE Andorra) | © Govern d'Andorra |
+| Géocodage de secours, quand les localisateurs de l'IDE ne répondent pas | [Photon](https://photon.komoot.io), borné à l'Andorre | ODbL |
 
 ### 🇵🇹 Portugal
 
@@ -122,6 +136,8 @@ L'app n'a **aucun backend** : le navigateur interroge directement ces services
 publics. Les sources sont pluggables (`src/data/types.ts`). Hors connexion ou
 flux indisponible, l'app garde les dernières stations chargées (cache par
 zone) avec une bannière explicite et réessaie dès que la connexion revient.
+Quand le géocodeur d'un pays ne répond pas, Photon prend le relais ; s'il
+échoue aussi, la recherche indique quels pays manquent dans la liste.
 
 ## 🛠️ Construit avec
 

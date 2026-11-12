@@ -1,5 +1,5 @@
 import { useEffect, useRef, type DOMAttributes, type MutableRefObject, type Ref } from 'react';
-import { C, mono } from '../theme';
+import { C, kicker, mono, sortChipStyle } from '../theme';
 import type { SheetGestures } from './SheetShell';
 import {
   useApp,
@@ -14,9 +14,10 @@ import {
   priceCents,
   selectEffectiveSort,
   selectTripOriginKnown,
+  selectZoneOutageCount,
 } from '../state/store';
 import { fmtPrice, distLabel } from '../lib/format';
-import { openStatusShort } from '../lib/labels';
+import { fuelLabel, openStatusShort } from '../lib/labels';
 import { useIsDesktop } from '../lib/layout';
 import { prefersReducedMotion } from '../lib/motion';
 import { m } from '../paraglide/messages.js';
@@ -62,6 +63,9 @@ export default function ZoneList({
   // single station, but the list highlights all of them
   const stats = selectPriceStats(app);
   const dealCount = selectDeals(app).length;
+  // Stations of the zone out of the selected fuel — absent from the rows (an
+  // empty pump has no price), so said once under them
+  const outageCount = selectZoneOutageCount(app);
   const min = range?.min ?? 0;
   // No trip origin (area out of reach, or no position ever known): rows show
   // no distance — none would start from the user — and « Distance » greys
@@ -132,16 +136,7 @@ export default function ZoneList({
           ...(staticBarGestures ? { touchAction: 'none', cursor: 'grab' } : null),
         }}
       >
-        <span
-          style={{
-            fontSize: 11.5,
-            fontWeight: 700,
-            letterSpacing: '.08em',
-            textTransform: 'uppercase',
-            color: C.mut,
-            whiteSpace: 'nowrap',
-          }}
-        >
+        <span style={{ ...kicker(), whiteSpace: 'nowrap' }}>
           {m.sheet_zone_count_compact({ count: rows.length })}
         </span>
         {dealCount > 1 && (
@@ -179,15 +174,8 @@ export default function ZoneList({
               aria-label={disabled ? m.sheet_sort_distance_unavailable_aria() : undefined}
               title={disabled ? m.sheet_sort_distance_unavailable_aria() : undefined}
               style={{
-                fontSize: 12,
-                fontWeight: 700,
-                color: active ? C.onAccent : C.mut,
-                background: active ? C.accent : C.surface2,
-                padding: '5px 11px',
-                borderRadius: 14,
-                whiteSpace: 'nowrap',
+                ...sortChipStyle(active),
                 flexShrink: 0,
-                transition: 'background .25s var(--ease-snap), color .25s var(--ease-snap)',
                 ...(disabled ? { opacity: 0.4, cursor: 'default' } : null),
               }}
             >
@@ -353,6 +341,14 @@ export default function ZoneList({
             </button>
           );
         })}
+        {rows.length > 0 && outageCount > 0 && (
+          <div
+            data-testid="zone-outage-count"
+            style={{ textAlign: 'center', color: C.mut, fontSize: 12.5, padding: '6px 0 2px' }}
+          >
+            {m.sheet_fuel_out_count({ count: outageCount, fuel: fuelLabel(app.fuel) })}
+          </div>
+        )}
       </div>
     </div>
   );

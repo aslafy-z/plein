@@ -119,6 +119,7 @@ export class AdGeocodeProvider implements GeocodeProvider {
     }
     const ranked = rankByKind(
       resolved.filter((r): r is GeocodeResult => r !== null && r !== FAILED),
+      q,
     );
     return ranked.slice(0, MAX_RESULTS);
   }

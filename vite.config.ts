@@ -126,7 +126,7 @@ function tileHandler(cartoKey: string): TileHandler {
 // the app shows live data even when the browser has no direct internet access.
 const API_UPSTREAMS: Record<string, string> = {
   fr: 'https://data.economie.gouv.fr',
-  ban: 'https://api-adresse.data.gouv.fr',
+  geopf: 'https://data.geopf.fr',
   osrm: 'https://router.project-osrm.org',
   valhalla: 'https://valhalla1.openstreetmap.de',
   es: 'https://sedeaplicaciones.minetur.gob.es',
@@ -143,7 +143,21 @@ function fetchJson(url: string): Promise<{ status: number; body: string }> {
         'curl',
         // --compressed: some egress proxies gzip the response even without
         // Accept-Encoding — let curl negotiate and decode it
-        ['-sS', '--compressed', '--max-time', '25', '-A', UA, '-w', '\n__STATUS__%{http_code}', url],
+        [
+          '-sS',
+          '--compressed',
+          // An egress proxy can front a host through several exits and one of
+          // them may never complete the TLS handshake: give up on a connection
+          // quickly and take another rather than spend the whole budget on it
+          '--connect-timeout', '2',
+          '--retry', '4',
+          '--retry-all-errors',
+          '--retry-delay', '0',
+          '--max-time', '25',
+          '-A', UA,
+          '-w', '\n__STATUS__%{http_code}',
+          url,
+        ],
         { maxBuffer: 64e6 },
         (err, stdout) => {
           if (err) return reject(err)
@@ -160,7 +174,7 @@ function fetchJson(url: string): Promise<{ status: number; body: string }> {
 }
 
 function apiHandler(req: IncomingMessage, res: ServerResponse): void {
-  const m = (req.url ?? '').match(/^\/(fr|ban|osrm|valhalla|es|cartociudad|ad|pt|photon)(\/.*)$/)
+  const m = (req.url ?? '').match(/^\/(fr|geopf|osrm|valhalla|es|cartociudad|ad|pt|photon)(\/.*)$/)
   if (!m) {
     res.statusCode = 404
     res.end()

@@ -41,7 +41,7 @@ test.describe('window', () => {
 
   test('a click outside closes the search', async ({ page }) => {
     await openSearch(page)
-    // exact: the desktop rail's logo is « Plein. — back to the map »
+    // exact: the desktop rail's logo is « Plein. Back to the map »
     await page.getByRole('button', { name: 'Back to the map', exact: true }).click()
     await expect(page.getByPlaceholder('Town, address…')).toHaveCount(0)
   })

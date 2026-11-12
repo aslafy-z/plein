@@ -80,6 +80,18 @@ export interface FuelPrice {
   updatedAt?: string; // ISO timestamp
 }
 
+/**
+ * A fuel the station normally sells but has run out of. Only the French flux
+ * publishes these, and only its « temporary » kind lands here: its
+ * « definitive » kind means the station stopped selling the fuel, which is
+ * what a missing price already says. A fuel in outage never carries a price
+ * at the same time — the price wins when a source sends both.
+ */
+export interface FuelOutage {
+  /** ISO instant the outage was declared, when the source says */
+  since?: string;
+}
+
 export interface Station {
   id: string;
   /** Display name, e.g. "Station U · Croix-Blanche" or "Station · Roanne" (gouv flux has no names) */
@@ -93,6 +105,12 @@ export interface Station {
   city: string;
   postalCode?: string;
   prices: Partial<Record<FuelId, FuelPrice>>;
+  /**
+   * Fuels temporarily out of stock. Absent: no outage known — the Spanish,
+   * Andorran and Portuguese fluxes publish none, and an area cached before
+   * outages were read carries none until it revalidates.
+   */
+  outages?: Partial<Record<FuelId, FuelOutage>>;
   /** Normalized filterable tags */
   tags: ServiceTag[];
   /**
@@ -194,12 +212,13 @@ export interface StationsProvider {
 }
 
 /**
- * What a geocoder result denotes, normalized across the three national
- * geocoders. Suggestions are ranked by this (see `geocodeRank.ts`): someone
- * looking for cheap fuel means the town far more often than the street of the
- * same name three départements away.
+ * What a geocoder result denotes, normalized across the national geocoders.
+ * Suggestions are ranked by this (see `geocodeRank.ts`): someone looking for
+ * cheap fuel means the town far more often than the street of the same name
+ * three départements away. `poi` is a named point of interest — an airport, a
+ * railway station, a stadium, a monument.
  */
-export type PlaceKind = 'locality' | 'street' | 'address' | 'other';
+export type PlaceKind = 'locality' | 'poi' | 'street' | 'address' | 'other';
 
 export interface GeocodeResult {
   label: string; // "Bordeaux centre"
@@ -216,7 +235,16 @@ export interface GeocodeResult {
   kind: PlaceKind;
 }
 
+/** A national source of the merged search — what a notice can name */
+export type GeocodeCountry = 'fr' | 'es' | 'ad' | 'pt';
+
 export interface GeocodeSearchOptions {
+  /**
+   * Where the map is looking. A merged search puts the country around that
+   * point first among results that answer the query equally well — someone
+   * browsing Portugal who types « Valen » means Valença before Valence.
+   */
+  near?: GeoPoint;
   /**
    * Suggestions known SO FAR, published each time a source lands. « Automatic »
    * queries four national geocoders at once and one of them can be seconds
@@ -230,8 +258,12 @@ export interface GeocodeSearchOptions {
    * one source of a merge, or part of a source's own detail calls. It is still
    * the best list available and is returned as usual; the signal only says it
    * must not be remembered as THE answer to this query (`withGeocodeMemo`).
+   *
+   * `missing` names the countries whose source did not answer at all, when the
+   * caller merges several; it is empty or absent when a source only lost part
+   * of its own list.
    */
-  onIncomplete?(): void;
+  onIncomplete?(missing?: readonly GeocodeCountry[]): void;
 }
 
 export interface GeocodeProvider {

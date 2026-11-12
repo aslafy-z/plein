@@ -10,6 +10,7 @@ import {
   parsePriceField,
   parseServices,
   parseFluxTimestamp,
+  parseOutages,
 } from './FrStationsProvider';
 import type { GeoPoint } from '../../lib/geo';
 import { haversineKm, nearestOnPolyline } from '../../lib/geo';
@@ -229,6 +230,66 @@ describe('parsePrices', () => {
   it('returns nothing when the record carries no price at all', () => {
     expect(parsePrices({})).toEqual({});
     expect(parsePrices({ prix: '[]' })).toEqual({});
+  });
+});
+
+describe('parseOutages', () => {
+  // Shapes from the live dataset (Toulouse, 2026-11-07)
+  it('reads the temporary outages off the per-fuel columns, Paris time', () => {
+    expect(
+      parseOutages(
+        {
+          gazole_rupture_type: 'temporaire',
+          gazole_rupture_debut: '2026-11-07T23:58:52+00:00',
+          e10_rupture_type: 'temporaire',
+          e10_rupture_debut: '2026-11-07T12:07:47+00:00',
+          sp95_rupture_type: 'definitive',
+          sp95_rupture_debut: '2022-03-01T21:39:12+00:00',
+          sp98_rupture_type: null,
+          e85_rupture_type: null,
+          gplc_rupture_type: null,
+        },
+        {},
+      ),
+    ).toEqual({
+      diesel: { since: '2026-11-07T22:58:52.000Z' },
+      e10: { since: '2026-11-07T11:07:47.000Z' },
+    });
+  });
+
+  it('keeps an outage without a start date', () => {
+    expect(parseOutages({ gplc_rupture_type: 'temporaire' }, {})).toEqual({
+      lpg: { since: undefined },
+    });
+  });
+
+  it('lets a published price win over an outage on the same fuel', () => {
+    expect(
+      parseOutages(
+        { gazole_rupture_type: 'temporaire', e85_rupture_type: 'temporaire' },
+        { diesel: { value: 1.789 } },
+      ),
+    ).toEqual({ e85: { since: undefined } });
+  });
+
+  it('falls back to the raw rupture list, latest entry per fuel', () => {
+    const rupture = JSON.stringify([
+      { '@nom': 'Gazole', '@id': '1', '@debut': '2019-09-12 19:42:53', '@fin': '', '@type': 'definitive' },
+      { '@nom': 'Gazole', '@id': '1', '@debut': '2026-11-03 17:44:31', '@fin': '', '@type': 'temporaire' },
+      { '@nom': 'SP98', '@id': '6', '@debut': '2026-10-01 08:00:00', '@fin': '', '@type': 'temporaire' },
+      { '@nom': 'SP98', '@id': '6', '@debut': '2026-11-01 08:00:00', '@fin': '', '@type': 'definitive' },
+      { '@nom': 'E85', '@id': '3', '@debut': '2011-08-16 16:54:00', '@fin': '', '@type': '' },
+      { '@nom': 'GPLc', '@id': '4', '@debut': '2026-11-01 08:00:00', '@fin': '2026-11-02 08:00:00', '@type': 'temporaire' },
+    ]);
+    expect(parseOutages({ rupture }, {})).toEqual({
+      diesel: { since: '2026-11-03T16:44:31.000Z' },
+    });
+  });
+
+  it('returns undefined when nothing is out of stock', () => {
+    expect(parseOutages({}, {})).toBeUndefined();
+    expect(parseOutages({ gazole_rupture_type: null, rupture: null }, {})).toBeUndefined();
+    expect(parseOutages({ rupture: '{not json' }, {})).toBeUndefined();
   });
 });
 
@@ -628,6 +689,7 @@ describe('getStationsNear', () => {
 describe('getStationsAlong', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   interface Disc {
@@ -635,46 +697,50 @@ describe('getStationsAlong', () => {
     radiusKm: number;
   }
 
+  type Outcome = 'ok' | 'network' | number;
+
   /**
-   * A stand-in for the flux: answers `within_distance` discs out of `dataset`,
-   * one `limit`/`offset` page at a time, and records every disc asked for.
-   * Without an `order_by` the pages come back in a shifting order, like the
-   * live endpoint is free to do.
+   * A stand-in for the flux's export endpoint: answers the OR-ed
+   * `within_distance` discs of one request out of `dataset`, whole, and
+   * records every disc and every request. `outcomes` scripts the first calls
+   * (a dropped connection, an HTTP status); past its end everything answers.
    */
-  function stubFlux(dataset: { id: number; lat: number; lng: number }[]) {
+  function stubFlux(
+    dataset: { id: number; lat: number; lng: number }[],
+    outcomes: Outcome[] = [],
+  ) {
     const discs: Disc[] = [];
-    let requests = 0;
+    const requests: URL[] = [];
     vi.stubGlobal('fetch', async (input: string) => {
       const url = new URL(String(input), 'http://localhost');
       // The OSM brand index is not what these tests are about
-      if (!url.pathname.includes('/records')) throw new Error('offline');
-      requests++;
-      const m = /POINT\(([-\d.]+) ([-\d.]+)\)', ([\d.]+)km/.exec(url.searchParams.get('where') ?? '');
-      if (!m) throw new Error(`unexpected where: ${url.search}`);
-      const center = { lat: Number(m[2]), lng: Number(m[1]) };
-      const radiusKm = Number(m[3]);
-      if (!discs.some((d) => d.center.lat === center.lat && d.center.lng === center.lng)) {
-        discs.push({ center, radiusKm });
+      if (!url.pathname.endsWith('/exports/json')) throw new Error('offline');
+      requests.push(url);
+      const outcome = outcomes[requests.length - 1] ?? 'ok';
+      if (outcome === 'network') throw new TypeError('Failed to fetch');
+      if (outcome !== 'ok') return { ok: false, status: outcome, json: async () => ({}) };
+      const asked: Disc[] = [];
+      const where = url.searchParams.get('where') ?? '';
+      for (const m of where.matchAll(/POINT\(([-\d.]+) ([-\d.]+)\)', ([\d.]+)km/g)) {
+        asked.push({ center: { lat: Number(m[2]), lng: Number(m[1]) }, radiusKm: Number(m[3]) });
       }
-      const limit = Number(url.searchParams.get('limit'));
-      const offset = Number(url.searchParams.get('offset') ?? 0);
-      const inDisc = dataset.filter((s) => haversineKm(s, center) <= radiusKm);
-      if (url.searchParams.get('order_by') === 'id') inDisc.sort((a, b) => a.id - b.id);
-      else inDisc.sort((a, b) => ((a.id * 7 + offset) % 13) - ((b.id * 7 + offset) % 13));
+      if (!asked.length) throw new Error(`unexpected where: ${url.search}`);
+      discs.push(...asked);
       return {
         ok: true,
-        json: async () => ({
-          total_count: inDisc.length,
-          results: inDisc.slice(offset, offset + limit).map((s) => ({
-            id: s.id,
-            ville: 'Ville',
-            geom: { lat: s.lat, lon: s.lng },
-            gazole_prix: '1.80',
-          })),
-        }),
+        status: 200,
+        json: async () =>
+          dataset
+            .filter((s) => asked.some((d) => haversineKm(s, d.center) <= d.radiusKm))
+            .map((s) => ({
+              id: s.id,
+              ville: 'Ville',
+              geom: { lat: s.lat, lon: s.lng },
+              gazole_prix: '1.80',
+            })),
       };
     });
-    return { discs, requestCount: () => requests };
+    return { discs, requests };
   }
 
   /** A dense polyline heading east then north-east, ~1 km between vertices */
@@ -694,8 +760,16 @@ describe('getStationsAlong', () => {
     return line;
   }
 
-  it('fetches every page of a disc holding more than one', async () => {
-    // 250 stations packed around the middle of a short route: one disc, three pages
+  /** One station right on every fifth vertex, the destination among them */
+  function stationsOn(route: GeoPoint[]) {
+    return route
+      .filter((_, i) => i % 5 === 0 || i === route.length - 1)
+      .map((p, i) => ({ id: 1000 + i, lat: p.lat, lng: p.lng }));
+  }
+
+  it('answers a city-dense stretch in one request, however many stations it holds', async () => {
+    // 250 stations packed around the middle of a short route — three pages of
+    // the paged endpoint, one export
     const route = syntheticRoute(30);
     const mid = route[15];
     const dataset = Array.from({ length: 250 }, (_, i) => ({
@@ -709,24 +783,24 @@ describe('getStationsAlong', () => {
 
     expect(new Set(stations.map((s) => s.id)).size).toBe(250);
     expect(stations).toHaveLength(250);
-    // Three pages per disc (100 + 100 + 50), and not one request more
-    expect(flux.requestCount()).toBe(flux.discs.length * 3);
+    expect(flux.requests).toHaveLength(1);
   });
 
-  it.each([120, 400, 556, 1000])(
-    'covers every vertex of a %i km route with a sample disc, destination included',
-    async (km) => {
+  it.each([
+    [120, 1],
+    [400, 2],
+    [556, 3],
+    [1000, 5],
+  ])(
+    'covers every vertex of a %i km route in %i requests, destination included',
+    async (km, expectedRequests) => {
       const route = syntheticRoute(km);
       const corridorKm = 5;
-      // One station right on every fifth vertex, the destination among them
-      const dataset = route
-        .filter((_, i) => i % 5 === 0 || i === route.length - 1)
-        .map((p, i) => ({ id: 1000 + i, lat: p.lat, lng: p.lng }));
+      const dataset = stationsOn(route);
       const flux = stubFlux(dataset);
 
       const stations = await new FrStationsProvider().getStationsAlong(route, corridorKm);
 
-      expect(flux.discs.length).toBeLessThanOrEqual(10);
       for (const v of route) {
         // The disc must reach the whole corridor around the vertex, not just the vertex
         const covered = flux.discs.some((d) => haversineKm(v, d.center) + corridorKm <= d.radiusKm);
@@ -734,11 +808,95 @@ describe('getStationsAlong', () => {
       }
       const dest = route[route.length - 1];
       expect(flux.discs.some((d) => haversineKm(dest, d.center) < 0.001)).toBe(true);
+      // The discs hug the road: none reaches tens of km off it
+      for (const d of flux.discs) expect(d.radiusKm).toBeLessThanOrEqual(20);
 
       const expected = dataset.filter((s) => nearestOnPolyline(s, route).distKm <= corridorKm);
       expect(stations.map((s) => s.id).sort()).toEqual(expected.map((s) => `fr-${s.id}`).sort());
-      // Ten discs at most, each paged a handful of times: nothing runs away
-      expect(flux.requestCount()).toBeLessThanOrEqual(60);
+      expect(flux.requests).toHaveLength(expectedRequests);
     },
   );
+
+  it('asks only for the columns it parses', async () => {
+    const route = syntheticRoute(30);
+    const flux = stubFlux(stationsOn(route));
+
+    await new FrStationsProvider().getStationsAlong(route, 5);
+
+    const select = flux.requests[0].searchParams.get('select')?.split(',') ?? [];
+    expect(select).toEqual(expect.arrayContaining(['id', 'geom', 'gazole_prix', 'gazole_maj', 'horaires']));
+    // The export answers whole: no paging parameters at all
+    expect(flux.requests[0].searchParams.has('limit')).toBe(false);
+    expect(flux.requests[0].searchParams.has('offset')).toBe(false);
+  });
+
+  it.each<[string, Outcome]>([
+    ['a dropped connection', 'network'],
+    ['a 503', 503],
+    ['a 429', 429],
+  ])('retries %s once instead of failing the whole corridor', async (_label, outcome) => {
+    vi.useFakeTimers();
+    const route = syntheticRoute(30);
+    const dataset = stationsOn(route);
+    const flux = stubFlux(dataset, [outcome]);
+
+    const pending = new FrStationsProvider().getStationsAlong(route, 5);
+    await vi.runAllTimersAsync();
+    const stations = await pending;
+
+    expect(stations).toHaveLength(dataset.length);
+    expect(flux.requests).toHaveLength(2);
+  });
+
+  it('gives up after the retry: a stretch without its stations is not a corridor', async () => {
+    vi.useFakeTimers();
+    const route = syntheticRoute(30);
+    const flux = stubFlux(stationsOn(route), ['network', 'network']);
+
+    const pending = new FrStationsProvider().getStationsAlong(route, 5);
+    const outcome = expect(pending).rejects.toThrow('Failed to fetch');
+    await vi.runAllTimersAsync();
+    await outcome;
+
+    expect(flux.requests).toHaveLength(2);
+  });
+
+  it('does not retry a refusal that a second ask cannot change', async () => {
+    const route = syntheticRoute(30);
+    const flux = stubFlux(stationsOn(route), [404]);
+
+    await expect(new FrStationsProvider().getStationsAlong(route, 5)).rejects.toThrow('404');
+
+    expect(flux.requests).toHaveLength(1);
+  });
+
+  it('falls back to whole records when the flux refuses the column list', async () => {
+    const route = syntheticRoute(30);
+    const dataset = stationsOn(route);
+    const flux = stubFlux(dataset, [400]);
+
+    const stations = await new FrStationsProvider().getStationsAlong(route, 5);
+
+    expect(stations).toHaveLength(dataset.length);
+    expect(flux.requests.map((u) => u.searchParams.has('select'))).toEqual([true, false]);
+  });
+
+  it('reads a `{ results }` envelope like a bare array', async () => {
+    const route = syntheticRoute(30);
+    vi.stubGlobal('fetch', async (input: string) => {
+      if (!String(input).includes('/exports/json')) throw new Error('offline');
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          total_count: 1,
+          results: [{ id: 7, geom: { lat: route[10].lat, lon: route[10].lng }, gazole_prix: '1.80' }],
+        }),
+      };
+    });
+
+    const stations = await new FrStationsProvider().getStationsAlong(route, 5);
+
+    expect(stations.map((s) => s.id)).toEqual(['fr-7']);
+  });
 });

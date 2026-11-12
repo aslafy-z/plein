@@ -6,6 +6,8 @@ import type {
   DataSourceId,
   ExtraProductId,
   FuelId,
+  FuelOutage,
+  GeocodeCountry,
   GeocodeResult,
   ServiceTag,
   VehicleId,
@@ -13,8 +15,9 @@ import type {
 import { EXTRA_PRODUCT_IDS, SERVICE_TAGS } from '../data/types';
 import { INDEPENDENT_BRAND_ID } from './brandIcons';
 import type { Accent, Theme } from './colorScheme';
-import { minutesLabel } from './format';
+import { clockLabel, dayMonthLabel, minutesLabel } from './format';
 import type { OpenStatus } from './hours';
+import { outageStart } from './outages';
 
 export function fuelLabel(id: FuelId): string {
   switch (id) {
@@ -79,6 +82,20 @@ export function accentLabel(accent: Accent): string {
  */
 export function brandGroupLabel(group: string): string {
   return group === INDEPENDENT_BRAND_ID ? m.brand_independent() : group;
+}
+
+/** A country the search covers, as the active locale names it */
+export function countryName(country: GeocodeCountry): string {
+  switch (country) {
+    case 'fr':
+      return m.place_france();
+    case 'es':
+      return m.place_spain();
+    case 'ad':
+      return m.place_andorra();
+    case 'pt':
+      return m.place_portugal();
+  }
 }
 
 /**
@@ -165,6 +182,19 @@ export function openStatusLabel(status: OpenStatus): string {
       return m.hours_opens_at({ time: minutesLabel(status.atMinutes ?? 0) });
     case 'closed':
       return m.hours_closed();
+  }
+}
+
+/** Note on a fuel row of the station detail: « out of stock since 14:05 » */
+export function outageNote(outage: FuelOutage, now = Date.now()): string {
+  const start = outageStart(outage, now);
+  switch (start.kind) {
+    case 'today':
+      return m.detail_fuel_out_today({ time: clockLabel(new Date(start.at)) });
+    case 'day':
+      return m.detail_fuel_out_day({ date: dayMonthLabel(start.at) });
+    case 'unknown':
+      return m.detail_fuel_out();
   }
 }
 

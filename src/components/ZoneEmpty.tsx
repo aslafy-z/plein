@@ -1,8 +1,8 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { C } from '../theme';
+import { C, accentPill } from '../theme';
 import { SERVICE_TAGS } from '../data/types';
 import { useIsDesktop } from '../lib/layout';
-import { useApp, selectZoneFuels, selectZoneLoading } from '../state/store';
+import { useApp, selectZoneFuels, selectZoneLoading, selectZoneOutageCount } from '../state/store';
 import { brandGroupLabel, fuelLabel, serviceTagLabel } from '../lib/labels';
 import { m } from '../paraglide/messages.js';
 
@@ -41,19 +41,33 @@ export default function ZoneEmpty() {
   // Zone empty for the SELECTED fuel: which fuels are actually sold around?
   const soldFuels = selectZoneFuels(app).filter((f) => f !== app.fuel);
 
+  // Stations around sell the selected fuel but are out of it: a shortage,
+  // not a fuel the zone lacks — saying « not sold here » mid-shortage would
+  // send the user looking for a fuel that is merely gone for now
+  const outageCount = selectZoneOutageCount(app);
+
   // Stations around, but none sells the selected fuel (no E10/E85 outside
   // France…) — name the culprit and offer what IS sold
-  if (soldFuels.length > 0) {
+  if (soldFuels.length > 0 || outageCount > 0) {
+    const fuel = fuelLabel(app.fuel);
     return (
-      <Block title={m.sheet_fuel_not_sold({ fuel: fuelLabel(app.fuel) })}>
-        <div style={chipRow}>
-          <span style={{ color: C.mut, fontSize: 13 }}>{m.sheet_sold_here()}</span>
-          {soldFuels.map((f) => (
-            <button key={f} className="press" onClick={() => app.setFuel(f)} style={fuelChipStyle}>
-              {fuelLabel(f)}
-            </button>
-          ))}
-        </div>
+      <Block
+        title={
+          outageCount > 0
+            ? m.sheet_fuel_out_count({ count: outageCount, fuel })
+            : m.sheet_fuel_not_sold({ fuel })
+        }
+      >
+        {soldFuels.length > 0 && (
+          <div style={chipRow}>
+            <span style={{ color: C.mut, fontSize: 13 }}>{m.sheet_sold_here()}</span>
+            {soldFuels.map((f) => (
+              <button key={f} className="press" onClick={() => app.setFuel(f)} style={fuelChipStyle}>
+                {fuelLabel(f)}
+              </button>
+            ))}
+          </div>
+        )}
       </Block>
     );
   }
@@ -185,15 +199,7 @@ const chipRow: CSSProperties = {
 };
 
 /** The way out — the only accent the block spends, so it reads as the action */
-const actionStyle: CSSProperties = {
-  background: C.accent,
-  color: C.onAccent,
-  fontSize: 14.5,
-  fontWeight: 700,
-  borderRadius: 22,
-  padding: '12px 22px',
-  boxShadow: `0 8px 20px ${C.accentGlow25}`,
-};
+const actionStyle: CSSProperties = accentPill(14.5, '12px 22px');
 
 /** A fuel the zone does sell: one tap switches to it */
 const fuelChipStyle: CSSProperties = {

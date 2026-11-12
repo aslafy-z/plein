@@ -121,6 +121,7 @@ import {
   type RouteState,
 } from './routePipeline';
 import { mapUrlQuery, parseMapUrl } from '../lib/mapUrl';
+import { isLiveOutage } from '../lib/outages';
 import {
   coordinateLabel,
   parseRouteUrl,
@@ -187,6 +188,8 @@ export function filtersResetTarget(vehicle: VehicleId): { radius: number; fuel: 
 }
 /** Default departure tank level (%) — adjustable on the route setup */
 const DEFAULT_START_TANK_PCT = 70;
+/** Default arrival floor (%) — a plan should not land on fumes unless asked to */
+const DEFAULT_ARRIVAL_TANK_PCT = 10;
 /**
  * Points of one fuel-plan matrix call: origin + candidate stations +
  * destination. This is OUR budget, not a backend limit — 32 keeps the request
@@ -533,7 +536,17 @@ export interface AppStore {
   searchedAway: boolean;
   /** Name of the searched place (null when following the user / free pan) */
   searchLabel: string | null;
-  setSearchArea(p: GeoPoint, label?: string): void;
+  /**
+   * The place the search last picked, pinned on the map. Unlike `searchLabel`
+   * it SURVIVES a free pan: the label names what the zone is on and goes with
+   * the first drag, the pin marks where the place is so it can be found — and
+   * tapped — again. Dropped with the search itself (`resetSearchToUser`) or
+   * replaced by the next named area.
+   */
+  searchPin: { point: GeoPoint; label: string } | null;
+  /** `pin` marks a named place on the map — a searched place, not a station,
+      which already wears a pin of its own. */
+  setSearchArea(p: GeoPoint, label?: string, opts?: { pin?: boolean }): void;
   resetSearchToUser(): void;
   /** Which search field is open, null when none. A nav state like the
       filters sheet: opening one stacks a history entry, so the system Back
@@ -603,6 +616,9 @@ export interface AppStore {
   /** Tank level at departure (%), drives the autonomy math */
   startTankPct: number;
   setStartTankPct(v: number): void;
+  /** Least tank level (%) the fuel-stop plan may reach the destination with */
+  arrivalTankPct: number;
+  setArrivalTankPct(v: number): void;
   routeState: RouteState;
   /** Re-run both stages for the current endpoints */
   retryRoute(): void;
@@ -645,7 +661,8 @@ export interface AppStore {
   toast: string | null;
   notify(msg: string): void;
   openInMaps(target: Station | RouteStation): void;
-  openPlannedStopsInMaps(): void;
+  /** Hand the whole trip to Google Maps: departure → `stops` (driving order) → arrival */
+  openTripInMaps(stops: readonly Station[]): void;
   shareStation(target: Station | RouteStation): void;
   /** Share the map as it stands — same link the address bar carries */
   shareMapView(): void;
@@ -894,6 +911,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [startTankPct, setStartTankPctState] = useState<number>(
     initialRoute.startTankPct ?? persisted.startTankPct ?? DEFAULT_START_TANK_PCT,
   );
+  const [arrivalTankPct, setArrivalTankPctState] = useState<number>(
+    // A link that names a trip but predates this setting was shared without
+    // a floor: it opens as it was computed, on neither the reader's own
+    // floor nor the default
+    initialRoute.arrivalTankPct ??
+      (linkNamesTrip ? 0 : (persisted.arrivalTankPct ?? DEFAULT_ARRIVAL_TANK_PCT)),
+  );
   // Forced migration to « Automatic »: legacy persisted ids ('gouv' before
   // the country rename) and new installs land on 'auto'; only explicit choices
   // of the current scheme survive. The 3-letter country codes older builds
@@ -930,6 +954,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // the map — or until a shared link says which area to open on.
   const [searchPos, setSearchPos] = useState<GeoPoint>(initialMap.center ?? initialPos);
   const [searchLabel, setSearchLabel] = useState<string | null>(null);
+  const [searchPin, setSearchPin] = useState<AppStore['searchPin']>(null);
   const [focusStationId, setFocusStationId] = useState<string | null>(null);
   // A link-provided area counts as « searched elsewhere »: the geolocation fix
   // landing right after must move the user dot, not the shared view.
@@ -1040,6 +1065,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (!searchMovedRef.current) {
           setSearchPos(p);
           setSearchLabel(null);
+          setSearchPin(null);
         }
         setGeoStatus('granted');
         setGeoHold(false);
@@ -1063,13 +1089,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [endGeoRequest]);
   useEffect(() => () => clearTimeout(geoSpinTimer.current), []);
 
-  const setSearchArea = useCallback((p: GeoPoint, label?: string) => {
+  const setSearchArea = useCallback((p: GeoPoint, label?: string, opts?: { pin?: boolean }) => {
     searchMovedRef.current = true;
     setSearchPos(p);
     setSearchLabel(label ?? null);
     // Picking a named place moves to a new context — drop the map selection
     // (free pans keep it: the user may be locating their selected station)
-    if (label) setFocusStationId(null);
+    // and the previous place's pin. A free pan keeps the pin too: it is what
+    // still says where the searched place is once the zone has left it.
+    if (label) {
+      setFocusStationId(null);
+      setSearchPin(opts?.pin ? { point: p, label } : null);
+    }
     savePersisted({ lastPos: p });
   }, []);
 
@@ -1094,6 +1125,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (geoFixed || searchLabel != null) {
       setSearchPos(userPos);
       setSearchLabel(null);
+      setSearchPin(null);
     }
     requestGeolocation();
   }, [geoFixed, searchLabel, requestGeolocation, userPos]);
@@ -1173,11 +1205,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       tank,
       consumption,
       startTankPct,
+      arrivalTankPct,
       avoidMotorway,
       avoidToll,
     }),
     [
-      avoidMotorway, avoidToll, consumption, fromIsCurrentPosition, fromPoint, fromText, fuel,
+      arrivalTankPct, avoidMotorway, avoidToll, consumption, fromIsCurrentPosition, fromPoint, fromText, fuel,
       routeMode, startTankPct, tank, toIsCurrentPosition, toPoint, toText, vehicle,
     ],
   );
@@ -1770,6 +1803,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       matrixKeyRef.current = null;
       clearTimeout(matrixTimer.current);
       setRouteState((s) => matrixBlocked(s, 'idle'));
+      // A corridor that answered empty is a final answer too: the plan stands
+      // on what it has, and nothing further will land.
+      if (route && trip && routeState.corridor === 'ready') markRoute('route:plan');
       return;
     }
     const { avoidMotorway, avoidToll, vehicle } = trip;
@@ -1979,6 +2015,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     savePersisted({ startTankPct: v });
   }, []);
 
+  const setArrivalTankPct = useCallback((v: number) => {
+    setArrivalTankPctState(v);
+    savePersisted({ arrivalTankPct: v });
+  }, []);
+
   const setSourceId = useCallback((s: DataSourceId) => {
     setSourceIdState(s);
     savePersisted({ sourceId: s });
@@ -2046,8 +2087,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setFuel(target.fuel);
   }, [setFuel, setRadius, vehicle]);
 
+  // Read through a ref: the callback must not change identity with every map
+  // move, and a search only needs where the map looks when it is typed.
+  const searchPosRef = useRef(searchPos);
+  searchPosRef.current = searchPos;
   const searchPlaces = useCallback(
-    (q: string, opts?: GeocodeSearchOptions) => getProviders(sourceId).geocode.search(q, opts),
+    (q: string, opts?: GeocodeSearchOptions) =>
+      getProviders(sourceId).geocode.search(q, { ...opts, near: searchPosRef.current }),
     [sourceId],
   );
 
@@ -2329,17 +2375,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [showToast, mapsSite],
   );
 
-  const openPlannedStopsInMaps = useCallback(() => {
-    const stops = routeState.stations.filter((s) => plannedStops[s.id]);
-    if (!stops.length || !toPoint) return;
-    // Multi-stop URLs are a Google Maps feature — used on every platform
-    // (Android/iOS open the Google Maps app via universal links when installed).
-    showToast(m.toast_opening_maps({ site: m.maps_site_google() }));
-    const waypoints = stops.map((s) => `${s.lat},${s.lng}`).join('|');
-    const origin = fromPoint ? `&origin=${fromPoint.lat},${fromPoint.lng}` : '';
-    const url = `https://www.google.com/maps/dir/?api=1${origin}&destination=${toPoint.lat},${toPoint.lng}&waypoints=${encodeURIComponent(waypoints)}&travelmode=driving`;
-    window.open(url, '_blank', 'noopener');
-  }, [fromPoint, plannedStops, routeState.stations, showToast, toPoint]);
+  const openTripInMaps = useCallback(
+    (stops: readonly Station[]) => {
+      if (!toPoint) return;
+      // Multi-stop URLs are a Google Maps feature — used on every platform
+      // (Android/iOS open the Google Maps app via universal links when installed).
+      showToast(m.toast_opening_maps({ site: m.maps_site_google() }));
+      const waypoints = stops.length
+        ? `&waypoints=${encodeURIComponent(stops.map((s) => `${s.lat},${s.lng}`).join('|'))}`
+        : '';
+      const origin = fromPoint ? `&origin=${fromPoint.lat},${fromPoint.lng}` : '';
+      const url = `https://www.google.com/maps/dir/?api=1${origin}&destination=${toPoint.lat},${toPoint.lng}${waypoints}&travelmode=driving`;
+      window.open(url, '_blank', 'noopener');
+    },
+    [fromPoint, showToast, toPoint],
+  );
 
   const copyShareLink = useCallback(
     (url: string) => {
@@ -2483,6 +2533,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       searchPos,
       searchedAway: haversineKm(searchPos, userPos) > 0.5,
       searchLabel,
+      searchPin,
       setSearchArea,
       resetSearchToUser,
       searchOpen,
@@ -2523,6 +2574,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setAvoidToll,
       startTankPct,
       setStartTankPct,
+      arrivalTankPct,
+      setArrivalTankPct,
       routeState,
       retryRoute,
       retryCorridor,
@@ -2554,7 +2607,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toast,
       notify: showToast,
       openInMaps,
-      openPlannedStopsInMaps,
+      openTripInMaps,
       shareStation,
       shareMapView,
       shareRoute,
@@ -2569,7 +2622,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [
       screen, prevScreen, go, back, openStation, fuel, setFuel, cycleFuel, sort, radius, setRadius,
       brandSel, toggleBrand, serviceTags, filtersOpen, resetFilters, userPos, geoStatus,
-      geoLocating, requestGeolocation, searchPos, searchLabel, setSearchArea, resetSearchToUser,
+      geoLocating, requestGeolocation, searchPos, searchLabel, searchPin, setSearchArea, resetSearchToUser,
       searchOpen, setSearchOpenNav,
       focusStationId, mapZoom, setMapZoom,
       favorites, toggleFavorite, favoritePrices, stations, roadReach, loadStations,
@@ -2583,11 +2636,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       plannedStops, togglePlannedStop, vehicle, setVehicle, tank, setTank,
       consumption, setConsumption,
       avoidMotorway, avoidToll, setAvoidMotorway, setAvoidToll, startTankPct, setStartTankPct,
+      arrivalTankPct, setArrivalTankPct,
       setFiltersOpenNav, sourceId, setSourceId, mapsSite, setMapsSite,
       locale, localeIsExplicit, setLocale, theme, themeIsExplicit, setTheme,
       accent, setAccent, detailId, toast, showToast,
       canInstall, installDismissed, promptInstall, dismissInstallBanner, geoFixed,
-      openInMaps, openPlannedStopsInMaps, shareStation, shareMapView, shareRoute,
+      openInMaps, openTripInMaps, shareStation, shareMapView, shareRoute,
       finishOnboarding, sheetHint, consumeSheetHint,
       whatsNew, whatsNewOpen, setWhatsNewOpenNav,
     ],
@@ -2976,6 +3030,22 @@ export const selectZoneFuels = cached((app: AppStore): FuelId[] => {
 });
 
 /**
+ * Zone stations (every filter but the fuel one) with the selected fuel out of
+ * stock — what the empty state names instead of « not sold here », and the
+ * count under the list. Dormant stations (out of everything for a week) are
+ * left out: they are closed, not short. The French flux never prices a fuel
+ * it lists as out, so these are never in the ranked list itself.
+ */
+export const selectZoneOutageCount = cached((app: AppStore): number => {
+  const now = Date.now();
+  let n = 0;
+  for (const s of selectZoneStations(app)) {
+    if (effectivePrice(s, app.fuel) == null && isLiveOutage(s, app.fuel, now)) n++;
+  }
+  return n;
+});
+
+/**
  * Stations drawn on the map: every loaded station passing the fuel/brand/
  * service filters, NOT limited to the radius circle. Restricting pins to the
  * radius makes them pop in and out while panning; the circle stays a visual
@@ -3339,6 +3409,8 @@ export type ArrivalEstimate =
   | { kind: 'withStops'; stops: number; at: number; extraMin: number }
   /** The tank cannot make it without stopping */
   | { kind: 'autonomyShort'; limitKm: number }
+  /** The destination is in reach, but not with `percent` % left in the tank */
+  | { kind: 'arrivalFloorUnmet'; percent: number }
   | { kind: 'direct'; at: number };
 
 /**
@@ -3421,6 +3493,7 @@ export const selectRoutePlan = cached((app: AppStore): RoutePlan | null => {
     tankLitres: app.tank,
     consumptionLitresPer100Km: app.consumption,
     startFuelLitres: (app.tank * app.startTankPct) / 100,
+    minDestinationFuelLitres: (app.tank * app.arrivalTankPct) / 100,
     strategy: app.routeMode,
     requiredStationIds: required,
     quality: legs.quality,
@@ -3440,12 +3513,25 @@ export interface RouteAnalysis {
   planStops: PlanStopView[];
   /** Best candidates OUTSIDE the plan, km order — browsing, never « the » plan */
   alternatives: RouteStation[];
+  /**
+   * Every other station the plan could have stopped at, best first — on the
+   * route map as plain dots, so a pump the list has no row for is still there
+   * to open and to add.
+   */
+  otherCandidates: RouteStation[];
   limitKm: number;
   autonomyKm: number;
   needsStop: boolean;
   arrival: ArrivalEstimate | null;
-  /** Stops the user picked by hand (feed the multi-stop Maps run) */
+  /** Stops the user picked by hand — constrained into the plan */
   plannedStops: RouteStation[];
+  /**
+   * What « Start the trip » hands to Maps: the plan's stops in driving order
+   * (the user's picks are already in it), `[]` for a trip that needs none.
+   * Null while no plan stands, and for an infeasible one — there is no trip
+   * to start on a plan that says the tank cannot make it.
+   */
+  tripStops: RouteStation[] | null;
   /** User picks the optimizer could not place (no usable price / off corridor) */
   invalidPlannedStopIds: string[];
   /**
@@ -3468,6 +3554,33 @@ export interface RouteAnalysis {
 
 /** Number of alternative stations offered around the plan */
 const MAX_ALTERNATIVES = 4;
+
+/**
+ * Two pumps this close along the road are the same place to stop. The list
+ * holds four rows for the whole trip: the three best-scored pumps of the
+ * departure town at KM 1–3 said one thing three times, and left the rest of
+ * the road — the last town before the mountains — unmentioned.
+ */
+const ALTERNATIVE_SPACING_KM = 5;
+
+/**
+ * The first `max` of a best-first list, at most one per stretch of
+ * `ALTERNATIVE_SPACING_KM` — the best of each place, in ranking order. When
+ * the road does not hold `max` distinct places, the leftover slots go back to
+ * the ranking alone: a short list is not better than a second pump in town.
+ */
+function spreadAlongRoute(ranked: readonly RouteStation[], max: number): RouteStation[] {
+  const kept: RouteStation[] = [];
+  for (const s of ranked) {
+    if (kept.length >= max) break;
+    if (kept.every((k) => Math.abs(k.kmAlong - s.kmAlong) >= ALTERNATIVE_SPACING_KM)) kept.push(s);
+  }
+  for (const s of ranked) {
+    if (kept.length >= max) break;
+    if (!kept.includes(s)) kept.push(s);
+  }
+  return kept;
+}
 
 /**
  * What a lone stop at candidate `i` would add to the trip — DRIVING km and
@@ -3526,7 +3639,7 @@ export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
   }
   const planIds = new Set(plan?.stops.map((s) => s.stationId) ?? []);
   const legs = plan ? selectPlanLegs(app) : null;
-  const alternatives = !legs
+  const ranked = !legs
     ? []
     : candidates
         .map((c, i) => ({ c, detour: alternativeDetour(legs, i) }))
@@ -3543,9 +3656,12 @@ export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
         // stops that precede it. The timeline's « range limit » marker
         // is what says where the dry point falls.
         .sort((a, b) => a.score - b.score || (a.station.id < b.station.id ? -1 : 1))
-        .slice(0, MAX_ALTERNATIVES)
-        .map((e) => e.station)
-        .sort((a, b) => a.kmAlong - b.kmAlong);
+        .map((e) => e.station);
+  const alternatives = spreadAlongRoute(ranked, MAX_ALTERNATIVES).sort(
+    (a, b) => a.kmAlong - b.kmAlong,
+  );
+  const offeredIds = new Set(alternatives.map((s) => s.id));
+  const otherCandidates = ranked.filter((s) => !offeredIds.has(s.id));
 
   const picked = routeState.stations.filter((s) => app.plannedStops[s.id]);
   const candidateIds = new Set(candidates.map((c) => c.station.id));
@@ -3571,7 +3687,9 @@ export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
         extraMin: Math.round(plan.extraDurationMin),
       };
     } else if (plan.status === 'infeasible') {
-      arrival = { kind: 'autonomyShort', limitKm };
+      arrival = plan.diagnostics?.arrivalFloorUnmet
+        ? { kind: 'arrivalFloorUnmet', percent: app.arrivalTankPct }
+        : { kind: 'autonomyShort', limitKm };
     } else {
       arrival = { kind: 'direct', at: Date.now() + route.durationMin * 60000 };
     }
@@ -3581,11 +3699,18 @@ export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
     plan,
     planStops,
     alternatives,
+    otherCandidates,
     limitKm,
     autonomyKm,
     needsStop,
     arrival,
     plannedStops: picked,
+    tripStops:
+      plan?.status === 'planned'
+        ? planStops.map((p) => p.station)
+        : plan?.status === 'direct'
+          ? []
+          : null,
     invalidPlannedStopIds,
     detourMinById,
     purchaseLitres: plan ? plan.stops.reduce((a, s) => a + s.purchasedLitres, 0) : null,

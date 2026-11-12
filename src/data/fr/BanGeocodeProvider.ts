@@ -1,9 +1,15 @@
-// Base Adresse Nationale geocoder — https://api-adresse.data.gouv.fr
+// Base Adresse Nationale geocoder — the `address` index of the IGN
+// Géoplateforme geocoding service (data.geopf.fr). The API Adresse moved there
+// from api-adresse.data.gouv.fr, whose `Sunset` header has passed (2026-01-31);
+// same addok engine, same GeoJSON, so only the endpoint and the `index`
+// parameter differ. The `poi` index of the same service is a separate call
+// (`GeopfPoiGeocodeProvider`): one mixed request would make addresses and
+// points of interest compete for a single page.
 import { IS_DEV } from '../../lib/env';
 import { rankByKind } from '../geocodeRank';
 import type { GeocodeProvider, GeocodeResult, PlaceKind } from '../types';
 
-const ENDPOINT = (IS_DEV ? '/proxy/ban' : 'https://api-adresse.data.gouv.fr') + '/search/';
+const ENDPOINT = (IS_DEV ? '/proxy/geopf' : 'https://data.geopf.fr') + '/geocodage/search';
 const TIMEOUT_MS = 6000;
 const MIN_QUERY = 3;
 // The list scrolls, so ask for more than a screenful: the BAN sorts by
@@ -49,7 +55,7 @@ export class BanGeocodeProvider implements GeocodeProvider {
   async search(query: string): Promise<GeocodeResult[]> {
     const q = query.trim();
     if (q.length < MIN_QUERY) return [];
-    const params = new URLSearchParams({ q, limit: String(MAX_RESULTS) });
+    const params = new URLSearchParams({ q, index: 'address', limit: String(MAX_RESULTS) });
     const res = await fetch(`${ENDPOINT}?${params.toString()}`, {
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
@@ -67,6 +73,6 @@ export class BanGeocodeProvider implements GeocodeProvider {
         typeof context === 'string' ? context : typeof city === 'string' ? city : '';
       out.push({ label, sublabel, point, kind: kindOf(f.properties?.type) });
     }
-    return rankByKind(out);
+    return rankByKind(out, q);
   }
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mergeByKind, rankByKind } from './geocodeRank';
+import { mergeByKind, queryCoverage, rankByKind } from './geocodeRank';
 import type { GeocodeResult, PlaceKind } from './types';
 
 const at = (label: string, kind: PlaceKind): GeocodeResult => ({
@@ -17,6 +17,15 @@ describe('rankByKind', () => {
       at('Bayonne', 'locality'),
     ]);
     expect(out.map((r) => r.label)).toEqual(['Bayonne', 'Rue de Bayonne', '12 rue de Bayonne']);
+  });
+
+  it('puts a point of interest after the towns and before the streets', () => {
+    const out = rankByKind([
+      at('Rue de la Gare', 'street'),
+      at('Gare de Bayonne', 'poi'),
+      at('Bayonne', 'locality'),
+    ]);
+    expect(out.map((r) => r.kind)).toEqual(['locality', 'poi', 'street']);
   });
 
   it('keeps the source relevance order inside one kind', () => {
@@ -104,3 +113,89 @@ describe('mergeByKind', () => {
     expect(mergeByKind([])).toEqual([]);
   });
 });
+
+describe('queryCoverage', () => {
+  const said = (label: string, sublabel = ''): GeocodeResult => ({ ...at(label, 'other'), sublabel });
+
+  it('counts the words of the query a result says, accents and case aside', () => {
+    expect(queryCoverage('aeroport toulouse', said('Aéroport de Toulouse-Blagnac'))).toBe(1);
+    expect(queryCoverage('gare matabiau', said('Rue de la Gare'))).toBe(0.5);
+    expect(queryCoverage('toulouze', said('Toulouse'))).toBe(0);
+  });
+
+  it('reads the line under the label too', () => {
+    expect(queryCoverage('bayonne 64', said('Bayonne', '64, Pyrénées-Atlantiques'))).toBe(1);
+  });
+
+  it('takes only the word being typed as a prefix', () => {
+    expect(queryCoverage('aeroport toul', said('Aéroport de Toulouse-Blagnac'))).toBe(1);
+    // « paste » is finished: it is not the start of « Pasteur »
+    expect(queryCoverage('rue paste albi', said('Rua Doutor Pasteur'))).toBe(0);
+  });
+
+  it('is zero for an empty query', () => {
+    expect(queryCoverage('  ', said('Toulouse'))).toBe(0);
+  });
+});
+
+describe('ranking against the query', () => {
+  it('puts the address saying the whole query above nearer kinds that do not', () => {
+    const fr = [at('Rue Pasteur 81000 Albi', 'street'), at('3 Rue Pasteur 81000 Albi', 'address')];
+    const pt = [
+      at('Pastelaria Albi', 'poi'),
+      at('Rua Pasteur', 'street'),
+      at('3 Rua Doutor Pasteur', 'address'),
+    ];
+    expect(mergeByKind([fr, pt], '3 rue pasteur albi').map((r) => r.label)).toEqual([
+      '3 Rue Pasteur 81000 Albi',
+      'Rue Pasteur 81000 Albi',
+      '3 Rua Doutor Pasteur',
+      'Pastelaria Albi',
+      'Rua Pasteur',
+    ]);
+  });
+
+  it('keeps the kind order between results that answer the query equally', () => {
+    const out = rankByKind(
+      [at('Rue de Bayonne', 'street'), at('Gare de Bayonne', 'poi'), at('Bayonne', 'locality')],
+      'bayonne',
+    );
+    expect(out.map((r) => r.label)).toEqual(['Bayonne', 'Gare de Bayonne', 'Rue de Bayonne']);
+  });
+
+  it('leaves the list as it was when no word matches', () => {
+    const out = rankByKind([at('Toulouse', 'locality'), at('Toulon', 'locality')], 'tuluz');
+    expect(out.map((r) => r.label)).toEqual(['Toulouse', 'Toulon']);
+  });
+});
+
+describe('the home country first', () => {
+  const fr = [at('Valence', 'locality'), at('Rue de Valence', 'street')];
+  const pt = [at('Valença', 'locality'), at('Valença do Douro', 'locality'), at('Rua de Valença', 'street')];
+
+  it('interleaves the countries when none is home', () => {
+    expect(mergeByKind([fr, pt], 'valen').map((r) => r.label)).toEqual([
+      'Valence',
+      'Valença',
+      'Valença do Douro',
+      'Rue de Valence',
+      'Rua de Valença',
+    ]);
+  });
+
+  it('puts every home result of a kind before the others, kind by kind', () => {
+    expect(mergeByKind([pt, fr], 'valen', 1).map((r) => r.label)).toEqual([
+      'Valença',
+      'Valença do Douro',
+      'Valence',
+      'Rua de Valença',
+      'Rue de Valence',
+    ]);
+  });
+
+  it('never lifts a home result above one that answers more of the query', () => {
+    const out = mergeByKind([[at('Rua de Valença', 'street')], [at('Valence centre', 'locality')]], 'valence centre', 1);
+    expect(out.map((r) => r.label)).toEqual(['Valence centre', 'Rua de Valença']);
+  });
+});
+

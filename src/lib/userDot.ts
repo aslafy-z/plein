@@ -1,5 +1,6 @@
 // The « you are here » dot both maps drop on the user's position — the zone
-// map (MapCanvas) and the route map (RouteMap). One markup builder for the
+// map (MapCanvas) and the route map (RouteMap) — and the onboarding shows
+// beside its location row, as a preview of it. One markup builder for the
 // same reason lib/pricePin has one: the two maps read as a single map across
 // tabs, and a dot that drifted in size or color between them would read as
 // two different things. Pure string builder: the callers wrap the HTML in an
@@ -22,12 +23,39 @@ export const USER_DOT_SIZE = 34;
  */
 export const USER_DOT_CLASS = 'user-dot';
 
-/** Accent dot inside a soft accent halo, centered on the user's position. */
-export function userDotHtml(): string {
+/**
+ * The shape itself: a ringed dot that glows, inside a halo that keeps
+ * radiating outward (`.halo-pulse` in styles.css, frozen under reduced
+ * motion), centered in its box. The user dot is its accent tone; the
+ * searched-place dot (lib/placePin) is the same shape in neutral ink — a
+ * variant, so the two read as one family of « a point on the map » while the
+ * accent stays reserved for the user. Both have to be found at a glance on a
+ * busy basemap, under a field of price bubbles: hence the glow and the wave
+ * rather than a flat disc.
+ */
+export function haloDotHtml(tone: {
+  halo: string;
+  fill: string;
+  ring: string;
+  glow: string;
+}): string {
   return (
-    `<div style="width:${USER_DOT_SIZE}px;height:${USER_DOT_SIZE}px;border-radius:50%;` +
-    `background:${C.accentSoft15};display:flex;align-items:center;justify-content:center">` +
-    `<div style="width:14px;height:14px;border-radius:50%;background:${C.accent};` +
-    `border:3px solid ${C.accentDeep};box-sizing:border-box"></div></div>`
+    `<div style="position:relative;width:${USER_DOT_SIZE}px;height:${USER_DOT_SIZE}px;` +
+    `border-radius:50%;background:${tone.halo};display:flex;align-items:center;` +
+    `justify-content:center">` +
+    `<div class="halo-pulse" style="background:${tone.halo}"></div>` +
+    `<div style="position:relative;width:16px;height:16px;border-radius:50%;` +
+    `background:${tone.fill};border:3px solid ${tone.ring};box-sizing:border-box;` +
+    `box-shadow:0 0 10px 3px ${tone.glow}"></div></div>`
   );
+}
+
+/** Glowing accent dot inside a radiating accent halo, on the user's position. */
+export function userDotHtml(): string {
+  return haloDotHtml({
+    halo: C.accentSoft30,
+    fill: C.accent,
+    ring: C.accentDeep,
+    glow: C.accentGlow55,
+  });
 }

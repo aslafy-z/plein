@@ -47,6 +47,34 @@ test.describe('with a 20 % departure tank', () => {
   })
 })
 
+test.describe('with a 60 % tank asked for on arrival', () => {
+  test.use({ seed: { sourceId: 'demo', onboarded: true, lastFix: TOULOUSE, arrivalTankPct: 60 } })
+
+  test('a trip the tank covers still plans the stop that delivers the arrival floor', async ({
+    page,
+  }) => {
+    // The default 70 % tank reaches Bordeaux without stopping (route-share
+    // pins « No fuel stop needed ») — but lands near 40 %, under the floor
+    await computeBordeauxRoute(page)
+    await expect(page.getByText('Recommended stop').first()).toBeVisible({ timeout: 30_000 })
+    await openRouteSheet(page)
+    await expect(page.getByText(/L left on arrival/)).toBeVisible()
+  })
+
+  test('the floor is set from the route form and travels in the trip link', async ({ page }) => {
+    await gotoMap(page)
+    await page.getByText('Route', { exact: true }).click()
+    await openRouteSheet(page)
+    const slider = page.getByRole('slider', { name: 'Tank on arrival' })
+    await expect(slider).toHaveValue('60')
+    await slider.fill('0')
+    await closeRouteSheet(page)
+    await pickRoutePlace(page, 'to', 'Bordeaux', 'Bordeaux centre')
+    await expect(page.getByText('No fuel stop needed').first()).toBeVisible({ timeout: 30_000 })
+    await expect.poll(() => new URL(page.url()).searchParams.get('ap')).toBe('0')
+  })
+})
+
 test.describe('with a small 15 L tank', () => {
   test.use({
     seed: { sourceId: 'demo', onboarded: true, lastFix: TOULOUSE, tank: 15, startTankPct: 20 },
@@ -72,8 +100,10 @@ test('a sufficient tank crosses without any stop — stations stay optional', as
   await openRouteSheet(page)
   await expect(page.getByText(/left on arrival/)).toBeVisible()
   // Cheap corridor stations are still browsable, but never crowned
-  await expect(page.getByText('Other stations on the route')).toBeVisible()
+  await expect(page.getByTestId('plan-alternative').first()).toBeVisible()
   await expect(page.getByText('Recommended stop')).toHaveCount(0)
+  // A stop-free trip still starts from the bottom edge — straight to the arrival
+  await expect(page.getByTestId('route-start-trip')).toHaveText('Start the trip')
 })
 
 test('a low departure tank caps the autonomy and plans a reachable stop', async ({ page }) => {
@@ -84,7 +114,7 @@ test('a low departure tank caps the autonomy and plans a reachable stop', async 
   // it; the CTA stays reachable either way (pinned to the bottom edge).
   await openRouteSheet(page)
   // « Tank at departure » 10 % → 5 L / 6.5 L/100 km ≈ 77 km, limit 60 km
-  await page.locator('input[type=range]').fill('10')
+  await page.getByRole('slider', { name: 'Tank at departure' }).fill('10')
   // The expanded sheet covers the endpoint fields on a phone — fold it back
   await closeRouteSheet(page)
   await pickRoutePlace(page, 'to', 'Bordeaux', 'Bordeaux centre')
@@ -98,6 +128,25 @@ test('a low departure tank caps the autonomy and plans a reachable stop', async 
   )
   // The dry-point marker still sits on the timeline
   await expect(page.getByText(/range limit without stopping/)).toBeVisible()
+
+  // One road from departure to arrival: the plan's stop, the alternatives
+  // and the dry point in kilometre order, nothing listed past the arrival
+  await expect(page.getByTestId('plan-alternative').first()).toBeVisible()
+  const line = await page.evaluate(() =>
+    [
+      ...document.querySelectorAll(
+        '[data-testid="plan-stop"], [data-testid="plan-alternative"], [data-testid="limit-marker"], [data-testid="route-arrival"]',
+      ),
+    ].map((n) => ({
+      kind: (n as HTMLElement).dataset.testid,
+      km: Number(/KM (\d+)/.exec(n.textContent ?? '')?.[1]),
+    })),
+  )
+  expect(line.at(-1)?.kind).toBe('route-arrival')
+  const kms = line.slice(0, -1).map((e) => e.km)
+  expect(kms.every((km) => Number.isFinite(km))).toBe(true)
+  expect(kms).toEqual([...kms].sort((a, b) => a - b))
+  expect(line.map((e) => e.kind)).toContain('limit-marker')
 })
 
 test.describe('a vehicle that cannot bridge the corridor gaps', () => {
