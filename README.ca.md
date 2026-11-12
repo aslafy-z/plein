@@ -37,6 +37,9 @@ Voleu veure què ve? [staging-plein.zadkiel.workers.dev](https://staging-plein.z
 - 🇫🇷🇪🇸🇦🇩🇵🇹 **Quatre països en un mapa** — els fluxos oficials de França,
   Espanya, Andorra i Portugal combinats; els proveïments fronterers es
   comparen d'un cop d'ull.
+- 🔎 **Cerca de llocs** — ciutats, adreces i punts d'interès (estacions de
+  tren, aeroports, monuments) als quatre països, ordenats segons la
+  coincidència amb el que heu escrit.
 - 📋 **Millor tria real** — el combustible cremat en el desviament es té en
   compte: una estació més propera pot guanyar la més barata.
 - 🛣️ **Pla de proveïment en ruta** — on parar al llarg del viatge, quants
@@ -131,7 +134,9 @@ L'app no té **cap backend**: el navegador consulta directament aquests
 serveis públics. Les fonts són connectables (`src/data/types.ts`). Sense
 connexió o amb un flux caigut, l'app conserva les últimes estacions
 carregades (memòria cau per zona) amb un bàner explícit i ho torna a provar
-així que torna la connexió.
+així que torna la connexió. Quan el geocodificador d'un país no respon,
+Photon el substitueix; si també falla, la cerca indica quins països falten
+a la llista.
 
 ## 🛠️ Construït amb
 

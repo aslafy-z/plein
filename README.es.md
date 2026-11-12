@@ -37,6 +37,9 @@ Portugal.
 - 🇫🇷🇪🇸🇦🇩🇵🇹 **Cuatro países en un mapa** — los flujos oficiales de Francia,
   España, Andorra y Portugal combinados; los repostajes fronterizos se
   comparan de un vistazo.
+- 🔎 **Búsqueda de lugares** — ciudades, direcciones y puntos de interés
+  (estaciones de tren, aeropuertos, monumentos) en los cuatro países,
+  ordenados según su coincidencia con lo que has escrito.
 - 📋 **Mejor elección real** — el combustible quemado en el desvío se tiene
   en cuenta: una estación más cercana puede ganar a la más barata.
 - 🛣️ **Plan de repostaje en ruta** — dónde parar a lo largo del viaje,
@@ -129,7 +132,9 @@ La app no tiene **ningún backend**: el navegador consulta directamente estos
 servicios públicos. Las fuentes son conectables (`src/data/types.ts`). Sin
 conexión o con un flujo caído, la app conserva las últimas estaciones
 cargadas (caché por zona) con un banner explícito y reintenta en cuanto
-vuelve la conexión.
+vuelve la conexión. Cuando el geocodificador de un país no responde, Photon
+lo sustituye; si también falla, la búsqueda indica qué países faltan en la
+lista.
 
 ## 🛠️ Construido con
 

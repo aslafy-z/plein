@@ -36,6 +36,9 @@ Envie de voir la suite ? [staging-plein.zadkiel.workers.dev](https://staging-ple
 - 🇫🇷🇪🇸🇦🇩🇵🇹 **Quatre pays sur une carte** — les flux officiels de la France,
   de l'Espagne, de l'Andorre et du Portugal combinés ; les pleins frontaliers
   se comparent d'un coup d'œil.
+- 🔎 **Recherche de lieux** — villes, adresses et points d'intérêt (gares,
+  aéroports, monuments) dans les quatre pays, classés selon leur
+  correspondance avec ce que vous avez tapé.
 - 📋 **Meilleur choix réel** — le carburant brûlé pour le détour est compté :
   une station plus proche peut battre la moins chère.
 - 🛣️ **Plan carburant du trajet** — où s'arrêter le long du parcours, combien
@@ -128,6 +131,8 @@ L'app n'a **aucun backend** : le navigateur interroge directement ces services
 publics. Les sources sont pluggables (`src/data/types.ts`). Hors connexion ou
 flux indisponible, l'app garde les dernières stations chargées (cache par
 zone) avec une bannière explicite et réessaie dès que la connexion revient.
+Quand le géocodeur d'un pays ne répond pas, Photon prend le relais ; s'il
+échoue aussi, la recherche indique quels pays manquent dans la liste.
 
 ## 🛠️ Construit avec
 

@@ -37,6 +37,9 @@ Quer ver o que vem a seguir? [staging-plein.zadkiel.workers.dev](https://staging
 - 🇫🇷🇪🇸🇦🇩🇵🇹 **Quatro países num mapa** — os fluxos oficiais de França,
   Espanha, Andorra e Portugal combinados; os abastecimentos fronteiriços
   comparam-se num relance.
+- 🔎 **Pesquisa de locais** — cidades, moradas e pontos de interesse
+  (estações de comboio, aeroportos, monumentos) nos quatro países, ordenados
+  pela correspondência com o que escreveu.
 - 📋 **Melhor escolha real** — o combustível gasto no desvio é contabilizado:
   um posto mais próximo pode bater o mais barato.
 - 🛣️ **Plano de abastecimento na rota** — onde parar ao longo da viagem,
@@ -130,7 +133,9 @@ A app não tem **nenhum backend**: o navegador consulta diretamente estes
 serviços públicos. As fontes são conectáveis (`src/data/types.ts`). Sem
 ligação ou com um fluxo indisponível, a app mantém os últimos postos
 carregados (cache por zona) com uma faixa explícita e tenta de novo assim que
-a ligação volta.
+a ligação volta. Quando o geocodificador de um país não responde, o Photon
+substitui-o; se também falhar, a pesquisa indica que países faltam na
+lista.
 
 ## 🛠️ Construído com
 

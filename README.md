@@ -34,6 +34,9 @@ Want what is coming next? [staging-plein.zadkiel.workers.dev](https://staging-pl
   good deals in green, the priciest in orange.
 - 🇫🇷🇪🇸🇦🇩🇵🇹 **Four countries on one map** — the official feeds of France,
   Spain, Andorra and Portugal combined; border fill-ups compare at a glance.
+- 🔎 **Place search** — towns, addresses and points of interest (railway
+  stations, airports, monuments) across the four countries, ranked by how
+  well they match what you typed.
 - 📋 **Real best choice** — the fuel burned for the detour is counted, so a
   closer station can beat the cheapest one.
 - 🛣️ **Route fuel plan** — where to stop along your trip, how many liters at
@@ -124,7 +127,9 @@ rest (routing, basemaps) is shared by all four.
 The app has **no backend**: the browser queries these public services
 directly. Sources are pluggable (`src/data/types.ts`). Offline or when a feed
 is down, the app keeps the last loaded stations (per-area cache) with an
-explicit banner and retries as soon as the connection returns.
+explicit banner and retries as soon as the connection returns. When a
+country's geocoder does not answer, Photon stands in for it; if that fails
+too, the search says which countries are missing from the list.
 
 ## 🛠️ Built with
 
