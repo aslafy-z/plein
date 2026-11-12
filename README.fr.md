@@ -23,9 +23,12 @@ Envie de voir la suite ? [staging-plein.zadkiel.workers.dev](https://staging-ple
 
 <br/>
 
-| Les prix autour de vous | La fiche d'une station | Votre itinéraire sur la carte | Sur votre trajet |
-| :---: | :---: | :---: | :---: |
-| <img src="docs/screenshots/fr/map.png" width="200" alt="Carte des prix autour de Toulouse" /> | <img src="docs/screenshots/fr/station.png" width="200" alt="Fiche d'une station : prix par carburant, écart au moins cher, services et économie sur un plein" /> | <img src="docs/screenshots/fr/trip.png" width="200" alt="Itinéraire Toulouse → Lille sur la carte, avec les stations et leurs prix le long du trajet" /> | <img src="docs/screenshots/fr/route.png" width="200" alt="Comparaison des stations sur un trajet Toulouse → Lille" /> |
+<p align="center">
+  <img src="docs/screenshots/fr/map.png" width="23%" alt="Carte des prix autour de Toulouse" title="Les prix autour de vous" />
+  <img src="docs/screenshots/fr/station.png" width="23%" alt="Fiche d'une station : prix par carburant, écart au moins cher, services et économie sur un plein" title="La fiche d'une station" />
+  <img src="docs/screenshots/fr/trip.png" width="23%" alt="Itinéraire Toulouse → Lille sur la carte, avec les stations et leurs prix le long du trajet" title="Votre itinéraire sur la carte" />
+  <img src="docs/screenshots/fr/route.png" width="23%" alt="Comparaison des stations sur un trajet Toulouse → Lille" title="Sur votre trajet" />
+</p>
 
 </div>
 

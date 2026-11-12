@@ -18,11 +18,14 @@
 // default follows the browser), and the two frames are composited along a
 // diagonal.
 //
-// The viewport is 480×1064 at DPR 3 (1440×3192), which the READMEs display at
-// width 200, four abreast. That width is deliberate: the map auto-fit frames the search
-// circle into the viewport and snaps to an integer zoom, so a narrower phone
-// (390 or 430 CSS px) lands one level further out and packs the price bubbles
-// of a dense centre on top of each other. PNGs are re-encoded losslessly
+// The viewport is 480×1064 at DPR 3 (1440×3192), which the READMEs display
+// four abreast, each at 23% of the page width — a row of images rather than a
+// table, whose columns would size off their captions and leave the four
+// screenshots at four different scales. The 480 CSS px width is deliberate:
+// the map auto-fit frames the search circle into the viewport and snaps to an
+// integer zoom, so a narrower phone (390 or 430 CSS px) lands one level
+// further out and packs the price bubbles of a dense centre on top of each
+// other. PNGs are re-encoded losslessly
 // afterwards — Chromium's own encoder leaves roughly 45% on the table.
 // Usage: npm run build:screenshots [map] [station] [trip] [route] [en] [fr] [es] [ca] [pt] [--headed] [--parallel]
 // Naming shots and/or locales regenerates only those — handy to refresh one
