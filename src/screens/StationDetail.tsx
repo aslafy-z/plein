@@ -31,6 +31,8 @@ import { brandIconSrc } from '../lib/brandIcons';
 import { addBasemap } from '../lib/tiles';
 import Star from '../components/Star';
 import ShareIcon from '../components/ShareIcon';
+import CrossIcon from '../components/CrossIcon';
+import ActionPill, { ActionPills, actionPillInk } from '../components/ActionPill';
 
 /** Static mini-map centred on the station (replaces the prototype's photo slot) */
 function StationMiniMap({ station }: { station: Station }) {
@@ -262,16 +264,6 @@ export default function StationDetail() {
     ? m.detail_remove_favorite_aria()
     : m.detail_add_favorite_aria();
 
-  /** Round icon button of the desktop header row */
-  const headerButton = {
-    width: 34,
-    height: 34,
-    borderRadius: '50%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  } as const;
 
   // The fiche itself — the same document in both arrangements. It fills the
   // screen on a phone, opening on a mini-map that gives the address a place.
@@ -288,36 +280,38 @@ export default function StationDetail() {
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 4,
-            padding: '10px 12px 0',
+            padding: '12px 16px 0',
             flexShrink: 0,
           }}
         >
-          <button
+          <ActionPill
+            tone="neutral"
             onClick={() => app.back()}
             aria-label={m.detail_close_aria()}
-            title={m.detail_close_aria()}
-            style={{ ...headerButton, color: C.ink, fontSize: 15, fontWeight: 700 }}
-          >
-            ✕
-          </button>
+            icon={<CrossIcon color={actionPillInk('neutral')} />}
+          />
           <span style={{ flex: 1 }} />
-          {/* Share the fiche — native sheet where it exists, clipboard elsewhere */}
-          <button
-            onClick={() => app.shareStation(s)}
-            aria-label={m.detail_share_aria()}
-            style={headerButton}
-          >
-            <ShareIcon color={C.ink} size={17} />
-          </button>
-          {/* Pin to Favorites */}
-          <button onClick={onToggleFavorite} aria-label={favoriteAria} style={headerButton}>
-            <Star
-              filled={app.isFavorite(s.id)}
-              color={app.isFavorite(s.id) ? C.accent : C.ink}
-              size={18}
+          <ActionPills>
+            {/* Share the fiche — native sheet where it exists, clipboard elsewhere */}
+            <ActionPill
+              onClick={() => app.shareStation(s)}
+              aria-label={m.detail_share_aria()}
+              icon={<ShareIcon color={actionPillInk('accent')} size={15} />}
             />
-          </button>
+            {/* Pin to Favorites */}
+            <ActionPill
+              tone="neutral"
+              onClick={onToggleFavorite}
+              aria-label={favoriteAria}
+              icon={
+                <Star
+                  filled={app.isFavorite(s.id)}
+                  color={app.isFavorite(s.id) ? C.accent : actionPillInk('neutral')}
+                  size={16}
+                />
+              }
+            />
+          </ActionPills>
         </div>
       ) : (
         <div style={{ position: 'relative', height: 160, flexShrink: 0, background: C.mapBg }}>

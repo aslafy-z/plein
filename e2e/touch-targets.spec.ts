@@ -86,3 +86,11 @@ test('the route header share and edit controls are full touch targets', async ({
   await expect(edit).toBeHidden()
   await expect(page.getByRole('button', { name: 'Compare the stations along the route' })).toBeVisible()
 })
+
+test('the filters sheet « Reset » is a full touch target', async ({ page }) => {
+  await gotoMap(page)
+  await page.getByTitle('Filters').first().click()
+  const reset = page.getByRole('button', { name: 'Reset', exact: true })
+  await expectTouchTarget(reset)
+  await expectUncovered(reset)
+})

@@ -37,6 +37,7 @@ import RouteTimeline, {
   stageSentence,
 } from './RouteTimeline';
 import StationDetail from './StationDetail';
+import ActionPill from '../components/ActionPill';
 
 /** Same cap as the map screen's overlay: fields dragged across a window are
     unreadable, and the width belongs to the map */
@@ -323,18 +324,7 @@ function RouteForm({ withTitle }: { withTitle: boolean }) {
           <strong style={{ color: C.ink }}>{fuelLabel(fuel)}</strong> ·{' '}
           {m.route_settings_recap({ tank })}
         </div>
-        <button
-          onClick={() => app.go('settings')}
-          style={{
-            fontSize: 12.5,
-            fontWeight: 700,
-            color: C.accent,
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {m.route_settings_link()}
-        </button>
+        <ActionPill onClick={() => app.go('settings')} label={m.route_settings_link()} />
       </div>
     </div>
   );
