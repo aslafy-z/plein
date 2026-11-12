@@ -1742,6 +1742,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       matrixKeyRef.current = null;
       clearTimeout(matrixTimer.current);
       setRouteState((s) => matrixBlocked(s, 'idle'));
+      // A corridor that answered empty is a final answer too: the plan stands
+      // on what it has, and nothing further will land.
+      if (route && trip && routeState.corridor === 'ready') markRoute('route:plan');
       return;
     }
     const { avoidMotorway, avoidToll, vehicle } = trip;
