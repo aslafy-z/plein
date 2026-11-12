@@ -8,8 +8,9 @@
 // earlier changes », unrolled in place; from Settings the whole history is
 // open (`splitChangelog` decides which is which).
 //
-// An entry shipped by a production promotion ends on a « Details » pill: the
-// release page, for whoever wants more than the few lines the entry allows.
+// An entry shipped by a production promotion carries a round ↗ pill on its
+// date line: the release page, for whoever wants more than the few lines the
+// entry allows.
 //
 // Same split as the filters: the phone's drag-to-dismiss ModalSheet, and on a
 // window a glass card. Unlike the filters it is not anchored to anything it
@@ -21,7 +22,8 @@ import { CHANGELOG, changelogDate, splitChangelog, type ChangelogEntry } from '.
 import { calendarDateLabel } from '../lib/format';
 import { m } from '../paraglide/messages.js';
 import { C, ctaStyle, glass } from '../theme';
-import ActionPill from './ActionPill';
+import ActionPill, { actionPillInk } from './ActionPill';
+import ExternalIcon from './ExternalIcon';
 import ModalSheet from './ModalSheet';
 
 export default function WhatsNewSheet() {
@@ -96,6 +98,19 @@ export default function WhatsNewSheet() {
             {m.whatsnew_new_badge()}
           </span>
         )}
+        {e.details && (
+          // The long version, kept to a corner of the entry's date line: one
+          // stacked button per entry next to « See earlier changes » was a
+          // column of buttons for a few lines of news
+          <div style={{ marginLeft: 'auto' }}>
+            <ActionPill
+              tone="neutral"
+              icon={<ExternalIcon color={actionPillInk('neutral')} />}
+              aria-label={m.whatsnew_details_aria()}
+              onClick={() => window.open(e.details, '_blank', 'noopener,noreferrer')}
+            />
+          </div>
+        )}
       </div>
       <h3
         id={`whatsnew-${e.id}`}
@@ -119,15 +134,6 @@ export default function WhatsNewSheet() {
           <li key={j}>{item()}</li>
         ))}
       </ul>
-      {e.details && (
-        // The long version: the release page of the promotion that shipped it
-        <div style={{ alignSelf: 'flex-start', marginTop: 4 }}>
-          <ActionPill
-            label={m.whatsnew_details()}
-            onClick={() => window.open(e.details, '_blank', 'noopener,noreferrer')}
-          />
-        </div>
-      )}
     </section>
   );
 

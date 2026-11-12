@@ -11,7 +11,7 @@
 #   newer than the last `release-<id>` tag, it is this promotion's news, and
 #   the job publishes it as a GitHub Release under `release-<id>` (the entry's
 #   English copy over the generated list of merged PRs: the page the entry's
-#   « Details » pill opens). With no new entry the run stops, unless `silent`
+#   ↗ button opens). With no new entry the run stops, unless `silent`
 #   is ticked: a performance pass, an invisible fix or a rollback ships with no
 #   entry and no sparkle, on purpose rather than by oversight.
 # - pull requests → preview version (URL pr-<n>-plein.<subdomain>.workers.dev),
