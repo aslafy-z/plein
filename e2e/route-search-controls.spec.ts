@@ -179,7 +179,7 @@ test.describe('phone', () => {
     await expect(
       page.getByRole('button', { name: /the route details/ }),
     ).toHaveAttribute('aria-expanded', 'true')
-    await expect(page.getByRole('slider')).toBeVisible()
+    await expect(page.getByRole('slider', { name: 'Tank at departure' })).toBeVisible()
   })
 
   test('picking a place fills the field it was opened for', async ({ page }) => {

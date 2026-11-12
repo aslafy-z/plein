@@ -181,6 +181,8 @@ export function filtersResetTarget(vehicle: VehicleId): { radius: number; fuel: 
 }
 /** Default departure tank level (%) — adjustable on the route setup */
 const DEFAULT_START_TANK_PCT = 70;
+/** Default arrival floor (%): none — only the per-leg reserve shapes the plan */
+const DEFAULT_ARRIVAL_TANK_PCT = 0;
 /**
  * Points of one fuel-plan matrix call: origin + candidate stations +
  * destination. This is OUR budget, not a backend limit — 32 keeps the request
@@ -607,6 +609,9 @@ export interface AppStore {
   /** Tank level at departure (%), drives the autonomy math */
   startTankPct: number;
   setStartTankPct(v: number): void;
+  /** Least tank level (%) the fuel-stop plan may reach the destination with */
+  arrivalTankPct: number;
+  setArrivalTankPct(v: number): void;
   routeState: RouteState;
   /** Re-run both stages for the current endpoints */
   retryRoute(): void;
@@ -880,6 +885,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
   const [startTankPct, setStartTankPctState] = useState<number>(
     initialRoute.startTankPct ?? persisted.startTankPct ?? DEFAULT_START_TANK_PCT,
+  );
+  const [arrivalTankPct, setArrivalTankPctState] = useState<number>(
+    // A link that names a trip but predates this setting was shared without
+    // a floor: it opens as it was computed, not on the reader's own floor
+    initialRoute.arrivalTankPct ??
+      (linkNamesTrip ? undefined : persisted.arrivalTankPct) ??
+      DEFAULT_ARRIVAL_TANK_PCT,
   );
   // Forced migration to « Automatic »: legacy persisted ids ('gouv' before
   // the country rename) and new installs land on 'auto'; only explicit choices
@@ -1166,11 +1178,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       tank,
       consumption,
       startTankPct,
+      arrivalTankPct,
       avoidMotorway,
       avoidToll,
     }),
     [
-      avoidMotorway, avoidToll, consumption, fromIsCurrentPosition, fromPoint, fromText, fuel,
+      arrivalTankPct, avoidMotorway, avoidToll, consumption, fromIsCurrentPosition, fromPoint, fromText, fuel,
       routeMode, startTankPct, tank, toIsCurrentPosition, toPoint, toText, vehicle,
     ],
   );
@@ -1945,6 +1958,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     savePersisted({ startTankPct: v });
   }, []);
 
+  const setArrivalTankPct = useCallback((v: number) => {
+    setArrivalTankPctState(v);
+    savePersisted({ arrivalTankPct: v });
+  }, []);
+
   const setSourceId = useCallback((s: DataSourceId) => {
     setSourceIdState(s);
     savePersisted({ sourceId: s });
@@ -2492,6 +2510,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setAvoidToll,
       startTankPct,
       setStartTankPct,
+      arrivalTankPct,
+      setArrivalTankPct,
       routeState,
       retryRoute,
       retryCorridor,
@@ -2548,6 +2568,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       plannedStops, togglePlannedStop, vehicle, setVehicle, tank, setTank,
       consumption, setConsumption,
       avoidMotorway, avoidToll, setAvoidMotorway, setAvoidToll, startTankPct, setStartTankPct,
+      arrivalTankPct, setArrivalTankPct,
       setFiltersOpenNav, sourceId, setSourceId, mapsSite, setMapsSite,
       locale, localeIsExplicit, setLocale, theme, themeIsExplicit, setTheme,
       accent, setAccent, detailId, toast, showToast,
@@ -3319,6 +3340,8 @@ export type ArrivalEstimate =
   | { kind: 'withStops'; stops: number; at: number; extraMin: number }
   /** The tank cannot make it without stopping */
   | { kind: 'autonomyShort'; limitKm: number }
+  /** The destination is in reach, but not with `percent` % left in the tank */
+  | { kind: 'arrivalFloorUnmet'; percent: number }
   | { kind: 'direct'; at: number };
 
 /**
@@ -3401,6 +3424,7 @@ export const selectRoutePlan = cached((app: AppStore): RoutePlan | null => {
     tankLitres: app.tank,
     consumptionLitresPer100Km: app.consumption,
     startFuelLitres: (app.tank * app.startTankPct) / 100,
+    minDestinationFuelLitres: (app.tank * app.arrivalTankPct) / 100,
     strategy: app.routeMode,
     requiredStationIds: required,
     quality: legs.quality,
@@ -3551,7 +3575,9 @@ export function selectRouteAnalysis(app: AppStore): RouteAnalysis {
         extraMin: Math.round(plan.extraDurationMin),
       };
     } else if (plan.status === 'infeasible') {
-      arrival = { kind: 'autonomyShort', limitKm };
+      arrival = plan.diagnostics?.arrivalFloorUnmet
+        ? { kind: 'arrivalFloorUnmet', percent: app.arrivalTankPct }
+        : { kind: 'autonomyShort', limitKm };
     } else {
       arrival = { kind: 'direct', at: Date.now() + route.durationMin * 60000 };
     }

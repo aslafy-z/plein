@@ -48,6 +48,8 @@ export interface PersistedSettings {
   avoidMotorway: boolean;
   avoidToll: boolean;
   startTankPct: number;
+  /** Least tank level (%) a route plan may reach the destination with */
+  arrivalTankPct: number;
   radius: number;
   sourceId: DataSourceId;
   onboarded: boolean;
@@ -206,6 +208,7 @@ const NUMBER_RANGES = {
   tank: { min: 5, max: 80 },
   consumption: { min: 3, max: 12 },
   startTankPct: { min: 10, max: 100 },
+  arrivalTankPct: { min: 0, max: 80 },
 } as const;
 
 const BOOLEAN_FIELDS = [
