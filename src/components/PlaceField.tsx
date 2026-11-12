@@ -381,6 +381,24 @@ export default function PlaceField(props: PlaceFieldProps) {
   // box where the same lines would only add noise.
   const listContent = (phone: boolean) => (
     <>
+      {/* Said ABOVE the rows it qualifies, where it is read without scrolling:
+          under them it sat past a dozen suggestions, and on a phone behind
+          the keyboard's accessory bar. Only once the search has concluded —
+          while it still runs, a source is merely late. */}
+      {unanswered === 'some' && !searching && suggestions.length > 0 && (
+        <div
+          data-testid="search-incomplete"
+          style={{
+            padding: phone ? '10px 18px' : '8px 16px',
+            borderBottom: `1px solid ${C.border08}`,
+            color: C.mut,
+            fontSize: 12,
+            lineHeight: 1.4,
+          }}
+        >
+          {m.search_incomplete()}
+        </div>
+      )}
       {/* Above everything, and never filtered by the query: it answers no
           search — it is the one place the app already knows. */}
       {showsPosition && (
@@ -539,22 +557,6 @@ export default function PlaceField(props: PlaceFieldProps) {
           )}
         </div>
       ))}
-      {/* Said under the rows it qualifies, and only once the search has
-          concluded: while it still runs, a source is merely late. */}
-      {unanswered === 'some' && !searching && suggestions.length > 0 && (
-        <div
-          data-testid="search-incomplete"
-          style={{
-            padding: phone ? '12px 18px 14px' : '8px 16px 10px',
-            borderTop: `1px solid ${C.border08}`,
-            color: C.mut,
-            fontSize: 12,
-            lineHeight: 1.4,
-          }}
-        >
-          {m.search_incomplete()}
-        </div>
-      )}
     </>
   );
 
@@ -744,7 +746,11 @@ export default function PlaceField(props: PlaceFieldProps) {
                   overflowY: 'auto',
                   overscrollBehavior: 'contain',
                   WebkitOverflowScrolling: 'touch',
-                  paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+                  // Room past the last row: Chrome on Android lays its keyboard
+                  // accessory bar (passwords, cards) OVER the page without
+                  // shrinking the visual viewport, and the last suggestion
+                  // could not be scrolled out from under it.
+                  paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 56px)',
                 }}
               >
                 {listContent(true)}
