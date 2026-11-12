@@ -176,6 +176,7 @@
   "search_no_results": "Nenhum local corresponde a esta pesquisa.",
   "search_incomplete": "Algumas fontes não responderam: a lista pode estar incompleta.",
   "search_incomplete_named": "Sem resposta para: {countries}. A lista pode estar incompleta.",
+  "search_waiting_named": "À espera de: {countries}.",
   "search_unavailable": "A pesquisa de locais não está a responder neste momento. Tente novamente dentro de instantes.",
   "sheet_selected_station": "Posto selecionado",
   "sheet_cheapest_nearby": "O mais barato perto de si",

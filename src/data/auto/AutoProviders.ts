@@ -261,13 +261,28 @@ export class MergedGeocodeProvider implements GeocodeProvider {
     const near = opts?.near;
     const home = near ? this.sources.filter((source) => source.covers?.(near)) : [];
     const ordered = [...home, ...this.sources.filter((source) => !home.includes(source))];
+    // Which sources are still out — published before `onPartial` hears about
+    // the same landing, since these handlers are attached first.
+    const waiting = new Set<GeocodeCountry>(ordered.map((source) => source.country));
+    const publishWaiting = () =>
+      opts?.onPending?.(
+        this.sources.map((source) => source.country).filter((country) => waiting.has(country)),
+      );
+    publishWaiting();
     const tasks = ordered.map(({ country, provider }) => {
       const task = provider.search(query, {
         onIncomplete: () => {
           partial = true;
         },
       });
-      task.catch(() => down.add(country));
+      const settle = () => {
+        waiting.delete(country);
+        publishWaiting();
+      };
+      task.then(settle, () => {
+        down.add(country);
+        settle();
+      });
       return task;
     });
     return mergeAsTheyLand(tasks, opts?.onPartial, undefined, query, home.length).then((results) => {
