@@ -129,7 +129,7 @@ rest (routing, basemaps) is shared by all four.
 | Data | Source | License |
 | --- | --- | --- |
 | Routing | [OSRM](https://project-osrm.org/) (demo server) · [Valhalla](https://valhalla.github.io/valhalla/) (public FOSSGIS server) for "avoid motorways / tolls" | © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors |
-| Basemaps | [CARTO](https://carto.com/attributions) light / dark following the theme (OpenStreetMap tiles as offline-friendly fallback) | © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors |
+| Basemaps | [VersaTiles](https://versatiles.org) vector tiles, no API key, light / dark style following the theme (OpenStreetMap raster tiles as fallback when VersaTiles is unreachable or the device has no WebGL) | © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors |
 
 The app has **no backend**: the browser queries these public services
 directly. Sources are pluggable (`src/data/types.ts`). Offline or when a feed
@@ -140,8 +140,8 @@ too, the search says which countries are missing from the list.
 
 ## 🛠️ Built with
 
-**Vite · React 18 · strict TypeScript · Leaflet**, no other runtime
-dependency. The production build is static assets, served by a Cloudflare
+**Vite · React 18 · strict TypeScript · Leaflet**, plus MapLibre GL to
+draw the vector basemap (loaded on demand), no other runtime dependency. The production build is static assets, served by a Cloudflare
 Worker.
 
 ## 🤝 Contributing

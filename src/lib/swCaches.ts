@@ -9,8 +9,10 @@
 // spelled out at each reader.
 export const SW_ASSET_CACHE = 'plein-assets-v2';
 export const SW_SHELL_CACHE = 'plein-shell-v1';
-export const SW_TILE_CACHE = 'plein-tiles-v3';
+export const SW_TILE_CACHE = 'plein-tiles-v4';
 export const SW_DATA_CACHE = 'plein-data-v2';
+/** The vector basemap's style, sprite and glyphs — app chrome, not user data */
+export const SW_BASEMAP_CACHE = 'plein-basemap-v1';
 
 /**
  * Every tile cache generation, current and abandoned. An abandoned one lives
@@ -26,4 +28,5 @@ export const SW_CACHE_CAPS: Record<string, number | null> = {
   [SW_SHELL_CACHE]: null,
   [SW_TILE_CACHE]: 600,
   [SW_DATA_CACHE]: null,
+  [SW_BASEMAP_CACHE]: null,
 };

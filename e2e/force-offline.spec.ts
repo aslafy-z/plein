@@ -107,13 +107,15 @@ test('the switch stops station fetches, and releasing it revalidates alone', asy
 })
 
 test('the switch stops basemap tiles, which no store gate can reach', async ({ page }) => {
-  // Leaflet loads tiles with plain <img> requests — they pass through no
-  // provider, so the mode has to be enforced where the URL is handed out
-  // (lib/tileGate.ts). Both hosts are counted: the CDN and the dev-server
+  // The suite runs without WebGL (playwright.config.ts), so this is the
+  // raster fallback's <img> tiles — they pass through no provider, so the
+  // mode has to be enforced where the URL is handed out (lib/tileGate.ts).
+  // The vector map's own gate is covered in tiles.spec.ts. Every tile host
+  // is counted: VersaTiles (tiles and glyph ranges), OSM, and the dev-server
   // proxy the fallback layer uses.
   let tiles = 0
   page.on('request', (req) => {
-    if (/basemaps\.cartocdn\.com|tile\.openstreetmap\.org|\/tiles\//.test(req.url())) tiles++
+    if (/tiles\.versatiles\.org\/(tiles|assets\/glyphs)\/|tile\.openstreetmap\.org|\/tiles\//.test(req.url())) tiles++
   })
   await page.route('**/proxy/fr/**', fulfillStations)
   await gotoMap(page)

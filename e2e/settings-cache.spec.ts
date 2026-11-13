@@ -49,16 +49,16 @@ test('the counter includes the basemap tiles, and « Clear » sweeps them too', 
   // src/lib/swCaches.ts — the current generation plus an abandoned one, which
   // survives until the next worker activates and must still be counted.
   await page.evaluate(async () => {
-    const current = await caches.open('plein-tiles-v3')
-    await current.put('https://a.basemaps.cartocdn.com/dark_all/5/16/11.png', new Response('t'))
-    await current.put('https://a.basemaps.cartocdn.com/dark_all/5/17/11.png', new Response('t'))
-    const stale = await caches.open('plein-tiles-v1')
+    const current = await caches.open('plein-tiles-v4')
+    await current.put('https://tiles.versatiles.org/tiles/osm/5/16/11', new Response('t'))
+    await current.put('https://tiles.versatiles.org/tiles/osm/5/17/11', new Response('t'))
+    const stale = await caches.open('plein-tiles-v3')
     await stale.put('https://a.basemaps.cartocdn.com/dark_all/5/18/11.png', new Response('t'))
   })
 
   await openSettings(page)
 
-  // « 3 map tiles · ≈ 59 kB » under the areas line
+  // « 3 map tiles · ≈ 117 kB » under the areas line
   await expect(page.getByTestId('cache-stats')).toContainText('3 map tiles')
 
   const clear = page.getByRole('button', { name: /Clear offline data/ })

@@ -186,6 +186,23 @@ width, never pointer type: a window gets resized and the layout has to follow.
   fits. They also share one price-pin markup (`src/lib/pricePin.ts`).
   Mechanism is shared, policy is not: each wrapper keeps when to fit, on what
   bounds, and its own layers.
+- **The basemap is the one thing on the map Leaflet does not draw**
+  (`src/lib/tiles.ts`): VersaTiles vector tiles, rendered by a MapLibre GL
+  layer (`@maplibre/maplibre-gl-leaflet`, imported on demand, wrapped by
+  `guardedLayer`) inside Leaflet's tile pane, which Leaflet keeps in sync.
+  Everything the app draws (pins, circle, route) stays Leaflet. The theme
+  swaps the style, never the tiles; an unreachable VersaTiles or a device
+  without WebGL drops to OSM raster tiles. MapLibre runs one zoom below
+  Leaflet (512 px tiles) and overzooms past z14 — the pyramid prefetch and
+  the debug grid (`vectorTileZoom`, `tileMapZoom`) both depend on that rule.
+  The map's `maxZoom` (19) is set on the map in `useLeafletMap`: no tile
+  layer supplies one any more, and a fit on a single point without it zooms
+  to Infinity. The onboarding screen starts the renderer chunk, the style,
+  the sprite and the base fonts downloading (`preloadBasemap`), so a first
+  visit's map does not start from nothing. Only « VersaTiles never answered »
+  swaps a map to OSM (no style in 12 s, the style failing, repeated tile
+  errors, no tile in 25 s after the style) — a sprite or a font range
+  failing does not — and the debug overlay's `fallbackReason` says which.
 - **A card's or sheet's secondary actions are `ActionPill`s**
   (`src/components/ActionPill.tsx`): Share, Edit, Reset, close, deselect,
   favorite in a header, « Settings › » at the end of a summary card. A tonal
@@ -253,7 +270,7 @@ Anything that does not fit one of them does not get cached.
 | durable, app-owned | settings, filters, favorites, `searchHistory`, `lastPos`, `lastFix` | localStorage `plein.settings.v1` | none; shape migrations in `persist.ts` `migrate()` |
 | durable, app-owned | station arrays per fetched area | IndexedDB `plein.cache` (`src/data/cacheStore.ts`) | three tiers, below |
 | memory | province/district memos, `roadReach`, selector memos, brand POI index, geocode + route LRUs | JS maps | the session |
-| static, SW-owned | bundles, icons, fonts, shell, tiles, `/brands-fr.json`, `/brand-icons/*` | Cache Storage (`public/sw.js`) | cache-name version bump + FIFO caps; the tiles also fall to « Clear offline data » |
+| static, SW-owned | bundles, icons, fonts, shell, tiles, the basemap's style/sprite/glyphs, `/brands-fr.json`, `/brand-icons/*` | Cache Storage (`public/sw.js`) | cache-name version bump + FIFO caps; the tiles also fall to « Clear offline data » |
 
 - **Where the map looks and where the user is are two different values.**
   `lastPos` is the area the map opened on — a searched place included — and
@@ -288,12 +305,13 @@ Anything that does not fit one of them does not get cached.
   what the Settings « Data » section renders — the instrumentation is data,
   since the e2e fixture fails on a console error. The tile figure is entries ×
   a flat per-tile average: weighing them would mean reading every cached body.
-  The tiles are requested in CORS mode and the worker stores only `ok`
+  The tiles (VersaTiles vector tiles, OSM raster on the fallback) are
+  requested in CORS mode and the worker stores only `ok`
   responses — a no-cors tile is opaque, its status hidden, and a cached CDN
   error would answer cache-first from then on. « Clear offline data » drops the station areas, the
   favorite prices AND every `plein-tiles-*` cache generation; the service
-  worker's other caches (shell, assets, brand data) are the app itself, not
-  user data, and stay.
+  worker's other caches (shell, assets, brand data, the basemap's style and
+  glyphs) are the app itself, not user data, and stay.
 - Seeding a cached area in e2e goes through `seedStationsCache()`
   (`e2e/fixtures.ts`), which writes IndexedDB from a loaded page and expects a
   reload; its record shape mirrors `AreaMeta` and the two have to agree.
@@ -364,6 +382,12 @@ npm run build       # tsc + vite build
   `seed` to assert on another language — `locale.spec.ts` drives the
   resolution paths and the other catalogs. Mock payloads and the demo dataset
   stay French: that's data, not UI copy.
+- **The suite runs without WebGL** (`--disable-3d-apis` in
+  `playwright.config.ts`), so every spec sees the OSM raster fallback: the
+  vector basemap renders in software on a GPU-less runner, at a second or so
+  per frame, and every drag timed out. `e2e/tiles.spec.ts` turns software
+  WebGL back on (`WEBGL_LAUNCH` from `e2e/fixtures.ts`) and is where the
+  vector map itself is covered; a new spec about the vector map goes there.
 - **Two projects, two layouts.** `mobile` (Pixel 7) and `desktop` (1440×900)
   now see genuinely different arrangements, so a spec must say which one it is
   about: `phoneOnly()` / `desktopOnly()` from `e2e/fixtures.ts` gate on the

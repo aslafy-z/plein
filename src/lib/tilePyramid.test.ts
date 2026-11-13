@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { pyramidTiles, tileFraction, tileToBounds, tileUrl, type TileCoords } from './tilePyramid'
+import {
+  pyramidTiles,
+  tileFraction,
+  tileToBounds,
+  tileUrl,
+  vectorPyramidZooms,
+  vectorTileZoom,
+  type TileCoords,
+} from './tilePyramid'
 
 const TOULOUSE = { lat: 43.6045, lng: 1.4442 }
 
@@ -103,24 +111,37 @@ describe('tileToBounds', () => {
 })
 
 describe('tileUrl', () => {
-  const CARTO = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+  it('expands the {z}/{x}/{y} placeholders', () => {
+    expect(tileUrl('https://tiles.versatiles.org/tiles/osm/{z}/{x}/{y}', { z: 3, x: 4, y: 2 })).toBe(
+      'https://tiles.versatiles.org/tiles/osm/3/4/2',
+    )
+    expect(tileUrl('/tiles/{z}/{x}/{y}.png', { z: 7, x: 64, y: 45 })).toBe('/tiles/7/64/45.png')
+  })
+})
 
-  it("picks the subdomain by Leaflet's rule and expands the retina suffix", () => {
-    const tile = { z: 3, x: 4, y: 2 } // (4 + 2) % 4 = 2 → 'c'
-    expect(tileUrl(CARTO, tile, { subdomains: 'abcd' })).toBe(
-      'https://c.basemaps.cartocdn.com/dark_all/3/4/2.png',
-    )
-    expect(tileUrl(CARTO, tile, { subdomains: 'abcd', retina: true })).toBe(
-      'https://c.basemaps.cartocdn.com/dark_all/3/4/2@2x.png',
-    )
+describe('vectorTileZoom', () => {
+  it('runs one level below Leaflet and overzooms past the source maxzoom', () => {
+    // 512 px vector tiles behind a 256 px Leaflet grid: Leaflet z13 draws z12
+    expect(vectorTileZoom(13, 14)).toBe(12)
+    expect(vectorTileZoom(13.7, 14)).toBe(12)
+    // Street level reuses the deepest tile — no new request past it
+    expect(vectorTileZoom(15, 14)).toBe(14)
+    expect(vectorTileZoom(19, 14)).toBe(14)
+    expect(vectorTileZoom(19, 10)).toBe(10)
+    expect(vectorTileZoom(0.5, 14)).toBeNull()
+  })
+})
+
+describe('vectorPyramidZooms', () => {
+  it('lists every other level a gesture reaches, nearest first, without the current one', () => {
+    // Leaflet z12 draws z11; the range 5–19 maps to tile zooms 4–14
+    expect(vectorPyramidZooms(12, 5, 19, 14)).toEqual([10, 12, 9, 13, 8, 14, 7, 6, 5, 4])
   })
 
-  it('leaves templates without {s}/{r} untouched by the options', () => {
-    expect(tileUrl('/tiles/{z}/{x}/{y}.png', { z: 7, x: 64, y: 45 }, { retina: true })).toBe(
-      '/tiles/7/64/45.png',
-    )
-    expect(tileUrl('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { z: 5, x: 16, y: 11 })).toBe(
-      'https://tile.openstreetmap.org/5/16/11.png',
-    )
+  it('collapses street level onto the deepest tile', () => {
+    // At Leaflet z17 the map already draws z14: zooming in costs nothing
+    expect(vectorPyramidZooms(17, 5, 19, 14)).toEqual([13, 12, 11, 10, 9, 8, 7, 6, 5, 4])
+    // The landcover source stops at z10
+    expect(vectorPyramidZooms(17, 5, 19, 10)).toEqual([9, 8, 7, 6, 5, 4])
   })
 })

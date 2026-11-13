@@ -24,8 +24,11 @@ const CYAN_COVERAGE = `(() => {
   let cyan = 0
   let area = 0
   for (const c of document.querySelectorAll('canvas')) {
+    // The basemap's WebGL canvas has no 2d context — only Leaflet's count
+    const ctx = c.getContext('2d')
+    if (!ctx) continue
     area = Math.max(area, c.width * c.height)
-    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data
+    const d = ctx.getImageData(0, 0, c.width, c.height).data
     for (let i = 0; i < d.length; i += 4) {
       if (d[i + 3] !== 0 && d[i + 2] > 100 && d[i + 1] > 100 && d[i] < d[i + 1]) cyan += 1
     }
@@ -34,7 +37,7 @@ const CYAN_COVERAGE = `(() => {
 })()`
 
 /** Writes a pyramid around a point into the SW tile cache, the way a warmed
-    tile lands there — every zoom the layer could show. */
+    vector tile lands there — every level the source serves. */
 async function seedTilePyramid(
   page: import('@playwright/test').Page,
   center: { lat: number; lng: number },
@@ -43,9 +46,9 @@ async function seedTilePyramid(
     // The CURRENT generation (SW_TILE_CACHE in src/lib/swCaches.ts) — the
     // debug layer reads only that one, unlike the Settings counter's
     // prefix-wide sweep.
-    const cache = await caches.open('plein-tiles-v3')
+    const cache = await caches.open('plein-tiles-v4')
     let n = 0
-    for (let z = 4; z <= 19; z += 1) {
+    for (let z = 3; z <= 14; z += 1) {
       const c = 2 ** z
       const x = Math.floor(((lng + 180) / 360) * c)
       const rad = (lat * Math.PI) / 180
@@ -53,7 +56,7 @@ async function seedTilePyramid(
       for (let dx = -2; dx <= 2; dx += 1) {
         for (let dy = -2; dy <= 2; dy += 1) {
           await cache.put(
-            `https://a.basemaps.cartocdn.com/dark_all/${z}/${x + dx}/${y + dy}.png`,
+            `https://tiles.versatiles.org/tiles/osm/${z}/${x + dx}/${y + dy}`,
             new Response('x', { status: 200 }),
           )
           n += 1

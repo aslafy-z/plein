@@ -1,19 +1,22 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { withCartoKey } from './cartoKey';
 import { setForcedOffline } from './connectivity';
-import { BLANK_TILE, dropTileSnapshot, ensureTileSnapshot, tileUrlFor } from './tileGate';
+import { BLANK_PBF, BLANK_TILE, dropTileSnapshot, ensureTileSnapshot, tileUrlFor } from './tileGate';
 
 // The gate decides whether a basemap tile may be requested at all. It is the
-// only thing standing between « Force offline mode » and the CDN: Leaflet
-// loads tiles with <img> requests, which no provider or store path sees.
+// only thing standing between « Force offline mode » and the tile server:
+// MapLibre and the fallback layer fetch on their own, past every provider
+// and store path.
 
-const CACHED = 'https://a.basemaps.cartocdn.com/dark_all/12/2049/1409.png';
-const UNCACHED = 'https://a.basemaps.cartocdn.com/dark_all/12/2050/1409.png';
+const CACHED = 'https://tiles.versatiles.org/tiles/osm/12/2049/1409';
+const UNCACHED = 'https://tiles.versatiles.org/tiles/osm/12/2050/1409';
+const GLYPHS = 'https://tiles.versatiles.org/assets/glyphs/noto_sans_regular/0-255.pbf';
 
-/** Cache Storage holding exactly `urls`, as the gate reads it */
-function stubCacheStorage(urls: string[]): void {
+/** Cache Storage holding exactly `stores`, as the gate reads it */
+function stubCacheStorage(stores: Record<string, string[]>): void {
   (globalThis as { caches?: unknown }).caches = {
-    open: async () => ({ keys: async () => urls.map((url) => ({ url })) }),
+    open: async (name: string) => ({
+      keys: async () => (stores[name] ?? []).map((url) => ({ url })),
+    }),
   };
 }
 
@@ -36,7 +39,7 @@ describe('tileUrlFor', () => {
   });
 
   it('lets a cached tile through and blanks the rest', async () => {
-    stubCacheStorage([CACHED]);
+    stubCacheStorage({ 'plein-tiles-v4': [CACHED] });
     setForcedOffline(true);
     await ensureTileSnapshot();
 
@@ -45,16 +48,16 @@ describe('tileUrlFor', () => {
     expect(tileUrlFor(UNCACHED)).toBe(BLANK_TILE);
   });
 
-  it('matches a keyed tile against the keyless entry the cache holds', async () => {
-    // What Leaflet asks for carries the CARTO key; what the worker stored
-    // does not (lib/cartoKey.ts) — a raw comparison would blank a tile the
-    // device is holding, which is precisely what the mode is for.
-    stubCacheStorage([CACHED]);
+  it('answers the vector map with an empty protobuf, and reads the glyph cache too', async () => {
+    // A declined vector tile must still parse: MapLibre reads an empty pbf as
+    // a tile with no features. The glyph ranges live in the basemap cache.
+    stubCacheStorage({ 'plein-tiles-v4': [CACHED], 'plein-basemap-v1': [GLYPHS] });
     setForcedOffline(true);
     await ensureTileSnapshot();
 
-    expect(tileUrlFor(withCartoKey(CACHED, 'cb1_key'))).toBe(withCartoKey(CACHED, 'cb1_key'));
-    expect(tileUrlFor(withCartoKey(UNCACHED, 'cb1_key'))).toBe(BLANK_TILE);
+    expect(tileUrlFor(UNCACHED, BLANK_PBF)).toBe(BLANK_PBF);
+    expect(tileUrlFor(CACHED, BLANK_PBF)).toBe(CACHED);
+    expect(tileUrlFor(GLYPHS, BLANK_PBF)).toBe(GLYPHS);
   });
 
   it('blanks everything when the origin has no Cache Storage at all', async () => {
@@ -66,7 +69,7 @@ describe('tileUrlFor', () => {
   });
 
   it('releases every tile again once the mode is off', async () => {
-    stubCacheStorage([CACHED]);
+    stubCacheStorage({ 'plein-tiles-v4': [CACHED] });
     setForcedOffline(true);
     await ensureTileSnapshot();
     expect(tileUrlFor(UNCACHED)).toBe(BLANK_TILE);

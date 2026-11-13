@@ -1,4 +1,4 @@
-import { defineConfig, loadEnv, type Plugin } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { execFile, execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
@@ -7,7 +7,6 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { cloudflare } from "@cloudflare/vite-plugin";
 import { paraglideVitePlugin } from '@inlang/paraglide-js'
 
-import { resolveCartoKey, withCartoKey } from './src/lib/cartoKey'
 
 // ── Build version ─────────────────────────────────────────────────────────────
 // Stamped into the bundle (`__APP_VERSION__`) and into `/version.json`, which the
@@ -52,11 +51,9 @@ function versionStamp(version: string): Plugin {
 // ── Dev/preview tile proxy ────────────────────────────────────────────────────
 // Sandboxed / firewalled environments often let the dev server reach the
 // internet (via HTTPS_PROXY) while the browser itself cannot. The app first
-// tries the CARTO dark CDN directly; when those tiles fail it falls back to
-// `/tiles/{z}/{x}/{y}.png`, which this middleware serves from CARTO too (same
-// minimalist style as the design, same account key — src/lib/cartoKey.ts),
-// with OSM as a last resort.
-const CARTO = 'https://a.basemaps.cartocdn.com/dark_all'
+// draws the VersaTiles vector map directly; when that fails it falls back to
+// `/tiles/{z}/{x}/{y}.png`, which this middleware serves from OpenStreetMap
+// with the identifying User-Agent its tile policy asks for.
 const OSM = 'https://tile.openstreetmap.org'
 const UA = 'plein-dev-tile-proxy/1 (local development)'
 const CACHE_MAX = 600
@@ -82,11 +79,10 @@ function fetchTile(url: string): Promise<Buffer> {
 
 type TileHandler = (req: IncomingMessage, res: ServerResponse) => void
 
-/** Serves `/tiles/{z}/{x}/{y}.png` from CARTO with `cartoKey` on it, the way
-    the app's own requests carry it. */
-function tileHandler(cartoKey: string): TileHandler {
+/** Serves `/tiles/{z}/{x}/{y}.png` from OpenStreetMap, memoized */
+function tileHandler(): TileHandler {
   return (req, res) => {
-    const m = (req.url ?? '').match(/^\/(\d{1,2})\/(\d+)\/(\d+)(?:@2x)?\.png$/)
+    const m = (req.url ?? '').match(/^\/(\d{1,2})\/(\d+)\/(\d+)\.png$/)
     if (!m) {
       res.statusCode = 404
       res.end()
@@ -103,8 +99,7 @@ function tileHandler(cartoKey: string): TileHandler {
       send(cached)
       return
     }
-    fetchTile(withCartoKey(`${CARTO}/${key}.png`, cartoKey))
-      .catch(() => fetchTile(`${OSM}/${key}.png`))
+    fetchTile(`${OSM}/${key}.png`)
       .then((buf) => {
         if (tileCache.size >= CACHE_MAX) {
           const first = tileCache.keys().next().value
@@ -192,9 +187,9 @@ function apiHandler(req: IncomingMessage, res: ServerResponse): void {
     })
 }
 
-function devProxies(cartoKey: string): Plugin {
+function devProxies(): Plugin {
   const mount = (middlewares: { use(path: string, fn: TileHandler): void }) => {
-    middlewares.use('/tiles', tileHandler(cartoKey))
+    middlewares.use('/tiles', tileHandler())
     middlewares.use('/proxy', apiHandler)
   }
   return {
@@ -229,14 +224,11 @@ const paraglide = () =>
     strategy: ['custom-appSettings', 'preferredLanguage', 'baseLocale'],
   })
 
-// `loadEnv` rather than `process.env`: the app reads VITE_CARTO_KEY through
-// `import.meta.env`, which Vite fills from the `.env` files too, and the dev
-// tile proxy has to serve tiles from the same account as the browser does.
-export default defineConfig(({ mode }) => ({
+export default defineConfig(() => ({
   plugins: [
     paraglide(),
     react(),
-    devProxies(resolveCartoKey(loadEnv(mode, process.cwd(), 'VITE_').VITE_CARTO_KEY)),
+    devProxies(),
     versionStamp(APP_VERSION),
     cloudflare(),
   ],

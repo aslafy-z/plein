@@ -136,7 +136,7 @@ geocodificação — que a app escolhe consoante a zona apresentada (fonte
 | Dado | Fonte | Licença |
 | --- | --- | --- |
 | Cálculo de itinerários | [OSRM](https://project-osrm.org/) (servidor de demonstração) · [Valhalla](https://valhalla.github.io/valhalla/) (servidor público FOSSGIS) para «evitar autoestradas / portagens» | © colaboradores do [OpenStreetMap](https://www.openstreetmap.org/copyright) |
-| Mapas base | [CARTO](https://carto.com/attributions) claro / escuro consoante o tema (mosaicos do OpenStreetMap como recurso offline) | © colaboradores do [OpenStreetMap](https://www.openstreetmap.org/copyright) |
+| Mapas base | Mosaicos vetoriais do [VersaTiles](https://versatiles.org), sem chave de API, estilo claro / escuro consoante o tema (mosaicos raster do OpenStreetMap como recurso se o VersaTiles não responder ou o dispositivo não tiver WebGL) | © colaboradores do [OpenStreetMap](https://www.openstreetmap.org/copyright) |
 
 A app não tem **nenhum backend**: o navegador consulta diretamente estes
 serviços públicos. As fontes são conectáveis (`src/data/types.ts`). Sem
@@ -148,7 +148,8 @@ lista.
 
 ## 🛠️ Construído com
 
-**Vite · React 18 · TypeScript estrito · Leaflet**, sem outra dependência de
+**Vite · React 18 · TypeScript estrito · Leaflet**, mais o MapLibre GL para
+desenhar o mapa base vetorial (carregado a pedido), sem outra dependência de
 runtime. O build de produção são apenas recursos estáticos, servidos por um
 Cloudflare Worker.
 
