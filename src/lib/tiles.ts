@@ -62,14 +62,37 @@ const VECTOR_SOURCES = [
 ] as const;
 
 const FALLBACK_URL = IS_DEV ? '/tiles/{z}/{x}/{y}.png' : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-/** No vector tile managed to load within this window → assume unreachable.
-    Wider than a raster CDN's: the style (and the renderer chunk, on a first
-    visit) load before the first tile is even asked for. */
-const GIVE_UP_MS = 10_000;
+/** VersaTiles has not answered — not even the style — within this window
+    after the layer went on the map → assume it is unreachable. */
+const STYLE_GIVE_UP_MS = 12_000;
+/** The style arrived (the server answers) but no tile has, this long after:
+    something between here and the tiles is broken. Generous on purpose — a
+    first visit on a phone network still has the sprite, the fonts, the
+    worker start-up and the tiles themselves to get through, and a swap lasts
+    the whole session. */
+const TILE_GIVE_UP_MS = 25_000;
 
 const ATTRIBUTION = '© OpenStreetMap · VersaTiles';
 
 let vectorUnreachable = false;
+
+/** Why the last map that fell back did — the debug overlay's answer to « why
+    is this OpenStreetMap? », which no screenshot can tell */
+export type FallbackReason =
+  | 'no-webgl'
+  | 'renderer-chunk'
+  | 'renderer-refused'
+  | 'style-error'
+  | 'style-timeout'
+  | 'tile-errors'
+  | 'tiles-timeout';
+let lastFallback: { reason: FallbackReason; detail?: string } | null = null;
+
+function noteFallback(reason: FallbackReason, detail?: string): void {
+  lastFallback = { reason, ...(detail ? { detail } : null) };
+  // Debug chrome, English only: one line per swap, for whoever has DevTools open
+  console.warn(`[basemap] VersaTiles → OpenStreetMap fallback: ${reason}${detail ? ` (${detail})` : ''}`);
+}
 /** Null until a map has tried; false sticks for the session — a browser
     without WebGL does not grow one */
 let webgl: boolean | null = null;
@@ -85,6 +108,7 @@ registerTileDebugSource(
     active: vectorUnreachable || webgl === false ? 'fallback' : 'vector',
     vectorUnreachable,
     webgl,
+    fallbackReason: lastFallback ? `${lastFallback.reason}${lastFallback.detail ? `: ${lastFallback.detail}` : ''}` : null,
     tilesLoaded,
     tilesErrored,
     ...tileGateDebug(),
@@ -388,7 +412,10 @@ function mountFallback(handle: BasemapHandle): void {
 
 function mountVector(handle: BasemapHandle): void {
   if (!hasWebGl()) {
-    if (!handle.onFallback) mountFallback(handle);
+    if (!handle.onFallback) {
+      noteFallback('no-webgl');
+      mountFallback(handle);
+    }
     return;
   }
   const generation = ++handle.generation;
@@ -401,16 +428,26 @@ function mountVector(handle: BasemapHandle): void {
   let settled = false;
   let loaded = 0;
   let errored = 0;
+  /** The style answered: the server is reachable, whatever the tiles do */
+  let styleArrived = false;
   let layer: GlLayer | null = null;
   // Zoom changes abort pending tiles without an error, so a count alone can
-  // miss the failure — the timer catches that case. It starts once the layer
-  // is on the map, not before: a map can wait a long time for an area to
-  // draw in (a route behind its skeleton), which says nothing about the
-  // server. The offline gate is never grounds for the swap: « VersaTiles is
-  // unreachable » lasts the whole session, and releasing the switch has to
-  // find the server where it left it rather than on a verdict the app's own
-  // blanking produced.
+  // miss the failure — the timers catch that case. Two of them, because «
+  // nothing answered » and « the tiles are slow » are not the same verdict:
+  // the first is short, the second is long (a first visit on a phone network
+  // is slow, and a swap is for the session). They start once the layer is on
+  // the map, not before: a map can wait a long time for an area to draw in
+  // (a route behind its skeleton), which says nothing about the server. The
+  // offline gate is never grounds for the swap: « VersaTiles is unreachable »
+  // lasts the whole session, and releasing the switch has to find the server
+  // where it left it rather than on a verdict the app's own blanking produced.
   let giveUp: ReturnType<typeof setTimeout> | undefined;
+  const arm = (ms: number, reason: FallbackReason) => {
+    clearTimeout(giveUp);
+    giveUp = setTimeout(() => {
+      if (loaded === 0 && !isForcedOffline()) swap(reason);
+    }, ms);
+  };
   map.on('unload', () => clearTimeout(giveUp));
 
   // Stands the fallback back up — or hands the handle back to the one that
@@ -422,10 +459,11 @@ function mountVector(handle: BasemapHandle): void {
     } else mountFallback(handle);
   };
 
-  const swap = () => {
+  const swap = (reason: FallbackReason, detail?: string) => {
     if (settled || handle.generation !== generation) return;
     settled = true;
     vectorUnreachable = true;
+    noteFallback(reason, detail);
     clearTimeout(giveUp);
     if (layer) map.removeLayer(layer);
     giveBack();
@@ -449,15 +487,14 @@ function mountVector(handle: BasemapHandle): void {
       (layer as unknown as { getAttribution(): string }).getAttribution = () => ATTRIBUTION;
       track(layer);
       layer.addTo(map);
-      giveUp = setTimeout(() => {
-        if (loaded === 0 && !isForcedOffline()) swap();
-      }, GIVE_UP_MS);
-    } catch {
+      arm(STYLE_GIVE_UP_MS, 'style-timeout');
+    } catch (err) {
       // The renderer refused this map (a context the browser would not
       // create, a blocklisted GPU). This map keeps the fallback; the next
       // one tries again.
       clearTimeout(giveUp);
       settled = true;
+      noteFallback('renderer-refused', (err as Error)?.message);
       if (layer) map.removeLayer(layer);
       layer = null;
       giveBack();
@@ -466,6 +503,12 @@ function mountVector(handle: BasemapHandle): void {
     handle.layer = layer;
     handle.onFallback = false;
     const gl = layer.getMaplibreMap();
+    gl.on('styledata', () => {
+      if (styleArrived || settled) return;
+      styleArrived = true;
+      // Reachable: from here only the tiles can still let the map down
+      arm(TILE_GIVE_UP_MS, 'tiles-timeout');
+    });
     gl.on('data', (e: { dataType?: string; tile?: unknown }) => {
       if (e.dataType !== 'source' || !e.tile || isForcedOffline()) return;
       loaded++;
@@ -476,14 +519,20 @@ function mountVector(handle: BasemapHandle): void {
         if (previous) map.removeLayer(previous);
       }
     });
-    gl.on('error', (e: { tile?: unknown; sourceId?: string }) => {
+    gl.on('error', (e: { error?: Error; tile?: unknown; sourceId?: string }) => {
       tilesErrored++;
       if (settled || isForcedOffline()) return;
-      // No style means nothing will ever draw: swap at once. A tile error
-      // only counts once it repeats, like the raster layer's did.
-      errored++;
-      if (!e.tile && !e.sourceId) swap();
-      else if (loaded === 0 && errored >= 2) swap();
+      const detail = e.error?.message;
+      // A tile error only counts once it repeats, like the raster layer's did
+      if (e.tile || e.sourceId) {
+        errored++;
+        if (loaded === 0 && errored >= 2) swap('tile-errors', detail);
+        return;
+      }
+      // Anything else before the style arrived IS the style: nothing will
+      // ever draw, swap at once. After it, it is a sprite or a font range —
+      // a map without a few icons or labels is still the map.
+      if (!styleArrived) swap('style-error', detail);
     });
   };
 
@@ -506,9 +555,40 @@ function mountVector(handle: BasemapHandle): void {
     () => {
       // The renderer chunk did not load (offline on a first visit): this is
       // reachability like any other — the fallback, and the recovery probe.
-      if (handle.generation === generation && handles.has(handle)) swap();
+      if (handle.generation === generation && handles.has(handle)) swap('renderer-chunk');
     },
   );
+}
+
+// ── Preload: start the map before there is one ───────────────────────────────
+// A first visit opens on the onboarding screen, and the map only mounts once
+// it is dismissed — which used to be when the renderer chunk (~270 kB gzip),
+// the style, the sprite and the fonts all started downloading, one after the
+// other, in front of a blank stage. The onboarding screen calls this as it
+// mounts, so they download while the pitch is being read: the chunk through
+// the same dynamic import the map will await, the assets as plain requests
+// the HTTP cache (and the service worker, once it controls the page) hands
+// straight back to MapLibre. Tiles are left alone: where the map will open
+// depends on the answer to the location prompt that screen is about to ask.
+
+/** The style's own font stacks, at the range every Latin label starts with */
+const PRELOAD_GLYPHS = ['noto_sans_regular', 'noto_sans_bold'].map(
+  (font) => `${VERSATILES}/assets/glyphs/${font}/0-255.pbf`,
+);
+
+let preloaded = false;
+
+export function preloadBasemap(): void {
+  if (preloaded) return;
+  // Nothing to gain offline, and a device without WebGL never draws it
+  if (isOffline() || !hasWebGl()) return;
+  preloaded = true;
+  loadGl().catch(() => {}); // the map's own mount retries a failed import
+  // MapLibre asks for the @2x sprite on any screen denser than 1
+  const sprite = `${VERSATILES}/assets/sprites/base${window.devicePixelRatio > 1 ? '@2x' : ''}`;
+  for (const url of [styleUrl(), `${sprite}.json`, `${sprite}.png`, ...PRELOAD_GLYPHS]) {
+    fetch(url, { mode: 'cors', credentials: 'omit', priority: 'low' }).catch(() => {});
+  }
 }
 
 export function addBasemap(map: L.Map, visibleCenter?: () => L.LatLng): void {
@@ -534,6 +614,13 @@ export function addBasemap(map: L.Map, visibleCenter?: () => L.LatLng): void {
     handle.generation++;
   });
   installPyramidPrefetch(handle);
+  // A map sitting on the fallback re-checks the server as it is used, not
+  // only on the next `online` event or the next map: a swap that a slow
+  // first load caused must not pin the whole session on OSM. The probe is
+  // rate-limited (PROBE_MIN_INTERVAL_MS), so a pan costs nothing extra.
+  map.on('moveend', () => {
+    if (handle.onFallback) void attemptRecovery();
+  });
 
   if (vectorUnreachable || webgl === false) {
     mountFallback(handle);

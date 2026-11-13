@@ -36,6 +36,9 @@ export interface TileLayerDebug {
   vectorUnreachable: boolean;
   /** Whether this device can run the vector map — null until a map tried */
   webgl: boolean | null;
+  /** Why the last map that fell back to OSM did (lib/tiles.ts FallbackReason,
+   *  plus the error message when there was one) — null while none has */
+  fallbackReason: string | null;
   tilesLoaded: number;
   tilesErrored: number;
   /** Tiles « Force offline mode » declined to request (lib/tileGate.ts) */
@@ -57,6 +60,7 @@ export function tileLayerDebugSnapshot(): TileLayerDebug {
       active: 'vector',
       vectorUnreachable: false,
       webgl: null,
+      fallbackReason: null,
       tilesLoaded: 0,
       tilesErrored: 0,
       tilesSkipped: 0,

@@ -197,7 +197,12 @@ width, never pointer type: a window gets resized and the layout has to follow.
   the debug grid (`vectorTileZoom`, `tileMapZoom`) both depend on that rule.
   The map's `maxZoom` (19) is set on the map in `useLeafletMap`: no tile
   layer supplies one any more, and a fit on a single point without it zooms
-  to Infinity.
+  to Infinity. The onboarding screen starts the renderer chunk, the style,
+  the sprite and the base fonts downloading (`preloadBasemap`), so a first
+  visit's map does not start from nothing. Only « VersaTiles never answered »
+  swaps a map to OSM (no style in 12 s, the style failing, repeated tile
+  errors, no tile in 25 s after the style) — a sprite or a font range
+  failing does not — and the debug overlay's `fallbackReason` says which.
 - **A card's or sheet's secondary actions are `ActionPill`s**
   (`src/components/ActionPill.tsx`): Share, Edit, Reset, close, deselect,
   favorite in a header, « Settings › » at the end of a summary card. A tonal

@@ -192,3 +192,42 @@ test.describe('a map born without an area', () => {
     await expect(page.locator('.leaflet-gl-layer canvas').first()).toBeVisible({ timeout: 20_000 })
   })
 })
+
+test.describe('the onboarding screen', () => {
+  test.use({ seed: { sourceId: 'demo', onboarded: false } })
+
+  test('starts loading the vector map before there is a map', async ({ page }) => {
+    // A first visit used to start the renderer chunk, the style and the
+    // fonts only once the map mounted — after the pitch, in front of a blank
+    // stage. The screen preloads them (lib/tiles.ts, preloadBasemap).
+    const seen = new Set<string>()
+    page.on('request', (req) => {
+      const url = req.url()
+      if (/maplibre-gl/.test(url)) seen.add('renderer')
+      if (/tiles\.versatiles\.org\/assets\/styles\/[^/]+\/style\.json$/.test(url)) seen.add('style')
+      if (/tiles\.versatiles\.org\/assets\/glyphs\//.test(url)) seen.add('glyphs')
+    })
+    await page.goto('/')
+    await expect(page.getByText('Get started', { exact: true })).toBeVisible()
+    await expect.poll(() => [...seen].sort(), { timeout: 15_000 }).toEqual(['glyphs', 'renderer', 'style'])
+    await expect(page.locator('.leaflet-container')).toHaveCount(0)
+
+    // And the map those downloads were for draws once the pitch is dismissed
+    await page.getByText('Continue without location', { exact: true }).click()
+    await expect(page.locator('.leaflet-gl-layer canvas').first()).toBeVisible({ timeout: 20_000 })
+  })
+})
+
+test('a missing sprite or font range keeps the vector map', async ({ page }) => {
+  // Only the style failing means nothing will ever draw. A sprite or a glyph
+  // range that errors before the first tile used to read as « VersaTiles is
+  // unreachable » and pinned the session on the raster fallback.
+  await page.route(/tiles\.versatiles\.org\/assets\/(sprites|glyphs)\//, (route) =>
+    route.fulfill({ status: 404, body: '' }),
+  )
+  await gotoMap(page)
+  await expect(page.locator('.leaflet-gl-layer canvas').first()).toBeVisible({ timeout: 20_000 })
+  await page.waitForTimeout(3000) // past the errors, and the first tiles
+  await expect(page.locator('.leaflet-gl-layer canvas')).not.toHaveCount(0)
+  expect(await page.locator('img.leaflet-tile').count()).toBe(0)
+})

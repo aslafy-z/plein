@@ -1,13 +1,18 @@
+import { useEffect } from 'react';
 import { useApp } from '../state/store';
 import { C, ctaStyle, display, mono } from '../theme';
 import { useIsDesktop } from '../lib/layout';
 import { m } from '../paraglide/messages.js';
 import { LogoLockup } from '../components/Logo';
 import { userDotHtml } from '../lib/userDot';
+import { preloadBasemap } from '../lib/tiles';
 
 export default function Onboarding() {
   const app = useApp();
   const desktop = useIsDesktop();
+  // The map comes right after this screen: start its renderer and style now,
+  // so it draws as soon as the pitch is dismissed (lib/tiles.ts)
+  useEffect(() => preloadBasemap(), []);
   const steps = [
     { n: '01', title: m.onboarding_step1_title(), sub: m.onboarding_step1_sub() },
     { n: '02', title: m.onboarding_step2_title(), sub: m.onboarding_step2_sub() },
