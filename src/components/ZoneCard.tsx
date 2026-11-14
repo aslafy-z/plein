@@ -11,6 +11,7 @@ import {
   effectiveFuel,
   effectivePrice,
   selectTripOriginKnown,
+  selectSearchedPlace,
 } from '../state/store';
 import { fmtPrice, distLabel, agoLabel, durationLabel } from '../lib/format';
 import { fuelLabel, openStatusShort } from '../lib/labels';
@@ -55,6 +56,11 @@ export default function ZoneCard({ handle }: { handle?: ReactNode }) {
   // absence (with the greyed « Distance » chip in the list) IS the signal
   // that the figures no longer start from the user.
   const tripOrigin = selectTripOriginKnown(app);
+  // A place the user looked up and is now looking at: the card shows its
+  // stations (« fuel up there »), and offers the other reading of the same
+  // search (« fuel up on the way there ») at the moment the prices are on
+  // screen to decide with — the search row's « Directions › » asks before.
+  const searchedPlace = selectSearchedPlace(app);
 
   const cardHeading = recoIsCheapest
     ? app.searchedAway
@@ -188,6 +194,42 @@ export default function ZoneCard({ handle }: { handle?: ReactNode }) {
               </div>
             )}
           </div>
+
+          {searchedPlace && (
+            <div
+              data-testid="zone-route-offer"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                marginTop: 12,
+                paddingTop: 10,
+                borderTop: `1px solid ${C.border09}`,
+              }}
+            >
+              <span
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  color: C.mut,
+                  fontSize: 13,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {m.sheet_route_offer({ place: searchedPlace.label })}
+              </span>
+              <ActionPill
+                onClick={() => {
+                  app.setTo(searchedPlace.label, searchedPlace.point);
+                  app.go('routeSetup');
+                }}
+                label={m.search_route_shortcut()}
+                aria-label={m.search_route_to_aria({ place: searchedPlace.label })}
+              />
+            </div>
+          )}
         </div>
       )}
       {/* One polite live region for everything the zone says when it has no

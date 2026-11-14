@@ -191,6 +191,7 @@
   "sheet_updated_ago": "Act. {ago}",
   "sheet_go_there": "Anar-hi · {duration}",
   "sheet_go_there_no_eta": "Anar-hi",
+  "sheet_route_offer": "Repostar de camí cap a {place}?",
   "sheet_per_litre": "{fuel} / L",
   "sheet_price_per_litre_delta": "{sign}{amount} €/L",
   "sheet_locating": "S'està cercant la teva posició…",
