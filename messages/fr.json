@@ -191,6 +191,7 @@
   "sheet_updated_ago": "MàJ {ago}",
   "sheet_go_there": "Y aller · {duration}",
   "sheet_go_there_no_eta": "Y aller",
+  "sheet_route_offer": "Faire le plein en route vers {place} ?",
   "sheet_per_litre": "{fuel} / L",
   "sheet_price_per_litre_delta": "{sign}{amount} €/L",
   "sheet_locating": "Recherche de votre position…",

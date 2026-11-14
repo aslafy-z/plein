@@ -191,6 +191,7 @@
   "sheet_updated_ago": "Atual. {ago}",
   "sheet_go_there": "Ir · {duration}",
   "sheet_go_there_no_eta": "Ir",
+  "sheet_route_offer": "Abastecer a caminho de {place}?",
   "sheet_per_litre": "{fuel} / L",
   "sheet_price_per_litre_delta": "{sign}{amount} €/L",
   "sheet_locating": "A procurar a sua posição…",

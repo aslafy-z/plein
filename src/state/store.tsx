@@ -2644,6 +2644,23 @@ export function selectCanPickCurrentPosition(
   return app.hasKnownPos && !app.fromIsCurrentPosition && !app.toIsCurrentPosition;
 }
 
+/**
+ * The searched place the zone is sitting on, if any: the map search's pick
+ * (its pin) while the zone is still centred on it. A free pan drops the label
+ * and a favorite or a station shown on the map carries no pin, so neither
+ * counts — only a place the user looked up, and only while they are looking
+ * at it. It is what the zone card offers a route to: the stations at the
+ * place answer « fuel up there », the route answers « fuel up on the way ».
+ */
+export function selectSearchedPlace(
+  app: Pick<AppStore, 'searchPin' | 'searchLabel' | 'searchPos'>,
+): { point: GeoPoint; label: string } | null {
+  const pin = app.searchPin;
+  if (!pin || app.searchLabel !== pin.label) return null;
+  if (pin.point.lat !== app.searchPos.lat || pin.point.lng !== app.searchPos.lng) return null;
+  return pin;
+}
+
 export function useApp(): AppStore {
   const ctx = useContext(Ctx);
   if (!ctx) throw new Error('useApp must be used inside <AppProvider>');
