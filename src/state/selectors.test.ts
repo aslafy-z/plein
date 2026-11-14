@@ -41,6 +41,7 @@ import {
   routeFromLabel,
   routeToLabel,
   selectCanPickCurrentPosition,
+  selectSearchedPlace,
   selectTripOriginKnown,
   searchOutOfReach,
   stationTrip,
@@ -999,6 +1000,28 @@ describe('selectCanPickCurrentPosition', () => {
   it('withdraws the offer once either end is already it — here to here is not a trip', () => {
     expect(offer({ fromIsCurrentPosition: true })).toBe(false)
     expect(offer({ toIsCurrentPosition: true })).toBe(false)
+  })
+})
+
+describe('selectSearchedPlace', () => {
+  const LYON = { lat: 45.764, lng: 4.8357 }
+  const pinned = { point: LYON, label: 'Lyon' }
+  const at = (over: Partial<AppStore> = {}) =>
+    selectSearchedPlace(
+      app({ searchPin: pinned, searchLabel: 'Lyon', searchPos: LYON, ...over }),
+    )
+
+  it('names the searched place while the zone sits on it', () => {
+    expect(at()).toEqual(pinned)
+  })
+
+  it('is gone once a pan takes the zone off the place — the pin stays, the offer does not', () => {
+    expect(at({ searchLabel: null, searchPos: { lat: 45.7, lng: 4.9 } })).toBeNull()
+  })
+
+  it('ignores a named area that is not a search pick (a favorite, a station shown on the map)', () => {
+    expect(at({ searchPin: null })).toBeNull()
+    expect(at({ searchLabel: 'Total Lyon Sud' })).toBeNull()
   })
 })
 
