@@ -260,7 +260,8 @@ that groups a few before the next promotion.
 - **Never pushed at the user.** The app is opened at the pump or behind the
   wheel, so unread news is a quiet signal only: `WhatsNewButton`, a small
   sparkle (on a phone, at the far end of the map's chip row; on desktop, a
-  « What's new » row at the bottom of the side rail) that wiggles briefly every few
+  « What's new » row at the bottom of the side rail, with a ✕ that puts it
+  away unread like the install offer's) that wiggles briefly every few
   seconds (`.whatsnew-wiggle`, off under reduced motion — the unread dot
   stays). No bar, no dialog on boot. It appears once the new build runs —
   the update bar's reload or any later cold start — and a tap opens

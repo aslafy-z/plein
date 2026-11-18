@@ -276,6 +276,7 @@
   "update_available": "A new version is available.",
   "update_reload": "Reload",
   "whatsnew_button_aria": "See what's new",
+  "whatsnew_dismiss_aria": "Hide what's new",
   "whatsnew_title": "What's new",
   "whatsnew_close_aria": "Close",
   "whatsnew_close_overlay_aria": "Close what's new",

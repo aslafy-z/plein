@@ -49,34 +49,59 @@ export default function WhatsNewButton({ size, rail }: { size: number; rail?: bo
 
   if (rail) {
     // Laid out like a rail tab (same padding, picto column and type), so it
-    // reads as part of the rail rather than a control dropped onto it
+    // reads as part of the rail rather than a control dropped onto it. The ✕
+    // puts it away unread, like the install offer under it.
     return (
-      <button
-        className="press"
-        onClick={() => app.setWhatsNewOpen('unread')}
-        aria-label={m.whatsnew_button_aria()}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          width: '100%',
-          padding: '11px 12px',
-          borderRadius: 12,
-          border: `1px solid ${C.accentBorder}`,
-          background: C.accentSoft09,
-          color: C.accent,
-          fontSize: 14,
-          fontWeight: 700,
-          textAlign: 'left',
-          cursor: 'pointer',
-        }}
-      >
-        <span style={{ width: 18, display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
-          {glyph}
-        </span>
-        <span style={{ flex: 1, minWidth: 0 }}>{m.whatsnew_title()}</span>
-        {dot({})}
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <button
+          className="press"
+          onClick={() => app.setWhatsNewOpen('unread')}
+          aria-label={m.whatsnew_button_aria()}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: '11px 12px',
+            borderRadius: 12,
+            border: `1px solid ${C.accentBorder}`,
+            background: C.accentSoft09,
+            color: C.accent,
+            fontSize: 14,
+            fontWeight: 700,
+            textAlign: 'left',
+            cursor: 'pointer',
+          }}
+        >
+          <span
+            style={{
+              width: 18,
+              display: 'flex',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            {glyph}
+          </span>
+          <span style={{ flex: 1, minWidth: 0 }}>{m.whatsnew_title()}</span>
+          {dot({})}
+        </button>
+        <button
+          onClick={() => app.dismissWhatsNew()}
+          aria-label={m.whatsnew_dismiss_aria()}
+          title={m.whatsnew_dismiss_aria()}
+          style={{
+            color: C.mut,
+            fontSize: 13,
+            fontWeight: 700,
+            padding: '0 4px',
+            cursor: 'pointer',
+          }}
+        >
+          ✕
+        </button>
+      </div>
     );
   }
 

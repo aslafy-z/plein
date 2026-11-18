@@ -804,6 +804,9 @@ export interface AppStore {
       as having seen the news. */
   whatsNewOpen: WhatsNewView | null;
   setWhatsNewOpen(view: WhatsNewView | null): void;
+  /** Puts the sparkle away unread (the desktop rail's ✕): the log counts as
+      seen, and Settings › What's new still has it */
+  dismissWhatsNew(): void;
   /** Ids the log had to announce when this session started — the sheet
       still leads with them after opening it stamped them seen */
   whatsNewFresh: ReadonlySet<string>;
@@ -2736,6 +2739,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       whatsNew,
       whatsNewOpen,
       setWhatsNewOpen: setWhatsNewOpenNav,
+      dismissWhatsNew: markChangelogSeen,
       whatsNewFresh,
     }),
     [
@@ -2762,7 +2766,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       canInstall, installDismissed, promptInstall, dismissInstallBanner, geoFixed,
       openInMaps, openTripInMaps, shareStation, shareMapView, shareRoute,
       finishOnboarding, sheetHint, consumeSheetHint,
-      whatsNew, whatsNewOpen, setWhatsNewOpenNav,
+      whatsNew, whatsNewOpen, setWhatsNewOpenNav, markChangelogSeen,
     ],
   );
 

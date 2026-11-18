@@ -276,6 +276,7 @@
   "update_available": "Nouvelle version disponible.",
   "update_reload": "Recharger",
   "whatsnew_button_aria": "Voir les nouveautés",
+  "whatsnew_dismiss_aria": "Masquer les nouveautés",
   "whatsnew_title": "Nouveautés",
   "whatsnew_close_aria": "Fermer",
   "whatsnew_close_overlay_aria": "Fermer les nouveautés",
