@@ -118,7 +118,10 @@ export default function StationDetail() {
   const app = useApp();
   const desktop = useIsDesktop();
 
-  const nearby = app.stations.data.find((x) => x.id === app.detailId);
+  // A pin of an area painted earlier (`others`) opens its fiche too
+  const nearby =
+    app.stations.data.find((x) => x.id === app.detailId) ??
+    app.stations.others?.find((x) => x.id === app.detailId);
   const routeSt = app.routeState.stations.find((x) => x.id === app.detailId);
   // Opened from the route ribbon (or only known along the route) → all
   // comparisons are route-relative, not home-radius-relative.

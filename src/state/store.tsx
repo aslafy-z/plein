@@ -134,6 +134,7 @@ import {
   collectCachedStations,
   readStationsCache,
   writeStationsCache,
+  MAX_CACHE_AGE_MS,
   STALE_MS,
 } from '../data/stationsCache';
 import {
@@ -286,6 +287,117 @@ export interface StationsState {
   fetchedAt?: number;
   /** true while shown data stays put and a background attempt is running */
   refreshing: boolean;
+  /**
+   * Where `data` was fetched: its center and the radius it answers for.
+   * Absent when the painted area did not say (an old cache record).
+   */
+  area?: StationsArea;
+  /**
+   * Areas of the same source painted earlier this session, newest first.
+   * They are kept so panning from one area into the next does not wipe the
+   * first one's pins: what they add is `others`.
+   */
+  retained?: RetainedArea[];
+  /**
+   * Stations of the `retained` areas that nothing newer answers for: drawn
+   * on the MAP only. The zone (card, list, recommendation, tier scale,
+   * freshness) keeps describing `data`, the area it was fetched with.
+   */
+  others?: Station[];
+}
+
+/** A fetched disc: the area a station list answers for */
+export interface StationsArea {
+  center: GeoPoint;
+  radiusKm: number;
+}
+
+/** An area painted earlier, kept for its pins (see `StationsState.retained`) */
+export interface RetainedArea extends StationsArea {
+  fetchedAt: number;
+  stations: Station[];
+}
+
+/**
+ * Areas kept besides the painted one: with it, as many as the durable cache
+ * holds (MAX_AREAS in stationsCache.ts), so the map never shows more than
+ * the app could also have offline.
+ */
+export const MAX_RETAINED_AREAS = 5;
+/** A newly painted area replaces, rather than retains, one this close (the cache's MATCH_KM) */
+const SAME_AREA_KM = 3;
+
+/**
+ * The areas to keep when `next` gets painted: the one on screen joins the
+ * earlier ones, minus any `next` replaces, any too old to show and any past
+ * the cap. A different source keeps nothing: its stations must never pass
+ * for the new source's.
+ */
+function retainAreas(
+  prev: StationsState,
+  next: { source: DataSourceId; fetchedAt: number; area?: StationsArea },
+): RetainedArea[] {
+  if (prev.activeSource !== next.source) return [];
+  const earlier = prev.retained ?? [];
+  const current: RetainedArea[] =
+    prev.area && prev.fetchedAt != null && prev.data.length > 0
+      ? [{ ...prev.area, fetchedAt: prev.fetchedAt, stations: prev.data }]
+      : [];
+  return [...current, ...earlier]
+    .filter((a) => !next.area || haversineKm(a.center, next.area.center) > SAME_AREA_KM)
+    .filter((a) => next.fetchedAt - a.fetchedAt <= MAX_CACHE_AGE_MS)
+    .sort((a, b) => b.fetchedAt - a.fetchedAt)
+    .slice(0, MAX_RETAINED_AREAS);
+}
+
+/**
+ * The pins the retained areas add to the map. An area is authoritative
+ * inside its own disc: a station a newer area does not list there has closed
+ * or stopped selling, and must not come back from an older answer. So,
+ * newest first, a retained station is kept only when its id is new and it
+ * lies outside every newer area, the painted one included. Unknown geometry
+ * (`area` absent) falls back on the id alone.
+ */
+export function retainedStations(
+  data: Station[],
+  area: StationsArea | undefined,
+  retained: RetainedArea[],
+): Station[] {
+  if (!retained.length) return [];
+  const seen = new Set(data.map((s) => s.id));
+  const newer: StationsArea[] = area ? [area] : [];
+  const out: Station[] = [];
+  for (const a of retained) {
+    for (const s of a.stations) {
+      if (seen.has(s.id)) continue;
+      if (newer.some((d) => haversineKm(d.center, s) <= d.radiusKm)) continue;
+      seen.add(s.id);
+      out.push(s);
+    }
+    newer.push(a);
+  }
+  return out;
+}
+
+/** The disc a cache read answers for, when its record carries one */
+function cachedArea(c: { center?: GeoPoint; fetchRadiusKm?: number }): StationsArea | undefined {
+  return c.center && c.fetchRadiusKm != null
+    ? { center: c.center, radiusKm: c.fetchRadiusKm }
+    : undefined;
+}
+
+/** The painted area and what the earlier ones add, as one state patch */
+function paintArea(
+  prev: StationsState,
+  ev: { data: Station[]; source: DataSourceId; fetchedAt: number; area?: StationsArea },
+): Pick<StationsState, 'data' | 'area' | 'retained' | 'others'> {
+  const retained = retainAreas(prev, ev);
+  return {
+    data: ev.data,
+    area: ev.area,
+    retained,
+    others: retainedStations(ev.data, ev.area, retained),
+  };
 }
 
 export type { RouteState };
@@ -370,6 +482,8 @@ export type StationsEvent =
       fetchedAt: number;
       /** true when a live fetch follows right behind the paint */
       revalidating: boolean;
+      /** The disc the cached area answers for, when its record says */
+      area?: StationsArea;
     }
   | {
       kind: 'request';
@@ -377,7 +491,14 @@ export type StationsEvent =
        *  runs as a background refresh, so nothing visibly resets. */
       offlineHint: boolean;
     }
-  | { kind: 'success'; data: Station[]; source: DataSourceId; fetchedAt: number }
+  | {
+      kind: 'success';
+      data: Station[];
+      source: DataSourceId;
+      fetchedAt: number;
+      /** The disc the fetch answers for */
+      area?: StationsArea;
+    }
   | { kind: 'failure'; source: DataSourceId; error: StationsErrorKind }
   | {
       kind: 'superseded';
@@ -402,7 +523,7 @@ export function nextStationsState(prev: StationsState, ev: StationsEvent): Stati
       // failure notice survives until a live fetch succeeds again.
       return {
         status: 'ready',
-        data: ev.data,
+        ...paintArea(prev, ev),
         activeSource: ev.source,
         lastError: prev.lastError,
         fetchedAt: ev.fetchedAt,
@@ -414,7 +535,7 @@ export function nextStationsState(prev: StationsState, ev: StationsEvent): Stati
     case 'success':
       return {
         status: 'ready',
-        data: ev.data,
+        ...paintArea(prev, ev),
         activeSource: ev.source,
         fetchedAt: ev.fetchedAt,
         refreshing: false,
@@ -1347,6 +1468,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           data: cached.stations,
           source: sourceId,
           fetchedAt: cached.fetchedAt,
+          area: cachedArea(cached),
           revalidating: false,
         });
         reportAreaLoad('cache');
@@ -1367,6 +1489,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             data: cached.stations,
             source: sourceId,
             fetchedAt: cached.fetchedAt,
+            area: cachedArea(cached),
             revalidating: false,
           });
           // What is in memory is now this cache entry, not `loadedArea`
@@ -1390,6 +1513,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             data: cached.stations,
             source: sourceId,
             fetchedAt: cached.fetchedAt,
+            area: cachedArea(cached),
             revalidating: false,
           });
         }
@@ -1405,6 +1529,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           data: cached.stations,
           source: sourceId,
           fetchedAt: cached.fetchedAt,
+          area: cachedArea(cached),
           revalidating: true,
         });
         // What is in memory is now this cache entry, not `loadedArea`: panning
@@ -1441,7 +1566,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         recordFavoritePrices(favoriteIds.current, data, fetchedAt);
         loadedArea.current = { source: sourceId, center: searchPos, radiusKm: coveredKm, fetchedAt };
         failedArea.current = null;
-        dispatchStations({ kind: 'success', data, source: sourceId, fetchedAt });
+        dispatchStations({
+          kind: 'success',
+          data,
+          source: sourceId,
+          fetchedAt,
+          area: { center: searchPos, radiusKm: coveredKm },
+        });
         reportAreaLoad('network');
       } catch {
         if (reqId !== stationsReq.current) return;
@@ -2895,12 +3026,14 @@ function passesTag(s: Station, t: ServiceTag): boolean {
 }
 
 /** Enriched stations passing the service-tag filter (no radius, brand or fuel) */
-const selectTagged = cached((app: AppStore): NearbyStation[] => {
+function withTags(app: AppStore, stations: NearbyStation[]): NearbyStation[] {
   const { serviceTags } = app;
   const wantedTags = (Object.keys(serviceTags) as ServiceTag[]).filter((t) => serviceTags[t]);
-  if (!wantedTags.length) return selectEnriched(app);
-  return selectEnriched(app).filter((s) => wantedTags.every((t) => passesTag(s, t)));
-});
+  if (!wantedTags.length) return stations;
+  return stations.filter((s) => wantedTags.every((t) => passesTag(s, t)));
+}
+
+const selectTagged = cached((app: AppStore): NearbyStation[] => withTags(app, selectEnriched(app)));
 
 /** Brandless stations pass as the « independent » group via brandGroup */
 function passesBrand(app: AppStore, s: NearbyStation): boolean {
@@ -2988,9 +3121,30 @@ export const selectZoneOutageCount = cached((app: AppStore): number => {
  * radius makes them pop in and out while panning; the circle stays a visual
  * indicator of the « cheapest near you » zone.
  */
-export const selectMapStations = cached((app: AppStore): NearbyStation[] =>
+/**
+ * Pins of the painted area: the population the tier scale is computed over.
+ * Kept apart from the retained areas' pins so a pin's color never depends on
+ * where the user panned before.
+ */
+const selectAreaPins = cached((app: AppStore): NearbyStation[] =>
   selectTagged(app).filter((s) => effectivePrice(s, app.fuel) != null && passesBrand(app, s)),
 );
+
+/**
+ * Every pin the map draws: the painted area's, then those of the areas
+ * painted earlier this session (`StationsState.others`), under the same
+ * filters. Panning out of one area into the next keeps the first one's pins.
+ */
+export const selectMapStations = cached((app: AppStore): NearbyStation[] => {
+  const others = app.stations.others ?? [];
+  if (!others.length) return selectAreaPins(app);
+  const outOfReach = searchOutOfReach(app);
+  const extra = withTags(
+    app,
+    others.map((s) => enrichDistance(app, s, outOfReach)),
+  ).filter((s) => effectivePrice(s, app.fuel) != null && passesBrand(app, s));
+  return [...selectAreaPins(app), ...extra];
+});
 
 /**
  * Zone stations cheapest-first. Prices are DISPLAYED at cent precision while
@@ -3204,8 +3358,10 @@ export interface PriceStats {
 
 /**
  * Price distribution tiering the pins, dots and list rows for the selected
- * fuel. Computed over ALL the stations drawn on the map (the whole loaded
- * area) — the same population the tiers color — NOT just the radius circle:
+ * fuel. Computed over ALL the stations of the painted area (the whole loaded
+ * disc, not the earlier areas the map still draws, whose pins take this same
+ * scale so their color never depends on the pan history) — NOT just the
+ * radius circle:
  * scoping the scale to the circle while coloring the whole map made a sparse
  * circle degenerate the bounds (one lone station in the circle → everything
  * on screen ≤ its price + 1 ct turned green), so a small pan flipped pins
@@ -3218,7 +3374,8 @@ export interface PriceStats {
  */
 export const selectPriceStats = cached((app: AppStore): PriceStats | null => {
   const f = app.fuel;
-  const pins = selectMapStations(app);
+  // The painted area only: the retained areas' pins are colored against it
+  const pins = selectAreaPins(app);
   if (!pins.length) return null;
   let min = Infinity;
   let max = -Infinity;
