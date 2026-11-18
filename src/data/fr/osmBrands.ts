@@ -13,6 +13,12 @@ import type { Station } from '../types';
 
 /** A gouv station adopts a POI's brand (and position) only within this distance */
 const MATCH_KM = 0.15;
+/**
+ * Ceiling on a build-time link (scripts/brandLinks.mjs `LINK_KM`). A link is
+ * only followed while the station still sits this close to its POI: a flux
+ * that has since moved the station must not drag it back.
+ */
+const LINK_KM = 0.5;
 
 /** Degrees of latitude per km, on the sphere `haversineKm` assumes */
 const DEG_PER_KM = 180 / (Math.PI * 6371);
@@ -21,6 +27,12 @@ export interface FuelPoi {
   lat: number;
   lng: number;
   label: string;
+  /**
+   * Station ids (`fr-…`) the build linked to this POI although they sit
+   * beyond MATCH_KM: the gouv position was too far off for proximity alone,
+   * and this POI was the only free one around (scripts/brandLinks.mjs).
+   */
+  linked?: string[];
 }
 
 // ── Static index (fetched once, memoized) ────────────────────────────────────
@@ -28,6 +40,23 @@ export interface FuelPoi {
 interface BrandIndexFile {
   labels: string[];
   pois: [number, number, number][];
+  /** [gouv id, POI row] pairs — absent from an index built before the links */
+  links?: [number | string, number][];
+}
+
+/** Expand the on-disk shape into POIs, links attached to their POI */
+export function parseBrandIndex(json: BrandIndexFile): FuelPoi[] {
+  const pois: FuelPoi[] = json.pois.map(([lat, lng, i]) => ({
+    lat,
+    lng,
+    label: json.labels[i] ?? '',
+  }));
+  for (const [id, i] of json.links ?? []) {
+    const poi = pois[i];
+    if (!poi) continue;
+    (poi.linked ??= []).push(`fr-${id}`);
+  }
+  return pois;
 }
 
 let indexPromise: Promise<FuelPoi[]> | null = null;
@@ -37,8 +66,7 @@ function loadIndex(): Promise<FuelPoi[]> {
     indexPromise = fetch('/brands-fr.json', { signal: AbortSignal.timeout(15000) }).then(
       async (res) => {
         if (!res.ok) throw new Error(`brand index HTTP ${res.status}`);
-        const json = (await res.json()) as BrandIndexFile;
-        return json.pois.map(([lat, lng, i]) => ({ lat, lng, label: json.labels[i] ?? '' }));
+        return parseBrandIndex((await res.json()) as BrandIndexFile);
       },
     );
     // A failed load must retry on the next enrichment, not stick forever.
@@ -157,10 +185,17 @@ function candidatesNear(grid: PoiGrid, count: number, p: GeoPoint): number[] {
  * address (mid-street, missing house number), while OSM contributors place
  * the node on the forecourt itself: snapping fixes both the map pin and the
  * « Go there » navigation target.
+ *
+ * A station with no POI within MATCH_KM falls back on its build-time link,
+ * if the index has one: the gouv position can be several hundred metres off
+ * (`65 ROUTE D AGDE`, Balma, sits at a rounded `43.628, 1.48`), and only
+ * the build sees every station that could claim a POI that far out.
  */
 export function enrichWithBrands(stations: Station[], pois: FuelPoi[]): Station[] {
   if (!pois.length) return stations;
   const grid = buildPoiGrid(pois);
+  const linkedTo = new Map<string, FuelPoi>();
+  for (const p of pois) for (const id of p.linked ?? []) linkedTo.set(id, p);
   const matches = stations.map((s) => {
     // Nearest POI donates its position; nearest *labeled* POI donates the
     // brand (the index also carries unlabeled stations, kept for their coords).
@@ -180,7 +215,12 @@ export function enrichWithBrands(stations: Station[], pois: FuelPoi[]): Station[
         labeled = p;
       }
     }
-    if (!best || bestKm > MATCH_KM) return null;
+    if (!best || bestKm > MATCH_KM) {
+      const link = linkedTo.get(s.id);
+      if (!link) return null;
+      const km = haversineKm({ lat: s.lat, lng: s.lng }, link);
+      return km <= LINK_KM ? { poi: link, km, label: link.label } : null;
+    }
     return {
       poi: best,
       km: bestKm,
