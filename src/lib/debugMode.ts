@@ -4,9 +4,11 @@
 // tester turning it on must not carry it into their normal sessions, and the
 // persisted schema must not grow a field only developer chrome reads. It can
 // be raised three ways — the Settings « Offline data » toggle, `?debug=1` in the
-// URL (adopted into sessionStorage so the flag survives in-app navigation,
-// which rewrites the query), or an existing sessionStorage flag from earlier
-// in the session.
+// URL (adopted into sessionStorage), or an existing sessionStorage flag from
+// earlier in the session. While it is on, the store's URL sync keeps
+// `debug=1` in the address bar (`withDebugParam`): in-app navigation rewrites
+// the query from app state, and a reload in a new tab, or the address copied
+// into a bug report, must not silently lose the overlay.
 //
 // This module is tiny and eagerly imported (the Settings toggle and the App
 // mount point read it); everything heavy — the overlay UI, the snapshot
@@ -62,6 +64,16 @@ function detectInitial(): boolean {
 }
 
 let enabled = detectInitial();
+
+/**
+ * `url` (path + optional `?query`) with `debug=1` appended when `on`. The
+ * store's URL sync builds every address from app state; this is how the flag
+ * rides along. Share links build their own URLs and never carry it.
+ */
+export function withDebugParam(url: string, on: boolean): string {
+  if (!on) return url;
+  return `${url}${url.includes('?') ? '&' : '?'}debug=1`;
+}
 
 function record(message: string): void {
   errorCount++;
