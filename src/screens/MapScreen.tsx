@@ -203,11 +203,6 @@ export default function MapScreen() {
                 <PlaceSearch />
               </div>
               <div style={{ display: 'flex', gap: 8 }}>{controls}</div>
-              {/* Unread news: the far corner of the row, away from the
-                  controls a hand goes for */}
-              <div style={{ marginLeft: 'auto', display: 'flex' }}>
-                <WhatsNewButton size={51} />
-              </div>
             </div>
           ) : (
             <div

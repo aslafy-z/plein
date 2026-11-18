@@ -2,6 +2,7 @@ import { C } from '../theme';
 import { APP_VERSION } from '../lib/appUpdate';
 import { m } from '../paraglide/messages.js';
 import { LogoLockup } from './Logo';
+import WhatsNewButton from './WhatsNewButton';
 import { useApp } from '../state/store';
 import { TABS, TabIcon, tabIsActive, tabLabel, tabTarget } from './NavBar';
 
@@ -16,8 +17,9 @@ import { TABS, TabIcon, tabIsActive, tabLabel, tabTarget } from './NavBar';
  * as a list rather than a toolbar.
  *
  * The bottom of the rail carries the app-level footer a desktop window has
- * room for: the install offer (a full-width banner on a phone), the
- * geolocation notice, and the running version. App-level state, not map
+ * room for: unread What's new (a sparkle on the phone's map), the install
+ * offer (a full-width banner on a phone), the geolocation notice, and the
+ * running version. App-level state, not map
  * controls — nothing of this covers the map.
  */
 export default function SideNav() {
@@ -115,6 +117,8 @@ export default function SideNav() {
           paddingTop: 16,
         }}
       >
+        <WhatsNewButton size={36} rail />
+
         {geoOff && (
           <button
             onClick={() => app.requestGeolocation()}
