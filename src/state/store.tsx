@@ -2289,8 +2289,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Android: geo: URI → the native maps-app chooser (Google Maps, Waze,
       // Organic Maps…). iOS/iPadOS: Apple Maps universal link. Elsewhere:
       // the web maps site chosen in Settings.
-      // A brand-matched station exists as a mapped POI: hand the maps app a
-      // text search (anchored on our coordinates) so it opens its own place
+      // On Android a brand-matched station exists as a mapped POI: hand the
+      // maps app a text search (anchored on our coordinates) so it opens its own place
       // card instead of a bare coordinate pin, which it never links to the
       // POI. Unbranded stations keep the labeled pin — a text search for
       // « Station » would be a lottery.
@@ -2314,15 +2314,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
       // Desktop: the site is a Settings choice (Google Maps by default).
-      // Unlike geo:, the Google dir URL carries no coordinate anchor for a
-      // text search — only use it when a street address can disambiguate.
+      // Always coordinates: unlike geo:, the Google dir URL carries no anchor
+      // for a text search, and a brand + address query stops on a « Did you
+      // mean » list as soon as the place has two names in Google's own data
+      // (« Esso Express » / « Esso - Route d'Albi », same pumps). A matched
+      // station sits on its OSM forecourt node, so its point IS the place.
       const site = MAPS_SITE_IDS.includes(mapsSite) ? mapsSite : MAPS_SITE_IDS[0];
       showToast(m.toast_opening_maps({ site: mapsSiteLabel(site) }));
-      const url =
-        site === 'google' && poiQuery && target.address
-          ? `https://www.google.com/maps/dir/?api=1&destination=${poiQuery}&travelmode=driving`
-          : mapsSiteUrl(site, target.lat, target.lng);
-      window.open(url, '_blank', 'noopener');
+      window.open(mapsSiteUrl(site, target.lat, target.lng), '_blank', 'noopener');
     },
     [showToast, mapsSite],
   );

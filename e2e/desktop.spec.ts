@@ -125,6 +125,23 @@ test('a station fiche stacks under the list, with the rail still up', async ({ p
   if (!card || !shell) throw new Error('layout not measurable')
   expect(card.width).toBeLessThan(shell.width * 0.6)
 
+  // « Go there » hands Google Maps the station's point, never a brand +
+  // address search: a place Google knows under two names stops on a « Did
+  // you mean » list instead of routing
+  await page.evaluate(() => {
+    const w = window as unknown as { __opened: string[] }
+    w.__opened = []
+    window.open = (url?: string | URL) => {
+      w.__opened.push(String(url))
+      return null
+    }
+  })
+  await page.getByRole('button', { name: /^Go there/ }).click()
+  const opened = await page.evaluate(() => (window as unknown as { __opened: string[] }).__opened)
+  expect(opened).toEqual([
+    'https://www.google.com/maps/dir/?api=1&destination=43.6101,1.4519&travelmode=driving',
+  ])
+
   await page.getByRole('button', { name: 'Close the station page' }).click()
   await expect(page.getByText('The cheapest near you')).toBeVisible({ timeout: 15_000 })
 })
