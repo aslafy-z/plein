@@ -134,7 +134,7 @@ l'app choisit selon la zone affichée (source *Automatique*). Le reste
 | Donnée | Source | Licence |
 | --- | --- | --- |
 | Calcul d'itinéraires | [OSRM](https://project-osrm.org/) (serveur démo) · [Valhalla](https://valhalla.github.io/valhalla/) (serveur public FOSSGIS) pour « éviter autoroutes / péages » | © contributeurs [OpenStreetMap](https://www.openstreetmap.org/copyright) |
-| Fonds de carte | [CARTO](https://carto.com/attributions) clair / sombre selon le thème (tuiles OpenStreetMap en secours hors-ligne) | © contributeurs [OpenStreetMap](https://www.openstreetmap.org/copyright) |
+| Fonds de carte | Tuiles vectorielles [OpenFreeMap](https://openfreemap.org), sans clé d'API, style Positron / Dark Matter selon le thème (tuiles raster OpenStreetMap en secours si OpenFreeMap est injoignable ou si l'appareil n'a pas WebGL) | © [OpenMapTiles](https://openmaptiles.org) · © contributeurs [OpenStreetMap](https://www.openstreetmap.org/copyright) · couleurs du style sombre © [CARTO](https://carto.com/attributions) (CC BY 4.0) |
 
 L'app n'a **aucun backend** : le navigateur interroge directement ces services
 publics. Les sources sont pluggables (`src/data/types.ts`). Hors connexion ou
@@ -145,8 +145,9 @@ Quand le géocodeur d'un pays ne répond pas, Photon prend le relais ; s'il
 
 ## 🛠️ Construit avec
 
-**Vite · React 18 · TypeScript strict · Leaflet**, sans autre dépendance
-runtime. Le build de production n'est que des assets statiques, servis par un
+**Vite · React 18 · TypeScript strict · Leaflet**, plus MapLibre GL pour
+dessiner le fond de carte vectoriel (chargé à la demande), sans autre
+dépendance runtime. Le build de production n'est que des assets statiques, servis par un
 Cloudflare Worker.
 
 ## 🤝 Contribuer
