@@ -325,7 +325,15 @@ function loadGl(): Promise<GlLayerFactory> {
     import('maplibre-gl'),
     import('@maplibre/maplibre-gl-leaflet'),
     import('maplibre-gl/dist/maplibre-gl.css'),
-  ]).then(([, plugin]) => guardedLayer(plugin.MaplibreGL as unknown as typeof L.Layer));
+    // MapLibre 6 finds its worker next to its own module at runtime, a URL
+    // no bundler can see: Vite's pre-bundled copy (dev) and the build's chunk
+    // (prod) have no worker beside them. The worker is self-contained, so
+    // shipping it as a plain asset and naming it is the whole fix.
+    import('maplibre-gl/dist/maplibre-gl-worker.mjs?url'),
+  ]).then(([maplibre, plugin, , worker]) => {
+    maplibre.setWorkerUrl(worker.default);
+    return guardedLayer(plugin.MaplibreGL as unknown as typeof L.Layer);
+  });
   // A failed import (offline on a first visit: the chunk was never cached)
   // must not poison the session — the next attempt re-imports.
   glFactory.catch(() => {
@@ -551,7 +559,7 @@ function mountVector(handle: BasemapHandle): void {
         if (previous) map.removeLayer(previous);
       }
     });
-    gl.on('error', (e: { error?: Error; tile?: unknown; sourceId?: string }) => {
+    gl.on('error', (e: { error?: { message: string }; tile?: unknown; sourceId?: string }) => {
       tilesErrored++;
       if (settled || isForcedOffline()) return;
       const detail = e.error?.message;
