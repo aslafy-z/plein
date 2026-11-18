@@ -128,6 +128,13 @@ export interface Station {
   extraPrices?: Partial<Record<ExtraProductId, FuelPrice>>;
   /** true when on a motorway (gouv `pop === 'A'`) */
   highway: boolean;
+  /**
+   * true when `lat`/`lng` were moved onto a mapped OpenStreetMap fuel POI
+   * (src/data/fr/osmBrands.ts) — the forecourt itself rather than wherever
+   * the source geocoded the station. Absent: the source's own position, which
+   * can be hundreds of metres off.
+   */
+  positionFromPoi?: boolean;
   /** Opening hours when the source provides them (undefined = unknown) */
   hours?: StationHours;
 }

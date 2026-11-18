@@ -63,7 +63,10 @@ function enrichByFullScan(stations: Station[], pois: FuelPoi[]): Station[] {
   return stations.map((s, i) => {
     const mm = matches[i];
     if (!mm) return s;
-    const snap = closestKm.get(mm.poi) === mm.km ? { lat: mm.poi.lat, lng: mm.poi.lng } : {};
+    const snap =
+      closestKm.get(mm.poi) === mm.km
+        ? { lat: mm.poi.lat, lng: mm.poi.lng, positionFromPoi: true }
+        : {};
     if (!mm.label) return { ...s, ...snap };
     const city = s.city ? s.name.split('·').pop()?.trim() : '';
     return {
@@ -117,6 +120,7 @@ describe('enrichWithBrands', () => {
     expect(out.init).toBe('CA');
     expect(out.lat).toBe(poi.lat);
     expect(out.lng).toBe(poi.lng);
+    expect(out.positionFromPoi).toBe(true);
   });
 
   it('leaves a station further than the match radius untouched', () => {
@@ -148,6 +152,9 @@ describe('enrichWithBrands', () => {
     const [outNear, outFar] = enrichWithBrands([near, far], [poi]);
     expect(outNear.lat).toBe(poi.lat);
     expect(outFar.lat).toBe(far.lat);
+    // …and only the snapped one may present its position as the forecourt's
+    expect(outNear.positionFromPoi).toBe(true);
+    expect(outFar.positionFromPoi).toBeUndefined();
     // Both still take the brand — only the pin stays put
     expect(outNear.brand).toBe('Esso');
     expect(outFar.brand).toBe('Esso');
@@ -301,6 +308,7 @@ describe('enrichWithBrands — build-time links', () => {
     expect(out.name).toBe('TotalEnergies · Balma');
     expect(out.lat).toBe(total.lat);
     expect(out.lng).toBe(total.lng);
+    expect(out.positionFromPoi).toBe(true);
   });
 
   it('ignores a link meant for another station', () => {
