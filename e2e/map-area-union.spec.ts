@@ -40,14 +40,26 @@ function pins(page: Page, text: string) {
   return page.locator('.leaflet-marker-pane').getByText(text, { exact: true })
 }
 
-/** Drags the map by `dy` px: positive moves the view north */
+/**
+ * Drags the map by `dy` px: positive moves the view north.
+ *
+ * One jump from just past Leaflet's click tolerance to the end, then a pause
+ * before the release. The map searches live while it is dragged (one search
+ * per 250 ms tick), so a drag paced over several ticks could fetch the next
+ * area from any point along the way, and an area fetched ≈ 25 km out
+ * covers, and so rightly drops, some of the Toulouse pins. The jump leaves
+ * the end position as the only place a fetch can start from, and the pause
+ * (past Leaflet's 50 ms inertia window) keeps the map from gliding further.
+ */
 async function dragMap(page: Page, dy: number) {
   const box = (await page.locator('.leaflet-container').first().boundingBox())!
   const x = box.x + box.width * 0.7
   const y = box.y + box.height * 0.5 - dy / 2
   await page.mouse.move(x, y)
   await page.mouse.down()
-  for (let i = 1; i <= 10; i++) await page.mouse.move(x, y + (i * dy) / 10)
+  await page.mouse.move(x, y + 5)
+  await page.mouse.move(x, y + dy)
+  await page.waitForTimeout(100)
   await page.mouse.up()
 }
 
