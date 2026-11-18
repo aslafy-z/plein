@@ -12,13 +12,17 @@ type Options = { seed: Record<string, unknown> }
 // suite passes (the app's own fallback is French, the source locale). A spec
 // picks another language through `seed`, or drops the pin entirely with
 // `locale: null` to exercise the detection path.
-const BASE_SEED = { locale: 'en' }
+//
+// The What's new log is marked as read up to a date no entry will reach, so
+// the sparkle it puts on the map for returning users (src/lib/changelog.ts)
+// never shifts the layout under a spec that isn't about it. `whats-new.spec.ts` drops the
+// mark with `changelogSeen: null`.
+const BASE_SEED = { locale: 'en', changelogSeen: '9999-12-31' }
 
-/** `locale: null` in a seed means « no explicit choice », not « choose null » */
-function dropNullLocale(settings: Record<string, unknown>): Record<string, unknown> {
-  if (settings.locale != null) return settings
-  const { locale: _dropped, ...rest } = settings
-  return rest
+/** A `null` in a seed means « absent from the blob » — `locale: null` is « no
+    explicit choice », not « choose null » */
+function dropNulls(settings: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(settings).filter(([, v]) => v != null))
 }
 
 // The French geocoder is ONE endpoint serving two indexes, told apart by the
@@ -50,7 +54,7 @@ export const test = base.extend<Options>({
       sessionStorage.setItem('e2e-init', '1')
       localStorage.clear()
       localStorage.setItem('plein.settings.v1', JSON.stringify(settings))
-    }, dropNullLocale({ ...BASE_SEED, ...seed }))
+    }, dropNulls({ ...BASE_SEED, ...seed }))
 
     // France's point-of-interest index rides along with every address search.
     // Specs mock the addresses and assert on the exact rows, so this one

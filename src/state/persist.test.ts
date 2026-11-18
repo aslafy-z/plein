@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { foldRecentsIntoSearchHistory, loadPersisted } from './persist'
+import { foldRecentsIntoSearchHistory, loadPersisted, onboardedFromSearch } from './persist'
 import type { SearchedPlace } from './persist'
 
 // The route's own « Recent » store is gone — a blob written by an older build
@@ -291,5 +291,15 @@ describe('loadPersisted shape validation', () => {
     const choices = { locale: 'pt', theme: 'light', accent: 'violet', sourceId: 'es' }
     stubBlob(choices)
     expect(loadPersisted()).toEqual(choices)
+  })
+})
+
+describe('onboardedFromSearch', () => {
+  it('reads onboarded=1 alone', () => {
+    expect(onboardedFromSearch('?onboarded=1')).toBe(true)
+    expect(onboardedFromSearch('?ll=1,2&onboarded=1')).toBe(true)
+    for (const q of ['', '?onboarded=0', '?onboarded=true', '?onboarded', '?debug=1']) {
+      expect(onboardedFromSearch(q)).toBe(false)
+    }
   })
 })

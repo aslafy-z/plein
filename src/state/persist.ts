@@ -88,6 +88,10 @@ export interface PersistedSettings {
       show it pulls up — absent for anyone who onboarded before the hint
       existed, so it only ever plays for newcomers */
   sheetHint: boolean;
+  /** Newest What's new entry this user was shown (lib/changelog.ts). Stamped
+      by onboarding, so newcomers are never told about the app they just met;
+      absent on a blob that predates the log */
+  changelogSeen: string;
 }
 
 // ── Migrations ───────────────────────────────────────────────────────────────
@@ -368,6 +372,17 @@ export function loadPersisted(): Partial<PersistedSettings> {
   } catch {
     return {};
   }
+}
+
+/** Whether a load on `search` asks to skip onboarding (`?onboarded=1`) */
+export function onboardedFromSearch(search: string): boolean {
+  return new URLSearchParams(search).get('onboarded') === '1';
+}
+
+/** Saves `onboarded` alone, the rest of the blob untouched, and returns it */
+export function markOnboarded(): Partial<PersistedSettings> {
+  savePersisted({ onboarded: true });
+  return { ...loadPersisted(), onboarded: true };
 }
 
 export function savePersisted(p: Partial<PersistedSettings>) {

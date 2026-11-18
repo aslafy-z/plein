@@ -10,6 +10,7 @@ import MapSheet from '../components/MapSheet';
 import ZonePanel from '../components/ZonePanel';
 import PlaceSearch from '../components/PlaceSearch';
 import StationDetail from './StationDetail';
+import WhatsNewButton from '../components/WhatsNewButton';
 
 /** The map's floating controls never grow past this: a search field dragged
     across a window is unreadable, and the width belongs to the map. Applies
@@ -220,7 +221,14 @@ export default function MapScreen() {
             >
               <PlaceSearch />
 
-              <div style={{ display: 'flex', gap: 8 }}>{controls}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {controls}
+                {/* Unread news: pushed to the row's far end, away from the
+                    thumb's way to the chips */}
+                <div style={{ marginLeft: 'auto', display: 'flex' }}>
+                  <WhatsNewButton size={36} />
+                </div>
+              </div>
 
               {/* On desktop this notice lives at the bottom of the side rail —
                   app-level state, not a map control */}
