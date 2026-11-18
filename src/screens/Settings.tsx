@@ -1067,8 +1067,9 @@ export default function Settings() {
             }}
           >
             <CachedData onCleared={() => app.notify(m.toast_cache_cleared())} />
-            {/* Both switches are session-scoped on purpose (sessionStorage,
-                never the persisted blob): closing the tab releases them. */}
+            {/* Neither switch is in the persisted blob, on purpose: force
+                offline lives in sessionStorage (closing the tab releases it),
+                the debug overlay in the URL's `debug=1` (lib/debugMode). */}
             <SwitchRow
               title={m.settings_force_offline_title()}
               sub={m.settings_force_offline_sub()}

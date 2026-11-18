@@ -17,7 +17,7 @@ import InstallPrompt from './components/InstallPrompt';
 import UpdatePrompt from './components/UpdatePrompt';
 
 // Developer chrome behind its own chunk: a normal session (flag off) never
-// downloads a byte of it. The flag is session-scoped — see lib/debugMode.
+// downloads a byte of it. The flag lives in the URL — see lib/debugMode.
 const DebugOverlay = lazy(() => import('./components/DebugOverlay'));
 
 /** Screens the tab bar / side navigation belongs on */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { withDebugParam } from './debugMode';
+import { debugFromSearch, withDebugParam } from './debugMode';
 
 describe('withDebugParam', () => {
   it('leaves the url alone while debug mode is off', () => {
@@ -13,5 +13,19 @@ describe('withDebugParam', () => {
 
   it('appends to an existing query', () => {
     expect(withDebugParam('/?ll=1,2&z=12', true)).toBe('/?ll=1,2&z=12&debug=1');
+  });
+});
+
+describe('debugFromSearch', () => {
+  it('turns debug mode on for debug=1 alone', () => {
+    expect(debugFromSearch('?debug=1')).toBe(true);
+    expect(debugFromSearch('?ll=1,2&debug=1')).toBe(true);
+  });
+
+  it('leaves it off when the param is missing or anything but 1', () => {
+    expect(debugFromSearch('')).toBe(false);
+    expect(debugFromSearch('?ll=1,2')).toBe(false);
+    expect(debugFromSearch('?debug=0')).toBe(false);
+    expect(debugFromSearch('?debug=')).toBe(false);
   });
 });
