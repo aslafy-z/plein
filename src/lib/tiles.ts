@@ -30,13 +30,20 @@
 // z14 and are overzoomed past it, so the whole pyramid, world view to street
 // level, is a dozen levels at most.
 import L from 'leaflet';
-import type { Map as GlMap, RequestParameters, ResourceType } from 'maplibre-gl';
+import type {
+  Map as GlMap,
+  RequestParameters,
+  ResourceType,
+  StyleSpecification,
+} from 'maplibre-gl';
 import { IS_DEV } from './env';
 import { currentTheme, onThemeChange } from './colorScheme';
 import { registerTileDebugSource, type TileLayerDebug } from './debugState';
 import { isForcedOffline, isOffline, onConnectivityChange } from './connectivity';
 import { pyramidTiles, tileUrl, vectorPyramidZooms, type TileCoords } from './tilePyramid';
 import { cachedTileUrls } from './tileCache';
+import { shiftStyleZoom } from './styleZoom';
+import { DARK_PAINT, repaint } from './basemapTone';
 import {
   BLANK_PBF,
   dropTileSnapshot,
@@ -64,6 +71,31 @@ const VECTOR_SOURCE_ID = 'openmaptiles';
 const TILEJSON_URL = `${OPENFREEMAP}/planet`;
 /** The deepest level the planet serves; past it the tiles are overzoomed */
 const VECTOR_MAX_ZOOM = 14;
+
+/**
+ * The style as Leaflet's zoom expects it. MapLibre runs one level below
+ * Leaflet (lib/tilePyramid.ts says why), so a style written for it draws
+ * Leaflet's z13 with its z12 rules: thinner streets, fainter roads, sparser
+ * labels than the CARTO rasters of the same styles drew at the same Leaflet
+ * zoom. Every zoom the style keys on moves down one level
+ * (lib/styleZoom.ts), so MapLibre's z12 is drawn with the z13 rules. The
+ * tiles stay MapLibre's own: a vector source only takes 512 px tiles, so the
+ * z12 data is what those rules draw.
+ */
+const matchLeafletZoom = (style: StyleSpecification): StyleSpecification => shiftStyleZoom(style, -1);
+
+/** Load the theme's style into a MapLibre map, as Leaflet's zoom expects it,
+    the dark one with the ground and roads CARTO's render had
+    (lib/basemapTone.ts) */
+const applyStyle = (gl: GlMap): void => {
+  const dark = currentTheme() !== 'light';
+  gl.setStyle(styleUrl(), {
+    transformStyle: (_previous, next) => {
+      const style = matchLeafletZoom(next);
+      return dark ? repaint(style, DARK_PAINT) : style;
+    },
+  });
+};
 /** The tile template of the build the live map draws — read off the loaded
     source, since a hard-coded build would go stale within the week. Null
     until a vector map has resolved its TileJSON; the prefetch waits for it. */
@@ -482,8 +514,9 @@ function mountVector(handle: BasemapHandle): void {
     // The map unloaded, or another mount took the slot, while we waited
     if (handle.generation !== generation || !handles.has(handle)) return;
     try {
+      // No style yet: the constructor cannot transform one, setStyle can
+      // (applyStyle, right after the layer is on the map)
       layer = maplibreGL({
-        style: styleUrl(),
         transformRequest: gateRequest,
         className: 'basemap-vector',
         // A tile that expires while on screen is not worth a refetch: the
@@ -548,6 +581,8 @@ function mountVector(handle: BasemapHandle): void {
       // a map without a few icons or labels is still the map.
       if (!styleArrived) swap('style-error', detail);
     });
+    // Every listener is on: the style's own events cannot be missed
+    applyStyle(gl);
   };
 
   void loadGl().then(
@@ -655,7 +690,8 @@ export function addBasemap(map: L.Map, visibleCenter?: () => L.LatLng): void {
   // recovery: it always retunes whatever vector layer currently stands.
   const offTheme = onThemeChange(() => {
     if (handle.onFallback || !handle.layer) return;
-    (handle.layer as GlLayer).getMaplibreMap?.()?.setStyle(styleUrl());
+    const gl = (handle.layer as GlLayer).getMaplibreMap?.();
+    if (gl) applyStyle(gl);
   });
   map.on('unload', () => {
     offTheme();
