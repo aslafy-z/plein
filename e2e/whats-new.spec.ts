@@ -8,7 +8,7 @@ const sparkle = (page: import('@playwright/test').Page) =>
 const sheet = (page: import('@playwright/test').Page) =>
   page.getByRole('dialog', { name: "What's new" })
 // The newest entry, and one from the history behind it (en.json copy)
-const LATEST = "Your color, and a what's new log"
+const LATEST = "A sharper map, and what's new at a glance"
 const EARLIER = '« My position » as a destination'
 
 test.describe('a returning user', () => {

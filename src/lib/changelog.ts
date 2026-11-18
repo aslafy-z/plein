@@ -64,15 +64,30 @@ export function releaseNotesUrl(id: string): string {
     the log reads as a history from its first day rather than a lone item. */
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    id: '2026-11-18',
+    title: m.changelog_2026_11_18_title,
+    items: [
+      m.changelog_2026_11_18_item_map,
+      m.changelog_2026_11_18_item_route_offer,
+      m.changelog_2026_11_18_item_go_there,
+      m.changelog_2026_11_18_item_whatsnew,
+    ],
+    details: releaseNotesUrl('2026-11-18'),
+  },
+  {
+    id: '2026-11-12',
+    title: m.changelog_2026_11_12_title,
+    items: [
+      m.changelog_2026_11_12_item_poi,
+      m.changelog_2026_11_12_item_outages,
+      m.changelog_2026_11_12_item_arrival_tank,
+      m.changelog_2026_11_12_item_accessibility,
+    ],
+  },
+  {
     id: '2026-11-10',
     title: m.changelog_2026_11_10_title,
-    items: [
-      m.changelog_2026_11_10_item_whatsnew,
-      m.changelog_2026_11_10_item_accent,
-      m.changelog_2026_11_10_item_departure,
-      m.changelog_2026_11_10_item_accessibility,
-    ],
-    details: releaseNotesUrl('2026-11-10'),
+    items: [m.changelog_2026_11_10_item_accent, m.changelog_2026_11_10_item_departure],
   },
   {
     id: '2026-08-28',
