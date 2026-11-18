@@ -33,6 +33,8 @@ test('the basemap is OpenFreeMap vector tiles, drawn under the Leaflet panes', a
   expect(await page.locator('img.leaflet-tile').count()).toBe(0)
   await expect(page.locator('.leaflet-control-attribution')).toContainText('OpenStreetMap')
   await expect(page.locator('.leaflet-control-attribution')).toContainText('OpenFreeMap')
+  // CARTO is credited in Settings, not in the corner: no CARTO tile is drawn
+  await expect(page.locator('.leaflet-control-attribution')).not.toContainText('CARTO')
 })
 
 type TileStats = { visible: number; visibleReady: number; outside: number; outsideLow: number }

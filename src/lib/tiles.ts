@@ -96,8 +96,11 @@ const STYLE_GIVE_UP_MS = 12_000;
     the whole session. */
 const TILE_GIVE_UP_MS = 25_000;
 
-/** CARTO for the dark style's colors and widths (lib/basemapTone.ts, CC BY 4.0) */
-const ATTRIBUTION = '© OpenStreetMap · OpenMapTiles · OpenFreeMap · CARTO';
+/** What the map's corner credits: the data, the schema and the tile host.
+    CARTO (the dark style's colors and widths, lib/basemapTone.ts, CC BY 4.0)
+    is credited in Settings › credits instead: the map draws no CARTO tile,
+    and its name in the corner read as if it still did. */
+const ATTRIBUTION = '© OpenStreetMap · OpenMapTiles · OpenFreeMap';
 
 let vectorUnreachable = false;
 
