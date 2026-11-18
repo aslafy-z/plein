@@ -34,7 +34,6 @@ import type {
   Map as GlMap,
   RequestParameters,
   ResourceType,
-  StyleSpecification,
 } from 'maplibre-gl';
 import { IS_DEV } from './env';
 import { currentTheme, onThemeChange } from './colorScheme';
@@ -42,8 +41,7 @@ import { registerTileDebugSource, type TileLayerDebug } from './debugState';
 import { isForcedOffline, isOffline, onConnectivityChange } from './connectivity';
 import { pyramidTiles, tileUrl, vectorPyramidZooms, type TileCoords } from './tilePyramid';
 import { cachedTileUrls } from './tileCache';
-import { shiftStyleZoom } from './styleZoom';
-import { DARK_PAINT, repaint } from './basemapTone';
+import { DARK_OVERRIDES, restyle } from './basemapTone';
 import {
   BLANK_PBF,
   dropTileSnapshot,
@@ -72,30 +70,16 @@ const TILEJSON_URL = `${OPENFREEMAP}/planet`;
 /** The deepest level the planet serves; past it the tiles are overzoomed */
 const VECTOR_MAX_ZOOM = 14;
 
-/**
- * The style as Leaflet's zoom expects it. MapLibre runs one level below
- * Leaflet (lib/tilePyramid.ts says why), so a style written for it draws
- * Leaflet's z13 with its z12 rules: thinner streets, fainter roads, sparser
- * labels than the CARTO rasters of the same styles drew at the same Leaflet
- * zoom. Every zoom the style keys on moves down one level
- * (lib/styleZoom.ts), so MapLibre's z12 is drawn with the z13 rules. The
- * tiles stay MapLibre's own: a vector source only takes 512 px tiles, so the
- * z12 data is what those rules draw.
- */
-const matchLeafletZoom = (style: StyleSpecification): StyleSpecification => shiftStyleZoom(style, -1);
-
-/** Load the theme's style into a MapLibre map, as Leaflet's zoom expects it,
-    the dark one with the ground and roads CARTO's render had
-    (lib/basemapTone.ts) */
+/** Load the theme's style into a MapLibre map; the dark one restyled after
+    the CARTO Dark Matter the app used to show (lib/basemapTone.ts). The
+    constructor cannot transform a style, setStyle can. */
 const applyStyle = (gl: GlMap): void => {
   const dark = currentTheme() !== 'light';
   gl.setStyle(styleUrl(), {
-    transformStyle: (_previous, next) => {
-      const style = matchLeafletZoom(next);
-      return dark ? repaint(style, DARK_PAINT) : style;
-    },
+    transformStyle: (_previous, next) => (dark ? restyle(next, DARK_OVERRIDES) : next),
   });
 };
+
 /** The tile template of the build the live map draws — read off the loaded
     source, since a hard-coded build would go stale within the week. Null
     until a vector map has resolved its TileJSON; the prefetch waits for it. */
@@ -112,7 +96,8 @@ const STYLE_GIVE_UP_MS = 12_000;
     the whole session. */
 const TILE_GIVE_UP_MS = 25_000;
 
-const ATTRIBUTION = '© OpenStreetMap · OpenMapTiles · OpenFreeMap';
+/** CARTO for the dark style's colors and widths (lib/basemapTone.ts, CC BY 4.0) */
+const ATTRIBUTION = '© OpenStreetMap · OpenMapTiles · OpenFreeMap · CARTO';
 
 let vectorUnreachable = false;
 

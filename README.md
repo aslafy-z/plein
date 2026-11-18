@@ -129,7 +129,7 @@ rest (routing, basemaps) is shared by all four.
 | Data | Source | License |
 | --- | --- | --- |
 | Routing | [OSRM](https://project-osrm.org/) (demo server) · [Valhalla](https://valhalla.github.io/valhalla/) (public FOSSGIS server) for "avoid motorways / tolls" | © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors |
-| Basemaps | [OpenFreeMap](https://openfreemap.org) vector tiles, no API key, Positron / Dark Matter style following the theme (OpenStreetMap raster tiles as fallback when OpenFreeMap is unreachable or the device has no WebGL) | © [OpenMapTiles](https://openmaptiles.org) · © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors |
+| Basemaps | [OpenFreeMap](https://openfreemap.org) vector tiles, no API key, Positron / Dark Matter style following the theme (OpenStreetMap raster tiles as fallback when OpenFreeMap is unreachable or the device has no WebGL) | © [OpenMapTiles](https://openmaptiles.org) · © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors · dark style colors © [CARTO](https://carto.com/attributions) (CC BY 4.0) |
 
 The app has **no backend**: the browser queries these public services
 directly. Sources are pluggable (`src/data/types.ts`). Offline or when a feed

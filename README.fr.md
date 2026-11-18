@@ -134,7 +134,7 @@ l'app choisit selon la zone affichée (source *Automatique*). Le reste
 | Donnée | Source | Licence |
 | --- | --- | --- |
 | Calcul d'itinéraires | [OSRM](https://project-osrm.org/) (serveur démo) · [Valhalla](https://valhalla.github.io/valhalla/) (serveur public FOSSGIS) pour « éviter autoroutes / péages » | © contributeurs [OpenStreetMap](https://www.openstreetmap.org/copyright) |
-| Fonds de carte | Tuiles vectorielles [OpenFreeMap](https://openfreemap.org), sans clé d'API, style Positron / Dark Matter selon le thème (tuiles raster OpenStreetMap en secours si OpenFreeMap est injoignable ou si l'appareil n'a pas WebGL) | © [OpenMapTiles](https://openmaptiles.org) · © contributeurs [OpenStreetMap](https://www.openstreetmap.org/copyright) |
+| Fonds de carte | Tuiles vectorielles [OpenFreeMap](https://openfreemap.org), sans clé d'API, style Positron / Dark Matter selon le thème (tuiles raster OpenStreetMap en secours si OpenFreeMap est injoignable ou si l'appareil n'a pas WebGL) | © [OpenMapTiles](https://openmaptiles.org) · © contributeurs [OpenStreetMap](https://www.openstreetmap.org/copyright) · couleurs du style sombre © [CARTO](https://carto.com/attributions) (CC BY 4.0) |
 
 L'app n'a **aucun backend** : le navigateur interroge directement ces services
 publics. Les sources sont pluggables (`src/data/types.ts`). Hors connexion ou

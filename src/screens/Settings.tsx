@@ -1227,7 +1227,8 @@ export default function Settings() {
             {m.settings_credits_misc()}{' '}
             <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" style={CREDIT_LINK}>OpenStreetMap</a> ·{' '}
             <a href="https://openmaptiles.org" target="_blank" rel="noreferrer" style={CREDIT_LINK}>OpenMapTiles</a> ·{' '}
-            <a href="https://openfreemap.org" target="_blank" rel="noreferrer" style={CREDIT_LINK}>OpenFreeMap</a>
+            <a href="https://openfreemap.org" target="_blank" rel="noreferrer" style={CREDIT_LINK}>OpenFreeMap</a> ·{' '}
+            <a href="https://carto.com/attributions" target="_blank" rel="noreferrer" style={CREDIT_LINK}>CARTO</a>
           </div>
         </div>
       </div>

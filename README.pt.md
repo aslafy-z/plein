@@ -136,7 +136,7 @@ geocodificação — que a app escolhe consoante a zona apresentada (fonte
 | Dado | Fonte | Licença |
 | --- | --- | --- |
 | Cálculo de itinerários | [OSRM](https://project-osrm.org/) (servidor de demonstração) · [Valhalla](https://valhalla.github.io/valhalla/) (servidor público FOSSGIS) para «evitar autoestradas / portagens» | © colaboradores do [OpenStreetMap](https://www.openstreetmap.org/copyright) |
-| Mapas base | Mosaicos vetoriais do [OpenFreeMap](https://openfreemap.org), sem chave de API, estilo Positron / Dark Matter consoante o tema (mosaicos raster do OpenStreetMap como recurso se o OpenFreeMap não responder ou o dispositivo não tiver WebGL) | © [OpenMapTiles](https://openmaptiles.org) · © colaboradores do [OpenStreetMap](https://www.openstreetmap.org/copyright) |
+| Mapas base | Mosaicos vetoriais do [OpenFreeMap](https://openfreemap.org), sem chave de API, estilo Positron / Dark Matter consoante o tema (mosaicos raster do OpenStreetMap como recurso se o OpenFreeMap não responder ou o dispositivo não tiver WebGL) | © [OpenMapTiles](https://openmaptiles.org) · © colaboradores do [OpenStreetMap](https://www.openstreetmap.org/copyright) · cores do estilo escuro © [CARTO](https://carto.com/attributions) (CC BY 4.0) |
 
 A app não tem **nenhum backend**: o navegador consulta diretamente estes
 serviços públicos. As fontes são conectáveis (`src/data/types.ts`). Sem

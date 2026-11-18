@@ -198,7 +198,10 @@ width, never pointer type: a window gets resized and the layout has to follow.
   the debug grid (`vectorTileZoom`, `tileMapZoom`) both depend on that rule.
   OpenFreeMap names its weekly planet build in the tile path, so the
   prefetch reads the tile template off the live map's TileJSON, never a
-  constant.
+  constant. The dark style is restyled as it loads (`transformStyle`) with
+  CARTO Dark Matter's own colors, widths and label sizes
+  (`src/lib/basemapTone.ts`, by layer id, stops on Leaflet's zoom), so the
+  map reads like the CARTO rasters it replaced; tune the dark map there.
   The map's `maxZoom` (19) is set on the map in `useLeafletMap`: no tile
   layer supplies one any more, and a fit on a single point without it zooms
   to Infinity. The onboarding screen starts the renderer chunk, the style,
