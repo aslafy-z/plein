@@ -96,10 +96,13 @@ const STYLE_GIVE_UP_MS = 12_000;
     the whole session. */
 const TILE_GIVE_UP_MS = 25_000;
 
-/** What the map's corner credits: the data, the schema and the tile host.
-    CARTO (the dark style's colors and widths, lib/basemapTone.ts, CC BY 4.0)
-    is credited in Settings › credits instead: the map draws no CARTO tile,
-    and its name in the corner read as if it still did. */
+/** What the map's corner credits: the data, the schema and the tile host —
+    OpenMapTiles' licence asks for its credit in the corner of the map.
+    CARTO is credited in Settings › credits instead: both styles' design is
+    derived from CARTO's Positron and Dark Matter (and lib/basemapTone.ts
+    takes the dark one's colors and widths), CC BY 4.0, whose terms ask for
+    that credit to be reachable from the map, not printed on it. The map
+    draws no CARTO tile, and its name in the corner read as if it still did. */
 const ATTRIBUTION = '© OpenStreetMap · OpenMapTiles · OpenFreeMap';
 
 let vectorUnreachable = false;
