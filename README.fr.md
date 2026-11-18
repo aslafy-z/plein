@@ -5,14 +5,11 @@
 # Plein.
 
 **Le plein au juste prix** — trouvez les stations-service les moins chères
-autour de vous et le long de vos trajets, en France, en Espagne, en Andorre et
-au Portugal.
+autour de vous et le long de vos trajets, en France, en Espagne, en Andorre et au Portugal.
 
 [English](README.md) · **Français** · [Español](README.es.md) · [Català](README.ca.md) · [Português](README.pt.md)
 
 [![Ouvrir l'app](https://img.shields.io/badge/%E2%96%B6%EF%B8%8E%20Ouvrir%20l'app-plein.zadkiel.fr-3ddc84?style=for-the-badge&labelColor=0f1a14)](https://plein.zadkiel.fr)
-
-Envie de voir la suite ? [staging-plein.zadkiel.workers.dev](https://staging-plein.zadkiel.workers.dev) sert le dernier `main`, avant sa mise en production — il peut casser.
 
 [![Licence MIT](https://img.shields.io/badge/licence-MIT-3ddc84?labelColor=0f1a14)](LICENSE)
 [![PWA](https://img.shields.io/badge/PWA-installable-3ddc84?labelColor=0f1a14)](#-utilisation)
@@ -29,78 +26,42 @@ Envie de voir la suite ? [staging-plein.zadkiel.workers.dev](https://staging-ple
   <img src="docs/screenshots/fr/trip.png" width="23%" alt="Itinéraire Toulouse → Lille sur la carte, avec les stations et leurs prix le long du trajet" title="Votre itinéraire sur la carte" />
   <img src="docs/screenshots/fr/route.png" width="23%" alt="Comparaison des stations sur un trajet Toulouse → Lille" title="Sur votre trajet" />
 </p>
-<p align="center"><sub>Captures en thème sombre. Il existe aussi un thème clair, et la couleur d’accent se choisit dans Réglages › Apparence.</sub></p>
+<p align="center"><sub>Captures en thème sombre. Il existe aussi un thème clair, et la couleur d'accent se choisit dans Réglages › Apparence.</sub></p>
 
 </div>
 
 ## ✨ Fonctionnalités
 
-- 🗺️ **Carte des prix en direct** — les stations autour de vous, prix en pin
-  colorés selon le prix : bons plans en vert, les plus chères en orange.
-- 🇫🇷🇪🇸🇦🇩🇵🇹 **Quatre pays sur une carte** — les flux officiels de la France,
-  de l'Espagne, de l'Andorre et du Portugal combinés ; les pleins frontaliers
-  se comparent d'un coup d'œil.
-- 🔎 **Recherche de lieux** — villes, adresses et points d'intérêt (gares,
-  aéroports, monuments) dans les quatre pays, classés selon leur
-  correspondance avec ce que vous avez tapé, le pays affiché sur la carte en
-  premier.
-- 📋 **Meilleur choix réel** — le carburant brûlé pour le détour est compté :
-  une station plus proche peut battre la moins chère.
-- 🛣️ **Plan carburant du trajet** — où s'arrêter le long du parcours, combien
-  de litres à chaque arrêt et à quel prix, selon 3 stratégies.
-- ⭐ **Favoris** — vos stations et leur prix du jour, à travers zones et pays.
-- ⛽ **Tous les carburants** — Gazole, SP95/98, E10, E85, GPLc ; filtres par
-  rayon, enseignes, services et AdBlue.
-- 🕐 **Horaires réels** — « Ouvert 24/24 », « Fermé · ouvre à 6 h 30 » — avec
-  la fraîcheur des prix signalée.
-- 🚫 **Ruptures signalées** — une pompe à sec affiche « en rupture depuis le
-  3 nov. » au lieu de « non distribué », et la zone compte ses stations à sec
-  (France).
-- 🏷️ **Enseignes reconnues** — noms et logos des stations depuis les flux
-  officiels et OpenStreetMap.
-- 🧭 **« Y aller »** — ouvre la station dans votre app GPS.
-- 🔗 **Liens partageables** — l'adresse suit la carte et le trajet ; un lien
-  rouvre la même vue.
-- 🌗 **Thème clair et sombre** — suit votre navigateur, modifiable dans les
-  Réglages, avec une couleur d’accent au choix (vert, turquoise, bleu ou
-  violet).
-- 🌍 **Cinq langues** — français, anglais, espagnol, catalan et portugais.
-- 🖥️ **Téléphone et grand écran** — carte plein écran et volet sur mobile,
-  panneaux latéraux sur grand écran.
-- 📱 **PWA installable** — les dernières zones et tuiles fonctionnent
-  hors-ligne.
+- 🗺️ **Carte des prix en direct** : les stations autour de vous, pins colorés de la moins chère (vert) à la plus chère (orange).
+- 🇫🇷🇪🇸🇦🇩🇵🇹 **Quatre pays, une seule carte** : les flux officiels de la France, de l'Espagne, de l'Andorre et du Portugal, pour comparer d'un coup d'œil les pleins de part et d'autre de la frontière.
+- 📋 **Le vrai meilleur choix** : le carburant brûlé pour le détour est compté, si bien qu'une station plus proche peut battre la moins chère.
+- 🛣️ **Un plan carburant pour votre trajet** : où s'arrêter, combien de litres et pour quel prix, selon trois stratégies, et ce qu'il reste dans le réservoir à l'arrivée.
+- 🔎 **Recherche de lieux** : villes, adresses et points d'intérêt dans les quatre pays.
+- ⛽ **Tous les carburants, tous les filtres** : Gazole, SP95/98, E10, E85 et GPLc, filtrés par rayon, enseigne, services et AdBlue.
+- 🏷️ **Les vraies enseignes, les vrais horaires** : noms et logos issus des flux officiels et d'OpenStreetMap, horaires d'ouverture, pompes en rupture et fraîcheur des prix.
+- ⭐ **Favoris et liens** : vos stations au prix du jour, et chaque carte ou trajet se rouvre depuis son adresse.
+- 📱 **Partout** : téléphone ou ordinateur, installable et utilisable hors-ligne, thèmes clair et sombre, cinq langues.
 
 ## 🚀 Utilisation
 
-1. Ouvrez **[plein.zadkiel.fr](https://plein.zadkiel.fr)** (le déploiement officiel).
-2. Autorisez la géolocalisation — ou continuez sans, et cherchez une ville, en
-   France, en Espagne, en Andorre ou au Portugal. La recherche retient les lieux
-   que vous y avez choisis : elle les propose dès son ouverture et les remonte
-   en tête des suggestions dès que vous tapez.
-3. Choisissez votre carburant en haut de la carte : le meilleur choix (prix ET
-   distance, détour compté) apparaît dans le volet du bas, **Y aller** lance le
-   guidage.
-4. Avant de partir loin, onglet **Trajet** : saisissez la destination et
-   comparez les stations le long du parcours. Le départ est sur **Ma position**
-   dès que la localisation en a donné une, et la recherche de chacun des deux
-   points la propose en tête — sur un seul des deux à la fois. **Lancer le
-   trajet** confie tout l'itinéraire, arrêts carburant compris, à Google Maps.
-5. Sur mobile, installez l'app (bannière d'installation ou
-   *Réglages → Application*) pour l'avoir en icône, plein écran et hors-ligne.
+1. Ouvrez **[plein.zadkiel.fr](https://plein.zadkiel.fr)**. Autorisez la géolocalisation, ou cherchez une ville.
+2. Choisissez votre carburant : le meilleur choix arrive en tête, et **Y aller** l'ouvre dans votre app de navigation.
+3. Pour un long trajet, ouvrez l'onglet **Trajet** et saisissez la destination. **Lancer le trajet** confie l'itinéraire, arrêts carburant compris, à Google Maps.
+4. Sur téléphone, installez l'app (la bannière d'installation, ou Réglages › Application) pour l'avoir en plein écran et hors-ligne.
 
 Aucun compte, aucun tracker : vos favoris et réglages restent dans votre navigateur.
 
+Envie de voir la suite ? [staging-plein.zadkiel.workers.dev](https://staging-plein.zadkiel.workers.dev) sert le dernier `main` avant sa mise en production, et peut casser.
+
 ## 📊 Sources de données
 
-Chaque pays couvert a ses propres flux officiels — prix et géocodage — que
-l'app choisit selon la zone affichée (source *Automatique*). Le reste
-(itinéraires, fonds de carte) est commun aux quatre.
+Chaque pays apporte ses propres flux officiels pour les prix et le géocodage, choisis selon la zone affichée (la source *Automatique*). Les itinéraires et le fond de carte sont communs.
 
 ### 🇫🇷 France
 
 | Donnée | Source | Licence |
 | --- | --- | --- |
-| Prix des carburants & horaires | [Prix des carburants — flux temps réel](https://data.economie.gouv.fr/explore/dataset/prix-des-carburants-en-france-flux-instantane-v2/) (data.economie.gouv.fr) | Licence Ouverte / Open Licence |
+| Prix des carburants & horaires | [Prix des carburants, flux temps réel](https://data.economie.gouv.fr/explore/dataset/prix-des-carburants-en-france-flux-instantane-v2/) (data.economie.gouv.fr) | Licence Ouverte / Open Licence |
 | Enseignes des stations | [OpenStreetMap](https://www.openstreetmap.org/) (index statique généré, rapproché des stations par proximité) | ODbL |
 | Géocodage & autocomplétion | [Base Adresse Nationale](https://adresse.data.gouv.fr/), via le service de géocodage de la Géoplateforme (data.geopf.fr) | Licence Ouverte / Open Licence |
 | Points d'intérêt (aéroports, gares, monuments…) | [Service de géocodage de la Géoplateforme](https://geoservices.ign.fr/documentation/services/services-geoplateforme/geocodage) (data.geopf.fr, BD TOPO de l'IGN) | Licence Ouverte / Open Licence |
@@ -110,7 +71,7 @@ l'app choisit selon la zone affichée (source *Automatique*). Le reste
 
 | Donnée | Source | Licence |
 | --- | --- | --- |
-| Prix des carburants, horaires & enseignes | [Precios de carburantes](https://geoportalgasolineras.es) (sedeaplicaciones.minetur.gob.es, MITECO) — l'enseigne (*rótulo*) est portée par le flux | Datos abiertos |
+| Prix des carburants, horaires & enseignes | [Precios de carburantes](https://geoportalgasolineras.es) (sedeaplicaciones.minetur.gob.es, MITECO) ; l'enseigne (*rótulo*) est portée par le flux | Datos abiertos |
 | Géocodage & autocomplétion | [CartoCiudad](https://www.cartociudad.es) (IGN) | CC BY 4.0 |
 | Géocodage de secours, quand CartoCiudad ne répond pas | [Photon](https://photon.komoot.io), borné à l'Espagne continentale et aux Baléares | ODbL |
 
@@ -118,7 +79,7 @@ l'app choisit selon la zone affichée (source *Automatique*). Le reste
 
 | Donnée | Source | Licence |
 | --- | --- | --- |
-| Prix des carburants & enseignes | [Preus dels carburants](https://sig.govern.ad/IPE/PreusCarburants) (sig.govern.ad, Govern d'Andorra — Oficina de l'Energia i del Canvi Climàtic) — l'enseigne est déduite du nom de la station ; le flux ne porte ni adresse ni horaires | © Govern d'Andorra |
+| Prix des carburants & enseignes | [Preus dels carburants](https://sig.govern.ad/IPE/PreusCarburants) (sig.govern.ad, Govern d'Andorra, Oficina de l'Energia i del Canvi Climàtic) ; l'enseigne est déduite du nom de la station, et le flux ne porte ni adresse ni horaires | © Govern d'Andorra |
 | Géocodage & autocomplétion | Nomenclàtor (gazetteer officiel) & LocatorIDE (sig.govern.ad, IDE Andorra) | © Govern d'Andorra |
 | Géocodage de secours, quand les localisateurs de l'IDE ne répondent pas | [Photon](https://photon.komoot.io), borné à l'Andorre | ODbL |
 
@@ -126,8 +87,8 @@ l'app choisit selon la zone affichée (source *Automatique*). Le reste
 
 | Donnée | Source | Licence |
 | --- | --- | --- |
-| Prix des carburants & enseignes | [Preços dos combustíveis](https://precoscombustiveis.dgeg.gov.pt) (DGEG — Direção-Geral de Energia e Geologia) — l'enseigne (*marca*) est portée par le flux, qui ne donne ni horaires ni E10 ; couverture continentale (les Açores et Madère ont leur propre régime) | Dados abertos |
-| Géocodage & autocomplétion | [Photon](https://photon.komoot.io) (instance publique Komoot, index OpenStreetMap), borné au Portugal continental — le pays ne publie pas de géocodeur d'adresses sans clé | ODbL |
+| Prix des carburants & enseignes | [Preços dos combustíveis](https://precoscombustiveis.dgeg.gov.pt) (DGEG, Direção-Geral de Energia e Geologia) ; le flux porte l'enseigne (*marca*) mais ni horaires ni E10, et ne couvre que le continent (les Açores et Madère ont leur propre régime) | Dados abertos |
+| Géocodage & autocomplétion | [Photon](https://photon.komoot.io) (instance publique Komoot, index OpenStreetMap), borné au Portugal continental (le pays ne publie pas de géocodeur d'adresses sans clé) | ODbL |
 
 ### Communs aux quatre pays
 
@@ -136,36 +97,16 @@ l'app choisit selon la zone affichée (source *Automatique*). Le reste
 | Calcul d'itinéraires | [OSRM](https://project-osrm.org/) (serveur démo) · [Valhalla](https://valhalla.github.io/valhalla/) (serveur public FOSSGIS) pour « éviter autoroutes / péages » | © contributeurs [OpenStreetMap](https://www.openstreetmap.org/copyright) |
 | Fonds de carte | Tuiles vectorielles [OpenFreeMap](https://openfreemap.org), sans clé d'API, style Positron / Dark Matter selon le thème (tuiles raster OpenStreetMap en secours si OpenFreeMap est injoignable ou si l'appareil n'a pas WebGL) | © [OpenMapTiles](https://openmaptiles.org) · © contributeurs [OpenStreetMap](https://www.openstreetmap.org/copyright) · couleurs du style sombre © [CARTO](https://carto.com/attributions) (CC BY 4.0) |
 
-L'app n'a **aucun backend** : le navigateur interroge directement ces services
-publics. Les sources sont pluggables (`src/data/types.ts`). Hors connexion ou
-flux indisponible, l'app garde les dernières stations chargées (cache par
-zone) avec une bannière explicite et réessaie dès que la connexion revient.
-Quand le géocodeur d'un pays ne répond pas, Photon prend le relais ; s'il
-échoue aussi, la recherche indique quels pays manquent dans la liste.
+L'app n'a **aucun backend** : le navigateur interroge directement ces services publics. Hors connexion ou quand un flux est indisponible, elle garde les dernières stations chargées avec une bannière qui le signale, et réessaie dès que la connexion revient. Quand le géocodeur d'un pays ne répond pas, Photon prend le relais ; s'il échoue aussi, la recherche indique quels pays manquent.
 
 ## 🛠️ Construit avec
 
-**Vite · React 18 · TypeScript strict · Leaflet**, plus MapLibre GL pour
-dessiner le fond de carte vectoriel (chargé à la demande), sans autre
-dépendance runtime. Le build de production n'est que des assets statiques, servis par un
-Cloudflare Worker.
+**Vite · React 18 · TypeScript strict · Leaflet**, plus MapLibre GL pour le fond de carte vectoriel (chargé à la demande). Le build de production n'est que des assets statiques, servis par un Cloudflare Worker.
 
 ## 🤝 Contribuer
 
-Signalements, traductions et pull requests sont les bienvenus —
-[CONTRIBUTING.md](CONTRIBUTING.md) (en anglais) détaille l'installation, les
-commandes, les règles de la maison et les tests. Pour signaler un bug, collez
-le snapshot de débogage : Réglages › Données hors ligne › Overlay de débogage,
-puis la pastille flottante **DBG** → **Report**, qui le copie et ouvre le
-formulaire.
+Signalements, traductions et pull requests sont les bienvenus : [CONTRIBUTING.md](CONTRIBUTING.md) (en anglais) détaille l'installation, les commandes, les règles de la maison et les tests. Pour signaler un bug, joignez le snapshot de débogage : Réglages › Données hors ligne › Overlay de débogage, puis la pastille flottante **DBG** › **Report**, qui le copie et ouvre le formulaire.
 
 ## 📄 Licence
 
-Code sous licence [MIT](LICENSE) © Zadkiel Aharonian.
-Les données affichées restent soumises aux licences de leurs producteurs
-respectifs (Licence Ouverte pour les données publiques françaises, datos
-abiertos du MITECO pour les prix espagnols, © Govern d'Andorra pour l'Andorre,
-dados abertos de la DGEG pour les prix portugais, ODbL pour OpenStreetMap).
-Les polices **Archivo** et **Spline Sans Mono**, embarquées dans
-`public/fonts/`, sont sous [SIL Open Font License 1.1](public/fonts/) (voir les
-fichiers `*-OFL.txt` du même dossier).
+Code sous licence [MIT](LICENSE) © Zadkiel Aharonian. Les données affichées restent soumises aux licences de leurs producteurs (Licence Ouverte pour les données publiques françaises, datos abiertos du MITECO pour les prix espagnols, © Govern d'Andorra pour l'Andorre, dados abertos de la DGEG pour les prix portugais, ODbL pour OpenStreetMap). Les polices **Archivo** et **Spline Sans Mono** de `public/fonts/` sont sous [SIL Open Font License 1.1](public/fonts/) (voir les fichiers `*-OFL.txt` du même dossier).
