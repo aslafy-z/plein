@@ -29,7 +29,7 @@ npm run dev          # http://localhost:5173
 
 Behind a corporate proxy or in a sandbox without direct internet access, the dev server proxies the APIs (`/proxy/*`) and the fallback's OpenStreetMap tiles (`/tiles/*`) honoring `HTTPS_PROXY` — see `vite.config.ts`.
 
-Nothing to configure: the basemap is [VersaTiles](https://versatiles.org)' public vector tile server, which takes no account and no key, so a fresh clone draws a real map. Drawing it needs WebGL; a browser without it (or a network that cannot reach VersaTiles) gets the OpenStreetMap raster fallback — see `src/lib/tiles.ts`.
+Nothing to configure: the basemap is [OpenFreeMap](https://openfreemap.org)'s public vector tile server, which takes no account and no key, so a fresh clone draws a real map. Drawing it needs WebGL; a browser without it (or a network that cannot reach OpenFreeMap) gets the OpenStreetMap raster fallback — see `src/lib/tiles.ts`.
 
 | command | what it does |
 | --- | --- |

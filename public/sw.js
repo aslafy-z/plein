@@ -34,20 +34,24 @@ const SHELL_CACHE = 'plein-shell-v1';
 // v4: the basemap moved from CARTO raster to VersaTiles vector tiles
 // (src/lib/tiles.ts); not one v3 entry is ever asked for again, and the bump
 // hands their space back on activation.
+// v5: the vector tiles moved from VersaTiles to OpenFreeMap; no v4 vector
+// entry is ever asked for again.
 // The name is mirrored in src/lib/swCaches.ts, which nothing here can import.
-const TILE_CACHE = 'plein-tiles-v4';
-// The vector basemap's style, sprite and glyph ranges (VersaTiles /assets/):
-// a few dozen stable URLs every map needs before it can draw a single tile.
+const TILE_CACHE = 'plein-tiles-v5';
+// The vector basemap's style, TileJSON, sprite and glyph ranges (everything
+// OpenFreeMap serves outside /planet/<build>/ and /natural_earth/): a few
+// dozen stable URLs every map needs before it can draw a single tile.
 // Kept apart from the tiles so the tile cap never evicts them, and out of
 // « Clear offline data »'s sweep — they are the app's chrome, not user data.
 // The name is mirrored in src/lib/swCaches.ts, which nothing here can import.
-const BASEMAP_CACHE = 'plein-basemap-v1';
+// v2: VersaTiles' /assets/ gave way to OpenFreeMap's styles.
+const BASEMAP_CACHE = 'plein-basemap-v2';
 // Build-time data the app enriches its stations with. Separate from the assets
 // because it is not content-hashed: it is revalidated, not immutable.
 const DATA_CACHE = 'plein-data-v2';
 
-// The hosts src/lib/tiles.ts draws from (VersaTiles primary, OSM fallback)
-const VERSATILES_HOST = 'tiles.versatiles.org';
+// The hosts src/lib/tiles.ts draws from (OpenFreeMap primary, OSM fallback)
+const OPENFREEMAP_HOST = 'tiles.openfreemap.org';
 const OSM_TILE_HOST = 'tile.openstreetmap.org';
 // A vector tile covers four 256 px raster tiles and is overzoomed past z14,
 // so 600 of them ≈ a few cities plus the pyramids around them
@@ -65,13 +69,19 @@ const ASSET_MAX_ENTRIES = 160;
 // that must NOT be answered from this cache — src/lib/tiles.ts probes the
 // server's reachability with `?probe=<ts>`, and a cached tile would say
 // nothing about the network.
+// OpenFreeMap's tiles: the vector planet (`/planet/<build>/{z}/{x}/{y}.pbf`)
+// and the low-zoom relief rasters (`/natural_earth/…`).
+const isOpenFreeMapTile = (path) => path.startsWith('/planet/') || path.startsWith('/natural_earth/');
+
 const isTileRequest = (url) =>
   url.search === '' &&
-  ((url.hostname === VERSATILES_HOST && url.pathname.startsWith('/tiles/')) ||
+  ((url.hostname === OPENFREEMAP_HOST && isOpenFreeMapTile(url.pathname)) ||
     url.hostname === OSM_TILE_HOST);
 
+// Everything else OpenFreeMap serves: the styles, the TileJSON (`/planet`,
+// which names the current build), the sprites and the fonts.
 const isBasemapAsset = (url) =>
-  url.search === '' && url.hostname === VERSATILES_HOST && url.pathname.startsWith('/assets/');
+  url.search === '' && url.hostname === OPENFREEMAP_HOST && !isOpenFreeMapTile(url.pathname);
 
 // The host's single-page-application fallback answers ANY unknown path with
 // index.html and a 200, so `ok` alone does not say the response is the thing
@@ -117,9 +127,11 @@ async function tileFromCacheFirst(event, req) {
 
 // The basemap's style, sprite and glyphs: served from the cache at once and
 // refreshed behind the page, like the brand index below — they change when
-// VersaTiles ships a new style, never between two loads, and an offline map
-// without them draws nothing at all. A sprite or glyph range the server
-// revises is picked up on the next visit.
+// OpenFreeMap ships a new style or a new weekly planet build, never between
+// two loads, and an offline map without them draws nothing at all. A sprite,
+// a glyph range or a TileJSON naming a newer build is picked up on the next
+// visit, so an offline map keeps drawing the build its tiles were cached
+// from until a load online moves it on.
 async function basemapAssetFromCache(event, req) {
   const cache = await caches.open(BASEMAP_CACHE);
   const hit = await cache.match(req.url);

@@ -69,6 +69,17 @@ export function dropTileSnapshot(): void {
   reading = null;
 }
 
+/** The URL as Cache Storage keys it. MapLibre fills the glyph template
+    with the raw font stack (`Noto Sans Regular`), and the request it makes
+    — the one the worker caches — escapes the spaces. */
+function canonical(url: string): string {
+  try {
+    return new URL(url).href;
+  } catch {
+    return url;
+  }
+}
+
 /**
  * The URL to actually request: `url` itself when it may be requested,
  * `blank` (the raster blank by default, `BLANK_PBF` for the vector map) when
@@ -77,7 +88,7 @@ export function dropTileSnapshot(): void {
  */
 export function tileUrlFor(url: string, blank: string = BLANK_TILE): string {
   if (!isForcedOffline()) return url;
-  if (cachedUrls?.has(url)) return url;
+  if (cachedUrls?.has(url) || cachedUrls?.has(canonical(url))) return url;
   skipped++;
   return blank;
 }

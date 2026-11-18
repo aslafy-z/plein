@@ -859,17 +859,19 @@ button,
 }
 /* The basemap is re-toned to the app palette (neutral cool grays, no loud
    hues): readable in daylight, blending with the app surfaces. The vector
-   map itself swaps between the VersaTiles `gray` and `gray-dark` styles with
-   the theme (lib/tiles.ts); these filters only finish the blend, per theme. */
+   map itself swaps between OpenFreeMap's `positron` and `dark` styles with
+   the theme (lib/tiles.ts); these filters only finish the blend, per theme.
+   Dark Matter is drawn near black with faint streets, so the dark filter
+   lifts it the way it lifted CARTO's dark_all rasters (the same style). */
 .basemap-vector {
-  filter: saturate(0.6) brightness(1.08) contrast(0.95);
+  filter: grayscale(0.55) saturate(0.55) brightness(1.5) contrast(0.9);
 }
 /* The map is the largest light surface on screen, so it is toned to the same
    paper the shell sits on rather than left at full daylight — a white-hot
    basemap under a tinted UI is the other half of the glare, and it is what
    makes a green pin read as neon instead of as a price. */
 [data-theme='light'] .basemap-vector {
-  filter: saturate(0.65) brightness(0.97) contrast(0.96);
+  filter: grayscale(0.3) saturate(0.65) brightness(0.97) contrast(0.96);
 }
 /* OSM raster fallback (inverted to dark), same neutral treatment */
 .tiles-dark {

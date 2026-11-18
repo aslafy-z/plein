@@ -112,8 +112,8 @@ describe('tileToBounds', () => {
 
 describe('tileUrl', () => {
   it('expands the {z}/{x}/{y} placeholders', () => {
-    expect(tileUrl('https://tiles.versatiles.org/tiles/osm/{z}/{x}/{y}', { z: 3, x: 4, y: 2 })).toBe(
-      'https://tiles.versatiles.org/tiles/osm/3/4/2',
+    expect(tileUrl('https://tiles.openfreemap.org/planet/20261115_080022_pt/{z}/{x}/{y}.pbf', { z: 3, x: 4, y: 2 })).toBe(
+      'https://tiles.openfreemap.org/planet/20261115_080022_pt/3/4/2.pbf',
     )
     expect(tileUrl('/tiles/{z}/{x}/{y}.png', { z: 7, x: 64, y: 45 })).toBe('/tiles/7/64/45.png')
   })
@@ -141,7 +141,7 @@ describe('vectorPyramidZooms', () => {
   it('collapses street level onto the deepest tile', () => {
     // At Leaflet z17 the map already draws z14: zooming in costs nothing
     expect(vectorPyramidZooms(17, 5, 19, 14)).toEqual([13, 12, 11, 10, 9, 8, 7, 6, 5, 4])
-    // The landcover source stops at z10
+    // A shallower source stops at its own deepest level
     expect(vectorPyramidZooms(17, 5, 19, 10)).toEqual([9, 8, 7, 6, 5, 4])
   })
 })

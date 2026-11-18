@@ -1,21 +1,22 @@
 // Themed basemap with automatic fallback.
-// Primary: VersaTiles (https://versatiles.org) — OpenStreetMap vector tiles,
-// no account, no key, no tracking. Leaflet cannot draw vector tiles, so the
+// Primary: OpenFreeMap (https://openfreemap.org) — OpenStreetMap vector tiles
+// in the OpenMapTiles schema, no account, no key, no tracking. Leaflet cannot draw vector tiles, so the
 // basemap is a MapLibre GL map living inside a Leaflet layer
 // (`@maplibre/maplibre-gl-leaflet`): Leaflet keeps the view, the gestures and
 // every layer the app draws (pins, circle, route), MapLibre only paints the
 // ground underneath, kept in sync on every move. Both are loaded on demand,
 // so the WebGL renderer never weighs on the app's first paint.
-// The style follows the app theme (`gray` / `gray-dark`, re-toned to the
-// palette via `.basemap-vector` in styles.css). The TILES are the same in
+// The style follows the app theme (`positron` / `dark`, the open GL ports of
+// CARTO's Positron and Dark Matter, re-toned to the palette via
+// `.basemap-vector` in styles.css). The TILES are the same in
 // both themes — a theme switch swaps the style in place, every mounted map
 // follows without remounting, and nothing is refetched but the style itself.
 //
-// When the vector map can't draw — VersaTiles unreachable (offline,
+// When the vector map can't draw — OpenFreeMap unreachable (offline,
 // firewalled network), or no WebGL on this device — the map swaps to
 // OpenStreetMap raster tiles (through the dev-server proxy in dev), re-toned
 // per theme with the `.tiles-dark` CSS filter so the app keeps its look. The
-// first map that discovers VersaTiles is unreachable remembers it for the
+// first map that discovers OpenFreeMap is unreachable remembers it for the
 // session, so the map, route and station views all switch together — and a
 // reachability probe (the browser's `online` event, plus every new map) swaps
 // them all back the moment it answers again, instead of pinning the session
@@ -45,24 +46,31 @@ import {
   tileUrlFor,
 } from './tileGate';
 
-/** The public VersaTiles server: tiles under /tiles/, style, sprite and
-    glyphs under /assets/ (public/sw.js caches the two apart) */
-export const VERSATILES = 'https://tiles.versatiles.org';
+/** The public OpenFreeMap server: tiles under /planet/<build>/, style,
+    sprite, glyphs and the TileJSON everywhere else (public/sw.js caches the
+    two apart) */
+export const OPENFREEMAP = 'https://tiles.openfreemap.org';
 
-/** The style per theme. `gray` is the closest to the neutral basemap the
-    palette is built on — the price pins carry the color, the ground does not. */
-const styleUrl = (): string =>
-  `${VERSATILES}/assets/styles/${currentTheme() === 'light' ? 'gray' : 'gray-dark'}/style.json`;
+/** The style per theme: Positron and Dark Matter, the ground the palette was
+    first built on (CARTO's raster light_all / dark_all are renders of them) —
+    neutral, so the price pins carry the color and the ground does not. */
+const styleUrl = (): string => `${OPENFREEMAP}/styles/${currentTheme() === 'light' ? 'positron' : 'dark'}`;
 
-/** The two vector sources the VersaTiles styles draw from, with the deepest
-    level each serves (tiles.json) — the pyramid prefetch warms both */
-const VECTOR_SOURCES = [
-  { template: `${VERSATILES}/tiles/osm/{z}/{x}/{y}`, maxZoom: 14 },
-  { template: `${VERSATILES}/tiles/landcover-vectors/{z}/{x}/{y}`, maxZoom: 10 },
-] as const;
+/** The style's one vector source and its TileJSON. OpenFreeMap rebuilds the
+    planet weekly and names each build in the tile path
+    (`/planet/<build>/{z}/{x}/{y}.pbf`), so the tile template is not a
+    constant: it is whatever the TileJSON the map last loaded says. */
+const VECTOR_SOURCE_ID = 'openmaptiles';
+const TILEJSON_URL = `${OPENFREEMAP}/planet`;
+/** The deepest level the planet serves; past it the tiles are overzoomed */
+const VECTOR_MAX_ZOOM = 14;
+/** The tile template of the build the live map draws — read off the loaded
+    source, since a hard-coded build would go stale within the week. Null
+    until a vector map has resolved its TileJSON; the prefetch waits for it. */
+let vectorTemplate: string | null = null;
 
 const FALLBACK_URL = IS_DEV ? '/tiles/{z}/{x}/{y}.png' : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-/** VersaTiles has not answered — not even the style — within this window
+/** OpenFreeMap has not answered — not even the style — within this window
     after the layer went on the map → assume it is unreachable. */
 const STYLE_GIVE_UP_MS = 12_000;
 /** The style arrived (the server answers) but no tile has, this long after:
@@ -72,7 +80,7 @@ const STYLE_GIVE_UP_MS = 12_000;
     the whole session. */
 const TILE_GIVE_UP_MS = 25_000;
 
-const ATTRIBUTION = '© OpenStreetMap · VersaTiles';
+const ATTRIBUTION = '© OpenStreetMap · OpenMapTiles · OpenFreeMap';
 
 let vectorUnreachable = false;
 
@@ -91,7 +99,7 @@ let lastFallback: { reason: FallbackReason; detail?: string } | null = null;
 function noteFallback(reason: FallbackReason, detail?: string): void {
   lastFallback = { reason, ...(detail ? { detail } : null) };
   // Debug chrome, English only: one line per swap, for whoever has DevTools open
-  console.warn(`[basemap] VersaTiles → OpenStreetMap fallback: ${reason}${detail ? ` (${detail})` : ''}`);
+  console.warn(`[basemap] OpenFreeMap → OpenStreetMap fallback: ${reason}${detail ? ` (${detail})` : ''}`);
 }
 /** Null until a map has tried; false sticks for the session — a browser
     without WebGL does not grow one */
@@ -438,7 +446,7 @@ function mountVector(handle: BasemapHandle): void {
   // is slow, and a swap is for the session). They start once the layer is on
   // the map, not before: a map can wait a long time for an area to draw in
   // (a route behind its skeleton), which says nothing about the server. The
-  // offline gate is never grounds for the swap: « VersaTiles is unreachable »
+  // offline gate is never grounds for the swap: « OpenFreeMap is unreachable »
   // lasts the whole session, and releasing the switch has to find the server
   // where it left it rather than on a verdict the app's own blanking produced.
   let giveUp: ReturnType<typeof setTimeout> | undefined;
@@ -509,6 +517,12 @@ function mountVector(handle: BasemapHandle): void {
       // Reachable: from here only the tiles can still let the map down
       arm(TILE_GIVE_UP_MS, 'tiles-timeout');
     });
+    // The TileJSON resolved: its tile template is the build to prefetch
+    gl.on('sourcedata', (e: { sourceId?: string; sourceDataType?: string }) => {
+      if (e.sourceId !== VECTOR_SOURCE_ID || e.sourceDataType !== 'metadata') return;
+      const tiles = (gl.getSource(VECTOR_SOURCE_ID) as { tiles?: string[] } | undefined)?.tiles;
+      if (tiles?.[0]) vectorTemplate = tiles[0];
+    });
     gl.on('data', (e: { dataType?: string; tile?: unknown }) => {
       if (e.dataType !== 'source' || !e.tile || isForcedOffline()) return;
       loaded++;
@@ -571,10 +585,19 @@ function mountVector(handle: BasemapHandle): void {
 // straight back to MapLibre. Tiles are left alone: where the map will open
 // depends on the answer to the location prompt that screen is about to ask.
 
-/** The style's own font stacks, at the range every Latin label starts with */
-const PRELOAD_GLYPHS = ['noto_sans_regular', 'noto_sans_bold'].map(
-  (font) => `${VERSATILES}/assets/glyphs/${font}/0-255.pbf`,
-);
+/** The range every Latin label starts with */
+const PRELOAD_GLYPH_RANGE = '0-255';
+
+/** The fetch every preload request makes: the mode MapLibre's own requests
+    use, so the cached responses are the ones it will be handed */
+const preload = (url: string): Promise<Response | null> =>
+  fetch(url, { mode: 'cors', credentials: 'omit', priority: 'low' }).catch(() => null);
+
+interface StyleRefs {
+  sprite?: string;
+  glyphs?: string;
+  layers?: { layout?: { 'text-font'?: unknown } }[];
+}
 
 let preloaded = false;
 
@@ -584,11 +607,37 @@ export function preloadBasemap(): void {
   if (isOffline() || !hasWebGl()) return;
   preloaded = true;
   loadGl().catch(() => {}); // the map's own mount retries a failed import
-  // MapLibre asks for the @2x sprite on any screen denser than 1
-  const sprite = `${VERSATILES}/assets/sprites/base${window.devicePixelRatio > 1 ? '@2x' : ''}`;
-  for (const url of [styleUrl(), `${sprite}.json`, `${sprite}.png`, ...PRELOAD_GLYPHS]) {
-    fetch(url, { mode: 'cors', credentials: 'omit', priority: 'low' }).catch(() => {});
-  }
+  void preload(TILEJSON_URL);
+  // The sprite and the glyph template are versioned paths the style names,
+  // so they are read off the style rather than hard-coded here.
+  void preload(styleUrl()).then(async (res) => {
+    if (!res?.ok) return;
+    const style = (await res.json().catch(() => null)) as StyleRefs | null;
+    if (!style) return;
+    const urls: string[] = [];
+    if (style.sprite) {
+      // MapLibre asks for the @2x sprite on any screen denser than 1
+      const sprite = `${style.sprite}${window.devicePixelRatio > 1 ? '@2x' : ''}`;
+      urls.push(`${sprite}.json`, `${sprite}.png`);
+    }
+    if (style.glyphs) {
+      const stacks = new Set<string>();
+      for (const layer of style.layers ?? []) {
+        const font = layer.layout?.['text-font'];
+        if (Array.isArray(font)) stacks.add(font.join(','));
+      }
+      for (const stack of stacks) {
+        urls.push(
+          style.glyphs
+            // Not encoded, like MapLibre's own request: the URL parser
+            // escapes the spaces and leaves the commas, so the key matches
+            .replace('{fontstack}', stack)
+            .replace('{range}', PRELOAD_GLYPH_RANGE),
+        );
+      }
+    }
+    for (const url of urls) void preload(url);
+  });
 }
 
 export function addBasemap(map: L.Map, visibleCenter?: () => L.LatLng): void {
@@ -633,10 +682,11 @@ export function addBasemap(map: L.Map, visibleCenter?: () => L.LatLng): void {
   mountVector(handle);
 }
 
-// ── Recovery: swap back to VersaTiles when it answers again ──────────────────
+// ── Recovery: swap back to OpenFreeMap when it answers again ─────────────────
 
-/** One fixed low-zoom tile the reachability probe fetches */
-const PROBE_URL = `${VERSATILES}/tiles/osm/3/4/2`;
+/** What the reachability probe fetches: the TileJSON, a fixed URL (the tile
+    paths move with every weekly build) the map needs before any tile */
+const PROBE_URL = TILEJSON_URL;
 /** Two probes never run closer together than this */
 const PROBE_MIN_INTERVAL_MS = 30_000;
 
@@ -689,9 +739,10 @@ async function attemptRecovery(): Promise<void> {
 // tiles per OTHER zoom that cover the map center — down to the world view so
 // zooming out never falls off the cached slice, and up to the deepest level
 // so zooming in on the center keeps drawing too. For the vector map that is
-// the deepest level each SOURCE serves (z14, z10 for the landcover): past it
-// the tiles are overzoomed, and street level costs nothing more. The fetches
-// take the exact URLs the map requests (tilePyramid.ts) in CORS mode, so
+// the deepest level the planet serves (z14): past it the tiles are
+// overzoomed, and street level costs nothing more. The fetches take the
+// exact URLs the map requests (tilePyramid.ts, on the build the live map's
+// TileJSON named) in CORS mode, so
 // sw.js caches them on its normal lazy path — successes only.
 //
 // Each run plans against the cache itself (one key enumeration) rather than
@@ -740,14 +791,15 @@ function pyramidUrls(handle: BasemapHandle): string[] {
     const tiles = pyramidTiles(center.lat, center.lng, rasterPyramidZooms(Math.round(zoom)));
     return expand(FALLBACK_URL, tiles);
   }
-  return VECTOR_SOURCES.flatMap(({ template, maxZoom }) =>
-    expand(
-      template,
-      pyramidTiles(
-        center.lat,
-        center.lng,
-        vectorPyramidZooms(zoom, PREFETCH_MIN_ZOOM, PREFETCH_MAX_ZOOM, maxZoom),
-      ),
+  // No TileJSON resolved yet: nothing to name the tiles by, the next
+  // settled move tries again
+  if (!vectorTemplate) return [];
+  return expand(
+    vectorTemplate,
+    pyramidTiles(
+      center.lat,
+      center.lng,
+      vectorPyramidZooms(zoom, PREFETCH_MIN_ZOOM, PREFETCH_MAX_ZOOM, VECTOR_MAX_ZOOM),
     ),
   );
 }

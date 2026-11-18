@@ -111,11 +111,11 @@ test('the switch stops basemap tiles, which no store gate can reach', async ({ p
   // raster fallback's <img> tiles — they pass through no provider, so the
   // mode has to be enforced where the URL is handed out (lib/tileGate.ts).
   // The vector map's own gate is covered in tiles.spec.ts. Every tile host
-  // is counted: VersaTiles (tiles and glyph ranges), OSM, and the dev-server
+  // is counted: OpenFreeMap (tiles and glyph ranges), OSM, and the dev-server
   // proxy the fallback layer uses.
   let tiles = 0
   page.on('request', (req) => {
-    if (/tiles\.versatiles\.org\/(tiles|assets\/glyphs)\/|tile\.openstreetmap\.org|\/tiles\//.test(req.url())) tiles++
+    if (/tiles\.openfreemap\.org\/(planet\/[^/?]+\/|fonts\/)|tile\.openstreetmap\.org|\/tiles\//.test(req.url())) tiles++
   })
   await page.route('**/proxy/fr/**', fulfillStations)
   await gotoMap(page)

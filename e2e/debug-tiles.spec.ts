@@ -46,7 +46,7 @@ async function seedTilePyramid(
     // The CURRENT generation (SW_TILE_CACHE in src/lib/swCaches.ts) — the
     // debug layer reads only that one, unlike the Settings counter's
     // prefix-wide sweep.
-    const cache = await caches.open('plein-tiles-v4')
+    const cache = await caches.open('plein-tiles-v5')
     let n = 0
     for (let z = 3; z <= 14; z += 1) {
       const c = 2 ** z
@@ -56,7 +56,7 @@ async function seedTilePyramid(
       for (let dx = -2; dx <= 2; dx += 1) {
         for (let dy = -2; dy <= 2; dy += 1) {
           await cache.put(
-            `https://tiles.versatiles.org/tiles/osm/${z}/${x + dx}/${y + dy}`,
+            `https://tiles.openfreemap.org/planet/20261115_080022_pt/${z}/${x + dx}/${y + dy}.pbf`,
             new Response('x', { status: 200 }),
           )
           n += 1

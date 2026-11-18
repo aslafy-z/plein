@@ -32,7 +32,7 @@ export function lastAreaLoadDebug(): { path: AreaLoadPath; at: number } | null {
 export interface TileLayerDebug {
   /** Layer new maps get right now (the session-wide fallback decision) */
   active: 'vector' | 'fallback';
-  /** VersaTiles failed to answer this session (until a probe sees it back) */
+  /** OpenFreeMap failed to answer this session (until a probe sees it back) */
   vectorUnreachable: boolean;
   /** Whether this device can run the vector map — null until a map tried */
   webgl: boolean | null;

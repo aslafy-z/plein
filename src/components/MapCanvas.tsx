@@ -79,7 +79,6 @@ const DEBUG_CACHE_COLOR = '#8b5cf6';
     stay tellable apart when both debug layers are on. */
 const DEBUG_TILE_COLORS: Record<TileStyle, string> = {
   vector: '#22d3ee',
-  landcover: '#f59e0b',
   fallback: '#10b981',
 };
 /** Zooms drawn around the current one — all 15 levels at once is unreadable;
@@ -855,8 +854,8 @@ export default function MapCanvas({
   // ── Debug mode: the SW tile cache drawn as tile footprints ────────────────
   // Same honesty as the cached-areas layer, for the basemap: every entry of
   // the service worker's tile cache near the current zoom draws its
-  // geographic footprint — cyan for the VersaTiles streets, amber for its
-  // landcover, green for the OSM fallback — off-screen tiles included. A tile
+  // geographic footprint — cyan for the OpenFreeMap vector tiles, green for
+  // the OSM fallback — off-screen tiles included. A tile
   // is filed under the map zoom it paints at (tileMapZoom: a 512 px vector
   // tile at z paints at Leaflet's z + 1). Other zooms render at their
   // true size, so the offline pyramid (lib/tiles.ts) shows up as it is:
@@ -867,7 +866,7 @@ export default function MapCanvas({
   // window catches most of a 600-entry cache — hundreds of paths (on top of
   // the areas layer's dots) is what made zoomed-in panning crawl. Tiles that
   // share a color and a fade are one multi-ring polygon instead: at most
-  // 3 styles × the span, whatever the tile count.
+  // 2 styles × the span, whatever the tile count.
   //
   // A bucket holds ONE zoom level, so its rings are the disjoint cells of a
   // grid — never nested — and canvas's nonzero winding fills each of them.

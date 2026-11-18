@@ -187,19 +187,23 @@ width, never pointer type: a window gets resized and the layout has to follow.
   Mechanism is shared, policy is not: each wrapper keeps when to fit, on what
   bounds, and its own layers.
 - **The basemap is the one thing on the map Leaflet does not draw**
-  (`src/lib/tiles.ts`): VersaTiles vector tiles, rendered by a MapLibre GL
+  (`src/lib/tiles.ts`): OpenFreeMap vector tiles (OpenMapTiles schema, the
+  `positron` / `dark` styles), rendered by a MapLibre GL
   layer (`@maplibre/maplibre-gl-leaflet`, imported on demand, wrapped by
   `guardedLayer`) inside Leaflet's tile pane, which Leaflet keeps in sync.
   Everything the app draws (pins, circle, route) stays Leaflet. The theme
-  swaps the style, never the tiles; an unreachable VersaTiles or a device
+  swaps the style, never the tiles; an unreachable OpenFreeMap or a device
   without WebGL drops to OSM raster tiles. MapLibre runs one zoom below
   Leaflet (512 px tiles) and overzooms past z14 — the pyramid prefetch and
   the debug grid (`vectorTileZoom`, `tileMapZoom`) both depend on that rule.
+  OpenFreeMap names its weekly planet build in the tile path, so the
+  prefetch reads the tile template off the live map's TileJSON, never a
+  constant.
   The map's `maxZoom` (19) is set on the map in `useLeafletMap`: no tile
   layer supplies one any more, and a fit on a single point without it zooms
   to Infinity. The onboarding screen starts the renderer chunk, the style,
   the sprite and the base fonts downloading (`preloadBasemap`), so a first
-  visit's map does not start from nothing. Only « VersaTiles never answered »
+  visit's map does not start from nothing. Only « OpenFreeMap never answered »
   swaps a map to OSM (no style in 12 s, the style failing, repeated tile
   errors, no tile in 25 s after the style) — a sprite or a font range
   failing does not — and the debug overlay's `fallbackReason` says which.
@@ -305,7 +309,7 @@ Anything that does not fit one of them does not get cached.
   what the Settings « Data » section renders — the instrumentation is data,
   since the e2e fixture fails on a console error. The tile figure is entries ×
   a flat per-tile average: weighing them would mean reading every cached body.
-  The tiles (VersaTiles vector tiles, OSM raster on the fallback) are
+  The tiles (OpenFreeMap vector tiles, OSM raster on the fallback) are
   requested in CORS mode and the worker stores only `ok`
   responses — a no-cors tile is opaque, its status hidden, and a cached CDN
   error would answer cache-first from then on. « Clear offline data » drops the station areas, the

@@ -7,9 +7,9 @@ import { BLANK_PBF, BLANK_TILE, dropTileSnapshot, ensureTileSnapshot, tileUrlFor
 // MapLibre and the fallback layer fetch on their own, past every provider
 // and store path.
 
-const CACHED = 'https://tiles.versatiles.org/tiles/osm/12/2049/1409';
-const UNCACHED = 'https://tiles.versatiles.org/tiles/osm/12/2050/1409';
-const GLYPHS = 'https://tiles.versatiles.org/assets/glyphs/noto_sans_regular/0-255.pbf';
+const CACHED = 'https://tiles.openfreemap.org/planet/20261115_080022_pt/12/2049/1409.pbf';
+const UNCACHED = 'https://tiles.openfreemap.org/planet/20261115_080022_pt/12/2050/1409.pbf';
+const GLYPHS = 'https://tiles.openfreemap.org/fonts/Noto%20Sans%20Regular/0-255.pbf';
 
 /** Cache Storage holding exactly `stores`, as the gate reads it */
 function stubCacheStorage(stores: Record<string, string[]>): void {
@@ -39,7 +39,7 @@ describe('tileUrlFor', () => {
   });
 
   it('lets a cached tile through and blanks the rest', async () => {
-    stubCacheStorage({ 'plein-tiles-v4': [CACHED] });
+    stubCacheStorage({ 'plein-tiles-v5': [CACHED] });
     setForcedOffline(true);
     await ensureTileSnapshot();
 
@@ -51,13 +51,16 @@ describe('tileUrlFor', () => {
   it('answers the vector map with an empty protobuf, and reads the glyph cache too', async () => {
     // A declined vector tile must still parse: MapLibre reads an empty pbf as
     // a tile with no features. The glyph ranges live in the basemap cache.
-    stubCacheStorage({ 'plein-tiles-v4': [CACHED], 'plein-basemap-v1': [GLYPHS] });
+    stubCacheStorage({ 'plein-tiles-v5': [CACHED], 'plein-basemap-v2': [GLYPHS] });
     setForcedOffline(true);
     await ensureTileSnapshot();
 
     expect(tileUrlFor(UNCACHED, BLANK_PBF)).toBe(BLANK_PBF);
     expect(tileUrlFor(CACHED, BLANK_PBF)).toBe(CACHED);
     expect(tileUrlFor(GLYPHS, BLANK_PBF)).toBe(GLYPHS);
+    // MapLibre fills the font stack in unescaped; the cache key is escaped
+    const raw = GLYPHS.replace(/%20/g, ' ');
+    expect(tileUrlFor(raw, BLANK_PBF)).toBe(raw);
   });
 
   it('blanks everything when the origin has no Cache Storage at all', async () => {
@@ -69,7 +72,7 @@ describe('tileUrlFor', () => {
   });
 
   it('releases every tile again once the mode is off', async () => {
-    stubCacheStorage({ 'plein-tiles-v4': [CACHED] });
+    stubCacheStorage({ 'plein-tiles-v5': [CACHED] });
     setForcedOffline(true);
     await ensureTileSnapshot();
     expect(tileUrlFor(UNCACHED)).toBe(BLANK_TILE);

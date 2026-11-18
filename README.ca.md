@@ -136,7 +136,7 @@ Cada país cobert té els seus propis fluxos oficials — preus i geocodificaci�
 | Dada | Font | Llicència |
 | --- | --- | --- |
 | Càlcul d'itineraris | [OSRM](https://project-osrm.org/) (servidor de demostració) · [Valhalla](https://valhalla.github.io/valhalla/) (servidor públic FOSSGIS) per a «evitar autopistes / peatges» | © col·laboradors d'[OpenStreetMap](https://www.openstreetmap.org/copyright) |
-| Mapes base | Tessel·les vectorials de [VersaTiles](https://versatiles.org), sense clau d'API, estil clar / fosc segons el tema (tessel·les ràster d'OpenStreetMap com a recurs si VersaTiles no respon o el dispositiu no té WebGL) | © col·laboradors d'[OpenStreetMap](https://www.openstreetmap.org/copyright) |
+| Mapes base | Tessel·les vectorials d'[OpenFreeMap](https://openfreemap.org), sense clau d'API, estil Positron / Dark Matter segons el tema (tessel·les ràster d'OpenStreetMap com a recurs si OpenFreeMap no respon o el dispositiu no té WebGL) | © [OpenMapTiles](https://openmaptiles.org) · © col·laboradors d'[OpenStreetMap](https://www.openstreetmap.org/copyright) |
 
 L'app no té **cap backend**: el navegador consulta directament aquests
 serveis públics. Les fonts són connectables (`src/data/types.ts`). Sense

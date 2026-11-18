@@ -1,7 +1,7 @@
 import { test, expect, gotoMap, WEBGL_LAUNCH } from './fixtures'
 
-// The basemap is VersaTiles vector tiles drawn by a MapLibre GL layer under
-// Leaflet's panes (src/lib/tiles.ts). When VersaTiles cannot be reached, the
+// The basemap is OpenFreeMap vector tiles drawn by a MapLibre GL layer under
+// Leaflet's panes (src/lib/tiles.ts). When OpenFreeMap cannot be reached, the
 // map swaps to OpenStreetMap raster tiles — and that layer prefetches one ring
 // of tiles around the viewport so a slight pan never shows tiles loading. The
 // ring must not compete with the visible tiles: off-screen tiles are
@@ -13,13 +13,13 @@ import { test, expect, gotoMap, WEBGL_LAUNCH } from './fixtures'
 // rather than with long drags.
 test.use({ launchOptions: WEBGL_LAUNCH })
 
-/** VersaTiles requests the offline gate stands in front of: tiles and glyphs */
-const GATED = /^https:\/\/tiles\.versatiles\.org\/(tiles|assets\/glyphs)\//
+/** OpenFreeMap requests the offline gate stands in front of: tiles and glyphs */
+const GATED = /^https:\/\/tiles\.openfreemap\.org\/(planet\/[^/?]+\/|fonts\/)/
 
-test('the basemap is VersaTiles vector tiles, drawn under the Leaflet panes', async ({ page }) => {
+test('the basemap is OpenFreeMap vector tiles, drawn under the Leaflet panes', async ({ page }) => {
   const vector: number[] = []
   page.on('response', (res) => {
-    if (/^https:\/\/tiles\.versatiles\.org\/tiles\/osm\/\d+\/\d+\/\d+$/.test(res.url())) {
+    if (/^https:\/\/tiles\.openfreemap\.org\/planet\/[^/]+\/\d+\/\d+\/\d+\.pbf$/.test(res.url())) {
       vector.push(res.status())
     }
   })
@@ -32,7 +32,7 @@ test('the basemap is VersaTiles vector tiles, drawn under the Leaflet panes', as
   // No raster layer stands next to it: the fallback only mounts on a failure
   expect(await page.locator('img.leaflet-tile').count()).toBe(0)
   await expect(page.locator('.leaflet-control-attribution')).toContainText('OpenStreetMap')
-  await expect(page.locator('.leaflet-control-attribution')).toContainText('VersaTiles')
+  await expect(page.locator('.leaflet-control-attribution')).toContainText('OpenFreeMap')
 })
 
 type TileStats = { visible: number; visibleReady: number; outside: number; outsideLow: number }
@@ -63,8 +63,8 @@ function tileStats(page: import('@playwright/test').Page): Promise<TileStats> {
   })
 }
 
-test('an unreachable VersaTiles swaps to OSM raster tiles, ring prefetched so a slight pan shows no tile loading', async ({ page }) => {
-  await page.route('**://tiles.versatiles.org/**', (route) => route.abort())
+test('an unreachable OpenFreeMap swaps to OSM raster tiles, ring prefetched so a slight pan shows no tile loading', async ({ page }) => {
+  await page.route('**://tiles.openfreemap.org/**', (route) => route.abort())
   await gotoMap(page)
   await expect(page.locator('img.leaflet-tile').first()).toBeAttached({ timeout: 20_000 })
   await expect(page.locator('.leaflet-gl-layer')).toHaveCount(0)
@@ -204,8 +204,8 @@ test.describe('the onboarding screen', () => {
     page.on('request', (req) => {
       const url = req.url()
       if (/maplibre-gl/.test(url)) seen.add('renderer')
-      if (/tiles\.versatiles\.org\/assets\/styles\/[^/]+\/style\.json$/.test(url)) seen.add('style')
-      if (/tiles\.versatiles\.org\/assets\/glyphs\//.test(url)) seen.add('glyphs')
+      if (/tiles\.openfreemap\.org\/styles\/[^/]+$/.test(url)) seen.add('style')
+      if (/tiles\.openfreemap\.org\/fonts\//.test(url)) seen.add('glyphs')
     })
     await page.goto('/')
     await expect(page.getByText('Get started', { exact: true })).toBeVisible()
@@ -220,9 +220,9 @@ test.describe('the onboarding screen', () => {
 
 test('a missing sprite or font range keeps the vector map', async ({ page }) => {
   // Only the style failing means nothing will ever draw. A sprite or a glyph
-  // range that errors before the first tile used to read as « VersaTiles is
+  // range that errors before the first tile used to read as « OpenFreeMap is
   // unreachable » and pinned the session on the raster fallback.
-  await page.route(/tiles\.versatiles\.org\/assets\/(sprites|glyphs)\//, (route) =>
+  await page.route(/tiles\.openfreemap\.org\/(sprites|fonts)\//, (route) =>
     route.fulfill({ status: 404, body: '' }),
   )
   await gotoMap(page)

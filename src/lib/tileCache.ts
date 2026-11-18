@@ -23,15 +23,17 @@
 import type { TileCoords } from './tilePyramid';
 import { SW_TILE_CACHE, SW_TILE_CACHE_PREFIX } from './swCaches';
 
-/** Which basemap source a cached tile belongs to: the two VersaTiles vector
-    sources (the same in both themes), or the raster fallback. The dev proxy
-    path counts as the fallback it stands in for. */
-export type TileStyle = 'vector' | 'landcover' | 'fallback';
+/** Which basemap source a cached tile belongs to: the OpenFreeMap vector
+    planet (the same in both themes, whatever its weekly build), or the
+    raster fallback. The dev proxy path counts as the fallback it stands in
+    for. */
+export type TileStyle = 'vector' | 'fallback';
 
 export type CachedTile = TileCoords & { style: TileStyle };
 
-const VERSATILES_HOST = 'tiles.versatiles.org';
-const VECTOR_PATH = /^\/tiles\/(osm|landcover-vectors)\/(\d+)\/(\d+)\/(\d+)$/;
+const OPENFREEMAP_HOST = 'tiles.openfreemap.org';
+/** `/planet/<build>/{z}/{x}/{y}.pbf` — the build is the weekly planet run */
+const VECTOR_PATH = /^\/planet\/[^/]+\/(\d+)\/(\d+)\/(\d+)\.pbf$/;
 const ZXY_PATH = /^\/(\d+)\/(\d+)\/(\d+)\.png$/;
 
 /**
@@ -58,15 +60,10 @@ export function parseTileUrl(raw: string): CachedTile | null {
   }
   if (url.search !== '') return null;
   const host = url.hostname;
-  if (host === VERSATILES_HOST) {
+  if (host === OPENFREEMAP_HOST) {
     const m = VECTOR_PATH.exec(url.pathname);
     if (!m) return null;
-    return {
-      style: m[1] === 'osm' ? 'vector' : 'landcover',
-      z: Number(m[2]),
-      x: Number(m[3]),
-      y: Number(m[4]),
-    };
+    return { style: 'vector', z: Number(m[1]), x: Number(m[2]), y: Number(m[3]) };
   }
   const path =
     host === 'tile.openstreetmap.org'
@@ -105,7 +102,7 @@ export async function readCachedTiles(): Promise<CachedTile[]> {
 
 // What one cached tile is counted as. The entries are CORS responses, so
 // their bodies could be read — but summing hundreds of blobs for a counter
-// is not worth the IO; a VersaTiles vector tile runs ~20–100 kB (the low
+// is not worth the IO; an OpenFreeMap vector tile runs ~20–100 kB (the low
 // zooms are the heavy ones), an OSM 256px PNG ~10–30 kB, so the counter
 // charges a flat average and the UI presents the result as approximate.
 // (`navigator.storage.estimate()` is no alternative: it covers the whole
@@ -163,7 +160,7 @@ export interface TileCacheDebug {
 
 export function summarizeCachedTiles(tiles: CachedTile[]): TileCacheDebug {
   const zoomCounts = new Map<number, number>();
-  const byStyle: Record<TileStyle, number> = { vector: 0, landcover: 0, fallback: 0 };
+  const byStyle: Record<TileStyle, number> = { vector: 0, fallback: 0 };
   for (const t of tiles) {
     zoomCounts.set(t.z, (zoomCounts.get(t.z) ?? 0) + 1);
     byStyle[t.style] += 1;

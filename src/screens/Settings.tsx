@@ -1226,7 +1226,8 @@ export default function Settings() {
           <div>
             {m.settings_credits_misc()}{' '}
             <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" style={CREDIT_LINK}>OpenStreetMap</a> ·{' '}
-            <a href="https://versatiles.org" target="_blank" rel="noreferrer" style={CREDIT_LINK}>VersaTiles</a>
+            <a href="https://openmaptiles.org" target="_blank" rel="noreferrer" style={CREDIT_LINK}>OpenMapTiles</a> ·{' '}
+            <a href="https://openfreemap.org" target="_blank" rel="noreferrer" style={CREDIT_LINK}>OpenFreeMap</a>
           </div>
         </div>
       </div>

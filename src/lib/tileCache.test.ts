@@ -10,18 +10,18 @@ import {
   TILE_BYTES_ESTIMATE,
 } from './tileCache'
 
-const VT = 'https://tiles.versatiles.org'
+const OFM = 'https://tiles.openfreemap.org'
 
 describe('parseTileUrl', () => {
-  it('parses the two VersaTiles vector sources', () => {
-    expect(parseTileUrl(`${VT}/tiles/osm/12/2064/1495`)).toEqual({
+  it('parses OpenFreeMap vector tiles, whatever the weekly build', () => {
+    expect(parseTileUrl(`${OFM}/planet/20261115_080022_pt/12/2064/1495.pbf`)).toEqual({
       style: 'vector',
       z: 12,
       x: 2064,
       y: 1495,
     })
-    expect(parseTileUrl(`${VT}/tiles/landcover-vectors/5/16/11`)).toEqual({
-      style: 'landcover',
+    expect(parseTileUrl(`${OFM}/planet/20261108_001001_pt/5/16/11.pbf`)).toEqual({
+      style: 'vector',
       z: 5,
       x: 16,
       y: 11,
@@ -46,18 +46,18 @@ describe('parseTileUrl', () => {
   it('rejects probe URLs, basemap assets and foreign entries', () => {
     // A queried tile URL is the reachability probe — sw.js never caches it,
     // and parsing one would hide that bug instead of surfacing it.
-    expect(parseTileUrl(`${VT}/tiles/osm/3/4/2?probe=123`)).toBeNull()
-    expect(parseTileUrl(`${VT}/assets/glyphs/noto_sans_regular/0-255.pbf`)).toBeNull()
+    expect(parseTileUrl(`${OFM}/planet?probe=123`)).toBeNull()
+    expect(parseTileUrl(`${OFM}/planet`)).toBeNull()
+    expect(parseTileUrl(`${OFM}/fonts/Noto%20Sans%20Regular/0-255.pbf`)).toBeNull()
     expect(parseTileUrl('https://example.com/5/1/2.png')).toBeNull()
     expect(parseTileUrl('/assets/icon.svg')).toBeNull()
-    expect(parseTileUrl(`${VT}/tiles/osm/not/a/tile`)).toBeNull()
+    expect(parseTileUrl(`${OFM}/planet/20261115_080022_pt/not/a/tile.pbf`)).toBeNull()
   })
 })
 
 describe('tileMapZoom', () => {
   it('files a 512 px vector tile one Leaflet level deeper than its own zoom', () => {
     expect(tileMapZoom({ style: 'vector', z: 12, x: 0, y: 0 })).toBe(13)
-    expect(tileMapZoom({ style: 'landcover', z: 8, x: 0, y: 0 })).toBe(9)
     expect(tileMapZoom({ style: 'fallback', z: 12, x: 0, y: 0 })).toBe(12)
   })
 })
@@ -68,7 +68,7 @@ describe('summarizeCachedTiles', () => {
       { style: 'vector', z: 12, x: 1, y: 1 },
       { style: 'vector', z: 5, x: 1, y: 1 },
       { style: 'vector', z: 5, x: 2, y: 1 },
-      { style: 'landcover', z: 12, x: 1, y: 1 },
+      { style: 'vector', z: 12, x: 2, y: 1 },
       { style: 'fallback', z: 7, x: 1, y: 1 },
     ] as const
     const summary = summarizeCachedTiles([...tiles])
@@ -78,7 +78,7 @@ describe('summarizeCachedTiles', () => {
       ['z7', 1],
       ['z12', 2],
     ])
-    expect(summary.byStyle).toEqual({ vector: 3, landcover: 1, fallback: 1 })
+    expect(summary.byStyle).toEqual({ vector: 4, fallback: 1 })
   })
 })
 
@@ -89,13 +89,13 @@ describe('cachedTileUrls', () => {
     vi.stubGlobal('caches', {
       open: async () => ({
         keys: async () => [
-          { url: `${VT}/tiles/osm/5/16/11` },
-          { url: `${VT}/tiles/osm/5/17/11` },
+          { url: `${OFM}/planet/20261115_080022_pt/5/16/11.pbf` },
+          { url: `${OFM}/planet/20261115_080022_pt/5/17/11.pbf` },
         ],
       }),
     })
     const urls = await cachedTileUrls()
-    expect(urls.has(`${VT}/tiles/osm/5/16/11`)).toBe(true)
+    expect(urls.has(`${OFM}/planet/20261115_080022_pt/5/16/11.pbf`)).toBe(true)
     expect(urls.size).toBe(2)
   })
 
@@ -190,8 +190,8 @@ describe('readCachedTiles', () => {
     vi.stubGlobal('caches', {
       open: async () => ({
         keys: async () => [
-          { url: `${VT}/tiles/osm/5/16/11` },
-          { url: `${VT}/tiles/osm/3/4/2?probe=1` },
+          { url: `${OFM}/planet/20261115_080022_pt/5/16/11.pbf` },
+          { url: `${OFM}/planet?probe=1` },
           { url: 'https://tile.openstreetmap.org/5/16/11.png' },
         ],
       }),

@@ -51,7 +51,7 @@ function versionStamp(version: string): Plugin {
 // ── Dev/preview tile proxy ────────────────────────────────────────────────────
 // Sandboxed / firewalled environments often let the dev server reach the
 // internet (via HTTPS_PROXY) while the browser itself cannot. The app first
-// draws the VersaTiles vector map directly; when that fails it falls back to
+// draws the OpenFreeMap vector map directly; when that fails it falls back to
 // `/tiles/{z}/{x}/{y}.png`, which this middleware serves from OpenStreetMap
 // with the identifying User-Agent its tile policy asks for.
 const OSM = 'https://tile.openstreetmap.org'
