@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { haversineKm } from '../../lib/geo';
 import type { Station } from '../types';
-import { enrichWithBrands, type FuelPoi } from './osmBrands';
+import { enrichWithBrands, parseBrandIndex, type FuelPoi } from './osmBrands';
 
 const MATCH_KM = 0.15;
 
@@ -280,6 +280,84 @@ describe('enrichWithBrands', () => {
     expect(haversineKm({ lat: -16.92, lng: -179.9995 }, pois[0])).toBeLessThan(MATCH_KM);
     expect(enrichWithBrands(stations, pois)).toEqual(enrichByFullScan(stations, pois));
     expect(enrichWithBrands(stations, pois)[0].brand).toBe('Circle K');
+  });
+});
+
+describe('enrichWithBrands — build-time links', () => {
+  // 65 ROUTE D AGDE, Balma: the flux rounds it to 43.628, 1.48, some 370 m
+  // from the TotalEnergies forecourt OSM has.
+  const total: FuelPoi = {
+    lat: 43.62633,
+    lng: 1.47603,
+    label: 'TotalEnergies',
+    linked: ['fr-31000004'],
+  };
+  const balma = station('fr-31000004', 43.628, 1.48, 'Balma');
+
+  it('follows a link beyond the match radius: brand and position', () => {
+    expect(haversineKm(balma, total)).toBeGreaterThan(MATCH_KM);
+    const [out] = enrichWithBrands([balma], [total]);
+    expect(out.brand).toBe('TotalEnergies');
+    expect(out.name).toBe('TotalEnergies · Balma');
+    expect(out.lat).toBe(total.lat);
+    expect(out.lng).toBe(total.lng);
+  });
+
+  it('ignores a link meant for another station', () => {
+    const other = station('fr-31000005', balma.lat, balma.lng, 'Balma');
+    expect(enrichWithBrands([other], [total])[0]).toEqual(other);
+  });
+
+  it('drops a link once the flux has moved the station away from its POI', () => {
+    const moved = { ...balma, lat: total.lat + m(800) };
+    expect(enrichWithBrands([moved], [total])[0]).toEqual(moved);
+  });
+
+  it('lets a POI within the match radius win over the link', () => {
+    const onSite: FuelPoi = { lat: balma.lat + m(30), lng: balma.lng, label: 'Esso' };
+    const [out] = enrichWithBrands([balma], [total, onSite]);
+    expect(out.brand).toBe('Esso');
+    expect(out.lat).toBe(onSite.lat);
+  });
+
+  it('snaps an unlabeled linked POI without inventing a brand', () => {
+    const bare: FuelPoi = { ...total, label: '' };
+    const [out] = enrichWithBrands([balma], [bare]);
+    expect(out.brand).toBeUndefined();
+    expect(out.name).toBe(balma.name);
+    expect(out.lat).toBe(total.lat);
+  });
+});
+
+describe('parseBrandIndex', () => {
+  it('attaches each link to its POI as a prefixed station id', () => {
+    const pois = parseBrandIndex({
+      labels: ['TotalEnergies'],
+      pois: [
+        [43.62633, 1.47603, 0],
+        [43.6, 1.4, -1],
+      ],
+      links: [
+        [31000004, 0],
+        [31000099, 0],
+        [12345678, 7], // a row the file does not have: skipped
+      ],
+    });
+    expect(pois).toEqual([
+      {
+        lat: 43.62633,
+        lng: 1.47603,
+        label: 'TotalEnergies',
+        linked: ['fr-31000004', 'fr-31000099'],
+      },
+      { lat: 43.6, lng: 1.4, label: '' },
+    ]);
+  });
+
+  it('reads an index built before the links', () => {
+    expect(parseBrandIndex({ labels: [], pois: [[1, 2, -1]] })).toEqual([
+      { lat: 1, lng: 2, label: '' },
+    ]);
   });
 });
 

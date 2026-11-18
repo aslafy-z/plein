@@ -1,13 +1,19 @@
 // Regenerates public/brands-fr.json — the static France-wide station-brand
-// index the app matches gouv stations against (see src/data/gouv/osmBrands.ts).
+// index the app matches gouv stations against (see src/data/fr/osmBrands.ts).
 //
 // One bulk OpenStreetMap query at build time replaces the old per-user runtime
 // Overpass calls, which failed constantly (rate limits, IP blocks) and left
 // whole zones labeled « Station · Ville ». Brands change rarely: re-run this
 // script once in a while and commit the result. Usage: npm run build:brands
+//
+// It also links the gouv stations sitting too far from their POI for the
+// runtime match (scripts/brandLinks.mjs), so it reads the whole gouv flux too.
+// `npm run build:brands -- --links-only` recomputes just those links against
+// the POIs already in the file, when Overpass is down or the flux has moved.
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { gouvPosition, linkStations } from './brandLinks.mjs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -59,6 +65,47 @@ async function fetchPois() {
   throw lastErr;
 }
 
+// The whole flux in one export call: ids and positions only (~10 000 rows)
+const GOUV_EXPORT =
+  'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/' +
+  'prix-des-carburants-en-france-flux-instantane-v2/exports/json?select=id,latitude,longitude,geom';
+
+async function fetchGouvStations() {
+  let rows;
+  for (let attempt = 1; !rows; attempt++) {
+    try {
+      rows = await fetchJson(GOUV_EXPORT);
+    } catch (err) {
+      if (attempt === 3) throw err;
+      console.warn(`  gouv flux attempt ${attempt} failed: ${err.message ?? err}`);
+    }
+  }
+  const stations = [];
+  for (const rec of rows) {
+    const pos = gouvPosition(rec);
+    const id = Number(rec.id);
+    if (pos && Number.isInteger(id)) stations.push({ id, ...pos });
+  }
+  if (stations.length < 5000) throw new Error(`gouv flux: only ${stations.length} stations`);
+  return stations;
+}
+
+const path = join(dirname(fileURLToPath(import.meta.url)), '../public/brands-fr.json');
+
+function withLinks(index, stations) {
+  const pois = index.pois.map(([lat, lng]) => ({ lat, lng }));
+  return { ...index, links: linkStations(stations, pois) };
+}
+
+if (process.argv.includes('--links-only')) {
+  const index = JSON.parse(readFileSync(path, 'utf8'));
+  console.log('fetching the gouv flux …');
+  const out = withLinks(index, await fetchGouvStations());
+  writeFileSync(path, JSON.stringify(out));
+  console.log(`${out.links.length} links over ${out.pois.length} POIs → ${path}`);
+  process.exit(0);
+}
+
 const data = await fetchPois();
 const labels = [];
 const labelIdx = new Map();
@@ -83,13 +130,18 @@ for (const el of data.elements ?? []) {
   pois.push([Number(lat.toFixed(5)), Number(lng.toFixed(5)), i]);
 }
 
-const out = {
-  v: 1,
-  generatedAt: new Date().toISOString().slice(0, 10),
-  source: 'OpenStreetMap (Overpass, amenity=fuel, France)',
-  labels,
-  pois,
-};
-const path = join(dirname(fileURLToPath(import.meta.url)), '../public/brands-fr.json');
+console.log('fetching the gouv flux …');
+const out = withLinks(
+  {
+    v: 1,
+    generatedAt: new Date().toISOString().slice(0, 10),
+    source: 'OpenStreetMap (Overpass, amenity=fuel, France)',
+    labels,
+    pois,
+  },
+  await fetchGouvStations(),
+);
 writeFileSync(path, JSON.stringify(out));
-console.log(`${pois.length} POIs, ${labels.length} distinct labels → ${path}`);
+console.log(
+  `${pois.length} POIs, ${labels.length} distinct labels, ${out.links.length} links → ${path}`,
+);

@@ -21,7 +21,7 @@ export default defineConfig({
     ),
   },
   test: {
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'scripts/**/*.test.mjs'],
     environment: 'node',
     // Without this vitest stubs every CSS import with an empty string, and
     // src/fonts.test.ts asserts on the real text of src/styles.css.
