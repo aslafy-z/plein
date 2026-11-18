@@ -35,9 +35,10 @@ you and along your routes, in France, Spain, Andorra and Portugal.
 - 🗺️ **Live price map**: the stations around you, pins colored from the cheapest (green) to the priciest (orange).
 - 🇫🇷🇪🇸🇦🇩🇵🇹 **Four countries, one map**: the official feeds of France, Spain, Andorra and Portugal, so border fill-ups compare at a glance.
 - 📋 **The real best choice**: the fuel burned on the detour counts, so a closer station can beat the cheapest one.
-- 🛣️ **A fuel plan for your trip**: where to stop, how many liters, at what cost, and how much is left on arrival.
+- 🛣️ **A fuel plan for your trip**: where to stop, how many liters and at what cost, under three strategies, and how much is left on arrival.
 - 🔎 **Place search**: towns, addresses and points of interest across the four countries.
-- ⛽ **Every fuel, real hours**: Diesel, SP95/98, E10, E85, LPG and AdBlue, with opening hours, out-of-stock pumps and price freshness.
+- ⛽ **Every fuel, every filter**: Diesel, SP95/98, E10, E85 and LPG, filtered by radius, brand, services and AdBlue.
+- 🏷️ **Real brands and hours**: names and logos from the official feeds and OpenStreetMap, opening hours, out-of-stock pumps and price freshness.
 - ⭐ **Favorites and links**: your stations at today's price, and every map or route reopens from its URL.
 - 📱 **Anywhere**: phone or desktop, installable and usable offline, light and dark themes, five languages.
 

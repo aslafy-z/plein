@@ -35,9 +35,10 @@ autour de vous et le long de vos trajets, en France, en Espagne, en Andorre et a
 - 🗺️ **Carte des prix en direct** : les stations autour de vous, pins colorés de la moins chère (vert) à la plus chère (orange).
 - 🇫🇷🇪🇸🇦🇩🇵🇹 **Quatre pays, une seule carte** : les flux officiels de la France, de l'Espagne, de l'Andorre et du Portugal, pour comparer d'un coup d'œil les pleins de part et d'autre de la frontière.
 - 📋 **Le vrai meilleur choix** : le carburant brûlé pour le détour est compté, si bien qu'une station plus proche peut battre la moins chère.
-- 🛣️ **Un plan carburant pour votre trajet** : où s'arrêter, combien de litres, pour quel prix, et ce qu'il reste dans le réservoir à l'arrivée.
+- 🛣️ **Un plan carburant pour votre trajet** : où s'arrêter, combien de litres et pour quel prix, selon trois stratégies, et ce qu'il reste dans le réservoir à l'arrivée.
 - 🔎 **Recherche de lieux** : villes, adresses et points d'intérêt dans les quatre pays.
-- ⛽ **Tous les carburants, les vrais horaires** : Gazole, SP95/98, E10, E85, GPLc et AdBlue, avec les horaires d'ouverture, les pompes en rupture et la fraîcheur des prix.
+- ⛽ **Tous les carburants, tous les filtres** : Gazole, SP95/98, E10, E85 et GPLc, filtrés par rayon, enseigne, services et AdBlue.
+- 🏷️ **Les vraies enseignes, les vrais horaires** : noms et logos issus des flux officiels et d'OpenStreetMap, horaires d'ouverture, pompes en rupture et fraîcheur des prix.
 - ⭐ **Favoris et liens** : vos stations au prix du jour, et chaque carte ou trajet se rouvre depuis son adresse.
 - 📱 **Partout** : téléphone ou ordinateur, installable et utilisable hors-ligne, thèmes clair et sombre, cinq langues.
 

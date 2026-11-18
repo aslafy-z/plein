@@ -35,9 +35,10 @@ a tu alrededor y a lo largo de tus rutas, en Francia, España, Andorra y Portuga
 - 🗺️ **Mapa de precios en directo**: las estaciones a tu alrededor, con chinchetas coloreadas de la más barata (verde) a la más cara (naranja).
 - 🇫🇷🇪🇸🇦🇩🇵🇹 **Cuatro países, un solo mapa**: los flujos oficiales de Francia, España, Andorra y Portugal, para comparar de un vistazo los repostajes en la frontera.
 - 📋 **La mejor elección real**: el combustible gastado en el desvío cuenta, así que una estación más cercana puede ganar a la más barata.
-- 🛣️ **Un plan de repostaje para tu viaje**: dónde parar, cuántos litros, a qué precio y cuánto te queda al llegar.
+- 🛣️ **Un plan de repostaje para tu viaje**: dónde parar, cuántos litros y a qué precio, con tres estrategias, y cuánto te queda al llegar.
 - 🔎 **Búsqueda de lugares**: ciudades, direcciones y puntos de interés en los cuatro países.
-- ⛽ **Todos los combustibles, horarios reales**: Diésel, SP95/98, E10, E85, GLP y AdBlue, con horarios de apertura, surtidores sin existencias y la antigüedad de los precios.
+- ⛽ **Todos los combustibles, todos los filtros**: Diésel, SP95/98, E10, E85 y GLP, filtrados por radio, marca, servicios y AdBlue.
+- 🏷️ **Marcas y horarios reales**: nombres y logotipos de los datos oficiales y de OpenStreetMap, horarios de apertura, surtidores sin existencias y la antigüedad de los precios.
 - ⭐ **Favoritos y enlaces**: tus estaciones al precio del día, y cada mapa o ruta se vuelve a abrir desde su URL.
 - 📱 **En cualquier parte**: móvil o escritorio, instalable y utilizable sin conexión, tema claro y oscuro, cinco idiomas.
 

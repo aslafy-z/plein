@@ -35,9 +35,10 @@ voltant i al llarg dels vostres trajectes, a França, Espanya, Andorra i Portuga
 - 🗺️ **Mapa de preus en directe**: les benzineres al vostre voltant, amb xinxetes acolorides de la més barata (verd) a la més cara (taronja).
 - 🇫🇷🇪🇸🇦🇩🇵🇹 **Quatre països, un sol mapa**: els fluxos oficials de França, Espanya, Andorra i Portugal, perquè els proveïments a la frontera es comparin d'un cop d'ull.
 - 📋 **La millor tria de debò**: el combustible cremat en el desviament també compta, i una estació més propera pot guanyar la més barata.
-- 🛣️ **Un pla de proveïment per al viatge**: on parar, quants litres, a quin preu i quant en queda en arribar.
+- 🛣️ **Un pla de proveïment per al viatge**: on parar, quants litres i a quin preu, amb tres estratègies, i quant en queda en arribar.
 - 🔎 **Cerca de llocs**: ciutats, adreces i punts d'interès als quatre països.
-- ⛽ **Tots els combustibles, horaris reals**: Dièsel, SP95/98, E10, E85, GLP i AdBlue, amb horaris d'obertura, sortidors esgotats i frescor dels preus.
+- ⛽ **Tots els combustibles, tots els filtres**: Dièsel, SP95/98, E10, E85 i GLP, filtrats per radi, marca, serveis i AdBlue.
+- 🏷️ **Marques i horaris reals**: noms i logotips de les dades oficials i d'OpenStreetMap, horaris d'obertura, sortidors esgotats i frescor dels preus.
 - ⭐ **Preferides i enllaços**: les vostres estacions al preu del dia, i cada mapa o trajecte es reobre des del seu URL.
 - 📱 **Arreu**: mòbil o escriptori, instal·lable i usable fora de línia, tema clar i fosc, cinc llengües.
 

@@ -35,9 +35,10 @@ baratos à sua volta e ao longo dos seus trajetos, em França, Espanha, Andorra 
 - 🗺️ **Mapa de preços em direto**: os postos à sua volta, com alfinetes coloridos do mais barato (verde) ao mais caro (laranja).
 - 🇫🇷🇪🇸🇦🇩🇵🇹 **Quatro países, um só mapa**: os fluxos oficiais de França, Espanha, Andorra e Portugal, para comparar num relance os abastecimentos junto à fronteira.
 - 📋 **A verdadeira melhor escolha**: o combustível gasto no desvio conta, por isso um posto mais próximo pode bater o mais barato.
-- 🛣️ **Um plano de abastecimento para a viagem**: onde parar, quantos litros, a que preço e quanto sobra à chegada.
+- 🛣️ **Um plano de abastecimento para a viagem**: onde parar, quantos litros e a que preço, com três estratégias, e quanto sobra à chegada.
 - 🔎 **Pesquisa de locais**: cidades, moradas e pontos de interesse nos quatro países.
-- ⛽ **Todos os combustíveis, horários reais**: Gasóleo, SP95/98, E10, E85, GPL e AdBlue, com horários de abertura, bombas em rutura e a frescura dos preços.
+- ⛽ **Todos os combustíveis, todos os filtros**: Gasóleo, SP95/98, E10, E85 e GPL, filtrados por raio, marca, serviços e AdBlue.
+- 🏷️ **Marcas e horários reais**: nomes e logótipos dos dados oficiais e do OpenStreetMap, horários de abertura, bombas em rutura e a frescura dos preços.
 - ⭐ **Favoritos e ligações**: os seus postos ao preço do dia, e cada mapa ou trajeto reabre a partir do seu endereço.
 - 📱 **Em qualquer lado**: telemóvel ou computador, instalável e utilizável offline, tema claro e escuro, cinco línguas.
 
