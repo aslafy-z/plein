@@ -132,9 +132,9 @@ export function unseenChangelog<T extends { id: string }>(
 }
 
 /**
- * The « seen » mark a `?whatsnew=N` load pretends to, so a test browser
- * (onboarded or not) can preview the sparkle and the sheet: the newest `N`
- * entries come out unread (`unseenChangelog` still caps them at
+ * The « seen » mark a `?whatsnew=N` load pretends to, so any browser can
+ * preview what a returning user gets (the store also skips onboarding for
+ * that load): the newest `N` entries come out unread (`unseenChangelog` still caps them at
  * `MAX_ANNOUNCED`). `undefined` when the param is absent or not a positive
  * integer. Nothing is persisted by reading it; opening the sheet stamps the
  * log as seen as usual.
