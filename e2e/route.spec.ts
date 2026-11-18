@@ -58,6 +58,9 @@ test('route comparison: map-first shell, tour, station detail and history', asyn
   expect(opened).toHaveLength(1)
   expect(opened[0]).toContain('google.com/maps/dir/')
   expect(opened[0]).toContain('&waypoints=')
+  // « My position » departs from wherever the maps app locates the user,
+  // not from the fix the trip was computed on
+  expect(opened[0]).not.toContain('origin=')
 
   // ── Station detail from the planned stop ──
   await page.getByRole('button', { name: /Details for/ }).first().click()

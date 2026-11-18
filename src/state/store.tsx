@@ -2331,11 +2331,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const waypoints = stops.length
         ? `&waypoints=${encodeURIComponent(stops.map((s) => `${s.lat},${s.lng}`).join('|'))}`
         : '';
-      const origin = fromPoint ? `&origin=${fromPoint.lat},${fromPoint.lng}` : '';
+      // « My position » leaves the origin out, so the maps app starts from
+      // its own live fix. `fromPoint` is only where the trip was computed
+      // from, and the user has driven on since (or it is the last trip's).
+      const origin =
+        !fromIsCurrentPosition && fromPoint ? `&origin=${fromPoint.lat},${fromPoint.lng}` : '';
       const url = `https://www.google.com/maps/dir/?api=1${origin}&destination=${toPoint.lat},${toPoint.lng}${waypoints}&travelmode=driving`;
       window.open(url, '_blank', 'noopener');
     },
-    [fromPoint, showToast, toPoint],
+    [fromIsCurrentPosition, fromPoint, showToast, toPoint],
   );
 
   const copyShareLink = useCallback(
