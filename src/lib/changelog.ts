@@ -131,6 +131,24 @@ export function unseenChangelog<T extends { id: string }>(
   return entries.filter((e) => e.id > seen).slice(0, MAX_ANNOUNCED);
 }
 
+/**
+ * The « seen » mark a `?whatsnew=N` load pretends to, so a test browser
+ * (onboarded or not) can preview the sparkle and the sheet: the newest `N`
+ * entries come out unread (`unseenChangelog` still caps them at
+ * `MAX_ANNOUNCED`). `undefined` when the param is absent or not a positive
+ * integer. Nothing is persisted by reading it; opening the sheet stamps the
+ * log as seen as usual.
+ */
+export function previewSeenFromSearch(
+  entries: readonly { id: string }[],
+  search: string,
+): string | undefined {
+  const raw = new URLSearchParams(search).get('whatsnew');
+  if (raw === null || !/^[1-9]\d*$/.test(raw)) return undefined;
+  // '' sorts before every id: all entries unread
+  return entries[Number(raw)]?.id ?? '';
+}
+
 /** The calendar day an entry id names, at local midnight (never shifted by a
     UTC parse into the previous day) */
 export function changelogDate(id: string): Date {

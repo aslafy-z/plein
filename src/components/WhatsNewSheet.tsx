@@ -121,9 +121,11 @@ export default function WhatsNewSheet() {
     </section>
   );
 
-  const body = (
+  const title = (
+    <h2 style={{ fontSize: 22, fontWeight: 800, color: C.ink, margin: 0 }}>{m.whatsnew_title()}</h2>
+  );
+  const entries = (
     <>
-      <h2 style={{ fontSize: 22, fontWeight: 800, color: C.ink, margin: 0 }}>{m.whatsnew_title()}</h2>
       {lead.map((e, i) => entry(e, i > 0))}
       {earlier.length > 0 &&
         (unrolled ? (
@@ -152,10 +154,12 @@ export default function WhatsNewSheet() {
             <span aria-hidden>▾</span>
           </button>
         ))}
-      <button onClick={close} className="press" style={ctaStyle()}>
-        {m.whatsnew_done()}
-      </button>
     </>
+  );
+  const done = (
+    <button onClick={close} className="press" style={ctaStyle()}>
+      {m.whatsnew_done()}
+    </button>
   );
 
   if (desktop) {
@@ -190,19 +194,41 @@ export default function WhatsNewSheet() {
             width: 480,
             maxWidth: '100%',
             maxHeight: '100%',
-            overflow: 'auto',
+            overflow: 'hidden',
             borderRadius: 18,
             ...glass,
             background: C.glassBgStrong,
             outline: 'none',
-            padding: '22px 24px 22px',
             display: 'flex',
             flexDirection: 'column',
-            gap: 16,
             boxSizing: 'border-box',
           }}
         >
-          {body}
+          {/* Title and CTA stay put; only the entries scroll, inside their
+              own margins, so nothing runs into the card's edges */}
+          <div style={{ flexShrink: 0, padding: '22px 24px 14px' }}>{title}</div>
+          <div
+            style={{
+              minHeight: 0,
+              overflowY: 'auto',
+              scrollbarGutter: 'stable',
+              padding: '2px 16px 18px 24px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 16,
+            }}
+          >
+            {entries}
+          </div>
+          <div
+            style={{
+              flexShrink: 0,
+              padding: '14px 24px 22px',
+              borderTop: `1px solid ${C.divider}`,
+            }}
+          >
+            {done}
+          </div>
         </div>
       </div>
     );
@@ -215,7 +241,9 @@ export default function WhatsNewSheet() {
       handleAria={m.whatsnew_close_aria()}
       scrimAria={m.whatsnew_close_overlay_aria()}
     >
-      {body}
+      {title}
+      {entries}
+      {done}
     </ModalSheet>
   );
 }

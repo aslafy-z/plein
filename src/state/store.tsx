@@ -78,6 +78,7 @@ import { pushSearchIn } from './searchHistory';
 import {
   CHANGELOG,
   latestChangelogId,
+  previewSeenFromSearch,
   unseenChangelog,
   type ChangelogEntry,
   type WhatsNewView,
@@ -2062,11 +2063,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // The What's new sheet works the same way. Opening it IS reading the news,
   // so it also stamps the log as seen — the map's sparkle goes with it.
-  const [changelogSeen, setChangelogSeen] = useState<string | undefined>(persisted.changelogSeen);
+  // `?whatsnew=N` stands in for the persisted mark on this load only, and
+  // announces even to a browser that has not onboarded yet
+  const previewSeen = useRef(previewSeenFromSearch(CHANGELOG, window.location.search)).current;
+  const [changelogSeen, setChangelogSeen] = useState<string | undefined>(
+    previewSeen ?? persisted.changelogSeen,
+  );
   const whatsNew = useMemo(() => unseenChangelog(CHANGELOG, changelogSeen), [changelogSeen]);
   const whatsNewFresh = useRef<ReadonlySet<string>>(
     new Set(
-      persisted.onboarded ? unseenChangelog(CHANGELOG, persisted.changelogSeen).map((e) => e.id) : [],
+      previewSeen !== undefined || persisted.onboarded
+        ? unseenChangelog(CHANGELOG, previewSeen ?? persisted.changelogSeen).map((e) => e.id)
+        : [],
     ),
   ).current;
   const markChangelogSeen = useCallback(() => {
@@ -2603,7 +2611,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const latest = latestChangelogId(CHANGELOG);
       savePersisted({ onboarded: true, sheetHint: true, changelogSeen: latest });
       setSheetHint(true);
-      setChangelogSeen(latest);
+      // A `?whatsnew=N` preview keeps its sparkle through onboarding
+      if (previewSeen === undefined) setChangelogSeen(latest);
       if (withGeoloc) requestGeolocation();
       else setGeoStatus('denied');
       // Land on whatever the opened URL asked for — the map is just the
@@ -2613,7 +2622,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setDetailId(target?.detailId ?? null);
       setScreen(target?.screen ?? 'map');
     },
-    [requestGeolocation],
+    [previewSeen, requestGeolocation],
   );
 
   const store = useMemo<AppStore>(

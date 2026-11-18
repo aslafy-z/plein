@@ -15,6 +15,7 @@ import {
   releaseNotesUrl,
   changelogDate,
   latestChangelogId,
+  previewSeenFromSearch,
   splitChangelog,
   unseenChangelog,
 } from './changelog';
@@ -154,5 +155,28 @@ describe('splitChangelog', () => {
 
   it('has no earlier part when every entry is news', () => {
     expect(splitChangelog(entries, new Set(entries.map((e) => e.id)), 'unread').earlier).toEqual([]);
+  });
+});
+
+describe('previewSeenFromSearch', () => {
+  const log = [{ id: '2026-03-01' }, { id: '2026-02-01' }, { id: '2026-01-01' }];
+
+  it('marks the newest N entries unread', () => {
+    expect(unseenChangelog(log, previewSeenFromSearch(log, '?whatsnew=1'))).toEqual([log[0]]);
+    expect(unseenChangelog(log, previewSeenFromSearch(log, '?ll=1,2&whatsnew=2'))).toEqual([
+      log[0],
+      log[1],
+    ]);
+  });
+
+  it('marks everything unread past the end of the log', () => {
+    expect(previewSeenFromSearch(log, '?whatsnew=9')).toBe('');
+    expect(unseenChangelog(log, '')).toEqual(log);
+  });
+
+  it('ignores an absent or malformed param', () => {
+    for (const q of ['', '?debug=1', '?whatsnew=0', '?whatsnew=-1', '?whatsnew=x', '?whatsnew']) {
+      expect(previewSeenFromSearch(log, q)).toBeUndefined();
+    }
   });
 });
