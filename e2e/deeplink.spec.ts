@@ -42,3 +42,36 @@ test('back from a deep-linked fiche returns to the map, in-app', async ({ page }
   await expect(page.getByText('The cheapest near you')).toBeVisible({ timeout: 15_000 })
   expect(new URL(page.url()).pathname).toBe('/')
 })
+
+test('?debug=1 on a deep link stays in the address bar and survives navigation', async ({ page }) => {
+  await page.goto('/station/su?debug=1')
+  await expect(page.getByText('Station U · Croix-Blanche').first()).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByTestId('debug-chip').or(page.getByTestId('debug-panel'))).toBeVisible()
+  expect(new URL(page.url()).pathname).toBe('/station/su')
+  expect(new URL(page.url()).searchParams.get('debug')).toBe('1')
+
+  // Leaving the fiche rewrites the query from app state: the flag rides along
+  await page.getByRole('button', { name: /^(Back|Close the station page)$/ }).click()
+  await expect(page.getByText('The cheapest near you')).toBeVisible({ timeout: 15_000 })
+  await expect.poll(() => new URL(page.url()).searchParams.get('debug')).toBe('1')
+  expect(new URL(page.url()).searchParams.get('ll')).not.toBeNull()
+})
+
+test('removing debug=1 from the address, or setting it to 0, turns debug mode off', async ({ page }) => {
+  const debugUi = page.getByTestId('debug-chip').or(page.getByTestId('debug-panel'))
+  const fiche = page.getByText('Station U · Croix-Blanche').first()
+  await page.goto('/station/su?debug=1')
+  await expect(debugUi).toBeVisible({ timeout: 15_000 })
+
+  // Same tab, so the same session: only the address may decide
+  await page.goto('/station/su')
+  await expect(fiche).toBeVisible({ timeout: 15_000 })
+  await expect(debugUi).toHaveCount(0)
+  expect(new URL(page.url()).searchParams.get('debug')).toBeNull()
+
+  await page.goto('/station/su?debug=1')
+  await expect(debugUi).toBeVisible({ timeout: 15_000 })
+  await page.goto('/station/su?debug=0')
+  await expect(fiche).toBeVisible({ timeout: 15_000 })
+  await expect(debugUi).toHaveCount(0)
+})

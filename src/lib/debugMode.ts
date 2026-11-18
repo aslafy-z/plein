@@ -1,20 +1,20 @@
 // The debug overlay's switch, and the console-error recorder it reads.
 //
-// The flag lives in sessionStorage, NOT in the persisted settings blob: a
-// tester turning it on must not carry it into their normal sessions, and the
-// persisted schema must not grow a field only developer chrome reads. It can
-// be raised three ways — the Settings « Offline data » toggle, `?debug=1` in the
-// URL (adopted into sessionStorage so the flag survives in-app navigation,
-// which rewrites the query), or an existing sessionStorage flag from earlier
-// in the session.
+// The flag lives in the URL, NOT in the persisted settings blob: a tester
+// turning it on must not carry it into their normal sessions, and the
+// persisted schema must not grow a field only developer chrome reads. A load
+// reads `?debug=1` (`debugFromSearch`); after that the in-memory flag is the
+// truth, flipped by the Settings « Offline data » toggle, and the store's URL
+// sync keeps `debug=1` in every address it writes while it is on
+// (`withDebugParam`). So the address bar always says whether the overlay is
+// on: a reload or a copied address keeps it, and removing the param (or
+// setting it to anything but 1) and loading the page turns it off.
 //
 // This module is tiny and eagerly imported (the Settings toggle and the App
 // mount point read it); everything heavy — the overlay UI, the snapshot
 // collector — stays behind a dynamic import that only loads once the flag is
 // on, so the production bundle is untouched for everyone else.
 import { useSyncExternalStore } from 'react';
-
-const SESSION_KEY = 'plein.debug';
 
 /** One console error / uncaught failure the recorder held on to */
 export interface RecordedError {
@@ -35,33 +35,22 @@ function notify(): void {
   for (const cb of listeners) cb();
 }
 
-function readSession(): boolean {
-  try {
-    return sessionStorage.getItem(SESSION_KEY) === '1';
-  } catch {
-    return false;
-  }
+/** Whether a page loaded on `search` (`location.search`) starts in debug mode */
+export function debugFromSearch(search: string): boolean {
+  return new URLSearchParams(search).get('debug') === '1';
 }
 
-function writeSession(on: boolean): void {
-  try {
-    if (on) sessionStorage.setItem(SESSION_KEY, '1');
-    else sessionStorage.removeItem(SESSION_KEY);
-  } catch {
-    /* private window refusing storage — the in-memory flag still works */
-  }
-}
+let enabled = typeof window !== 'undefined' && debugFromSearch(window.location.search);
 
-function detectInitial(): boolean {
-  if (typeof window === 'undefined') return false;
-  if (new URLSearchParams(window.location.search).get('debug') === '1') {
-    writeSession(true);
-    return true;
-  }
-  return readSession();
+/**
+ * `url` (path + optional `?query`) with `debug=1` appended when `on`. The
+ * store's URL sync builds every address from app state; this is how the flag
+ * rides along. Share links build their own URLs and never carry it.
+ */
+export function withDebugParam(url: string, on: boolean): string {
+  if (!on) return url;
+  return `${url}${url.includes('?') ? '&' : '?'}debug=1`;
 }
-
-let enabled = detectInitial();
 
 function record(message: string): void {
   errorCount++;
@@ -98,7 +87,6 @@ export function isDebugEnabled(): boolean {
 export function setDebugEnabled(on: boolean): void {
   if (on === enabled) return;
   enabled = on;
-  writeSession(on);
   if (on) installErrorHook();
   notify();
 }

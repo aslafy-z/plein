@@ -33,6 +33,7 @@ import {
   type Accent,
   type Theme,
 } from '../lib/colorScheme';
+import { useDebugMode, withDebugParam } from '../lib/debugMode';
 import { IS_ANDROID, IS_IOS } from '../lib/env';
 import {
   isForcedOffline,
@@ -1189,6 +1190,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ],
   );
   const routeQuery = useMemo(() => routeUrlQuery(routeView), [routeView]);
+  // The debug overlay's flag rides along in every address while it is on
+  const debugMode = useDebugMode();
   // Browsers cap history writes (Safari: ~100 per 30 s) — a live pan would
   // blow through it, so map-params updates are throttled. Real navigations
   // always land immediately.
@@ -1218,13 +1221,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       (cur.detailId ?? null) === detailId &&
       !!cur.filtersOpen === filtersOpen &&
       navSearchTarget(cur) === searchOpen;
-    const url =
+    const url = withDebugParam(
       pathFor(screen, detailId) +
-      (screen === 'map'
-        ? mapQuery
-        : screen === 'route' || screen === 'routeSetup'
-          ? routeQuery
-          : '');
+        (screen === 'map'
+          ? mapQuery
+          : screen === 'route' || screen === 'routeSetup'
+            ? routeQuery
+            : ''),
+      debugMode,
+    );
     if (sameNav && url === window.location.pathname + window.location.search) return;
     if (fromPop) {
       // A pop never stacks an entry, but the one it lands on can carry a stale
@@ -1276,7 +1281,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const wait = sameNav ? MAP_URL_MIN_MS - (Date.now() - urlWrite.current.at) : 0;
     if (wait <= 0) write();
     else urlWrite.current.timer = setTimeout(write, wait);
-  }, [screen, detailId, filtersOpen, searchOpen, mapQuery, routeQuery]);
+  }, [screen, detailId, filtersOpen, searchOpen, mapQuery, routeQuery, debugMode]);
 
   // ── Stations near me (fetch at MAX radius, filter client-side) ─────────────
   // Stale-while-revalidate: a cached area paints instantly (refreshing: true)
