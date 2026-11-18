@@ -128,7 +128,7 @@ test('a station fiche stacks under the list, with the rail still up', async ({ p
   // « Go there » wiring: the demo station's point is the source's own (no OSM
   // forecourt behind it), so Google gets a brand + address search, the safe
   // choice for a point that may be off. The point-vs-search rule itself is
-  // unit-tested in src/state/desktopMapsUrl.test.ts.
+  // unit-tested in src/lib/mapsHandoff.test.ts.
   await page.evaluate(() => {
     const w = window as unknown as { __opened: string[] }
     w.__opened = []

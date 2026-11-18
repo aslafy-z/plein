@@ -35,6 +35,7 @@ import {
 } from '../lib/colorScheme';
 import { useDebugMode, withDebugParam } from '../lib/debugMode';
 import { IS_ANDROID, IS_IOS } from '../lib/env';
+import { mapsHandoffUrl } from '../lib/mapsHandoff';
 import {
   isForcedOffline,
   isOffline,
@@ -267,41 +268,6 @@ export function mapsSiteLabel(id: MapsSiteId): string {
       return m.maps_site_google();
   }
 }
-/**
- * Desktop « Go there » URL. Coordinates by default; Google alone gets a
- * brand + address search for a branded station whose position is only the
- * source's own geocode (`positionFromPoi` unset: the Spanish, Portuguese and
- * Andorran fluxes, a French record that lost its POI to a closer duplicate).
- * Google snaps a coordinate to the nearest road, so a point off by a hundred
- * metres can silently route to the far carriageway or the street behind a
- * hypermarket; a text search fails visibly instead, on a « Did you mean »
- * list whose rows are the station under its different names. The search is
- * NOT the default because that list also stops a station whose point is
- * right: one sitting on its OSM forecourt goes by coordinates.
- */
-export function desktopMapsUrl(site: MapsSiteId, target: Station): string {
-  if (site === 'google' && target.brand && target.address && !target.positionFromPoi) {
-    const query = encodeURIComponent(
-      [target.brand, target.address, target.postalCode, target.city].filter(Boolean).join(' '),
-    );
-    return `https://www.google.com/maps/dir/?api=1&destination=${query}&travelmode=driving`;
-  }
-  return mapsSiteUrl(site, target.lat, target.lng);
-}
-
-function mapsSiteUrl(site: MapsSiteId, lat: number, lng: number): string {
-  switch (site) {
-    case 'waze':
-      return `https://www.waze.com/ul?ll=${lat}%2C${lng}&navigate=yes`;
-    case 'apple':
-      return `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`;
-    case 'osm':
-      return `https://www.openstreetmap.org/directions?to=${lat}%2C${lng}`;
-    default:
-      return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
-  }
-}
-
 /** Why the last stations fetch failed. `offline` only when `isOffline()` is
  *  positive about it (`navigator.onLine === false`, or the « Force offline
  *  mode » switch) — anything else is blamed on the source, because
@@ -2310,36 +2276,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     (target: Station) => {
       // Android: geo: URI → the native maps-app chooser (Google Maps, Waze,
       // Organic Maps…). iOS/iPadOS: Apple Maps universal link. Elsewhere:
-      // the web maps site chosen in Settings.
-      // On Android a brand-matched station exists as a mapped POI: hand the
-      // maps app a text search (anchored on our coordinates) so it opens its own place
-      // card instead of a bare coordinate pin, which it never links to the
-      // POI. Unbranded stations keep the labeled pin — a text search for
-      // « Station » would be a lottery.
-      const poiQuery = target.brand
-        ? encodeURIComponent(
-            [target.brand, target.address, target.postalCode, target.city]
-              .filter(Boolean)
-              .join(' '),
-          )
-        : null;
+      // the web maps site chosen in Settings. Whether the app gets the point
+      // or a name search is `mapsHandoffUrl`'s call, the same for all.
       if (IS_ANDROID) {
         showToast(m.toast_opening_gps_app());
-        const label = encodeURIComponent(target.name);
-        const q = poiQuery ?? `${target.lat},${target.lng}(${label})`;
-        window.location.href = `geo:${target.lat},${target.lng}?q=${q}`;
+        window.location.href = mapsHandoffUrl('android', target);
         return;
       }
       if (IS_IOS) {
         showToast(m.toast_opening_maps({ site: m.maps_site_apple() }));
-        window.location.href = `https://maps.apple.com/?daddr=${target.lat},${target.lng}&dirflg=d`;
+        window.location.href = mapsHandoffUrl('apple', target);
         return;
       }
-      // Desktop: the site is a Settings choice (Google Maps by default), and
-      // `desktopMapsUrl` decides between the point and a text search.
       const site = MAPS_SITE_IDS.includes(mapsSite) ? mapsSite : MAPS_SITE_IDS[0];
       showToast(m.toast_opening_maps({ site: mapsSiteLabel(site) }));
-      window.open(desktopMapsUrl(site, target), '_blank', 'noopener');
+      window.open(mapsHandoffUrl(site, target), '_blank', 'noopener');
     },
     [showToast, mapsSite],
   );
