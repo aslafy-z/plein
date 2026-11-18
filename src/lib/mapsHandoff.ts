@@ -18,39 +18,37 @@
 //   point did.
 // - Nothing to search for (no brand, or no address) keeps the point: a text
 //   search for « Station » would be a lottery.
-import type { Station } from "../data/types";
-import type { MapsSiteId } from "../state/persist";
+import type { Station } from '../data/types';
+import type { MapsSiteId } from '../state/persist';
 
 /** Where « Go there » hands off: a desktop maps site, or Android's geo: chooser */
-export type MapsHandoff = MapsSiteId | "android";
+export type MapsHandoff = MapsSiteId | 'android';
 
 /** The name search for a station whose point cannot be trusted; null when the point must do */
 function nameQuery(s: Station): string | null {
   if (s.positionFromPoi || !s.brand || !s.address) return null;
-  return encodeURIComponent(
-    [s.brand, s.address, s.postalCode, s.city].filter(Boolean).join(" "),
-  );
+  return encodeURIComponent([s.brand, s.address, s.postalCode, s.city].filter(Boolean).join(' '));
 }
 
 export function mapsHandoffUrl(to: MapsHandoff, s: Station): string {
   const { lat, lng } = s;
   // OSM's geocoder cannot use a name search, so it is never even built for it
-  const q = to === "osm" ? null : nameQuery(s);
+  const q = to === 'osm' ? null : nameQuery(s);
   switch (to) {
-    case "android":
+    case 'android':
       // geo: anchors the search on the point; the pin carries the station's name
       return q
         ? `geo:${lat},${lng}?q=${q}`
         : `geo:${lat},${lng}?q=${lat},${lng}(${encodeURIComponent(s.name)})`;
-    case "apple":
+    case 'apple':
       return q
         ? `https://maps.apple.com/?daddr=${q}&sll=${lat},${lng}&dirflg=d`
         : `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`;
-    case "waze":
+    case 'waze':
       return q
         ? `https://www.waze.com/ul?q=${q}&navigate=yes`
         : `https://www.waze.com/ul?ll=${lat}%2C${lng}&navigate=yes`;
-    case "osm":
+    case 'osm':
       return `https://www.openstreetmap.org/directions?to=${lat}%2C${lng}`;
     default:
       return `https://www.google.com/maps/dir/?api=1&destination=${q ?? `${lat},${lng}`}&travelmode=driving`;
