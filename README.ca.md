@@ -5,14 +5,11 @@
 # Plein.
 
 **El dipòsit ple al preu just** — trobeu les benzineres més barates al vostre
-voltant i al llarg dels vostres trajectes, a França, Espanya, Andorra i
-Portugal.
+voltant i al llarg dels vostres trajectes, a França, Espanya, Andorra i Portugal.
 
 [English](README.md) · [Français](README.fr.md) · [Español](README.es.md) · **Català** · [Português](README.pt.md)
 
 [![Obrir l'app](https://img.shields.io/badge/%E2%96%B6%EF%B8%8E%20Obrir%20l'app-plein.zadkiel.fr-3ddc84?style=for-the-badge&labelColor=0f1a14)](https://plein.zadkiel.fr)
-
-Voleu veure què ve? [staging-plein.zadkiel.workers.dev](https://staging-plein.zadkiel.workers.dev) serveix l'últim `main`, abans de publicar-se — pot fallar.
 
 [![Llicència MIT](https://img.shields.io/badge/llic%C3%A8ncia-MIT-3ddc84?labelColor=0f1a14)](LICENSE)
 [![PWA](https://img.shields.io/badge/PWA-instal%C2%B7lable-3ddc84?labelColor=0f1a14)](#-ús)
@@ -29,80 +26,41 @@ Voleu veure què ve? [staging-plein.zadkiel.workers.dev](https://staging-plein.z
   <img src="docs/screenshots/ca/trip.png" width="23%" alt="Trajecte Andorra la Vella → Barcelona al mapa, amb les estacions i els seus preus al llarg del recorregut" title="El vostre trajecte al mapa" />
   <img src="docs/screenshots/ca/route.png" width="23%" alt="Comparació d'estacions en un trajecte Andorra la Vella → Barcelona" title="Al vostre trajecte" />
 </p>
-<p align="center"><sub>Captures en tema fosc. També hi ha un tema clar, i el color d’accent es tria a Configuració › Aparença.</sub></p>
+<p align="center"><sub>Captures en tema fosc. També hi ha un tema clar, i el color d’accent el trieu vosaltres a Configuració › Aparença.</sub></p>
 
 </div>
 
 ## ✨ Funcionalitats
 
-- 🗺️ **Mapa de preus en directe** — les benzineres al vostre voltant, preus
-  en xinxetes acolorides segons el preu: bones ofertes en verd, les més cares
-  en taronja.
-- 🇫🇷🇪🇸🇦🇩🇵🇹 **Quatre països en un mapa** — els fluxos oficials de França,
-  Espanya, Andorra i Portugal combinats; els proveïments fronterers es
-  comparen d'un cop d'ull.
-- 🔎 **Cerca de llocs** — ciutats, adreces i punts d'interès (estacions de
-  tren, aeroports, monuments) als quatre països, ordenats segons la
-  coincidència amb el que heu escrit, amb el país del mapa primer.
-- 📋 **Millor tria real** — el combustible cremat en el desviament es té en
-  compte: una estació més propera pot guanyar la més barata.
-- 🛣️ **Pla de proveïment en ruta** — on parar al llarg del viatge, quants
-  litres a cada parada i a quin preu, segons 3 estratègies.
-- ⭐ **Preferits** — les vostres estacions i el seu preu del dia, a través de
-  zones i països.
-- ⛽ **Tots els combustibles** — Dièsel, SP95/98, E10, E85, GLP; filtres per
-  radi, marques, serveis i AdBlue.
-- 🕐 **Horaris reals** — «Obert 24 h», «Tancat · obre a les 6.30» — amb la
-  frescor dels preus assenyalada.
-- 🚫 **Esgotaments assenyalats** — un sortidor buit mostra «sense existències
-  des del 3 de nov.» en lloc de «no disponible», i la zona compta les seves
-  estacions sense existències (França).
-- 🏷️ **Marques reconegudes** — noms i logotips de les estacions des dels
-  fluxos oficials i OpenStreetMap.
-- 🧭 **«Com arribar-hi»** — obre l'estació a la vostra app de GPS.
-- 🔗 **Enllaços compartibles** — l'adreça segueix el mapa i el trajecte; un
-  enllaç reobre la mateixa vista.
-- 🌗 **Tema clar i fosc** — segueix el navegador, modificable a la Configuració,
-  amb un color d’accent a triar (verd, turquesa, blau o violeta).
-- 🌍 **Cinc llengües** — francès, anglès, espanyol, català i portuguès.
-- 🖥️ **Mòbil i escriptori** — mapa a pantalla completa i plafó al mòbil,
-  plafons laterals a la pantalla gran.
-- 📱 **PWA instal·lable** — les últimes zones i tessel·les funcionen fora de
-  línia.
+- 🗺️ **Mapa de preus en directe**: les benzineres al vostre voltant, amb xinxetes acolorides de la més barata (verd) a la més cara (taronja).
+- 🇫🇷🇪🇸🇦🇩🇵🇹 **Quatre països, un sol mapa**: els fluxos oficials de França, Espanya, Andorra i Portugal, perquè els proveïments a la frontera es comparin d'un cop d'ull.
+- 📋 **La millor tria de debò**: el combustible cremat en el desviament també compta, i una estació més propera pot guanyar la més barata.
+- 🛣️ **Un pla de proveïment per al viatge**: on parar, quants litres, a quin preu i quant en queda en arribar.
+- 🔎 **Cerca de llocs**: ciutats, adreces i punts d'interès als quatre països.
+- ⛽ **Tots els combustibles, horaris reals**: Dièsel, SP95/98, E10, E85, GLP i AdBlue, amb horaris d'obertura, sortidors esgotats i frescor dels preus.
+- ⭐ **Preferides i enllaços**: les vostres estacions al preu del dia, i cada mapa o trajecte es reobre des del seu URL.
+- 📱 **Arreu**: mòbil o escriptori, instal·lable i usable fora de línia, tema clar i fosc, cinc llengües.
 
 ## 🚀 Ús
 
-1. Obriu **[plein.zadkiel.fr](https://plein.zadkiel.fr)** (el desplegament oficial).
-2. Autoritzeu la geolocalització — o continueu sense i cerqueu una ciutat, a
-   França, Espanya, Andorra o Portugal. La cerca recorda els llocs que hi heu
-   triat: els proposa tan bon punt s'obre i els puja al capdamunt dels
-   suggeriments així que escriviu.
-3. Trieu el combustible a la part superior del mapa: la millor tria (preu I
-   distància, desviament comptat) apareix al plafó inferior, **Com
-   arribar-hi** inicia el guiatge.
-4. Abans d'un viatge llarg, pestanya **Trajecte**: introduïu la destinació i
-   compareu les estacions al llarg del recorregut. L'origen surt de **La meva
-   posició** així que la ubicació en dona una, i la cerca de qualsevol dels
-   dos extrems l'ofereix com a fila — només en un dels dos alhora. **Inicia la
-   ruta** passa tot l'itinerari, parades per repostar incloses, a Google Maps.
-5. Al mòbil, instal·leu l'app (bàner d'instal·lació o
-   *Ajustos → Aplicació*) per tenir-la com a icona, a pantalla completa i
-   fora de línia.
+1. Obriu **[plein.zadkiel.fr](https://plein.zadkiel.fr)**. Autoritzeu la ubicació, o cerqueu una ciutat.
+2. Trieu el combustible: la millor tria surt primer, i **Anar-hi** l'obre a la vostra app de mapes.
+3. Per a un viatge, obriu **Ruta** i introduïu la destinació. **Inicia la ruta** passa l'itinerari a Google Maps, parades per repostar incloses.
+4. Al mòbil, instal·leu l'app (el bàner d'instal·lació, o Configuració › Aplicació) per tenir-la a pantalla completa i fora de línia.
 
-Cap compte, cap rastrejador: els vostres preferits i ajustos es queden al
-vostre navegador.
+Cap compte, cap rastrejador: les vostres preferides i la configuració es queden al vostre navegador.
+
+Voleu veure què ve? [staging-plein.zadkiel.workers.dev](https://staging-plein.zadkiel.workers.dev) serveix l'últim `main` abans de publicar-se, i pot fallar.
 
 ## 📊 Fonts de dades
 
-Cada país cobert té els seus propis fluxos oficials — preus i geocodificació
-— que l'app tria segons la zona mostrada (font *Automàtica*). La resta
-(itineraris, mapes base) és comuna als quatre.
+Cada país aporta els seus propis fluxos oficials de preus i de geocodificació, triats segons la zona que es mostra (la font *Automàtic*). El càlcul d'itineraris i el mapa base són comuns.
 
 ### 🇫🇷 França
 
 | Dada | Font | Llicència |
 | --- | --- | --- |
-| Preus dels carburants i horaris | [Prix des carburants — flux en temps real](https://data.economie.gouv.fr/explore/dataset/prix-des-carburants-en-france-flux-instantane-v2/) (data.economie.gouv.fr) | Licence Ouverte / Open Licence |
+| Preus dels carburants i horaris | [Prix des carburants, flux en temps real](https://data.economie.gouv.fr/explore/dataset/prix-des-carburants-en-france-flux-instantane-v2/) (data.economie.gouv.fr) | Licence Ouverte / Open Licence |
 | Marques de les estacions | [OpenStreetMap](https://www.openstreetmap.org/) (índex estàtic generat, aparellat amb les estacions per proximitat) | ODbL |
 | Geocodificació i autocompleció | [Base Adresse Nationale](https://adresse.data.gouv.fr/), a través del servei de geocodificació de la Géoplateforme (data.geopf.fr) | Licence Ouverte / Open Licence |
 | Punts d'interès (aeroports, estacions de tren, monuments…) | [Servei de geocodificació de la Géoplateforme](https://geoservices.ign.fr/documentation/services/services-geoplateforme/geocodage) (data.geopf.fr, BD TOPO de l'IGN) | Licence Ouverte / Open Licence |
@@ -112,7 +70,7 @@ Cada país cobert té els seus propis fluxos oficials — preus i geocodificaci�
 
 | Dada | Font | Llicència |
 | --- | --- | --- |
-| Preus dels carburants, horaris i marques | [Precios de carburantes](https://geoportalgasolineras.es) (sedeaplicaciones.minetur.gob.es, MITECO) — la marca (*rótulo*) l'aporta el flux | Datos abiertos |
+| Preus dels carburants, horaris i marques | [Precios de carburantes](https://geoportalgasolineras.es) (sedeaplicaciones.minetur.gob.es, MITECO); la marca (*rótulo*) l'aporta el flux | Datos abiertos |
 | Geocodificació i autocompleció | [CartoCiudad](https://www.cartociudad.es) (IGN) | CC BY 4.0 |
 | Geocodificació de reserva, quan CartoCiudad no respon | [Photon](https://photon.komoot.io), limitat a l'Espanya peninsular i les Balears | ODbL |
 
@@ -120,16 +78,16 @@ Cada país cobert té els seus propis fluxos oficials — preus i geocodificaci�
 
 | Dada | Font | Llicència |
 | --- | --- | --- |
-| Preus dels carburants i marques | [Preus dels carburants](https://sig.govern.ad/IPE/PreusCarburants) (sig.govern.ad, Govern d'Andorra — Oficina de l'Energia i del Canvi Climàtic) — la marca es dedueix del nom de l'estació; el flux no porta ni adreça ni horaris | © Govern d'Andorra |
-| Geocodificació i autocompleció | Nomenclàtor (nomenclàtor oficial) & LocatorIDE (sig.govern.ad, IDE Andorra) | © Govern d'Andorra |
+| Preus dels carburants i marques | [Preus dels carburants](https://sig.govern.ad/IPE/PreusCarburants) (sig.govern.ad, Govern d'Andorra, Oficina de l'Energia i del Canvi Climàtic); la marca surt del nom de l'estació, i el flux no porta ni adreça ni horaris | © Govern d'Andorra |
+| Geocodificació i autocompleció | Nomenclàtor (nomenclàtor oficial) i LocatorIDE (sig.govern.ad, IDE Andorra) | © Govern d'Andorra |
 | Geocodificació de reserva, quan els localitzadors de la IDE no responen | [Photon](https://photon.komoot.io), limitat a Andorra | ODbL |
 
 ### 🇵🇹 Portugal
 
 | Dada | Font | Llicència |
 | --- | --- | --- |
-| Preus dels carburants i marques | [Preços dos combustíveis](https://precoscombustiveis.dgeg.gov.pt) (DGEG — Direção-Geral de Energia e Geologia) — la marca (*marca*) l'aporta el flux, que no dona ni horaris ni E10; cobertura continental (les Açores i Madeira tenen el seu propi règim) | Dados abertos |
-| Geocodificació i autocompleció | [Photon](https://photon.komoot.io) (instància pública de Komoot, índex OpenStreetMap), limitat al Portugal continental — el país no publica cap geocodificador d'adreces sense clau | ODbL |
+| Preus dels carburants i marques | [Preços dos combustíveis](https://precoscombustiveis.dgeg.gov.pt) (DGEG, Direção-Geral de Energia e Geologia); el flux aporta la marca (*marca*) però no els horaris ni l'E10, i només cobreix el continent (les Açores i Madeira tenen el seu propi règim) | Dados abertos |
+| Geocodificació i autocompleció | [Photon](https://photon.komoot.io) (instància pública de Komoot, índex OpenStreetMap), limitat al Portugal continental (el país no publica cap geocodificador d'adreces sense clau) | ODbL |
 
 ### Comuns als quatre països
 
@@ -138,38 +96,16 @@ Cada país cobert té els seus propis fluxos oficials — preus i geocodificaci�
 | Càlcul d'itineraris | [OSRM](https://project-osrm.org/) (servidor de demostració) · [Valhalla](https://valhalla.github.io/valhalla/) (servidor públic FOSSGIS) per a «evitar autopistes / peatges» | © col·laboradors d'[OpenStreetMap](https://www.openstreetmap.org/copyright) |
 | Mapes base | Tessel·les vectorials d'[OpenFreeMap](https://openfreemap.org), sense clau d'API, estil Positron / Dark Matter segons el tema (tessel·les ràster d'OpenStreetMap com a recurs si OpenFreeMap no respon o el dispositiu no té WebGL) | © [OpenMapTiles](https://openmaptiles.org) · © col·laboradors d'[OpenStreetMap](https://www.openstreetmap.org/copyright) · colors de l'estil fosc © [CARTO](https://carto.com/attributions) (CC BY 4.0) |
 
-L'app no té **cap backend**: el navegador consulta directament aquests
-serveis públics. Les fonts són connectables (`src/data/types.ts`). Sense
-connexió o amb un flux caigut, l'app conserva les últimes estacions
-carregades (memòria cau per zona) amb un bàner explícit i ho torna a provar
-així que torna la connexió. Quan el geocodificador d'un país no respon,
-Photon el substitueix; si també falla, la cerca indica quins països falten
-a la llista.
+L'app no té **cap backend**: el navegador consulta directament aquests serveis públics. Sense connexió o amb un flux caigut, conserva les últimes estacions carregades amb un bàner que ho indica, i ho torna a provar quan torna la connexió. Quan el geocodificador d'un país no respon, Photon el substitueix; si també falla, la cerca indica quins països falten.
 
 ## 🛠️ Construït amb
 
-**Vite · React 18 · TypeScript estricte · Leaflet**, més MapLibre GL per
-dibuixar el mapa base vectorial (carregat sota demanda), sense cap altra
-dependència de runtime. La compilació de producció només són recursos estàtics,
-servits per un Cloudflare Worker.
+**Vite · React 18 · TypeScript estricte · Leaflet**, més MapLibre GL per al mapa base vectorial (carregat sota demanda). La compilació de producció són recursos estàtics servits per un Cloudflare Worker.
 
 ## 🤝 Contribuir
 
-Els informes d'errors, les traduccions i les pull requests són benvinguts —
-[CONTRIBUTING.md](CONTRIBUTING.md) (en anglès) explica la instal·lació, les
-ordres, les regles de la casa i les proves. Per informar d'un error, enganxeu
-la instantània de depuració: Configuració › Dades sense connexió ›
-Superposició de depuració, i després la pastilla flotant **DBG** → **Report**,
-que la copia i obre el formulari.
+Els informes d'errors, les traduccions i les pull requests són benvinguts: [CONTRIBUTING.md](CONTRIBUTING.md) (en anglès) explica la instal·lació, les ordres, les regles de la casa i les proves. Per informar d'un error, adjunteu la instantània de depuració: Configuració › Dades sense connexió › Superposició de depuració, i després la pastilla flotant **DBG** › **Report**, que la copia i obre el formulari.
 
 ## 📄 Llicència
 
-Codi sota llicència [MIT](LICENSE) © Zadkiel Aharonian.
-Les dades mostrades continuen subjectes a les llicències dels seus productors
-respectius (Licence Ouverte per a les dades públiques franceses, datos
-abiertos del MITECO per als preus espanyols, © Govern d'Andorra per a
-Andorra, dados abertos de la DGEG per als preus portuguesos, ODbL per a
-OpenStreetMap).
-Les tipografies **Archivo** i **Spline Sans Mono**, incloses a
-`public/fonts/`, estan sota la [SIL Open Font License 1.1](public/fonts/)
-(vegeu els fitxers `*-OFL.txt` de la mateixa carpeta).
+Codi sota llicència [MIT](LICENSE) © Zadkiel Aharonian. Les dades mostrades continuen subjectes a les llicències dels seus productors (Licence Ouverte per a les dades públiques franceses, datos abiertos del MITECO per als preus espanyols, © Govern d'Andorra per a Andorra, dados abertos de la DGEG per als preus portuguesos, ODbL per a OpenStreetMap). Les tipografies **Archivo** i **Spline Sans Mono** de `public/fonts/` estan sota la [SIL Open Font License 1.1](public/fonts/) (vegeu-hi els fitxers `*-OFL.txt`).
