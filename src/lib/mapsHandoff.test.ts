@@ -61,6 +61,20 @@ describe('mapsHandoffUrl', () => {
     )
   })
 
+  it('starts OpenStreetMap from a fresh fix, the one site that cannot locate the user', () => {
+    const here = { lat: 43.6047, lng: 1.4442 }
+    expect(mapsHandoffUrl('osm', forecourt, here)).toBe(
+      'https://www.openstreetmap.org/directions?from=43.6047%2C1.4442&to=43.62633%2C1.47603',
+    )
+    expect(mapsHandoffUrl('osm', forecourt, null)).toBe(
+      'https://www.openstreetmap.org/directions?to=43.62633%2C1.47603',
+    )
+    // Every other app finds the user itself: a fixed start would only go stale
+    for (const to of ['google', 'waze', 'apple', 'android'] as const) {
+      expect(mapsHandoffUrl(to, forecourt, here)).toBe(mapsHandoffUrl(to, forecourt))
+    }
+  })
+
   it('keeps the point when there is nothing to search for', () => {
     const coords = 'https://www.google.com/maps/dir/?api=1&destination=43.628,1.48&travelmode=driving'
     expect(mapsHandoffUrl('google', { ...feed, brand: undefined })).toBe(coords)

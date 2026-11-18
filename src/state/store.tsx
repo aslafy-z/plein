@@ -2290,9 +2290,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       const site = MAPS_SITE_IDS.includes(mapsSite) ? mapsSite : MAPS_SITE_IDS[0];
       showToast(m.toast_opening_maps({ site: mapsSiteLabel(site) }));
-      window.open(mapsHandoffUrl(site, target), '_blank', 'noopener');
+      // `granted` only follows a fix that landed during this visit, and
+      // `userPos` is that fix; the persisted `lastFix` alone is too old to
+      // start a route from
+      const from = geoStatus === 'granted' ? userPos : null;
+      window.open(mapsHandoffUrl(site, target, from), '_blank', 'noopener');
     },
-    [showToast, mapsSite],
+    [geoStatus, mapsSite, showToast, userPos],
   );
 
   const openTripInMaps = useCallback(

@@ -15,10 +15,14 @@
 //   cannot.
 // - OpenStreetMap always gets the point: its geocoder finds neither a brand
 //   nor a house number, and its address searches landed further off than the
-//   point did.
+//   point did. It is also the one site that cannot start from « where I am »
+//   on its own (neither can the OSRM, GraphHopper or OsmAnd web maps), so it
+//   takes the caller's fresh fix as its start: a fixed start beats an empty
+//   one there. Every other app locates the user itself and gets no start.
 // - Nothing to search for (no brand, or no address) keeps the point: a text
 //   search for « Station » would be a lottery.
 import type { Station } from '../data/types';
+import type { GeoPoint } from './geo';
 import type { MapsSiteId } from '../state/persist';
 
 /** Where « Go there » hands off: a desktop maps site, or Android's geo: chooser */
@@ -30,7 +34,11 @@ function nameQuery(s: Station): string | null {
   return encodeURIComponent([s.brand, s.address, s.postalCode, s.city].filter(Boolean).join(' '));
 }
 
-export function mapsHandoffUrl(to: MapsHandoff, s: Station): string {
+/**
+ * @param from the user's position, ONLY when it is a fix from this visit:
+ *   read by OpenStreetMap alone, and a laptop's saved position can be days old
+ */
+export function mapsHandoffUrl(to: MapsHandoff, s: Station, from?: GeoPoint | null): string {
   const { lat, lng } = s;
   // OSM's geocoder cannot use a name search, so it is never even built for it
   const q = to === 'osm' ? null : nameQuery(s);
@@ -49,7 +57,9 @@ export function mapsHandoffUrl(to: MapsHandoff, s: Station): string {
         ? `https://www.waze.com/ul?q=${q}&navigate=yes`
         : `https://www.waze.com/ul?ll=${lat}%2C${lng}&navigate=yes`;
     case 'osm':
-      return `https://www.openstreetmap.org/directions?to=${lat}%2C${lng}`;
+      return from
+        ? `https://www.openstreetmap.org/directions?from=${from.lat}%2C${from.lng}&to=${lat}%2C${lng}`
+        : `https://www.openstreetmap.org/directions?to=${lat}%2C${lng}`;
     default:
       return `https://www.google.com/maps/dir/?api=1&destination=${q ?? `${lat},${lng}`}&travelmode=driving`;
   }
