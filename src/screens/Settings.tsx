@@ -27,6 +27,7 @@ import {
 } from '../lib/debugSnapshot';
 import { clearFavoritePrices } from '../data/favoritePrices';
 import { clearTileCache, tileCacheStats, type TileCacheStats } from '../lib/tileCache';
+import { isSourceAvailable } from '../data/providers';
 import { agoLabelFrom, fmtDecimal, sizeLabel } from '../lib/format';
 import {
   accentLabel,
@@ -51,7 +52,7 @@ const SECTION_LABEL: React.CSSProperties = { ...kicker(), marginBottom: 10 };
 /** Credits links — dimmer than the body text, they sit in the footer */
 const CREDIT_LINK: React.CSSProperties = { color: C.ghost, textDecoration: 'underline' };
 
-const SOURCES: DataSourceId[] = ['auto', 'fr', 'es', 'ad', 'pt', 'demo'];
+const SOURCES: DataSourceId[] = ['auto', 'fr', 'es', 'ad', 'pt', 'de', 'demo'];
 
 const FEEDBACK_EMAIL = 'plein@zadkiel.fr';
 
@@ -974,18 +975,25 @@ export default function Settings() {
                 it left the list), so it can still be switched back off. */}
             {SOURCES.filter((src) => src !== 'demo' || sourceId === 'demo').map((src) => {
               const selected = sourceId === src;
+              // A source this deployment cannot serve stays listed — the
+              // coverage it names is real — but greyed out and unselectable,
+              // saying so instead of failing once picked.
+              const available = isSourceAvailable(src);
               return (
                 <button
                   key={src}
                   onClick={() => app.setSourceId(src)}
                   aria-pressed={selected}
+                  disabled={!available}
+                  aria-disabled={!available}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: 12,
                     padding: '14px 16px',
                     borderBottom: `1px solid ${C.divider}`,
-                    cursor: 'pointer',
+                    cursor: available ? 'pointer' : 'default',
+                    opacity: available ? 1 : 0.5,
                     width: '100%',
                     textAlign: 'left',
                   }}
@@ -1016,7 +1024,7 @@ export default function Settings() {
                       {sourceTitle(src)}
                     </div>
                     <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>
-                      {sourceSublabel(src)}
+                      {available ? sourceSublabel(src) : m.source_unavailable()}
                     </div>
                   </div>
                 </button>
@@ -1221,6 +1229,12 @@ export default function Settings() {
           <div>
             {m.settings_credits_prices_prt()}{' '}
             <a href="https://precoscombustiveis.dgeg.gov.pt" target="_blank" rel="noreferrer" style={CREDIT_LINK}>precoscombustiveis.dgeg.gov.pt</a>
+            {' '}
+            {m.settings_credits_addresses({ source: 'Photon · OpenStreetMap' })}
+          </div>
+          <div>
+            {m.settings_credits_prices_deu()}{' '}
+            <a href="https://creativecommons.tankerkoenig.de" target="_blank" rel="noreferrer" style={CREDIT_LINK}>tankerkoenig.de</a> (MTS-K)
             {' '}
             {m.settings_credits_addresses({ source: 'Photon · OpenStreetMap' })}
           </div>

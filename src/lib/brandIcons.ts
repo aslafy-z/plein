@@ -110,6 +110,22 @@ const BRAND_GROUPS: ReadonlyArray<BrandGroupDef> = [
   { label: 'Freitas', match: words('freitas') },
   { label: 'Pingo Doce', match: words('pingo\\s?doce'), icon: 'pingodoce' },
   { label: 'OZ Energia', match: words('oz\\s?energia') },
+  // German banners (source tankerkoenig.de / MTS-K) — Agip rolls under the
+  // Eni group above; Shell, Esso, TotalEnergies, Avia, Aldi and Tamoil are
+  // shared with the other countries.
+  { label: 'Aral', match: words('aral') },
+  { label: 'Jet', match: words('jet') },
+  { label: 'OMV', match: words('omv') },
+  { label: 'Star (Orlen)', match: words('star|orlen') },
+  { label: 'HEM', match: words('hem') },
+  { label: 'bft', match: words('bft') },
+  { label: 'Westfalen', match: words('westfalen') },
+  { label: 'Oil!', match: words('oil!') },
+  { label: 'Raiffeisen', match: words('raiffeisen') },
+  { label: 'Hoyer', match: words('hoyer') },
+  { label: 'Classic', match: words('classic') },
+  { label: 'Sprint', match: words('sprint') },
+  { label: 'Globus', match: words('globus') },
 ];
 
 /** Every filter entry the app knows — drives the out-of-zone selector. */

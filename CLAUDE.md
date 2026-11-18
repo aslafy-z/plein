@@ -1,7 +1,8 @@
 # Plein. — notes for agents
 
 PWA React 18 + TypeScript (strict) + Vite + Leaflet. Cheapest fuel stations
-around you and along a route (France · Spain · Andorra · Portugal), deployed
+around you and along a route (France · Spain · Andorra · Portugal ·
+Germany), deployed
 on Cloudflare Workers. The app is localized: French is the source locale, and
 it lives only in `messages/fr.json`.
 
