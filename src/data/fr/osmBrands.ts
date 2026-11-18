@@ -236,7 +236,10 @@ export function enrichWithBrands(stations: Station[], pois: FuelPoi[]): Station[
   return stations.map((s, i) => {
     const m = matches[i];
     if (!m) return s;
-    const snap = closestKm.get(m.poi) === m.km ? { lat: m.poi.lat, lng: m.poi.lng } : {};
+    const snap =
+      closestKm.get(m.poi) === m.km
+        ? { lat: m.poi.lat, lng: m.poi.lng, positionFromPoi: true }
+        : {};
     if (!m.label) return { ...s, ...snap };
     const city = s.city ? s.name.split('·').pop()?.trim() : '';
     return {

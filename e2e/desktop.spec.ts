@@ -125,9 +125,10 @@ test('a station fiche stacks under the list, with the rail still up', async ({ p
   if (!card || !shell) throw new Error('layout not measurable')
   expect(card.width).toBeLessThan(shell.width * 0.6)
 
-  // « Go there » hands Google Maps the station's point, never a brand +
-  // address search: a place Google knows under two names stops on a « Did
-  // you mean » list instead of routing
+  // « Go there » wiring: the demo station's point is the source's own (no OSM
+  // forecourt behind it), so Google gets a brand + address search, the safe
+  // choice for a point that may be off. The point-vs-search rule itself is
+  // unit-tested in src/state/desktopMapsUrl.test.ts.
   await page.evaluate(() => {
     const w = window as unknown as { __opened: string[] }
     w.__opened = []
@@ -139,7 +140,9 @@ test('a station fiche stacks under the list, with the rail still up', async ({ p
   await page.getByRole('button', { name: /^Go there/ }).click()
   const opened = await page.evaluate(() => (window as unknown as { __opened: string[] }).__opened)
   expect(opened).toEqual([
-    'https://www.google.com/maps/dir/?api=1&destination=43.6101,1.4519&travelmode=driving',
+    'https://www.google.com/maps/dir/?api=1&destination=' +
+      encodeURIComponent('Système U 12 route de la Croix-Blanche 31000 Toulouse') +
+      '&travelmode=driving',
   ])
 
   await page.getByRole('button', { name: 'Close the station page' }).click()

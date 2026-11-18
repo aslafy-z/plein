@@ -267,6 +267,28 @@ export function mapsSiteLabel(id: MapsSiteId): string {
       return m.maps_site_google();
   }
 }
+/**
+ * Desktop « Go there » URL. Coordinates by default; Google alone gets a
+ * brand + address search for a branded station whose position is only the
+ * source's own geocode (`positionFromPoi` unset: the Spanish, Portuguese and
+ * Andorran fluxes, a French record that lost its POI to a closer duplicate).
+ * Google snaps a coordinate to the nearest road, so a point off by a hundred
+ * metres can silently route to the far carriageway or the street behind a
+ * hypermarket; a text search fails visibly instead, on a « Did you mean »
+ * list whose rows are the station under its different names. The search is
+ * NOT the default because that list also stops a station whose point is
+ * right: one sitting on its OSM forecourt goes by coordinates.
+ */
+export function desktopMapsUrl(site: MapsSiteId, target: Station): string {
+  if (site === 'google' && target.brand && target.address && !target.positionFromPoi) {
+    const query = encodeURIComponent(
+      [target.brand, target.address, target.postalCode, target.city].filter(Boolean).join(' '),
+    );
+    return `https://www.google.com/maps/dir/?api=1&destination=${query}&travelmode=driving`;
+  }
+  return mapsSiteUrl(site, target.lat, target.lng);
+}
+
 function mapsSiteUrl(site: MapsSiteId, lat: number, lng: number): string {
   switch (site) {
     case 'waze':
@@ -2313,15 +2335,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         window.location.href = `https://maps.apple.com/?daddr=${target.lat},${target.lng}&dirflg=d`;
         return;
       }
-      // Desktop: the site is a Settings choice (Google Maps by default).
-      // Always coordinates: unlike geo:, the Google dir URL carries no anchor
-      // for a text search, and a brand + address query stops on a « Did you
-      // mean » list as soon as the place has two names in Google's own data
-      // (« Esso Express » / « Esso - Route d'Albi », same pumps). A matched
-      // station sits on its OSM forecourt node, so its point IS the place.
+      // Desktop: the site is a Settings choice (Google Maps by default), and
+      // `desktopMapsUrl` decides between the point and a text search.
       const site = MAPS_SITE_IDS.includes(mapsSite) ? mapsSite : MAPS_SITE_IDS[0];
       showToast(m.toast_opening_maps({ site: mapsSiteLabel(site) }));
-      window.open(mapsSiteUrl(site, target.lat, target.lng), '_blank', 'noopener');
+      window.open(desktopMapsUrl(site, target), '_blank', 'noopener');
     },
     [showToast, mapsSite],
   );
