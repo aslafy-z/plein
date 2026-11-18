@@ -374,6 +374,17 @@ export function loadPersisted(): Partial<PersistedSettings> {
   }
 }
 
+/** Whether a load on `search` asks to skip onboarding (`?onboarded=1`) */
+export function onboardedFromSearch(search: string): boolean {
+  return new URLSearchParams(search).get('onboarded') === '1';
+}
+
+/** Saves `onboarded` alone, the rest of the blob untouched, and returns it */
+export function markOnboarded(): Partial<PersistedSettings> {
+  savePersisted({ onboarded: true });
+  return { ...loadPersisted(), onboarded: true };
+}
+
 export function savePersisted(p: Partial<PersistedSettings>) {
   try {
     localStorage.setItem(LS_KEY, JSON.stringify({ ...loadPersisted(), ...p }));

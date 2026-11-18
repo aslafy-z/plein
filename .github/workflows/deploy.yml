@@ -253,6 +253,10 @@ jobs:
             const lines = [];
             if (versionUrl) lines.push(`🚀 **Preview of this commit**: ${versionUrl}`);
             if (aliasUrl) lines.push(`🔗 **Stable branch endpoint**: ${aliasUrl}`);
+            // A version URL is its own origin, so its storage starts empty:
+            // `?onboarded=1` lands there as a returning user (What's new
+            // sparkle and anything else gated on having onboarded)
+            if (versionUrl) lines.push(`👤 **As a returning user**: ${versionUrl}/?onboarded=1`);
             const body = lines.length
               ? `${marker}\n${lines.join('\n\n')}\n\n_Version alias \`${alias}\` · commit ${context.payload.pull_request.head.sha.slice(0, 7)}_`
               : `${marker}\n⚠️ Preview uploaded but no URL found in the wrangler output — check the job logs.`;

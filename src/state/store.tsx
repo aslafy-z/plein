@@ -68,6 +68,8 @@ import { fuelLabel } from '../lib/labels';
 import { brandGroup } from '../lib/brandIcons';
 import {
   loadPersisted,
+  markOnboarded,
+  onboardedFromSearch,
   savePersisted,
   type FavoriteStation,
   type MapsSiteId,
@@ -78,7 +80,6 @@ import { pushSearchIn } from './searchHistory';
 import {
   CHANGELOG,
   latestChangelogId,
-  previewSeenFromSearch,
   unseenChangelog,
   type ChangelogEntry,
   type WhatsNewView,
@@ -903,11 +904,11 @@ const Ctx = createContext<AppStore | null>(null);
 
 // ── Provider component ───────────────────────────────────────────────────────
 export function AppProvider({ children }: { children: ReactNode }) {
-  // `?whatsnew=N` previews what a returning user sees, in any browser: this
-  // load runs as onboarded (nothing saved) with the newest N entries unread
-  const previewSeen = useRef(previewSeenFromSearch(CHANGELOG, window.location.search)).current;
+  // `?onboarded=1` (the PR preview comment links it) turns a fresh browser
+  // into a returning user: onboarding is skipped for good, and with no
+  // `changelogSeen` the latest What's new entry is announced
   const persisted = useRef(
-    previewSeen === undefined ? loadPersisted() : { ...loadPersisted(), onboarded: true },
+    onboardedFromSearch(window.location.search) ? markOnboarded() : loadPersisted(),
   ).current;
 
   const pathNav = navFromPath(window.location.pathname);
@@ -2068,15 +2069,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // The What's new sheet works the same way. Opening it IS reading the news,
   // so it also stamps the log as seen — the map's sparkle goes with it.
-  const [changelogSeen, setChangelogSeen] = useState<string | undefined>(
-    previewSeen ?? persisted.changelogSeen,
-  );
+  const [changelogSeen, setChangelogSeen] = useState<string | undefined>(persisted.changelogSeen);
   const whatsNew = useMemo(() => unseenChangelog(CHANGELOG, changelogSeen), [changelogSeen]);
   const whatsNewFresh = useRef<ReadonlySet<string>>(
     new Set(
-      persisted.onboarded
-        ? unseenChangelog(CHANGELOG, previewSeen ?? persisted.changelogSeen).map((e) => e.id)
-        : [],
+      persisted.onboarded ? unseenChangelog(CHANGELOG, persisted.changelogSeen).map((e) => e.id) : [],
     ),
   ).current;
   const markChangelogSeen = useCallback(() => {
